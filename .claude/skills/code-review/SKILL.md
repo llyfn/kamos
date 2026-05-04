@@ -1,41 +1,48 @@
 ---
 name: code-review
-description: "Comprehensive code review orchestrator. Runs four parallel reviewer agents (architecture, security, performance, style) and merges all findings into a single prioritized report. Use this skill whenever asked to review code, audit the codebase, check for issues, or run a code review — even for partial scopes like a single file or PR diff."
+description: "Code review orchestrator. Runs four parallel reviewer agents (architecture, security, performance, style) and merges all findings into a single prioritized report. Use when asked to review code, audit the codebase, or run a code review — including partial scopes like a single file, a directory, or a PR diff. For pure SPEC compliance / boundary checks use the qa-inspect skill instead."
 ---
 
 # Code Review Orchestrator
 
 Coordinates four parallel specialist reviewers and synthesizes their findings into one actionable report.
 
-## Execution Mode: Agent Team (Fan-out/Fan-in)
+## Execution mode: agent team (fan-out / fan-in)
 
-## Agent Roster
+## Agent roster
 
-| Reviewer | Type | Domain | Skill | Output |
-|----------|------|--------|-------|--------|
-| arch-reviewer | custom | Architecture & structure | arch-review | `_workspace/review/arch_findings.md` |
-| security-reviewer | custom | Security vulnerabilities | security-review | `_workspace/review/security_findings.md` |
-| perf-reviewer | custom | Performance bottlenecks | perf-review | `_workspace/review/perf_findings.md` |
-| style-reviewer | custom | Style & maintainability | style-review | `_workspace/review/style_findings.md` |
+| Reviewer | Subagent type | Domain | Skill | Output |
+|---|---|---|---|---|
+| arch-reviewer | `arch-reviewer` | Architecture & structure | `arch-review` | `_workspace/review/arch_findings.md` |
+| security-reviewer | `security-reviewer` | OWASP & auth | `security-review` | `_workspace/review/security_findings.md` |
+| perf-reviewer | `perf-reviewer` | Performance & scalability | `perf-review` | `_workspace/review/perf_findings.md` |
+| style-reviewer | `style-reviewer` | Maintainability | `style-review` | `_workspace/review/style_findings.md` |
+
+This skill is distinct from `qa-inspect`:
+
+- `code-review` = quality of one layer's code in isolation (architecture, security, perf, style)
+- `qa-inspect` = layers fit together correctly (boundaries, SPEC invariants)
+
+When in doubt, run both — they don't overlap.
 
 ## Workflow
 
-### Phase 1: Scope
+### Phase 1 — scope
 
 1. Determine review scope from the user's request:
-   - **Full codebase**: review everything under `backend/`, `frontend/`, `lib/`, `migrations/`
-   - **Specific path**: review only the specified directory or file(s)
-   - **PR diff**: review only changed files (list provided by user)
-2. Create `_workspace/review/` directory
+   - **Full codebase** — everything under `backend/`, `frontend/`, `lib/`, `migrations/`
+   - **Specific path** — only the named directory or files
+   - **PR diff** — only the changed files (user provides the list or a git ref)
+2. Create `_workspace/review/`.
 3. Write `_workspace/review/00_scope.md`:
    ```
-   Scope: {full | path | diff}
+   Scope: full | path | diff
    Target: {path or file list}
-   Date: {today}
-   Stack: {detected stack — e.g., Go + Flutter + PostgreSQL}
+   Date: {YYYY-MM-DD}
+   Stack: Go + Flutter + PostgreSQL
    ```
 
-### Phase 2: Parallel Review — Agent Team
+### Phase 2 — parallel review (team)
 
 ```
 TeamCreate(
@@ -43,172 +50,164 @@ TeamCreate(
   members: [
     {
       name: "arch-reviewer",
-      agent_type: "arch-reviewer",
+      subagent_type: "arch-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md for the review scope. Use the arch-review skill to review the codebase for architectural issues. Write findings to _workspace/review/arch_findings.md. When you find an issue that may also be a security concern, SendMessage to security-reviewer. When done, TaskUpdate your task to completed."
+      prompt: "Read _workspace/review/00_scope.md. Use the arch-review skill. Write findings to _workspace/review/arch_findings.md. If you find an issue with security implications (e.g., auth scattered across layers), SendMessage to security-reviewer with the title and file:line so it can be cross-referenced. If you find one with perf implications, SendMessage to perf-reviewer. TaskUpdate to completed when done."
     },
     {
       name: "security-reviewer",
-      agent_type: "security-reviewer",
+      subagent_type: "security-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md for the review scope. Use the security-review skill to audit the codebase for vulnerabilities. Write findings to _workspace/review/security_findings.md. When you find a vulnerability rooted in architecture, SendMessage to arch-reviewer. When done, TaskUpdate your task to completed."
+      prompt: "Read _workspace/review/00_scope.md. Use the security-review skill. Write findings to _workspace/review/security_findings.md. If a vulnerability has an architectural root cause, SendMessage to arch-reviewer. If a fix would have perf consequences, SendMessage to perf-reviewer. TaskUpdate to completed when done."
     },
     {
       name: "perf-reviewer",
-      agent_type: "perf-reviewer",
+      subagent_type: "perf-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md for the review scope. Use the perf-review skill to find performance bottlenecks. Write findings to _workspace/review/perf_findings.md. If a bottleneck has a security implication (e.g., no rate limiting enabling DoS), SendMessage to security-reviewer. When done, TaskUpdate your task to completed."
+      prompt: "Read _workspace/review/00_scope.md. Use the perf-review skill. Write findings to _workspace/review/perf_findings.md. If a bottleneck has a security implication (e.g., missing rate limiting enabling DoS), SendMessage to security-reviewer. If it's rooted in architecture, SendMessage to arch-reviewer. TaskUpdate to completed when done."
     },
     {
       name: "style-reviewer",
-      agent_type: "style-reviewer",
+      subagent_type: "style-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md for the review scope. Use the style-review skill to review code quality and maintainability. Write findings to _workspace/review/style_findings.md. When a style issue masks a deeper structural problem, SendMessage to arch-reviewer. When done, TaskUpdate your task to completed."
+      prompt: "Read _workspace/review/00_scope.md. Use the style-review skill. Write findings to _workspace/review/style_findings.md. When a style issue masks a structural problem, SendMessage to arch-reviewer. When a style issue could mask a security issue (e.g., swallowed auth error), SendMessage to security-reviewer. TaskUpdate to completed when done."
     }
   ]
 )
-```
 
-Register tasks:
-```
 TaskCreate(tasks: [
   { title: "Architecture review", assignee: "arch-reviewer" },
-  { title: "Security review", assignee: "security-reviewer" },
-  { title: "Performance review", assignee: "perf-reviewer" },
-  { title: "Style review", assignee: "style-reviewer" }
+  { title: "Security review",     assignee: "security-reviewer" },
+  { title: "Performance review",  assignee: "perf-reviewer" },
+  { title: "Style review",        assignee: "style-reviewer" }
 ])
 ```
 
-All four run concurrently. Reviewers communicate directly via SendMessage for cross-domain findings — the leader monitors but does not intermediate.
+All four run concurrently. Reviewers SendMessage each other for cross-domain findings; this skill (the leader) does not intermediate live, but tracks cross-references during synthesis.
 
-### Phase 3: Synthesis
+### Phase 3 — synthesis
 
-After all four tasks complete (monitor via TaskGet):
-1. TeamDelete("review-team")
-2. Read all four findings files
-3. Write the consolidated report
+When all four tasks are `completed`:
 
-## Consolidated Report Format
+1. `TeamDelete("review-team")`
+2. Read all four findings files.
+3. Build a cross-reference map: any finding cited at the same `file:line` by two reviewers is a cross-domain finding.
+4. Write `_workspace/review/REVIEW_REPORT.md`.
 
-Output: `_workspace/review/REVIEW_REPORT.md`
+## Consolidated report format
 
 ```markdown
 # Code Review Report
 Date: {date}
 Scope: {scope}
-Reviewers: arch-reviewer · security-reviewer · perf-reviewer · style-reviewer
-
----
+Reviewers: arch · security · perf · style
 
 ## Executive Summary
 
 | Domain | CRITICAL | HIGH | MEDIUM | LOW |
-|--------|----------|------|--------|-----|
+|---|---|---|---|---|
 | Architecture | N | N | N | N |
 | Security | N | N | N | N |
 | Performance | N | N | N | N |
-| Style | N | N | N | N |
+| Style | — | N | N | N |
 | **Total** | **N** | **N** | **N** | **N** |
 
-**Must-fix before merge:** {list CRITICAL + HIGH finding IDs}
+**Must-fix before merge:** {list of CRITICAL + HIGH finding IDs}
 
----
+## Critical & High Priority
 
-## Critical & High Priority Findings
+(All CRITICAL and HIGH findings, sorted by severity. Cross-domain findings annotated `[Cross-domain: SEC-NNN ↔ ARCH-NNN]`.)
 
-{All CRITICAL and HIGH findings from all four reviewers, sorted by severity.
- Cross-domain findings (where reviewers flagged each other) are annotated with "[Cross-domain]".}
+## Medium Priority
 
----
-
-## Medium Priority Findings
-
-{All MEDIUM findings, grouped by domain.}
-
----
+(All MEDIUM findings, grouped by domain.)
 
 ## Low Priority & Suggestions
 
-{All LOW and SUGGESTION findings, grouped by domain.}
-
----
+(All LOW and SUGGESTION findings, grouped by domain.)
 
 ## Cross-Domain Findings
 
-{Findings where two reviewers identified the same root cause from different angles.
- List the finding IDs and explain the connection.}
-
----
+(One section per file:line cited by two or more reviewers. Explain how the angles connect.)
 
 ## Recommended Fix Order
 
-1. {CRITICAL items — specific file:line}
+1. {CRITICAL items — file:line}
 2. {HIGH security items}
 3. {HIGH architecture items that block other fixes}
-4. {HIGH performance items}
+4. {HIGH perf items}
 5. {MEDIUM items by effort/impact ratio}
 
----
+## Full Findings
 
-## Full Findings Reference
-
-- Architecture: see `_workspace/review/arch_findings.md`
-- Security: see `_workspace/review/security_findings.md`
-- Performance: see `_workspace/review/perf_findings.md`
-- Style: see `_workspace/review/style_findings.md`
+- Architecture: `_workspace/review/arch_findings.md`
+- Security: `_workspace/review/security_findings.md`
+- Performance: `_workspace/review/perf_findings.md`
+- Style: `_workspace/review/style_findings.md`
 ```
 
-## Cross-Domain Deduplication
+## Severity normalization
 
-Before writing the consolidated report, identify findings from different reviewers that describe the same root cause:
-- Same file + line cited by two reviewers → merge into one cross-domain finding
-- SendMessage pattern between reviewers recorded in `_workspace/review/00_scope.md` → include in Cross-Domain section
+Style reviewer does not produce CRITICAL — that severity is reserved for security and (in rare cases) architectural findings that make the system unsafe.
 
-## Data Flow
+If two reviewers report the same finding with different severities, use the higher one and note the discrepancy in the cross-domain section.
+
+## Cross-domain dedup
+
+A finding is "cross-domain" when:
+
+- Two reviewers cite the same `file:line` (or the same function/struct), OR
+- A SendMessage between reviewers references the same finding ID (record this from the findings files — reviewers should mention the cross-reference in their own write-up)
+
+Merge into one entry in the report; don't double-count in the executive summary table (count it once under the higher-severity domain).
+
+## Data flow
 
 ```
-_workspace/review/00_scope.md
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│         review-team (parallel)          │
-│  arch ←─SendMessage─→ security          │
-│   ↕                       ↕             │
-│  perf ←─SendMessage─→ style             │
-└─────────────────────────────────────────┘
-         │        │        │        │
-         ▼        ▼        ▼        ▼
-      arch_    security_ perf_   style_
-    findings  findings findings findings
-         │        │        │        │
-         └────────┴────────┴────────┘
-                       │
-                       ▼
-               REVIEW_REPORT.md
+00_scope.md
+    │
+    ▼
+┌────────────────────────────────────┐
+│       review-team (parallel)       │
+│  arch ←─SendMessage─→ security     │
+│   ↕                       ↕        │
+│  perf ←─SendMessage─→ style        │
+└────────────────────────────────────┘
+    │       │       │       │
+    ▼       ▼       ▼       ▼
+  arch_  security_ perf_  style_
+findings findings findings findings
+    │       │       │       │
+    └───────┴───────┴───────┘
+              │
+              ▼
+       REVIEW_REPORT.md
 ```
 
-## Error Handling
+## Error handling
 
 | Situation | Action |
-|-----------|--------|
-| One reviewer produces empty findings | Include "No findings in this domain" section; do not skip the domain |
+|---|---|
+| One reviewer produces empty findings | Include "No findings in this domain" section; don't skip the domain |
 | One reviewer fails to complete | Note in report: "{domain} review incomplete — re-run with `/code-review {path}`" |
-| Two reviewers report conflicting severity for same finding | Use the higher severity; note the discrepancy |
-| Scope is very large (>100 files) | Each reviewer focuses on files most relevant to their domain: security→auth/handlers, perf→queries/lists, arch→entry points + interfaces, style→most-called modules |
+| Two reviewers report conflicting severity | Use higher severity, note discrepancy |
+| Scope very large (>100 files) | Each reviewer narrows: security → auth/handlers, perf → queries/lists, arch → entry points + interfaces, style → most-called modules. Document the narrowing in `00_scope.md`. |
+| User wants quick review only | Skip team mode; run a single reviewer chosen by the user request (`security-review`, etc.) directly without spawning a team |
 
-## Test Scenarios
+## Test scenarios
 
-### Normal Flow
+### Normal flow
+
 1. User: "review the backend code"
-2. Scope written: `backend/` directory, Go stack detected
-3. 4 reviewers run in parallel; security flags auth handler to arch; arch confirms layer violation
-4. All 4 complete; leader reads findings, cross-references the shared finding
-5. `REVIEW_REPORT.md` produced with 1 CRITICAL (IDOR), 2 HIGH, 5 MEDIUM, 8 LOW
+2. Scope written: `backend/`, Go stack
+3. 4 reviewers run; security flags an auth-handler issue and SendMessages arch-reviewer; arch confirms a layer violation at the same file:line
+4. All 4 complete; leader cross-references the shared finding
+5. `REVIEW_REPORT.md` produced: 1 CRITICAL (IDOR), 2 HIGH, 5 MEDIUM, 8 LOW
 6. Recommended fix order presented
 
-### Error Flow
-1. `perf-reviewer` fails mid-run due to large codebase
-2. Leader detects task stuck (TaskGet shows in-progress after others complete)
-3. SendMessage to perf-reviewer: status check
-4. No response after 2 rounds → note in report: "Performance review incomplete for `internal/handler/feed.go` and downstream — re-run scoped review"
-5. Report generated with 3 complete domains
+### Error flow
+
+1. perf-reviewer fails partway through a large codebase
+2. Leader detects via `TaskGet` (others completed, perf in-progress past timeout)
+3. SendMessage perf-reviewer for status; no response in 2 rounds
+4. Leader writes report with 3 complete domains and a perf section saying "Performance review incomplete for `internal/handler/feed.go` and downstream — re-run scoped review"
