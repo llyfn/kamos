@@ -13,6 +13,11 @@ out/
 ### VS Code ###
 .vscode/
 
+### Environment ###
+.env
+.env.local
+.env*.local
+
 ### macOS ###
 .DS_Store
 .AppleDouble
