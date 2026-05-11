@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 18px; align-items: center; justify-items: start; }
+  .btn { font-family: var(--font-body); font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: var(--radius-pill); border: 1px solid transparent; cursor: pointer; transition: all var(--dur-fast) var(--ease-out); }
+  .btn-primary { background: var(--c-ai); color: #fff; }
+  .btn-primary:hover { background: var(--c-kon); }
+  .btn-secondary { background: var(--bg-surface); color: var(--fg-1); border-color: var(--border-2); }
+  .btn-secondary:hover { background: var(--bg-tint-mizu); border-color: var(--c-hanada); }
+  .btn-ghost { background: transparent; color: var(--fg-brand); }
+  .btn-ghost:hover { background: var(--bg-tint-mizu); }
+  .btn-disabled { background: var(--c-gray-200); color: var(--c-gray-400); cursor: not-allowed; }
+  .btn-danger { background: var(--c-akane); color: #fff; }
+  .btn-toast { background: var(--c-koh); color: #fff; }
+  .lbl { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <button class="btn btn-primary">Add to wishlist</button>
+    <button class="btn btn-secondary">Follow</button>
+    <button class="btn btn-ghost">Cancel</button>
+    <span class="lbl">primary · Ai-iro</span>
+    <span class="lbl">secondary · hairline</span>
+    <span class="lbl">ghost · text-only</span>
+
+    <button class="btn btn-toast"><img src="../assets/logo_white.png" style="width:16px; height:auto; vertical-align: middle; margin-right: 6px;" alt=""> Toast</button>
+    <button class="btn btn-danger">Delete check-in</button>
+    <button class="btn btn-disabled" disabled>Submit</button>
+    <span class="lbl">toast · Koh accent</span>
+    <span class="lbl">destructive · Akane</span>
+    <span class="lbl">disabled</span>
+  </div>
+</body>
+</html>

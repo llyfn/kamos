@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Spacing scale</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .row { display: grid; grid-template-columns: 110px 1fr 70px; align-items: center; gap: 12px; padding: 6px 0; }
+  .label { font-family: var(--font-mono); font-size: 11px; color: var(--fg-1); }
+  .bar { height: 14px; background: var(--c-ai); border-radius: 3px; }
+  .px { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); text-align:right; }
+</style>
+</head>
+<body>
+  <div class="row"><div class="label">--space-1</div><div><div class="bar" style="width:4px"></div></div><div class="px">4 px</div></div>
+  <div class="row"><div class="label">--space-2</div><div><div class="bar" style="width:8px"></div></div><div class="px">8 px</div></div>
+  <div class="row"><div class="label">--space-3</div><div><div class="bar" style="width:12px"></div></div><div class="px">12 px</div></div>
+  <div class="row"><div class="label">--space-4</div><div><div class="bar" style="width:16px"></div></div><div class="px">16 px</div></div>
+  <div class="row"><div class="label">--space-5</div><div><div class="bar" style="width:20px"></div></div><div class="px">20 px</div></div>
+  <div class="row"><div class="label">--space-6</div><div><div class="bar" style="width:24px"></div></div><div class="px">24 px</div></div>
+  <div class="row"><div class="label">--space-7</div><div><div class="bar" style="width:32px"></div></div><div class="px">32 px</div></div>
+  <div class="row"><div class="label">--space-8</div><div><div class="bar" style="width:40px"></div></div><div class="px">40 px</div></div>
+  <div class="row"><div class="label">--space-9</div><div><div class="bar" style="width:48px"></div></div><div class="px">48 px</div></div>
+  <div class="row"><div class="label">--space-10</div><div><div class="bar" style="width:64px"></div></div><div class="px">64 px</div></div>
+</body>
+</html>

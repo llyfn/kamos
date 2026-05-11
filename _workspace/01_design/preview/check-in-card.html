@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Check-in card</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 22px; background: var(--bg-page); }
+  .card { background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-1); }
+  .head { display: flex; align-items: center; gap: 10px; }
+  .av { width: 36px; height: 36px; border-radius: 50%; background: var(--c-kinari); color: var(--fg-1); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 600; font-size: 14px; flex: none; border: 1px solid var(--border-1); }
+  .uname { font-size: 14px; font-weight: 600; color: var(--fg-1); }
+  .when { font-size: 12px; color: var(--fg-3); }
+  .body { display: flex; gap: 12px; margin-top: 12px; }
+  .label { width: 48px; height: 64px; border-radius: 4px; background: linear-gradient(160deg, #2A4A6B, #0F2350); flex: none; display:flex; align-items:flex-end; justify-content:center; color: #fff; font-family: var(--font-display); font-size: 8px; padding: 3px; }
+  .bev { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--fg-1); }
+  .bev-meta { font-size: 12px; color: var(--fg-2); }
+  .rating-row { display:flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .stars { color: var(--c-yamabuki); font-size: 13px; letter-spacing: 1px; }
+  .rating { font-family: var(--font-mono); font-size: 12px; color: var(--fg-1); font-weight: 600; }
+  .review { margin-top: 12px; font-size: 14px; line-height: 1.55; color: var(--fg-1); }
+  .tags { display:flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--bg-tint-mizu); color: var(--c-kon); }
+  .actions { display: flex; gap: 14px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-1); align-items: center; }
+  .toast { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 13px; color: #fff; background: var(--c-koh); padding: 5px 12px; border-radius: 999px; font-weight: 600; }
+  .toast img { width: 16px; height: auto; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="av">A</div>
+      <div style="flex:1">
+        <div class="uname">aiko · 愛子</div>
+        <div class="when">2 hours ago</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="label">獺祭<br>23</div>
+      <div style="flex:1">
+        <div class="bev">Dassai 23</div>
+        <div class="bev-meta">Asahi Shuzo · Yamaguchi</div>
+        <div class="rating-row"><span class="stars">★★★★★</span><span class="rating">4.5</span></div>
+      </div>
+    </div>
+    <div class="review">Bright pear, soft rice. Finish lingers, faintly mineral.</div>
+    <div class="tags"><span class="tag">Dry</span><span class="tag">Floral</span><span class="tag">Umami</span></div>
+    <div class="actions"><span class="toast"><img src="../assets/logo_white.png" alt=""> 12 toasts</span></div>
+  </div>
+</body>
+</html>

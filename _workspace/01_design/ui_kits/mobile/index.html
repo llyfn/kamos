@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Mobile UI Kit</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<style>
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg-page);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 20px;
+  }
+  .heading {
+    width: 100%; max-width: 1240px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .heading h1 { font-family: var(--font-display); font-weight: 600; font-size: 28px; margin: 0; color: var(--fg-1); }
+  .heading p  { font-size: 13px; color: var(--fg-3); margin: 0; max-width: 520px; }
+  .stage {
+    display: flex; gap: 32px; flex-wrap: wrap; justify-content: center;
+    width: 100%;
+  }
+  .stage > .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .label {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    color: var(--fg-2); text-transform: uppercase; letter-spacing: 0.12em;
+  }
+  /* Hide native scrollbars in phone interior so they don't show through the bezel */
+  .kamos-phone div::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+  <div class="heading">
+    <div>
+      <h1>KAMOS — Mobile UI Kit</h1>
+      <p style="margin-top:6px">Five-tab Flutter app, recreated in HTML. Click tabs and cards — all of these screens are interactive.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <img src="../../assets/logo.png" style="width:42px; height:42px;" alt="">
+      <div style="font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em; color: var(--c-kon)">KAMOS</div>
+    </div>
+  </div>
+
+  <div id="app"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="components/Primitives.jsx"></script>
+  <script type="text/babel" src="components/Shell.jsx"></script>
+  <script type="text/babel" src="components/FeedScreen.jsx"></script>
+  <script type="text/babel" src="components/SearchScreen.jsx"></script>
+  <script type="text/babel" src="components/BeverageScreen.jsx"></script>
+  <script type="text/babel" src="components/CheckInScreen.jsx"></script>
+  <script type="text/babel" src="components/ProfileLists.jsx"></script>
+  <script type="text/babel" src="components/data.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      const [tab, setTab] = React.useState('feed');
+      const [stack, setStack] = React.useState([]); // overlay stack: 'beverage' | 'checkin'
+      const [picked, setPicked] = React.useState(null);
+
+      const openBeverage = (b) => { setPicked(b); setStack(['beverage']); };
+      const openCheckIn = (b) => { setPicked(b); setStack(s => [...s, 'checkin']); };
+      const popOverlay = () => setStack(s => s.slice(0, -1));
+
+      const top = stack[stack.length - 1];
+
+      let body;
+      if (top === 'beverage' && picked) {
+        body = <BeverageScreen b={picked} onBack={popOverlay} onCheckIn={() => openCheckIn(picked)} onAddToList={() => {}} />;
+      } else if (top === 'checkin' && picked) {
+        body = <CheckInScreen b={picked} onClose={popOverlay} onSubmit={() => { setStack([]); setTab('feed'); }} />;
+      } else {
+        body = (
+          <>
+            {tab === 'feed' && <FeedScreen data={FEED}/>}
+            {tab === 'search' && <SearchScreen catalog={CATALOG} onPickBeverage={openBeverage}/>}
+            {tab === 'checkin' && <SearchScreen catalog={CATALOG} onPickBeverage={openCheckIn}/>}
+            {tab === 'lists' && <ListsScreen collections={COLLECTIONS}/>}
+            {tab === 'me' && <ProfileScreen user={ME} recent={MY_RECENT}/>}
+          </>
+        );
+      }
+
+      const showTabs = stack.length === 0;
+
+      return (
+        <Phone>
+          {body}
+          {showTabs && <TabBar tab={tab} setTab={setTab}/>}
+        </Phone>
+      );
+    }
+
+    // Render a row of phones: live app + a couple of "deep" screens for show.
+    function Stage() {
+      const [pickedA] = React.useState(CATALOG[0]); // dassai
+      return (
+        <div className="stage">
+          <div className="col">
+            <App/>
+            <div className="label">Live · five-tab app</div>
+          </div>
+          <div className="col">
+            <Phone>
+              <BeverageScreen b={CATALOG[0]} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => {}}/>
+            </Phone>
+            <div className="label">Beverage detail · Dassai 23</div>
+          </div>
+          <div className="col">
+            <Phone>
+              <CheckInScreen b={CATALOG[0]} onClose={() => {}} onSubmit={() => {}}/>
+            </Phone>
+            <div className="label">Check-in flow</div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(<Stage/>);
+  </script>
+</body>
+</html>
