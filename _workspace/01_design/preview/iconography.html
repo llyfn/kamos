@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Iconography</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<style>
+  body { padding: 24px; }
+  .row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border: 1px solid var(--border-1); border-radius: 8px; }
+  .item i { font-size: 24px; color: var(--fg-1); }
+  .lbl { font-family: var(--font-mono); font-size: 9px; color: var(--fg-3); text-align: center; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="item"><i class="ph ph-house"></i><span class="lbl">house</span></div>
+    <div class="item"><i class="ph ph-magnifying-glass"></i><span class="lbl">search</span></div>
+    <div class="item"><i class="ph ph-plus-circle"></i><span class="lbl">plus-circle</span></div>
+    <div class="item"><i class="ph ph-bookmark-simple"></i><span class="lbl">bookmark</span></div>
+    <div class="item"><i class="ph ph-user-circle"></i><span class="lbl">user-circle</span></div>
+    <div class="item"><i class="ph ph-bell"></i><span class="lbl">bell</span></div>
+    <div class="item"><i class="ph ph-camera"></i><span class="lbl">camera</span></div>
+    <div class="item"><i class="ph ph-star"></i><span class="lbl">star</span></div>
+    <div class="item"><i class="ph ph-list"></i><span class="lbl">list</span></div>
+    <div class="item"><i class="ph ph-map-pin"></i><span class="lbl">map-pin</span></div>
+    <div class="item"><i class="ph ph-flask"></i><span class="lbl">flask</span></div>
+    <div class="item"><i class="ph ph-x"></i><span class="lbl">x</span></div>
+    <div class="item"><i class="ph ph-caret-right"></i><span class="lbl">caret-right</span></div>
+    <div class="item"><i class="ph ph-sliders-horizontal"></i><span class="lbl">filters</span></div>
+    <div class="item"><i class="ph ph-globe"></i><span class="lbl">globe (locale)</span></div>
+    <div class="item" style="background: var(--c-koh); border-color: var(--c-koh)"><img src="../assets/logo_white.png" style="width:22px; height:auto;" alt=""><span class="lbl" style="color:#fff">toast · brand mark</span></div>
+  </div>
+</body>
+</html>

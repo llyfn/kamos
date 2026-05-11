@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Form Inputs</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 22px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .lbl { font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--fg-2); }
+  .input { font-family: var(--font-body); font-size: 15px; color: var(--fg-1); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-2); background: var(--bg-surface); transition: all var(--dur-fast); }
+  .input::placeholder { color: var(--fg-muted); }
+  .input.focus { border-color: var(--c-ai); box-shadow: var(--shadow-focus); outline: none; }
+  .input.error { border-color: var(--c-akane); }
+  .hint { font-size: 11px; color: var(--fg-3); }
+  .err { font-size: 11px; color: var(--c-akane); }
+  .search { display:flex; align-items:center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: var(--c-gray-100); }
+  .search-icon { width: 16px; height: 16px; border: 1.5px solid var(--fg-3); border-radius: 50%; position: relative; flex: none; }
+  .search-icon::after { content:''; position:absolute; right:-3px; bottom:-3px; width:6px; height:1.5px; background: var(--fg-3); transform: rotate(45deg); }
+  .search input { border: none; background: transparent; font-size: 14px; flex: 1; outline: none; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="field">
+      <label class="lbl">Email</label>
+      <input class="input" placeholder="you@kamos.app">
+      <div class="hint">We'll send a verification link.</div>
+    </div>
+    <div class="field">
+      <label class="lbl">Password</label>
+      <input class="input focus" type="password" value="••••••••">
+      <div class="hint">Focused</div>
+    </div>
+    <div class="field">
+      <label class="lbl">Username</label>
+      <input class="input error" value="ya">
+      <div class="err">3 characters minimum.</div>
+    </div>
+    <div class="field">
+      <label class="lbl">Search</label>
+      <div class="search"><span class="search-icon"></span><input placeholder="Search breweries, beverages…"></div>
+      <div class="hint">Pill-radius search field.</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Color: Accents & Status</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .swatch { border-radius: 12px; overflow: hidden; border: 1px solid var(--border-1); }
+  .chip { height: 60px; display:flex; align-items:flex-end; padding: 10px; }
+  .glyph { font-family: var(--font-display); font-size: 24px; font-weight:600; }
+  .meta { padding: 10px 12px; background: var(--bg-card); }
+  .name { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--fg-1); }
+  .role { font-size: 11px; color: var(--fg-3); margin-top: 2px; }
+  .hex { font-family: var(--font-mono); font-size: 10px; color: var(--fg-2); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch"><div class="chip" style="background:var(--c-koh)"><img src="../assets/logo_white.png" style="height: 28px; width: auto;" alt=""></div><div class="meta"><div class="name">Koh</div><div class="role">香 · toast / kanpai only</div><div class="hex">#C97B5A</div></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--c-matcha)"><span class="glyph" style="color:#fff">✓</span></div><div class="meta"><div class="name">Matcha</div><div class="role">抹茶 · success / tried</div><div class="hex">#6B8E5C</div></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--c-yamabuki)"><span class="glyph" style="color:#fff">★</span></div><div class="meta"><div class="name">Yamabuki</div><div class="role">山吹 · ratings / stars</div><div class="hex">#D4A845</div></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--c-akane)"><span class="glyph" style="color:#fff">!</span></div><div class="meta"><div class="name">Akane</div><div class="role">茜 · destructive only</div><div class="hex">#A23B3B</div></div></div>
+  </div>
+</body>
+</html>

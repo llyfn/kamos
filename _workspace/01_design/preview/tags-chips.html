@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Tags & Chips</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .group { margin-bottom: 14px; }
+  .group:last-child { margin-bottom: 0; }
+  .glabel { font-family: var(--font-body); font-size: 11px; font-weight:600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fg-3); margin-bottom: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-family: var(--font-body); font-size: 13px; padding: 6px 12px; border-radius: var(--radius-pill); background: var(--bg-surface); border: 1px solid var(--border-2); color: var(--fg-1); cursor: pointer; }
+  .chip.on { background: var(--c-ai); color: #fff; border-color: var(--c-ai); }
+  .chip.tag { background: var(--bg-tint-mizu); border-color: transparent; color: var(--c-kon); }
+  .chip.cat { background: var(--c-kinari); border-color: transparent; }
+</style>
+</head>
+<body>
+  <div class="group">
+    <div class="glabel">Flavor tags · selectable</div>
+    <div class="row">
+      <span class="chip on">Dry</span>
+      <span class="chip">Off-dry</span>
+      <span class="chip on">Crisp</span>
+      <span class="chip">Floral</span>
+      <span class="chip on">Umami</span>
+      <span class="chip">Lingering</span>
+      <span class="chip">Warming</span>
+    </div>
+  </div>
+  <div class="group">
+    <div class="glabel">On a beverage card · static</div>
+    <div class="row">
+      <span class="chip tag">Pear</span>
+      <span class="chip tag">Mineral</span>
+      <span class="chip tag">Junmai</span>
+      <span class="chip tag">Seimai 50%</span>
+    </div>
+  </div>
+  <div class="group">
+    <div class="glabel">Categories</div>
+    <div class="row">
+      <span class="chip cat">Nihonshu · 日本酒</span>
+      <span class="chip cat">Shochu · 焼酎</span>
+      <span class="chip cat">Liqueur · リキュール</span>
+    </div>
+  </div>
+</body>
+</html>

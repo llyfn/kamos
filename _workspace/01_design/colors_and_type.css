@@ -1,0 +1,263 @@
+/* ============================================================
+   KAMOS — Colors & Type
+   A calm Japanese-blue palette grounded in traditional dye names.
+   ============================================================ */
+
+/* ---------- FONTS ---------------------------------------- */
+/*
+  Display / Headings: Shippori Mincho — a contemporary mincho
+    (serif) that evokes hand-cut woodblock printing. Used sparingly
+    for hero moments, beverage names, brewery profiles.
+  Body / UI: Noto Sans JP — neutral, broad CJK coverage, works
+    across en/ja/ko (KAMOS is tri-lingual).
+  Mono: JetBrains Mono — for IDs, codes, polishing ratios.
+
+  All three are Google Fonts. If you have local files,
+  drop them in fonts/ and the @font-face below will pick them up.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ---------- TYPE FAMILIES ----------------------------- */
+  --font-display: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', 'Songti SC', 'Noto Serif JP', serif;
+  --font-body:    'Noto Sans JP', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:    'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace;
+
+  /* ---------- TYPE SCALE -------------------------------- */
+  /* Mobile-first; 16px base. */
+  --fs-display:   44px;  /* hero numerics, splash */
+  --fs-h1:        32px;
+  --fs-h2:        24px;
+  --fs-h3:        20px;
+  --fs-body:      16px;
+  --fs-small:     14px;
+  --fs-caption:   12px;
+  --fs-overline:  11px;
+
+  --lh-display:   1.1;
+  --lh-heading:   1.25;
+  --lh-body:      1.55;
+  --lh-tight:     1.3;
+
+  --ls-display:   -0.02em;
+  --ls-heading:   -0.01em;
+  --ls-body:       0;
+  --ls-overline:   0.12em;
+
+  /* ---------- COLOR — JAPANESE BLUES -------------------- */
+  /* Traditional Japanese names (色名). Hex values are calibrated to
+     read as a calm, cohesive system rather than literal historic dyes. */
+
+  --c-mizu:       #B6D6E2;  /* 水色 — water blue, lightest */
+  --c-sora:       #88B7D6;  /* 空色 — sky blue */
+  --c-hanada:     #4A86A8;  /* 縹色 — hanada, mid-blue */
+  --c-ai:         #165E83;  /* 藍色 — Edo indigo, brand primary */
+  --c-kon:        #0F2350;  /* 紺色 — kon, deep navy */
+  --c-rurikon:    #1B264F;  /* 瑠璃紺 — lapis-navy */
+
+  /* Off-blacks & whites — never pure */
+  --c-sumi:       #14171F;  /* 墨 — sumi ink black, primary text */
+  --c-shironeri:  #FCFAF6;  /* 白練 — undyed silk, page bg */
+  --c-kinari:     #F4EFE6;  /* 生成 — unbleached, warm card bg */
+
+  /* Neutrals (cool gray, drifts blue) */
+  --c-gray-50:    #F5F7FA;
+  --c-gray-100:   #ECEFF4;
+  --c-gray-200:   #DCE2EA;
+  --c-gray-300:   #C2CBD6;
+  --c-gray-400:   #95A2B3;
+  --c-gray-500:   #6B7787;
+  --c-gray-600:   #4A5462;
+  --c-gray-700:   #2F3640;
+  --c-gray-800:   #1B1F26;
+
+  /* Accents — used sparingly, never purely decorative */
+  --c-koh:        #C97B5A;  /* 香 — warm terracotta, retained from logo lineage; for "kanpai" / toast moments */
+  --c-matcha:     #6B8E5C;  /* 抹茶 — moss green, for "tried" / success */
+  --c-akane:      #A23B3B;  /* 茜 — madder red, destructive only */
+  --c-yamabuki:   #D4A845;  /* 山吹 — gold, ratings/stars */
+
+  /* ---------- SEMANTIC TOKENS --------------------------- */
+  /* Text */
+  --fg-1:         var(--c-sumi);        /* primary */
+  --fg-2:         var(--c-gray-600);    /* secondary */
+  --fg-3:         var(--c-gray-500);    /* tertiary / captions */
+  --fg-muted:     var(--c-gray-400);    /* placeholder */
+  --fg-on-dark:   var(--c-shironeri);
+  --fg-link:      var(--c-ai);
+  --fg-brand:     var(--c-ai);
+
+  /* Surfaces */
+  --bg-page:      var(--c-shironeri);
+  --bg-surface:   #FFFFFF;
+  --bg-sunken:    var(--c-gray-50);
+  --bg-card:      #FFFFFF;
+  --bg-warm:      var(--c-kinari);      /* alt card / brewery profile */
+  --bg-brand:     var(--c-ai);
+  --bg-brand-deep:var(--c-kon);
+  --bg-tint-mizu: #EAF3F8;              /* very light brand wash */
+
+  /* Borders */
+  --border-1:     var(--c-gray-200);    /* default hairline */
+  --border-2:     var(--c-gray-300);    /* emphasized */
+  --border-strong:var(--c-gray-700);
+  --border-brand: var(--c-ai);
+
+  /* Status */
+  --fg-success:   var(--c-matcha);
+  --fg-warning:   var(--c-yamabuki);
+  --fg-danger:    var(--c-akane);
+  --bg-success:   #E8EFE3;
+  --bg-warning:   #F6EBCB;
+  --bg-danger:    #F4DFDF;
+
+  /* ---------- SPACING ----------------------------------- */
+  /* 4px base. Use multiples; never invent in-between values. */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+  --space-9:  48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 96px;
+
+  /* ---------- RADII ------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* ---------- SHADOWS ----------------------------------- */
+  /* Soft, low-elevation. KAMOS rarely lifts surfaces aggressively;
+     prefer hairlines and tints over heavy drop shadows. */
+  --shadow-1: 0 1px 2px rgba(15, 35, 80, 0.06), 0 1px 1px rgba(15, 35, 80, 0.04);
+  --shadow-2: 0 4px 12px rgba(15, 35, 80, 0.08), 0 1px 2px rgba(15, 35, 80, 0.04);
+  --shadow-3: 0 12px 32px rgba(15, 35, 80, 0.12), 0 2px 4px rgba(15, 35, 80, 0.04);
+  --shadow-inset: inset 0 0 0 1px rgba(15, 35, 80, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(22, 94, 131, 0.25);
+
+  /* ---------- MOTION ------------------------------------ */
+  --ease-out:    cubic-bezier(0.2, 0.7, 0.2, 1);   /* gentle deceleration */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   320ms;
+
+  /* ---------- LAYOUT ------------------------------------ */
+  --container-narrow: 560px;
+  --container:        720px;
+  --container-wide:  1080px;
+  --mobile-max:       420px;   /* design width for the Flutter mockups */
+}
+
+/* ============================================================
+   SEMANTIC TYPE STYLES
+   Use these classes, not raw font sizes.
+   ============================================================ */
+
+.kamos-display {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.kamos-h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.kamos-h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: 500;
+  color: var(--fg-1);
+}
+
+.kamos-h3 {
+  font-family: var(--font-body);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.kamos-body {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  color: var(--fg-1);
+}
+
+.kamos-small {
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--fg-2);
+}
+
+.kamos-caption {
+  font-family: var(--font-body);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-tight);
+  color: var(--fg-3);
+}
+
+.kamos-overline {
+  font-family: var(--font-body);
+  font-size: var(--fs-overline);
+  line-height: 1;
+  letter-spacing: var(--ls-overline);
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--fg-3);
+}
+
+.kamos-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--fg-2);
+  font-feature-settings: "tnum";
+}
+
+/* Japanese-language hint: when wrapping JA glyphs in display,
+   use a slightly heavier weight and tighter line-height. */
+.kamos-jp {
+  font-family: var(--font-display);
+  font-feature-settings: "palt";   /* proportional alt metrics for JP */
+  letter-spacing: 0.02em;
+}
+
+/* Reset baseline */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--fg-1);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
