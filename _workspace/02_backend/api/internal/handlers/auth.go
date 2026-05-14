@@ -1,0 +1,400 @@
+package handlers
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/auth"
+	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/middleware"
+	"github.com/kamos/api/internal/repository"
+)
+
+// Register implements POST /v1/auth/register.
+//   1. Validate the body (username regex, password ≥ 8, etc.)
+//   2. Check the username + email aren't held
+//   3. Insert user + Inventory/Wishlist collections in a tx
+//   4. Issue a verification token (24h) and a JWT
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	var req domain.RegisterRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "Register decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "Register validate", err)
+		return
+	}
+
+	ctx := r.Context()
+	state, _, err := h.Repos.Users.CheckUsernameAvailability(ctx, req.Username)
+	if err != nil {
+		h.writeErr(w, "Register check username", err)
+		return
+	}
+	if state == "live" || state == "held" {
+		apierror.WriteError(w, http.StatusConflict, "USERNAME_HELD", "username is not available")
+		return
+	}
+	taken, err := h.Repos.Users.EmailExists(ctx, req.Email)
+	if err != nil {
+		h.writeErr(w, "Register email check", err)
+		return
+	}
+	if taken {
+		apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
+		return
+	}
+
+	hashed, err := auth.HashPassword(req.Password)
+	if err != nil {
+		h.writeErr(w, "Register hash", err)
+		return
+	}
+	user, err := h.Repos.Users.CreateUserWithDefaults(ctx, repository.CreateUserParams{
+		DisplayUsername: req.Username,
+		Email:           req.Email,
+		EmailVerified:   false,
+		PasswordHash:    &hashed,
+		DisplayName:     req.DisplayName,
+		Bio:             req.Bio,
+		Locale:          req.Locale,
+	})
+	if err != nil {
+		h.writeErr(w, "Register insert", err)
+		return
+	}
+
+	// Verification token (24h). The email send is stubbed — wire up SMTP in
+	// integration. The link format is `${APP_BASE_URL}/verify?token=...`.
+	token, _ := randomToken(32)
+	if err := h.Repos.Users.CreateVerificationToken(ctx, user.ID, token); err != nil {
+		h.Log.Error("CreateVerificationToken", "err", err)
+	}
+	// TODO: wire SMTP sender. For now, log the link so dev environments can
+	// click through it manually.
+	h.Log.Info("verification link",
+		"user_id", user.ID,
+		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
+	)
+
+	tok, err := h.Signer.Sign(user.ID, user.Username)
+	if err != nil {
+		h.writeErr(w, "Register sign", err)
+		return
+	}
+	apierror.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
+		User:        *user,
+		AccessToken: tok,
+		TokenType:   "Bearer",
+		ExpiresIn:   int64(h.Cfg.JWTTTL.Seconds()),
+	})
+}
+
+// Login implements POST /v1/auth/login.
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req domain.LoginRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "Login decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "Login validate", err)
+		return
+	}
+
+	row, err := h.Repos.Users.FindByEmail(r.Context(), req.Email)
+	if err != nil {
+		if errors.Is(err, apierror.ErrNotFound) {
+			apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
+			return
+		}
+		h.writeErr(w, "Login find", err)
+		return
+	}
+	if row.PasswordHash == nil {
+		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
+		return
+	}
+	if err := auth.VerifyPassword(*row.PasswordHash, req.Password); err != nil {
+		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
+		return
+	}
+	tok, err := h.Signer.Sign(row.ID, row.Username)
+	if err != nil {
+		h.writeErr(w, "Login sign", err)
+		return
+	}
+	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
+		User:        row.User,
+		AccessToken: tok,
+		TokenType:   "Bearer",
+		ExpiresIn:   int64(h.Cfg.JWTTTL.Seconds()),
+	})
+}
+
+// GoogleLogin implements POST /v1/auth/google.
+// The Flutter client sends the Google ID token; we verify against Google
+// (using the configured client ID as `aud`), then upsert by `google_sub`.
+//
+// For first-login the client may provide a `username` to claim, or we derive
+// one from the email local part. If the derived username clashes, we 409.
+func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	var req domain.GoogleLoginRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "GoogleLogin decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "GoogleLogin validate", err)
+		return
+	}
+
+	ctx := r.Context()
+	payload, err := h.Google.Verify(ctx, req.IDToken)
+	if err != nil {
+		h.Log.Warn("GoogleLogin verify failed", "err", err)
+		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid id token")
+		return
+	}
+
+	existing, err := h.Repos.Users.FindByGoogleSub(ctx, payload.Sub)
+	if err != nil && !errors.Is(err, apierror.ErrNotFound) {
+		h.writeErr(w, "GoogleLogin lookup", err)
+		return
+	}
+
+	var user *domain.User
+	if existing != nil {
+		user = existing
+	} else {
+		// First login: pick a username. If the client sent one, use it; else
+		// derive from email local-part. We do NOT auto-merge with an existing
+		// email-only account; that's a 409.
+		uname := ""
+		if req.Username != nil && *req.Username != "" {
+			uname = *req.Username
+		} else if payload.Email != "" {
+			at := -1
+			for i, ch := range payload.Email {
+				if ch == '@' {
+					at = i
+					break
+				}
+			}
+			if at > 0 {
+				uname = payload.Email[:at]
+			}
+		}
+		// Sanitize candidate username.
+		cand := sanitizeUsernameCandidate(uname)
+		if cand == "" {
+			apierror.WriteError(w, http.StatusUnprocessableEntity, "USERNAME_REQUIRED", "please choose a username")
+			return
+		}
+		state, _, err := h.Repos.Users.CheckUsernameAvailability(ctx, cand)
+		if err != nil {
+			h.writeErr(w, "GoogleLogin avail", err)
+			return
+		}
+		if state == "live" || state == "held" {
+			apierror.WriteError(w, http.StatusConflict, "USERNAME_HELD", "username is not available; please pick another")
+			return
+		}
+		if payload.Email != "" {
+			taken, err := h.Repos.Users.EmailExists(ctx, payload.Email)
+			if err != nil {
+				h.writeErr(w, "GoogleLogin email", err)
+				return
+			}
+			if taken {
+				apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "this email is linked to another account")
+				return
+			}
+		}
+		locale := "en"
+		if req.Locale != nil {
+			l := *req.Locale
+			if l == "en" || l == "ja" || l == "ko" {
+				locale = l
+			}
+		}
+		dispName := payload.Name
+		if dispName == "" {
+			dispName = cand
+		}
+		var avatar *string
+		if payload.Picture != "" {
+			a := payload.Picture
+			avatar = &a
+		}
+		newUser, err := h.Repos.Users.CreateUserWithDefaults(ctx, repository.CreateUserParams{
+			DisplayUsername: cand,
+			Email:           payload.Email,
+			EmailVerified:   payload.EmailVerified,
+			GoogleSub:       &payload.Sub,
+			DisplayName:     dispName,
+			AvatarURL:       avatar,
+			Locale:          locale,
+		})
+		if err != nil {
+			h.writeErr(w, "GoogleLogin create", err)
+			return
+		}
+		user = newUser
+	}
+
+	tok, err := h.Signer.Sign(user.ID, user.Username)
+	if err != nil {
+		h.writeErr(w, "GoogleLogin sign", err)
+		return
+	}
+	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
+		User:        *user,
+		AccessToken: tok,
+		TokenType:   "Bearer",
+		ExpiresIn:   int64(h.Cfg.JWTTTL.Seconds()),
+	})
+}
+
+// VerifyEmail consumes a verification token.
+func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	var req domain.VerifyEmailRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "VerifyEmail decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "VerifyEmail validate", err)
+		return
+	}
+	userID, err := h.Repos.Users.FindUserByVerificationToken(r.Context(), req.Token)
+	if err != nil {
+		h.writeErr(w, "VerifyEmail find", err)
+		return
+	}
+	if err := h.Repos.Users.MarkEmailVerified(r.Context(), userID, req.Token); err != nil {
+		h.writeErr(w, "VerifyEmail mark", err)
+		return
+	}
+	apierror.WriteJSON(w, http.StatusOK, map[string]bool{"verified": true})
+}
+
+// ResendVerification issues a fresh 24h token (authed).
+func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
+	uid, ok := h.authedID(w, r)
+	if !ok {
+		return
+	}
+	token, _ := randomToken(32)
+	if err := h.Repos.Users.CreateVerificationToken(r.Context(), uid, token); err != nil {
+		h.writeErr(w, "ResendVerification", err)
+		return
+	}
+	h.Log.Info("verification link",
+		"user_id", uid,
+		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
+	)
+	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"sent": true})
+}
+
+// PasswordChange implements POST /v1/auth/password-change.
+func (h *Handler) PasswordChange(w http.ResponseWriter, r *http.Request) {
+	uid, ok := h.authedID(w, r)
+	if !ok {
+		return
+	}
+	var req domain.PasswordChangeRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "PasswordChange decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "PasswordChange validate", err)
+		return
+	}
+	currentHash, err := h.Repos.Users.LoadPasswordHash(r.Context(), uid)
+	if err != nil {
+		h.writeErr(w, "PasswordChange load", err)
+		return
+	}
+	if err := auth.VerifyPassword(currentHash, req.CurrentPassword); err != nil {
+		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "current password is incorrect")
+		return
+	}
+	newHash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		h.writeErr(w, "PasswordChange hash", err)
+		return
+	}
+	if err := h.Repos.Users.UpdatePasswordHash(r.Context(), uid, newHash); err != nil {
+		h.writeErr(w, "PasswordChange update", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// EmailChange implements POST /v1/auth/email-change. Triggers re-verification.
+func (h *Handler) EmailChange(w http.ResponseWriter, r *http.Request) {
+	uid, ok := h.authedID(w, r)
+	if !ok {
+		return
+	}
+	var req domain.EmailChangeRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "EmailChange decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "EmailChange validate", err)
+		return
+	}
+	taken, err := h.Repos.Users.EmailExists(r.Context(), req.NewEmail)
+	if err != nil {
+		h.writeErr(w, "EmailChange exists", err)
+		return
+	}
+	if taken {
+		apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
+		return
+	}
+	if err := h.Repos.Users.UpdateEmail(r.Context(), uid, req.NewEmail); err != nil {
+		h.writeErr(w, "EmailChange update", err)
+		return
+	}
+	token, _ := randomToken(32)
+	if err := h.Repos.Users.CreateVerificationToken(r.Context(), uid, token); err != nil {
+		h.Log.Error("EmailChange token", "err", err)
+	}
+	h.Log.Info("verification link",
+		"user_id", uid,
+		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
+	)
+	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"re_verification_sent": true})
+}
+
+// sanitizeUsernameCandidate strips disallowed characters and trims to the
+// SPEC 3-30 range. Returns "" if the resulting string is too short.
+func sanitizeUsernameCandidate(s string) string {
+	var b []rune
+	for _, ch := range s {
+		switch {
+		case ch >= 'a' && ch <= 'z',
+			ch >= 'A' && ch <= 'Z',
+			ch >= '0' && ch <= '9',
+			ch == '_':
+			b = append(b, ch)
+		}
+		if len(b) >= 30 {
+			break
+		}
+	}
+	if len(b) < 3 {
+		return ""
+	}
+	return string(b)
+}
+
+// Compile-time ref to keep middleware import alive across files.
+var _ = middleware.UserFromContext

@@ -1,0 +1,204 @@
+package repository
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/domain"
+)
+
+type CollectionRepo struct{ db *pgxpool.Pool }
+
+// List returns the user's live collections with entry counts.
+func (r *CollectionRepo) List(ctx context.Context, userID string) ([]domain.Collection, error) {
+	const q = `
+SELECT c.id, c.name, c.created_at, c.updated_at,
+       COUNT(ce.beverage_id)::int AS entry_count
+FROM collections c
+LEFT JOIN collection_entries ce ON ce.collection_id = c.id
+WHERE c.user_id = $1 AND c.deleted_at IS NULL
+GROUP BY c.id
+ORDER BY c.created_at ASC;`
+	rows, err := r.db.Query(ctx, q, userID)
+	if err != nil {
+		return nil, fmt.Errorf("CollectionRepo.List: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.Collection
+	for rows.Next() {
+		var c domain.Collection
+		if err := rows.Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+			return nil, fmt.Errorf("CollectionRepo.List scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r *CollectionRepo) Create(ctx context.Context, userID, name string) (*domain.Collection, error) {
+	const q = `
+INSERT INTO collections (user_id, name) VALUES ($1, $2)
+RETURNING id, name, created_at, updated_at;`
+	var c domain.Collection
+	if err := r.db.QueryRow(ctx, q, userID, name).Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
+			return nil, apierror.ErrConflict
+		}
+		return nil, fmt.Errorf("CollectionRepo.Create: %w", err)
+	}
+	return &c, nil
+}
+
+func (r *CollectionRepo) Get(ctx context.Context, userID, id string) (*domain.Collection, error) {
+	const q = `
+SELECT c.id, c.name, c.created_at, c.updated_at,
+       (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id)
+FROM collections c
+WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL;`
+	var c domain.Collection
+	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+		return nil, wrapNoRows("CollectionRepo.Get", err)
+	}
+	return &c, nil
+}
+
+func (r *CollectionRepo) Rename(ctx context.Context, userID, id, name string) (*domain.Collection, error) {
+	const q = `
+UPDATE collections SET name = $3
+WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+RETURNING id, name, created_at, updated_at;`
+	var c domain.Collection
+	if err := r.db.QueryRow(ctx, q, id, userID, name).Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
+			return nil, apierror.ErrConflict
+		}
+		return nil, wrapNoRows("CollectionRepo.Rename", err)
+	}
+	return &c, nil
+}
+
+func (r *CollectionRepo) SoftDelete(ctx context.Context, userID, id string) error {
+	const q = `
+UPDATE collections SET deleted_at = NOW()
+WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+RETURNING id;`
+	var got string
+	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&got); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierror.ErrNotFound
+		}
+		return fmt.Errorf("CollectionRepo.SoftDelete: %w", err)
+	}
+	return nil
+}
+
+// Entries lists entries with the beverage join. Cursor: (added_at, beverage_id).
+func (r *CollectionRepo) Entries(ctx context.Context, userID, collectionID string, cursor *time.Time, cursorBeverage *string, limit int) ([]domain.CollectionEntry, error) {
+	const q = `
+SELECT ce.beverage_id, ce.note, ce.added_at,
+       b.name_i18n, b.category_slug, b.label_image_url,
+       cat.name_i18n,
+       br.id, br.name_i18n, br.region
+FROM collection_entries ce
+JOIN collections c ON c.id = ce.collection_id AND c.user_id = $1 AND c.deleted_at IS NULL
+JOIN beverages b ON b.id = ce.beverage_id
+JOIN breweries br ON br.id = b.brewery_id
+JOIN beverage_categories cat ON cat.id = b.category_id
+WHERE ce.collection_id = $2
+  AND ($3::timestamptz IS NULL OR (ce.added_at, ce.beverage_id::text) < ($3::timestamptz, $4::text))
+ORDER BY ce.added_at DESC, ce.beverage_id DESC
+LIMIT $5;`
+	rows, err := r.db.Query(ctx, q, userID, collectionID, cursor, cursorBeverage, limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("CollectionRepo.Entries: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.CollectionEntry
+	for rows.Next() {
+		var e domain.CollectionEntry
+		var (
+			bevID         string
+			bevName       []byte
+			bevSlug       string
+			bevLabel      *string
+			catName       []byte
+			brwID         string
+			brwName       []byte
+			brwRegion     *string
+		)
+		if err := rows.Scan(&bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName, &brwRegion); err != nil {
+			return nil, fmt.Errorf("CollectionRepo.Entries scan: %w", err)
+		}
+		bn, _ := domain.I18nFromJSON(bevName)
+		cn, _ := domain.I18nFromJSON(catName)
+		brn, _ := domain.I18nFromJSON(brwName)
+		e.Beverage = domain.BeverageRef{
+			ID:            bevID,
+			Name:          bn,
+			Brewery:       domain.BreweryRef{ID: brwID, Name: brn, Region: brwRegion},
+			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
+			LabelImageURL: bevLabel,
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func (r *CollectionRepo) AddEntry(ctx context.Context, userID, collectionID, beverageID string, note *string) error {
+	// Ownership check baked into the INSERT via subselect.
+	const q = `
+INSERT INTO collection_entries (collection_id, beverage_id, note)
+SELECT $1, $2, $3
+FROM collections c
+WHERE c.id = $1 AND c.user_id = $4 AND c.deleted_at IS NULL
+ON CONFLICT (collection_id, beverage_id) DO UPDATE
+  SET note = EXCLUDED.note
+RETURNING collection_id;`
+	var got string
+	if err := r.db.QueryRow(ctx, q, collectionID, beverageID, note, userID).Scan(&got); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierror.ErrNotFound
+		}
+		return fmt.Errorf("CollectionRepo.AddEntry: %w", err)
+	}
+	return nil
+}
+
+func (r *CollectionRepo) UpdateEntry(ctx context.Context, userID, collectionID, beverageID string, note *string) error {
+	const q = `
+UPDATE collection_entries ce SET note = $3
+FROM collections c
+WHERE ce.collection_id = $1 AND ce.beverage_id = $2
+  AND c.id = ce.collection_id AND c.user_id = $4 AND c.deleted_at IS NULL;`
+	ct, err := r.db.Exec(ctx, q, collectionID, beverageID, note, userID)
+	if err != nil {
+		return fmt.Errorf("CollectionRepo.UpdateEntry: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return apierror.ErrNotFound
+	}
+	return nil
+}
+
+func (r *CollectionRepo) RemoveEntry(ctx context.Context, userID, collectionID, beverageID string) error {
+	const q = `
+DELETE FROM collection_entries ce
+USING collections c
+WHERE ce.collection_id = c.id
+  AND c.id = $1 AND c.user_id = $3 AND c.deleted_at IS NULL
+  AND ce.beverage_id = $2;`
+	ct, err := r.db.Exec(ctx, q, collectionID, beverageID, userID)
+	if err != nil {
+		return fmt.Errorf("CollectionRepo.RemoveEntry: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return apierror.ErrNotFound
+	}
+	return nil
+}
