@@ -18,6 +18,7 @@ import (
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/email"
+	"github.com/kamos/api/internal/foursquare"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/storage"
@@ -25,26 +26,30 @@ import (
 
 // Handler is the bundle every route handler shares.
 type Handler struct {
-	Cfg     *config.Config
-	Log     *slog.Logger
-	Repos   *repository.Repos
-	Signer  *auth.Signer
-	Google  *auth.GoogleVerifier
-	Storage storage.Storage
-	Mailer  email.Mailer
+	Cfg        *config.Config
+	Log        *slog.Logger
+	Repos      *repository.Repos
+	Signer     *auth.Signer
+	Google     *auth.GoogleVerifier
+	Storage    storage.Storage
+	Mailer     email.Mailer
+	Foursquare *foursquare.Client
 }
 
-// New creates the bundle. Storage/Mailer default to no-op implementations
-// when nil is passed so test helpers don't need to wire them.
+// New creates the bundle. Storage/Mailer/Foursquare default to disabled
+// no-op implementations when nil is passed so test helpers don't need to
+// wire them. Foursquare's Disabled mode is selected by passing an empty
+// API key — see foursquare.New.
 func New(cfg *config.Config, log *slog.Logger, repos *repository.Repos, signer *auth.Signer, google *auth.GoogleVerifier) *Handler {
 	return &Handler{
-		Cfg:     cfg,
-		Log:     log,
-		Repos:   repos,
-		Signer:  signer,
-		Google:  google,
-		Storage: storage.Disabled{},
-		Mailer:  email.LogMailer{Log: log},
+		Cfg:        cfg,
+		Log:        log,
+		Repos:      repos,
+		Signer:     signer,
+		Google:     google,
+		Storage:    storage.Disabled{},
+		Mailer:     email.LogMailer{Log: log},
+		Foursquare: foursquare.New(""),
 	}
 }
 
@@ -53,6 +58,16 @@ func (h *Handler) WithStorage(s storage.Storage) *Handler { h.Storage = s; retur
 
 // WithMailer wires a real mail backend.
 func (h *Handler) WithMailer(m email.Mailer) *Handler { h.Mailer = m; return h }
+
+// WithFoursquare wires a Foursquare client. A nil argument is ignored; passing
+// an explicitly-Disabled client (empty API key) is valid and keeps the search
+// endpoint behind the 503 VENUE_SEARCH_DISABLED gate.
+func (h *Handler) WithFoursquare(c *foursquare.Client) *Handler {
+	if c != nil {
+		h.Foursquare = c
+	}
+	return h
+}
 
 // ---------------------------------------------------------------------------
 // Helpers

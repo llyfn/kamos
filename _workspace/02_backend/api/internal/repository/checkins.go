@@ -28,6 +28,8 @@ type CreateCheckinParams struct {
 	ServingStyle *string
 	PhotoURLs    []string
 	TagSlugs     []string
+	// VenueID is the optional Phase-4 venue FK. nil = no venue.
+	VenueID *string
 }
 
 // Create inserts the check-in row, photos, and flavor tags atomically. The
@@ -44,12 +46,14 @@ INSERT INTO check_ins (
   user_id, beverage_id,
   rating, review_text,
   price_amount, price_currency, price_unit,
-  purchase_type, serving_style
+  purchase_type, serving_style,
+  venue_id
 ) VALUES (
   $1, $2,
   $3, $4,
   $5, $6, $7,
-  $8, $9
+  $8, $9,
+  $10
 )
 RETURNING id, created_at;`
 	var id string
@@ -59,6 +63,7 @@ RETURNING id, created_at;`
 		p.Rating, p.ReviewText,
 		p.PriceAmount, p.PriceCcy, p.PriceUnit,
 		p.PurchaseType, p.ServingStyle,
+		p.VenueID,
 	).Scan(&id, &createdAt); err != nil {
 		return "", time.Time{}, fmt.Errorf("CheckinRepo.Create insert: %w", err)
 	}
@@ -104,6 +109,7 @@ SELECT
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
   br.id AS brewery_id, br.name_i18n AS brewery_name_i18n, br.region AS brewery_region,
+  v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   (SELECT COUNT(*) FROM toasts WHERE check_in_id = ci.id) AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted
 FROM check_ins ci
@@ -111,6 +117,7 @@ JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
 JOIN beverage_categories cat ON cat.id = b.category_id
+LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 
 	row := r.db.QueryRow(ctx, q, id, viewerID)
@@ -129,6 +136,10 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 		userPrivacy   string
 		userIDVal     string
 		bevIDVal      string
+		venueID       *string
+		venueName     *string
+		venueLocality *string
+		venueCountry  *string
 		toasts        int64
 		youToasted    bool
 	)
@@ -142,10 +153,19 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 		&bevName, &bevCatSlug, &bevLabel,
 		&catNameJSON,
 		&brwID, &brwName, &brwRegion,
+		&venueID, &venueName, &venueLocality, &venueCountry,
 		&toasts, &youToasted,
 	)
 	if err != nil {
 		return nil, wrapNoRows("CheckinRepo.Get", err)
+	}
+	if venueID != nil && venueName != nil {
+		c.Venue = &domain.VenueRef{
+			ID:       *venueID,
+			Name:     *venueName,
+			Locality: venueLocality,
+			Country:  venueCountry,
+		}
 	}
 	c.User.ID = userIDVal
 	c.Toasts = int(toasts)
@@ -511,6 +531,7 @@ SELECT
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
   br.id, br.name_i18n, br.region,
+  v.id, v.name, v.locality, v.country,
   (SELECT COUNT(*) FROM toasts WHERE check_in_id = ci.id),
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid)
 FROM check_ins ci
@@ -518,6 +539,7 @@ JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
 JOIN beverage_categories cat ON cat.id = b.category_id
+LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.user_id = $1
   AND ci.deleted_at IS NULL
   AND (
@@ -548,6 +570,8 @@ LIMIT $5;`
 			bevSlug                   string
 			bevLabel, brwRegion       *string
 			brwID, userIDVal, bevID   string
+			venueID, venueName        *string
+			venueLocality, venueCtry  *string
 			toastCnt                  int64
 			youToast                  bool
 			userPrivacy               string
@@ -562,6 +586,7 @@ LIMIT $5;`
 			&bevName, &bevSlug, &bevLabel,
 			&catName,
 			&brwID, &brwName, &brwRegion,
+			&venueID, &venueName, &venueLocality, &venueCtry,
 			&toastCnt, &youToast,
 		); err != nil {
 			return nil, fmt.Errorf("UserCheckins scan: %w", err)
@@ -581,6 +606,14 @@ LIMIT $5;`
 		}
 		if priceAmount != nil && priceCcy != nil && priceUnit != nil {
 			c.Price = &domain.Price{Amount: *priceAmount, Currency: *priceCcy, Mode: *priceUnit}
+		}
+		if venueID != nil && venueName != nil {
+			c.Venue = &domain.VenueRef{
+				ID:       *venueID,
+				Name:     *venueName,
+				Locality: venueLocality,
+				Country:  venueCtry,
+			}
 		}
 		out = append(out, c)
 		ids = append(ids, c.ID)

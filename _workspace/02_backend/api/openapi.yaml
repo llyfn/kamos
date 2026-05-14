@@ -36,6 +36,7 @@ tags:
   - name: collections
   - name: search
   - name: taxonomy
+  - name: venues
 
 security:
   - bearerAuth: []
@@ -708,6 +709,65 @@ paths:
               schema: { $ref: "#/components/schemas/ToastState" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  # ----- VENUES -----
+  /v1/venues/search:
+    get:
+      tags: [venues]
+      operationId: searchVenues
+      description: |
+        Phase 4 — proxy a Foursquare Places search. Authed.
+
+        Behavior is gated on `FOURSQUARE_API_KEY`: when empty (the dev
+        default), this endpoint returns 503 `VENUE_SEARCH_DISABLED`. Mirrors
+        the Phase 3 `STORAGE_DISABLED` pattern: the server boots cleanly
+        without third-party credentials and the mobile client gets a
+        machine-readable "feature off" signal.
+
+        Lat+Lng are both-or-neither. When provided, results are biased to
+        the geo neighborhood. The response is NOT cursor-paginated —
+        Foursquare's response is bounded by `limit` and there is no upstream
+        cursor to chain.
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 1 }
+        - in: query
+          name: lat
+          schema: { type: number, minimum: -90, maximum: 90 }
+        - in: query
+          name: lng
+          schema: { type: number, minimum: -180, maximum: 180 }
+        - in: query
+          name: locale
+          schema: { type: string, enum: [en, ja, ko] }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      responses:
+        "200":
+          description: list of matching venues from Foursquare
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VenueSearchResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Validation" }
+        "503":
+          description: |
+            Foursquare integration is OFF or upstream-rate-limited. The
+            response `code` field disambiguates:
+              * `VENUE_SEARCH_DISABLED` — server has no `FOURSQUARE_API_KEY`.
+              * `VENUE_RATE_LIMITED`    — upstream 429; `Retry-After: 1`
+                                          header is set so the client can
+                                          backoff cleanly.
+          headers:
+            Retry-After:
+              description: seconds to wait before retrying (rate-limit case only)
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   # ----- FEED -----
   /v1/feed:
@@ -1426,6 +1486,11 @@ components:
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other], nullable: true }
         serving_style: { type: string, enum: [glass, carafe, bottle, can, other], nullable: true }
+        venue:
+          $ref: "#/components/schemas/VenueRef"
+          nullable: true
+          description: |
+            Phase 4 venue projection. Absent when the check-in has no venue.
         toasts: { type: integer }
         you_toasted: { type: boolean }
         created_at: { type: string, format: date-time }
@@ -1458,6 +1523,14 @@ components:
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
         serving_style: { type: string, enum: [glass, carafe, bottle, can, other] }
+        venue:
+          $ref: "#/components/schemas/CheckinVenueInput"
+          nullable: true
+          description: |
+            Phase 4 optional venue tag. Three accepted shapes:
+              * { id }                    — attach an existing venue UUID.
+              * { foursquare_id, name }   — upsert by Foursquare id.
+              * empty object              — silently dropped.
 
     UpdateCheckinRequest:
       type: object
@@ -1482,6 +1555,79 @@ components:
         toasts: { type: integer }
         you_toasted: { type: boolean }
 
+    # ----- Venues (Phase 4) -----
+    VenueRef:
+      type: object
+      description: |
+        Lightweight projection of a venue embedded on Checkin / FeedItem.
+        Feed cards render "at <name>, <locality>".
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        locality: { type: string, nullable: true }
+        country: { type: string, nullable: true }
+
+    Venue:
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        foursquare_id: { type: string, nullable: true }
+        name: { type: string }
+        address: { type: string, nullable: true }
+        lat: { type: number, nullable: true, minimum: -90, maximum: 90 }
+        lng: { type: number, nullable: true, minimum: -180, maximum: 180 }
+        country: { type: string, nullable: true }
+        prefecture: { type: string, nullable: true }
+        locality: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CheckinVenueInput:
+      type: object
+      description: |
+        Optional venue payload on POST /v1/check-ins. Three accepted shapes:
+          * `{ id }` — attach an existing venue UUID.
+          * `{ foursquare_id, name, ... }` — upsert by Foursquare id.
+          * empty / nothing matching — silently dropped (200/201, venue
+            stays absent on the resulting check-in).
+      properties:
+        id: { type: string, format: uuid }
+        foursquare_id: { type: string }
+        name: { type: string }
+        address: { type: string }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        country: { type: string }
+        prefecture: { type: string }
+        locality: { type: string }
+
+    FoursquarePlace:
+      type: object
+      description: |
+        Foursquare Place projected to the KAMOS shape at the client edge.
+        These are NOT venue rows — they are search results. Use the
+        `foursquare_id` to attach one via POST /v1/check-ins.
+      required: [foursquare_id, name]
+      properties:
+        foursquare_id: { type: string }
+        name: { type: string }
+        address: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        country: { type: string }
+        prefecture: { type: string }
+        locality: { type: string }
+
+    VenueSearchResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/FoursquarePlace" }
+
     FeedItem:
       type: object
       required: [id, user, beverage, tags, toasts, you_toasted, photo_count, created_at]
@@ -1497,6 +1643,11 @@ components:
         toasts: { type: integer }
         you_toasted: { type: boolean }
         photo_count: { type: integer }
+        venue:
+          oneOf:
+            - $ref: "#/components/schemas/VenueRef"
+          nullable: true
+          description: Absent when the check-in has no venue attached.
         created_at: { type: string, format: date-time }
 
     FollowRequest:

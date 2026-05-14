@@ -49,6 +49,7 @@ Copy `_workspace/02_backend/api/.env.example` to `.env` at the repo root (or whe
 | `R2_PUBLIC_BASE_URL` | Public CDN / custom-domain URL used in `photo_url` on responses (e.g. `https://photos.kamos.app`). | optional |
 | `RESEND_API_KEY` | Resend API key for verification email. Empty → LogMailer (link logged at INFO). | optional |
 | `EMAIL_FROM` | `From:` address used by ResendMailer (e.g. `no-reply@kamos.app`). Required when `RESEND_API_KEY` is set. | optional |
+| `FOURSQUARE_API_KEY` | Foursquare Places API key (Phase 4 venue tag). Empty disables `GET /v1/venues/search` (503 `VENUE_SEARCH_DISABLED`). Check-in `venue.foursquare_id` upsert path is independent and still works without it. | optional |
 
 **Rate-limit defaults** (set in `internal/server/router.go`):
 

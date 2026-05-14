@@ -31,7 +31,8 @@ SELECT
   br.id, br.name_i18n, br.region,
   (SELECT COUNT(*) FROM toasts t WHERE t.check_in_id = ci.id),
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
-  (SELECT COUNT(*) FROM check_in_photos p WHERE p.check_in_id = ci.id)
+  (SELECT COUNT(*) FROM check_in_photos p WHERE p.check_in_id = ci.id),
+  v.id, v.name, v.locality, v.country
 FROM check_ins ci
 JOIN follows f
   ON f.followed_id = ci.user_id
@@ -41,6 +42,7 @@ JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
 JOIN beverage_categories cat ON cat.id = b.category_id
+LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.deleted_at IS NULL
   AND ci.user_id <> $1
   AND ($2::timestamptz IS NULL OR (ci.created_at, ci.id::text) < ($2::timestamptz, $3::text))
@@ -69,6 +71,10 @@ LIMIT $4;`
 			youToast     bool
 			userIDVal    string
 			beverageID   string
+			venueID      *string
+			venueName    *string
+			venueLocality *string
+			venueCountry  *string
 		)
 		if err := rows.Scan(
 			&it.ID,
@@ -86,6 +92,7 @@ LIMIT $4;`
 			&toastCnt,
 			&youToast,
 			&photoCnt,
+			&venueID, &venueName, &venueLocality, &venueCountry,
 		); err != nil {
 			return nil, fmt.Errorf("FeedRepo.Page scan: %w", err)
 		}
@@ -103,6 +110,9 @@ LIMIT $4;`
 		it.Toasts = int(toastCnt)
 		it.YouToasted = youToast
 		it.PhotoCount = int(photoCnt)
+		if venueID != nil && venueName != nil {
+			it.Venue = &domain.VenueRef{ID: *venueID, Name: *venueName, Locality: venueLocality, Country: venueCountry}
+		}
 		items = append(items, it)
 		ids = append(ids, it.ID)
 	}
