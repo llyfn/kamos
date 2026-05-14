@@ -24,7 +24,9 @@ internal/
   cursor/                   keyset cursor encode/decode + Page[T]
   domain/                   request/response types + Validate() methods
   handlers/                 HTTP handlers, one file per domain
-  middleware/               request id, recover, access log, JWT auth
+  jobs/                     in-process background scheduler + 3 maintenance jobs
+  middleware/               request id, recover, access log, JWT auth, rate-limit, OTel trace
+  observability/            OTel traces+metrics + Sentry init (feature-flag gated)
   repository/               pgx-backed data access
   server/                   chi router wiring
 openapi.yaml                OpenAPI 3.1 contract
@@ -153,6 +155,47 @@ go vet ./...
 go test -cover ./...
 make api-test-int        # if Postgres 18 is available
 ```
+
+## Observability
+
+All four vendor knobs are **optional** — leave them blank and the SDKs are never initialized. The server boots cleanly with no warnings and no degraded behavior, which means you can use this codebase end-to-end before signing up for OTel / Sentry.
+
+| Env | Default | Effect when unset |
+|---|---|---|
+| `APP_VERSION` | `dev` | Spans + Sentry release tagged `dev` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _empty_ | OTel disabled at boot (`otel disabled` log line) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | _empty_ | No auth headers; only meaningful with the endpoint set |
+| `SENTRY_DSN` | _empty_ | Sentry disabled at boot (`sentry disabled` log line) |
+
+Spans wrap every HTTP request with a name like `HTTP GET /v1/users/{username}` (chi route pattern → bounded cardinality). One business metric is emitted today (`checkins_created_total` counter); add more in `internal/observability/` as new domains warrant it.
+
+Sentry is errors-only: panics caught by `RecoverWithSentry` middleware get forwarded with the request context. Traces stay on OTel, so we don't double-bill events.
+
+## Rate limiting
+
+Three layers configured in `internal/server/router.go`:
+
+| Scope | rps | burst |
+|---|---|---|
+| Global per-IP | 30 | 60 |
+| Per-IP on `/v1/auth/*` | 5 | 10 |
+| Per-user on authed routes | 60 | 120 |
+
+A throttled request returns `429` with `{"error":"rate_limited","code":"RATE_LIMITED"}` plus `Retry-After: 1`. The token-bucket state is an in-memory `sync.Map` with a 10-minute idle-eviction janitor.
+
+Set `RATE_LIMIT_DISABLED=1` to bypass all three limits — useful for stress tests and the integration suite's high-fanout cases. Production MUST leave this unset.
+
+## Background jobs
+
+In-process scheduler (`internal/jobs/`) — no separate binary. Three maintenance jobs registered in `cmd/server/main.go`:
+
+| Job | Interval | What it does |
+|---|---|---|
+| `username_hold_cleanup` | 1h | Tombstones usernames of users soft-deleted >30 days ago (SPEC §3.3) |
+| `email_verification_cleanup` | 6h | Drops `email_verifications` rows expired >7 days ago |
+| `avg_rating_sweep` | 24h | Self-heals `beverages.avg_rating` + `check_in_count` from `check_ins` (in case the trigger drifts) |
+
+Each job runs **once on startup** ("cold start") so a fresh deploy doesn't wait an hour for the first sweep. Tick errors are logged at WARN; they never crash the scheduler.
 
 ## Auth notes
 
