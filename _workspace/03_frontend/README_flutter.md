@@ -35,6 +35,17 @@ flutter run --dart-define=KAMOS_API_BASE_URL=http://localhost:8080
 flutter run --dart-define=KAMOS_API_BASE_URL=https://api.staging.kamos.example
 ```
 
+### Optional dart-defines
+
+| Flag | Default | Notes |
+|---|---|---|
+| `KAMOS_API_BASE_URL` | `http://localhost:8080` | Where the Dio client points. |
+| `KAMOS_SENTRY_DSN` | _(empty)_ | Empty disables Sentry entirely; no SDK init, no network calls. |
+| `KAMOS_ENV` | `dev` | Sentry `environment` tag. Use `staging` / `production` when deployed. |
+| `KAMOS_VERSION` | `dev` | Sentry `release` tag. CI should pass the build version. |
+
+All three Sentry flags are optional in dev — the app runs identically with or without them.
+
 Google Sign-In is wired through `/v1/auth/google`. The Flutter app only transmits the Google ID token; the client secret stays server-side (SPEC §3.1 / brief §6.10). To enable the button you must:
 
 1. Add `google_sign_in` to `pubspec.yaml`.
