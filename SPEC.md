@@ -259,16 +259,22 @@ Beyond the social feed, users can discover beverages through:
 
 ## 9. Out of Scope (MVP)
 
-The following are explicitly deferred to v1.1 or later:
+The following are explicitly out of MVP scope.
 
-- **Venue / location on check-ins** — will be implemented with Google Places API integration
-- **Comments on check-ins** — toast reactions are in scope; threaded comments are not
-- **Push notifications** — follow request inbox (§5.4) is in-app only; no push in MVP
-- **Public collections** — collections are owner-only in MVP
-- **User-submitted beverage additions** — admin-curated only; user requests via feedback form
-- **Personalized recommendations / editorial picks**
-- **Web client**
+Four items previously listed here were reopened for post-MVP (v1.1) on 2026-05-14 and are now on the roadmap (`~/.claude/plans/mutable-juggling-cook.md`):
+
+- **Venue / location on check-ins** — Phase 4. Foursquare Places API, not Google Places.
+- **Flat comments on check-ins** — Phase 6. Threaded comments remain out of scope.
+- **Public collections** — Phase 6.
+- **User-submitted beverage additions** — Phase 5. Admin moderation workflow.
+
+Still out of scope (no plans):
+
+- **Threaded comments** (multi-level / replies) — flat comments only, see above
+- **Push notifications** — follow request inbox (§5.4) is in-app only
+- **Web client** for end users (the post-MVP admin web client is a separate operator tool)
 - **Apple Sign-In**
 - **Beverage scanning** (barcode / label recognition)
+- **Blocking / muting users**
+- **Personalized recommendations / editorial "featured" picks**
 - **Export / data portability**
-- **Blocking users**

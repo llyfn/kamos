@@ -81,7 +81,9 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 
 **Auth storage on Flutter** — JWT lives in `flutter_secure_storage`, never in `SharedPreferences`. This is a security blocker, not a preference.
 
-**Out of scope for MVP** — venue/location, threaded comments, push notifications, public collections, user-submitted beverages, web client, Apple Sign-In, beverage scanning, blocking. If a request implies any of these, confirm scope before implementing.
+**Out of scope for MVP** — push notifications, threaded comments, end-user web client, Apple Sign-In, beverage scanning, blocking, recommendations, export. If a request implies any of these, confirm scope before implementing.
+
+**Reopened for post-MVP (v1.1)** — venue/location (Foursquare, Phase 4), flat comments on check-ins (Phase 6), public collections (Phase 6), user-submitted beverage additions with admin moderation (Phase 5). See `~/.claude/plans/mutable-juggling-cook.md` for the full roadmap. These are NOT yet in the codebase — confirm phase ordering before implementing.
 
 ## Communication
 
