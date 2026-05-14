@@ -183,26 +183,29 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// UploadCheckinPhoto — POST /v1/check-ins/{id}/photos.
+// Phase 3 — the MVP scaffold accepted `{ url }` (any URL the client claimed
+// to have stored somewhere). That contract is replaced by a 3-step flow:
 //
-// Photo upload strategy (decision): for MVP we accept a JSON body
-//   { "url": "<https://...>" }
-// and store the URL on the row. Multipart upload + S3 / Cloudinary is wired up
-// later by either (a) adding an /uploads endpoint that returns a presigned URL
-// and posting the resulting URL here, or (b) accepting multipart here once
-// blob storage is configured. This choice keeps the API surface storage-
-// agnostic for now. The 4-photo cap is enforced by the repository.
+//   1. POST /v1/uploads/photo-presign   → server returns a presigned PUT URL.
+//   2. Client PUTs the bytes to R2 with the supplied Content-Type header.
+//   3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
+//      server promotes the photo_uploads row to 'attached', looks up the
+//      public URL for the blob_key, and inserts into check_in_photos.
 //
-// CONFIGURE: see README_backend.md "Photo storage" before wiring real uploads.
+// We do NOT verify the client's PUT against R2 in Phase 3 — the orphan
+// cleanup job sweeps anything that never reaches 'attached'. A future
+// hardening pass can add a HEAD check before the attach.
+//
+// The mobile clients in the field at MVP did not expose a photo upload UI,
+// so the wire change is acceptable.
 type uploadPhotoRequest struct {
-	URL string `json:"url"`
+	UploadID string `json:"upload_id"`
 }
 
 // UploadCheckinPhoto — POST /v1/check-ins/{id}/photos.
 //
-// Status: scaffold-for-Phase3 (real photo upload flow will wire on top of
-// this endpoint). Endpoint is intentionally pre-wired; no Flutter caller in
-// MVP.
+// Attaches a previously-presigned blob to a check-in. The 4-photo cap is
+// still enforced by AddPhoto.
 func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -214,14 +217,41 @@ func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UploadCheckinPhoto decode", err)
 		return
 	}
-	if req.URL == "" {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", "url is required")
+	if req.UploadID == "" {
+		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", "upload_id is required")
 		return
 	}
-	photo, err := h.Repos.Checkins.AddPhoto(r.Context(), id, uid, req.URL)
+
+	upload, err := h.Repos.PhotoUploads.FindByID(r.Context(), req.UploadID)
 	if err != nil {
-		h.writeErr(w, "UploadCheckinPhoto", err)
+		h.writeErr(w, "UploadCheckinPhoto find upload", err)
 		return
+	}
+	// Ownership match — never let a user attach someone else's blob.
+	if upload.UserID != uid {
+		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "upload not found")
+		return
+	}
+	// Already-attached / orphaned rows can't be reused.
+	if upload.Status == "attached" || upload.Status == "orphaned" {
+		apierror.WriteError(w, http.StatusConflict, "UPLOAD_NOT_COMPLETED",
+			"upload already attached or orphaned")
+		return
+	}
+
+	// PublicURL on Disabled returns ""; the integration test documents that
+	// the row goes in with an empty url under the "no R2 configured" mode.
+	publicURL := h.Storage.PublicURL(upload.BlobKey)
+	photo, err := h.Repos.Checkins.AddPhoto(r.Context(), id, uid, publicURL)
+	if err != nil {
+		h.writeErr(w, "UploadCheckinPhoto attach", err)
+		return
+	}
+	if err := h.Repos.PhotoUploads.MarkAttached(r.Context(), upload.ID, id); err != nil {
+		// Photo row is already committed; log and move on so the client
+		// doesn't see a half-failure.
+		h.Log.Warn("UploadCheckinPhoto mark attached", "err", err,
+			"upload_id", upload.ID, "check_in_id", id)
 	}
 	apierror.WriteJSON(w, http.StatusCreated, photo)
 }

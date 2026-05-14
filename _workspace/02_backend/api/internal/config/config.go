@@ -83,6 +83,20 @@ type Config struct {
 	// where the production caps would interfere. Production must leave
 	// this unset.
 	RateLimitDisabled bool
+
+	// Phase 3 — blob storage (Cloudflare R2 / any S3-compatible). Empty
+	// values mean the photo-upload feature is OFF; the presign endpoint
+	// returns 503 STORAGE_DISABLED. See DEPLOYMENT.md §3.
+	R2EndpointURL    string
+	R2AccessKeyID    string
+	R2SecretAccessKey string
+	R2Bucket         string
+	R2PublicBaseURL  string
+
+	// Phase 3 — outbound mail via Resend. Empty values mean the mailer
+	// logs the verification link instead of sending an email (dev default).
+	ResendAPIKey string
+	EmailFrom    string
 }
 
 // Load reads env vars and returns a Config, erroring on missing required
@@ -105,6 +119,13 @@ func Load() (*Config, error) {
 		OTLPHeaders:    os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
 		SentryDSN:      os.Getenv("SENTRY_DSN"),
 		RateLimitDisabled: os.Getenv("RATE_LIMIT_DISABLED") == "1",
+		R2EndpointURL:     os.Getenv("R2_ENDPOINT_URL"),
+		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
+		R2SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2Bucket:          os.Getenv("R2_BUCKET"),
+		R2PublicBaseURL:   os.Getenv("R2_PUBLIC_BASE_URL"),
+		ResendAPIKey:      os.Getenv("RESEND_API_KEY"),
+		EmailFrom:         os.Getenv("EMAIL_FROM"),
 	}
 
 	// Access-token TTL. Phase 2 (refresh-tokens): default lowered from 720h

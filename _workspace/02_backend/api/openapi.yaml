@@ -588,18 +588,23 @@ paths:
       tags: [checkins]
       operationId: addCheckinPhoto
       description: |
-        Status: scaffold-for-Phase3 — the real photo upload flow (presigned
-        URL or multipart) will wire on top of this endpoint. Endpoint is
-        intentionally pre-wired; no Flutter caller in MVP.
+        Attach a previously-presigned blob (see `/v1/uploads/photo-presign`)
+        to this check-in. The 4-photo cap from SPEC §4.5 is enforced — the
+        5th attach returns 422 `PHOTO_CAP_EXCEEDED`.
+
+        Phase 3 shipped: the MVP `{ url }` body was replaced by `{ upload_id }`.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [url]
+              required: [upload_id]
               properties:
-                url: { type: string, format: uri }
+                upload_id:
+                  type: string
+                  format: uuid
+                  description: id returned from /v1/uploads/photo-presign
       responses:
         "201":
           description: photo added
@@ -608,9 +613,80 @@ paths:
               schema: { $ref: "#/components/schemas/PhotoRef" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "404":
+          description: upload_id not found (or owned by another user)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: upload already attached or orphaned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422":
           description: photo cap (4) exceeded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/uploads/photo-presign:
+    post:
+      tags: [checkins]
+      operationId: presignPhotoUpload
+      description: |
+        Issue a presigned PUT URL for a check-in photo. The client PUTs the
+        bytes directly to the blob store using the returned `upload_url` +
+        `headers`, then calls `POST /v1/check-ins/{id}/photos` with the
+        returned `upload_id` to attach it.
+
+        Allowed `content_type`: `image/jpeg`, `image/png`, `image/webp`.
+        Max `byte_size`: 10 MB (10485760 bytes).
+
+        Returns 503 `STORAGE_DISABLED` when the deployment has not configured
+        the blob backend (Cloudflare R2 credentials unset). Clients should
+        gracefully fall back to "photo upload not available on this server".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content_type, byte_size]
+              properties:
+                content_type:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                byte_size:
+                  type: integer
+                  minimum: 1
+                  maximum: 10485760
+      responses:
+        "200":
+          description: presigned PUT URL issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload_id, upload_url, headers, blob_key, expires_at]
+                properties:
+                  upload_id:
+                    type: string
+                    format: uuid
+                  upload_url:
+                    type: string
+                    format: uri
+                  headers:
+                    type: object
+                    additionalProperties: { type: string }
+                  blob_key:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Validation" }
+        "503":
+          description: blob storage not configured on this server
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

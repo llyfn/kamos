@@ -298,6 +298,28 @@ VALUES ($1, $2, 'nihonshu', $3::jsonb) RETURNING id;`,
 	return bevID
 }
 
+// errBodyShape matches the canonical { error, code } body shape.
+type errBodyShape struct {
+	Error string `json:"error"`
+	Code  string `json:"code"`
+}
+
+// mustInsertPendingUpload inserts a photo_uploads row in 'pending' state and
+// returns its id. Used by photo-attach tests that need a row but can't go
+// through PhotoPresign (which is 503 under Disabled storage).
+func mustInsertPendingUpload(t *testing.T, p *pgxpool.Pool, userID, blobKey string) string {
+	t.Helper()
+	const q = `
+INSERT INTO photo_uploads (user_id, blob_key, content_type, byte_size)
+VALUES ($1, $2, 'image/jpeg', 1024)
+RETURNING id;`
+	var id string
+	if err := p.QueryRow(context.Background(), q, userID, blobKey).Scan(&id); err != nil {
+		t.Fatalf("insert pending upload: %v", err)
+	}
+	return id
+}
+
 // setUserPrivacy flips a user's privacy_mode column via SQL.
 func setUserPrivacy(t *testing.T, userID, mode string) {
 	t.Helper()

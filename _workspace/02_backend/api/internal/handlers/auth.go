@@ -8,9 +8,34 @@ import (
 	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 )
+
+// sendVerificationEmail renders the locale-appropriate template and ships
+// it via the configured mailer. Errors are logged at WARN; we never fail the
+// triggering request — verification mail is best-effort.
+func (h *Handler) sendVerificationEmail(r *http.Request, user *domain.User, token string) {
+	link := h.Cfg.AppBaseURL + "/verify?token=" + token
+	data := email.TemplateData{
+		DisplayName:  user.DisplayName,
+		VerifyLink:   link,
+		AppName:      "KAMOS",
+		SupportEmail: "support@kamos.app",
+	}
+	locale := user.Locale
+	subject, htmlBody, textBody, err := email.Render("verify_email", locale, data)
+	if err != nil {
+		h.Log.Warn("verification_email_render", "err", err, "user_id", user.ID)
+		return
+	}
+	// Always log the link too — useful in dev when LogMailer is selected.
+	h.Log.Info("verification link", "user_id", user.ID, "link", link)
+	if err := h.Mailer.Send(r.Context(), user.Email, subject, htmlBody, textBody); err != nil {
+		h.Log.Warn("verification_email_send", "err", err, "user_id", user.ID)
+	}
+}
 
 // refreshTTL returns the configured refresh TTL, or the package default.
 func (h *Handler) refreshTTL() time.Duration {
@@ -95,18 +120,15 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verification token (24h). The email send is stubbed — wire up SMTP in
-	// integration. The link format is `${APP_BASE_URL}/verify?token=...`.
+	// Verification token (24h). The link format is
+	//   `${APP_BASE_URL}/verify?token=...`.
+	// Phase 3: real outbound mail via configured Mailer (Resend if env set;
+	// LogMailer otherwise so dev workflow stays intact).
 	token, _ := randomToken(32)
 	if err := h.Repos.Users.CreateVerificationToken(ctx, user.ID, token); err != nil {
 		h.Log.Error("CreateVerificationToken", "err", err)
 	}
-	// TODO: wire SMTP sender. For now, log the link so dev environments can
-	// click through it manually.
-	h.Log.Info("verification link",
-		"user_id", user.ID,
-		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
-	)
+	h.sendVerificationEmail(r, user, token)
 
 	access, refresh, err := h.issueAuthPair(r, user)
 	if err != nil {
@@ -327,10 +349,13 @@ func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "ResendVerification", err)
 		return
 	}
-	h.Log.Info("verification link",
-		"user_id", uid,
-		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
-	)
+	user, err := h.Repos.Users.FindByID(r.Context(), uid)
+	if err != nil {
+		// Best-effort: we already inserted the token, do not 500 the client.
+		h.Log.Warn("ResendVerification: lookup user", "err", err, "user_id", uid)
+	} else {
+		h.sendVerificationEmail(r, user, token)
+	}
 	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"sent": true})
 }
 
@@ -402,10 +427,14 @@ func (h *Handler) EmailChange(w http.ResponseWriter, r *http.Request) {
 	if err := h.Repos.Users.CreateVerificationToken(r.Context(), uid, token); err != nil {
 		h.Log.Error("EmailChange token", "err", err)
 	}
-	h.Log.Info("verification link",
-		"user_id", uid,
-		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
-	)
+	// UpdateEmail above already pointed the user row at NewEmail; reload to
+	// pick that up so the mailer dispatches to the new address.
+	user, err := h.Repos.Users.FindByID(r.Context(), uid)
+	if err != nil {
+		h.Log.Warn("EmailChange: lookup user", "err", err, "user_id", uid)
+	} else {
+		h.sendVerificationEmail(r, user, token)
+	}
 	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"re_verification_sent": true})
 }
 

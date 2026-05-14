@@ -14,11 +14,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/config"
+	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/handlers"
 	"github.com/kamos/api/internal/jobs"
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/server"
+	"github.com/kamos/api/internal/storage"
 )
 
 func main() {
@@ -87,10 +89,42 @@ func main() {
 	repos := repository.New(pool)
 	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)
 	google := auth.NewGoogleVerifier(cfg.GoogleClientID)
-	h := handlers.New(cfg, log, repos, signer, google)
+
+	// Phase 3 — blob storage. Two cases:
+	//   (a) R2_ACCESS_KEY_ID + R2_BUCKET set → real Cloudflare R2 backend.
+	//   (b) Either empty → Disabled (the presign endpoint returns 503,
+	//       the orphan-cleanup job no-ops the Delete call). The API process
+	//       boots cleanly without R2 credentials so dev unblocks.
+	var store storage.Storage = storage.Disabled{}
+	if cfg.R2AccessKeyID != "" && cfg.R2Bucket != "" {
+		r2, err := storage.NewR2(initCtx,
+			cfg.R2EndpointURL, cfg.R2AccessKeyID, cfg.R2SecretAccessKey,
+			cfg.R2Bucket, cfg.R2PublicBaseURL)
+		if err != nil {
+			log.Error("storage init", "err", err)
+			os.Exit(1)
+		}
+		store = r2
+		log.Info("storage enabled", "bucket", cfg.R2Bucket)
+	} else {
+		log.Info("storage disabled (R2_BUCKET unset)")
+	}
+
+	// Phase 3 — outbound mail. RESEND_API_KEY + EMAIL_FROM both required
+	// for real send; otherwise we log the verification link (dev default).
+	mailer := email.NewMailer(cfg, log)
+	if cfg.ResendAPIKey != "" && cfg.EmailFrom != "" {
+		log.Info("mailer enabled", "provider", "resend", "from", cfg.EmailFrom)
+	} else {
+		log.Info("mailer disabled (RESEND_API_KEY or EMAIL_FROM unset) — using LogMailer")
+	}
+
+	h := handlers.New(cfg, log, repos, signer, google).
+		WithStorage(store).
+		WithMailer(mailer)
 	mux := server.New(log, signer, h)
 
-	// Background-job scheduler — three maintenance jobs registered before
+	// Background-job scheduler — four maintenance jobs registered before
 	// the HTTP server starts. The scheduler owns its own context derived
 	// from a long-lived parent so jobs survive request churn but cleanly
 	// stop on shutdown.
@@ -98,6 +132,7 @@ func main() {
 	sched.Register("username_hold_cleanup", time.Hour, jobs.JobUsernameHoldCleanup(log))
 	sched.Register("email_verification_cleanup", 6*time.Hour, jobs.JobEmailVerificationCleanup(log))
 	sched.Register("avg_rating_sweep", 24*time.Hour, jobs.JobAvgRatingSweep(log))
+	sched.Register("photo_orphan_cleanup", time.Hour, jobs.JobPhotoOrphanCleanup(log, store))
 	sched.Start()
 	defer sched.Stop()
 

@@ -26,6 +26,7 @@ type Repos struct {
 	Search        *SearchRepo
 	Taxonomy      *TaxonomyRepo
 	RefreshTokens *RefreshTokenRepo
+	PhotoUploads  *PhotoUploadRepo
 }
 
 // New wires the bundle.
@@ -42,6 +43,7 @@ func New(db *pgxpool.Pool) *Repos {
 		Search:        &SearchRepo{db: db},
 		Taxonomy:      &TaxonomyRepo{db: db},
 		RefreshTokens: &RefreshTokenRepo{db: db},
+		PhotoUploads:  &PhotoUploadRepo{db: db},
 	}
 }
 
