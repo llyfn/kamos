@@ -15,31 +15,33 @@ import (
 // Repos bundles the per-domain repositories. Handlers take a *Repos so they
 // can mix domains without a constructor explosion.
 type Repos struct {
-	DB          *pgxpool.Pool
-	Users       *UserRepo
-	Beverages   *BeverageRepo
-	Breweries   *BreweryRepo
-	Checkins    *CheckinRepo
-	Feed        *FeedRepo
-	Social      *SocialRepo
-	Collections *CollectionRepo
-	Search      *SearchRepo
-	Taxonomy    *TaxonomyRepo
+	DB            *pgxpool.Pool
+	Users         *UserRepo
+	Beverages     *BeverageRepo
+	Breweries     *BreweryRepo
+	Checkins      *CheckinRepo
+	Feed          *FeedRepo
+	Social        *SocialRepo
+	Collections   *CollectionRepo
+	Search        *SearchRepo
+	Taxonomy      *TaxonomyRepo
+	RefreshTokens *RefreshTokenRepo
 }
 
 // New wires the bundle.
 func New(db *pgxpool.Pool) *Repos {
 	return &Repos{
-		DB:          db,
-		Users:       &UserRepo{db: db},
-		Beverages:   &BeverageRepo{db: db},
-		Breweries:   &BreweryRepo{db: db},
-		Checkins:    &CheckinRepo{db: db},
-		Feed:        &FeedRepo{db: db},
-		Social:      &SocialRepo{db: db},
-		Collections: &CollectionRepo{db: db},
-		Search:      &SearchRepo{db: db},
-		Taxonomy:    &TaxonomyRepo{db: db},
+		DB:            db,
+		Users:         &UserRepo{db: db},
+		Beverages:     &BeverageRepo{db: db},
+		Breweries:     &BreweryRepo{db: db},
+		Checkins:      &CheckinRepo{db: db},
+		Feed:          &FeedRepo{db: db},
+		Social:        &SocialRepo{db: db},
+		Collections:   &CollectionRepo{db: db},
+		Search:        &SearchRepo{db: db},
+		Taxonomy:      &TaxonomyRepo{db: db},
+		RefreshTokens: &RefreshTokenRepo{db: db},
 	}
 }
 

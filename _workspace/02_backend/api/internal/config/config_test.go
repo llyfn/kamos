@@ -86,6 +86,7 @@ func TestLoadDefaults(t *testing.T) {
 		"APP_ENV":      "",
 		"APP_BASE_URL": "",
 		"JWT_TTL":      "",
+		"REFRESH_TTL":  "",
 		"SMTP_PORT":    "",
 	})
 	c, err := Load()
@@ -98,14 +99,44 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Env != "dev" {
 		t.Errorf("Env: %q", c.Env)
 	}
-	if c.JWTTTL != 720*time.Hour {
+	// Phase 2: access-token default lowered to 15m; refresh default 720h.
+	if c.JWTTTL != 15*time.Minute {
 		t.Errorf("JWTTTL: %v", c.JWTTTL)
+	}
+	if c.RefreshTTL != 720*time.Hour {
+		t.Errorf("RefreshTTL: %v", c.RefreshTTL)
 	}
 	if c.AppBaseURL == "" {
 		t.Errorf("AppBaseURL default empty")
 	}
 	if c.SMTPPort != 587 {
 		t.Errorf("SMTPPort default: %d", c.SMTPPort)
+	}
+}
+
+func TestLoadParsesRefreshTTL(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL": "postgres://x/x",
+		"JWT_SECRET":   "secret",
+		"REFRESH_TTL":  "1h",
+	})
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.RefreshTTL != time.Hour {
+		t.Errorf("RefreshTTL: %v", c.RefreshTTL)
+	}
+}
+
+func TestLoadRejectsBadRefreshTTL(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL": "postgres://x/x",
+		"JWT_SECRET":   "secret",
+		"REFRESH_TTL":  "not-a-duration",
+	})
+	if _, err := Load(); err == nil {
+		t.Fatalf("expected error for malformed REFRESH_TTL")
 	}
 }
 

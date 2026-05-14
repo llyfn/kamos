@@ -33,7 +33,8 @@ Copy `_workspace/02_backend/api/.env.example` to `.env` at the repo root (or whe
 |---|---|---|
 | `DATABASE_URL` | Postgres DSN | yes |
 | `JWT_SECRET` | HMAC signing key for JWT, ≥ 32 random bytes | yes |
-| `JWT_TTL` | Token lifetime; MVP is long-lived (refresh deferred) | yes (default `720h`) |
+| `JWT_TTL` | Access-token lifetime. Phase 2 (rotating refresh tokens) lowered the default to `15m`; the env var still wins. | yes (default `15m`) |
+| `REFRESH_TTL` | Refresh-token lifetime. Long-lived but revocable; rotated on every `POST /v1/auth/refresh`. | yes (default `720h` = 30 days) |
 | `APP_BASE_URL` | Base URL used in verification-email links | yes |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (used as ID-token audience) | only if Google sign-in is enabled |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Verification email | **production** — dev logs the link instead |
@@ -164,7 +165,7 @@ These passed the integration QA as MAJORs, deferred to v1.1:
 
 - **Photo storage** — `POST /v1/check-ins/{id}/photos` takes a URL reference; the actual upload path (presigned-URL pattern with S3 / GCS / R2) is not wired. Flutter has `image_picker` ready but does not yet upload.
 - **SMTP** — verification email is written to the API log in dev. Wire `SMTP_*` env vars to a real provider before any public deploy.
-- **Refresh tokens** — JWT is long-lived (`JWT_TTL=720h`); on expiry the client re-logs-in. Refresh-token flow is v1.1.
+- **Refresh tokens (v1.1, shipped Phase 2)** — short-lived access tokens (`JWT_TTL=15m`) plus rotating refresh tokens with re-use detection. `POST /v1/auth/refresh` rotates the pair; `POST /v1/auth/logout` revokes one or all refresh tokens for the user. The raw refresh secret is hashed (SHA-256) before persistence; the DB stores only the digest.
 
 See `_workspace/04_qa/qa_report_final.md` for the full punch list.
 

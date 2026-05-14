@@ -126,16 +126,36 @@ func newServerWithRateLimit(t *testing.T) *httptest.Server {
 
 func buildServer(t *testing.T, disableRateLimit bool) *httptest.Server {
 	t.Helper()
+	return buildServerWithTTL(t, disableRateLimit, time.Hour, 30*24*time.Hour, nil)
+}
+
+// buildServerWithTTL is like buildServer but lets the caller pin the access
+// + refresh TTLs. `logSink`, when non-nil, captures every slog line — used by
+// the refresh re-use-detection test to assert the WARN log fires.
+func buildServerWithTTL(
+	t *testing.T,
+	disableRateLimit bool,
+	jwtTTL, refreshTTL time.Duration,
+	logSink io.Writer,
+) *httptest.Server {
+	t.Helper()
 	p := getPool(t)
 	cfg := &config.Config{
 		AppBaseURL:        "http://localhost",
 		JWTSecret:         "integration-secret-please-replace-aaaaaaaaaaaa",
-		JWTTTL:            time.Hour,
+		JWTTTL:            jwtTTL,
+		RefreshTTL:        refreshTTL,
 		Env:               "test",
 		RateLimitDisabled: disableRateLimit,
 	}
 	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	var handler slog.Handler
+	if logSink != nil {
+		handler = slog.NewJSONHandler(logSink, &slog.HandlerOptions{Level: slog.LevelDebug})
+	} else {
+		handler = slog.NewTextHandler(io.Discard, nil)
+	}
+	log := slog.New(handler)
 	repos := repository.New(p)
 	google := auth.NewGoogleVerifier("")
 	h := handlers.New(cfg, log, repos, signer, google)
@@ -185,7 +205,11 @@ type authResponse struct {
 		Email         string `json:"email"`
 		EmailVerified bool   `json:"email_verified"`
 	} `json:"user"`
-	AccessToken string `json:"access_token"`
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	TokenType        string `json:"token_type"`
+	ExpiresIn        int64  `json:"expires_in"`
+	RefreshExpiresIn int64  `json:"refresh_expires_in"`
 }
 
 // mustRegister POSTs /v1/auth/register and returns the issued token + user id.

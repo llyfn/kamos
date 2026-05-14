@@ -61,10 +61,15 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 			r.Post("/login", h.Login)
 			r.Post("/google", h.GoogleLogin)
 			r.Post("/verify-email", h.VerifyEmail)
+			// Phase 2 — rotating refresh tokens. Public: possession of the
+			// raw secret IS the credential. Still covered by the auth-group
+			// 5 rps / burst 10 limit above.
+			r.Post("/refresh", h.RefreshToken)
 			// Authed:
 			r.With(middleware.Auth(signer)).Post("/resend-verification", h.ResendVerification)
 			r.With(middleware.Auth(signer)).Post("/password-change", h.PasswordChange)
 			r.With(middleware.Auth(signer)).Post("/email-change", h.EmailChange)
+			r.With(middleware.Auth(signer)).Post("/logout", h.Logout)
 		})
 
 		// Taxonomy — public reads.

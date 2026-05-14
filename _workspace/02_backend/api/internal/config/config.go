@@ -61,6 +61,7 @@ type Config struct {
 	DatabaseURL    string
 	JWTSecret      string
 	JWTTTL         time.Duration
+	RefreshTTL     time.Duration
 	GoogleClientID string
 	SMTPHost       string
 	SMTPPort       int
@@ -106,12 +107,24 @@ func Load() (*Config, error) {
 		RateLimitDisabled: os.Getenv("RATE_LIMIT_DISABLED") == "1",
 	}
 
-	ttlStr := getenv("JWT_TTL", "720h")
+	// Access-token TTL. Phase 2 (refresh-tokens): default lowered from 720h
+	// (long-lived MVP) to 15m. The env var still wins for operators that need
+	// to pin a different value (e.g., integration tests force a known cadence).
+	ttlStr := getenv("JWT_TTL", "15m")
 	ttl, err := time.ParseDuration(ttlStr)
 	if err != nil {
 		return nil, fmt.Errorf("Load: invalid JWT_TTL %q: %w", ttlStr, err)
 	}
 	c.JWTTTL = ttl
+
+	// Refresh-token TTL. Default 30 days (720h) — documented in DEPLOYMENT.md
+	// §3 and matches the lifetime referenced by the refresh-rotation flow.
+	rttlStr := getenv("REFRESH_TTL", "720h")
+	rttl, err := time.ParseDuration(rttlStr)
+	if err != nil {
+		return nil, fmt.Errorf("Load: invalid REFRESH_TTL %q: %w", rttlStr, err)
+	}
+	c.RefreshTTL = rttl
 
 	if v := os.Getenv("SMTP_PORT"); v != "" {
 		p, err := strconv.Atoi(v)
