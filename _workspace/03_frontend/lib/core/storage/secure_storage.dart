@@ -18,7 +18,8 @@ class SecureStorageService {
   SecureStorageService([FlutterSecureStorage? storage])
       : _storage = storage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+              // Android: EncryptedSharedPreferences was deprecated in v10; the
+              // plugin now migrates to custom ciphers automatically.
               iOptions: IOSOptions(
                 accessibility: KeychainAccessibility.first_unlock,
               ),

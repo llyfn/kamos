@@ -8,7 +8,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'page.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false, genericArgumentFactories: true)
-class Page<T> with _$Page<T> {
+abstract class Page<T> with _$Page<T> {
   const factory Page({
     required List<T> items,
     String? nextCursor,

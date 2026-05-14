@@ -49,8 +49,8 @@ class KamosLabel extends StatelessWidget {
           width: width,
           height: height,
           fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => _placeholder(),
-          placeholder: (_, __) => _placeholder(),
+          errorWidget: (_, _, _) => _placeholder(),
+          placeholder: (_, _) => _placeholder(),
         ),
       );
     }

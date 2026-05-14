@@ -10,7 +10,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'user.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class UserStats with _$UserStats {
+abstract class UserStats with _$UserStats {
   const factory UserStats({
     @Default(0) int checkins,
     @Default(0) int unique,
@@ -27,7 +27,7 @@ class UserStats with _$UserStats {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class User with _$User {
+abstract class User with _$User {
   const factory User({
     required String id,
     required String username,
@@ -60,7 +60,7 @@ class User with _$User {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class Me with _$Me {
+abstract class Me with _$Me {
   const factory Me({
     required User user,
     required UserStats stats,
@@ -75,7 +75,7 @@ class Me with _$Me {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class PublicProfile with _$PublicProfile {
+abstract class PublicProfile with _$PublicProfile {
   const factory PublicProfile({
     required User user,
     required UserStats stats,

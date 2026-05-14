@@ -32,11 +32,11 @@ class ProfileRepository {
     final res = await dio.patch(
       '/v1/users/me',
       data: {
-        if (displayName != null) 'display_name': displayName,
-        if (bio != null) 'bio': bio,
-        if (avatarUrl != null) 'avatar_url': avatarUrl,
-        if (locale != null) 'locale': locale,
-        if (privacyMode != null) 'privacy_mode': privacyMode,
+        'display_name': ?displayName,
+        'bio': ?bio,
+        'avatar_url': ?avatarUrl,
+        'locale': ?locale,
+        'privacy_mode': ?privacyMode,
       },
     );
     return User.fromJson(res.data as Map<String, dynamic>);

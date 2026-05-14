@@ -188,7 +188,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               child: ListView.separated(
                                 padding: const EdgeInsets.all(16),
                                 itemCount: state.items.length + 1,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const SizedBox(height: 10),
                                 itemBuilder: (_, i) {
                                   if (i == state.items.length) {

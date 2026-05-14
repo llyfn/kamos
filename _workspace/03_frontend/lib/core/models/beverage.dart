@@ -9,7 +9,7 @@ import 'i18n_text.dart';
 part 'beverage.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class Beverage with _$Beverage {
+abstract class Beverage with _$Beverage {
   const factory Beverage({
     required String id,
     required I18nText name,
@@ -60,7 +60,7 @@ class Beverage with _$Beverage {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class BeverageRef with _$BeverageRef {
+abstract class BeverageRef with _$BeverageRef {
   const factory BeverageRef({
     required String id,
     required I18nText name,
@@ -85,7 +85,7 @@ class BeverageRef with _$BeverageRef {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class FlavorAggregate with _$FlavorAggregate {
+abstract class FlavorAggregate with _$FlavorAggregate {
   const factory FlavorAggregate({
     required String slug,
     required String dimension,
@@ -105,7 +105,7 @@ class FlavorAggregate with _$FlavorAggregate {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class BeverageDetail with _$BeverageDetail {
+abstract class BeverageDetail with _$BeverageDetail {
   const factory BeverageDetail({
     required Beverage beverage,
     @Default(<FlavorAggregate>[]) List<FlavorAggregate> aggregatedFlavor,
@@ -126,7 +126,7 @@ class BeverageDetail with _$BeverageDetail {
 // CheckinSummary lives here to avoid a circular import; the full Checkin is
 // in `checkin.dart`.
 @Freezed(fromJson: false, toJson: false)
-class CheckinSummary with _$CheckinSummary {
+abstract class CheckinSummary with _$CheckinSummary {
   const factory CheckinSummary({
     required String id,
     required CheckinUser user,
@@ -147,7 +147,7 @@ class CheckinSummary with _$CheckinSummary {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class CheckinUser with _$CheckinUser {
+abstract class CheckinUser with _$CheckinUser {
   const factory CheckinUser({
     required String id,
     required String username,

@@ -28,13 +28,13 @@ class CheckInRepository {
       '/v1/check-ins',
       data: {
         'beverage_id': beverageId,
-        if (rating != null) 'rating': rating,
+        'rating': ?rating,
         if (review != null && review.isNotEmpty) 'review': review,
         if (tags.isNotEmpty) 'tags': tags,
         if (photos.isNotEmpty) 'photos': photos,
-        if (price != null) 'price': price.toJson(),
-        if (purchaseType != null) 'purchase_type': purchaseType,
-        if (servingStyle != null) 'serving_style': servingStyle,
+        'price': ?price?.toJson(),
+        'purchase_type': ?purchaseType,
+        'serving_style': ?servingStyle,
       },
     );
     return Checkin.fromJson(res.data as Map<String, dynamic>);

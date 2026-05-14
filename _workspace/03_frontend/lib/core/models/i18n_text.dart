@@ -9,7 +9,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'i18n_text.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class I18nText with _$I18nText {
+abstract class I18nText with _$I18nText {
   const factory I18nText({
     required String en,
     String? ja,

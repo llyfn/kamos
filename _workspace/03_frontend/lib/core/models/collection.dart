@@ -7,7 +7,7 @@ import 'beverage.dart';
 part 'collection.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class Collection with _$Collection {
+abstract class Collection with _$Collection {
   const factory Collection({
     required String id,
     required String name,
@@ -26,7 +26,7 @@ class Collection with _$Collection {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class CollectionEntry with _$CollectionEntry {
+abstract class CollectionEntry with _$CollectionEntry {
   const factory CollectionEntry({
     required BeverageRef beverage,
     String? note,

@@ -11,7 +11,7 @@ import 'i18n_text.dart';
 part 'category_label.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class CategoryLabel with _$CategoryLabel {
+abstract class CategoryLabel with _$CategoryLabel {
   const factory CategoryLabel({
     required String slug,
     required I18nText labelI18n,
