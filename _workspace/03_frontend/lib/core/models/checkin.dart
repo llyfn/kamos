@@ -9,7 +9,7 @@ import 'flavor_tag.dart';
 part 'checkin.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class PhotoRef with _$PhotoRef {
+abstract class PhotoRef with _$PhotoRef {
   const factory PhotoRef({
     required String url,
     @Default(0) int sortOrder,
@@ -22,7 +22,7 @@ class PhotoRef with _$PhotoRef {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class Price with _$Price {
+abstract class Price with _$Price {
   const Price._();
   const factory Price({
     required double amount,
@@ -44,7 +44,7 @@ class Price with _$Price {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class Checkin with _$Checkin {
+abstract class Checkin with _$Checkin {
   const factory Checkin({
     required String id,
     required CheckinUser user,
@@ -91,7 +91,7 @@ class Checkin with _$Checkin {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class FeedItem with _$FeedItem {
+abstract class FeedItem with _$FeedItem {
   const factory FeedItem({
     required String id,
     required CheckinUser user,
@@ -126,7 +126,7 @@ class FeedItem with _$FeedItem {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class ToastState with _$ToastState {
+abstract class ToastState with _$ToastState {
   const factory ToastState({
     @Default(0) int toasts,
     @Default(false) bool youToasted,

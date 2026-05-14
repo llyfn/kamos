@@ -11,7 +11,7 @@ import 'i18n_text.dart';
 part 'brewery.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class Brewery with _$Brewery {
+abstract class Brewery with _$Brewery {
   const factory Brewery({
     required String id,
     required I18nText name,
@@ -40,7 +40,7 @@ class Brewery with _$Brewery {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class BreweryRef with _$BreweryRef {
+abstract class BreweryRef with _$BreweryRef {
   const factory BreweryRef({
     required String id,
     required I18nText name,

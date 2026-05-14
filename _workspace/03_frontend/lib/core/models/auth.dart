@@ -7,7 +7,7 @@ import 'user.dart';
 part 'auth.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class AuthResponse with _$AuthResponse {
+abstract class AuthResponse with _$AuthResponse {
   const factory AuthResponse({
     required User user,
     required String accessToken,

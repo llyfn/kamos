@@ -9,7 +9,7 @@ import 'i18n_text.dart';
 part 'flavor_tag.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class FlavorTag with _$FlavorTag {
+abstract class FlavorTag with _$FlavorTag {
   const factory FlavorTag({
     required String id,
     required String slug,

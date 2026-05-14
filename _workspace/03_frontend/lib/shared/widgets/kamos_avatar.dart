@@ -48,9 +48,9 @@ class KamosAvatar extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorWidget: (_, __, ___) =>
+          errorWidget: (_, _, _) =>
               _initialBox(bg, fg, t.border1, initial, size),
-          placeholder: (_, __) => _initialBox(bg, fg, t.border1, '', size),
+          placeholder: (_, _) => _initialBox(bg, fg, t.border1, '', size),
         ),
       );
     }

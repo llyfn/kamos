@@ -5,7 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'social.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-class FollowRequest with _$FollowRequest {
+abstract class FollowRequest with _$FollowRequest {
   const factory FollowRequest({
     required String userId,
     required String username,
@@ -29,7 +29,7 @@ class FollowRequest with _$FollowRequest {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class FollowResult with _$FollowResult {
+abstract class FollowResult with _$FollowResult {
   const factory FollowResult({
     @Default('') String status,
   }) = _FollowResult;
@@ -39,7 +39,7 @@ class FollowResult with _$FollowResult {
 }
 
 @Freezed(fromJson: false, toJson: false)
-class SocialUser with _$SocialUser {
+abstract class SocialUser with _$SocialUser {
   const factory SocialUser({
     required String id,
     required String username,

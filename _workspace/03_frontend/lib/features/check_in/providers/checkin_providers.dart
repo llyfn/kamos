@@ -19,7 +19,7 @@ class CheckInControllerState {
   final String? error;
 }
 
-class CheckInController extends AutoDisposeNotifier<CheckInControllerState> {
+class CheckInController extends Notifier<CheckInControllerState> {
   @override
   CheckInControllerState build() => const CheckInControllerState();
 
@@ -61,6 +61,6 @@ class CheckInController extends AutoDisposeNotifier<CheckInControllerState> {
 }
 
 final checkInControllerProvider =
-    AutoDisposeNotifierProvider<CheckInController, CheckInControllerState>(
+    NotifierProvider.autoDispose<CheckInController, CheckInControllerState>(
   CheckInController.new,
 );

@@ -55,19 +55,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/auth',
-        builder: (_, __) => const AuthScreen(),
+        builder: (_, _) => const AuthScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),
         routes: [
-          GoRoute(path: '/', builder: (_, __) => const FeedScreen()),
-          GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
+          GoRoute(path: '/', builder: (_, _) => const FeedScreen()),
+          GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
           GoRoute(
             path: '/collections',
-            builder: (_, __) => const CollectionsListScreen(),
+            builder: (_, _) => const CollectionsListScreen(),
           ),
-          GoRoute(path: '/me', builder: (_, __) => const MeProfileScreen()),
+          GoRoute(path: '/me', builder: (_, _) => const MeProfileScreen()),
         ],
       ),
       GoRoute(
@@ -89,13 +89,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/me/edit',
-        builder: (_, __) => const EditProfileScreen(),
+        builder: (_, _) => const EditProfileScreen(),
       ),
       GoRoute(
         path: '/me/settings',
-        builder: (_, __) => const SettingsScreen(),
+        builder: (_, _) => const SettingsScreen(),
       ),
-      GoRoute(path: '/inbox', builder: (_, __) => const InboxScreen()),
+      GoRoute(path: '/inbox', builder: (_, _) => const InboxScreen()),
       GoRoute(
         path: '/users/:username',
         builder: (_, state) =>
@@ -118,7 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Re-evaluates the `redirect` whenever the auth state changes.
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(this._ref) {
-    _sub = _ref.listen<AuthState>(authStateProvider, (_, __) => notifyListeners());
+    _sub = _ref.listen<AuthState>(authStateProvider, (_, _) => notifyListeners());
   }
   final Ref _ref;
   late final ProviderSubscription<AuthState> _sub;
