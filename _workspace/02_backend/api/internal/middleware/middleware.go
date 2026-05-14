@@ -36,6 +36,16 @@ func UserFromContext(ctx context.Context) *AuthedUser {
 	return v
 }
 
+// UserIDFromContext returns the authed user ID or "" when the request is
+// not authed. Convenience wrapper for middleware that doesn't need the
+// full AuthedUser.
+func UserIDFromContext(ctx context.Context) string {
+	if u := UserFromContext(ctx); u != nil {
+		return u.ID
+	}
+	return ""
+}
+
 // MustUser returns the authed user or writes 401 and returns nil. Use this in
 // handlers that are *supposed* to be behind Auth — it's a defensive backstop.
 func MustUser(w http.ResponseWriter, r *http.Request) *AuthedUser {

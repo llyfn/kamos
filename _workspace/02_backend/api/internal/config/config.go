@@ -68,6 +68,20 @@ type Config struct {
 	SMTPPass       string
 	AppBaseURL     string
 	Env            string // "dev" | "prod"
+
+	// Observability — all optional. Empty values mean the feature is OFF
+	// at startup; the SDK is never initialized in that case (no warnings,
+	// no degraded behavior). See observability/otel.go + observability/sentry.go.
+	Version       string // APP_VERSION; default "dev"
+	OTLPEndpoint  string // OTEL_EXPORTER_OTLP_ENDPOINT; empty disables OTel
+	OTLPHeaders   string // OTEL_EXPORTER_OTLP_HEADERS as "k1=v1,k2=v2"
+	SentryDSN     string // SENTRY_DSN; empty disables Sentry
+
+	// Rate-limit knob. Defaults are documented in DEPLOYMENT.md §3.
+	// Set RATE_LIMIT_DISABLED=1 in integration tests / local stress runs
+	// where the production caps would interfere. Production must leave
+	// this unset.
+	RateLimitDisabled bool
 }
 
 // Load reads env vars and returns a Config, erroring on missing required
@@ -85,6 +99,11 @@ func Load() (*Config, error) {
 		SMTPPass:       os.Getenv("SMTP_PASS"),
 		AppBaseURL:     getenv("APP_BASE_URL", "http://localhost:3000"),
 		Env:            getenv("APP_ENV", "dev"),
+		Version:        getenv("APP_VERSION", "dev"),
+		OTLPEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		OTLPHeaders:    os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
+		SentryDSN:      os.Getenv("SENTRY_DSN"),
+		RateLimitDisabled: os.Getenv("RATE_LIMIT_DISABLED") == "1",
 	}
 
 	ttlStr := getenv("JWT_TTL", "720h")
