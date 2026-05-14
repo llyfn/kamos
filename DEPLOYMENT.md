@@ -37,6 +37,23 @@ Copy `_workspace/02_backend/api/.env.example` to `.env` at the repo root (or whe
 | `APP_BASE_URL` | Base URL used in verification-email links | yes |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (used as ID-token audience) | only if Google sign-in is enabled |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Verification email | **production** — dev logs the link instead |
+| `APP_VERSION` | Reported as `service.version` on OTel spans + Sentry release tag | optional (default `dev`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP host for traces + metrics (e.g. `otlp-gateway-prod-eu-west-2.grafana.net`). Empty disables OTel entirely. | optional |
+| `OTEL_EXPORTER_OTLP_HEADERS` | `"k1=v1,k2=v2"` headers — usually a single `Authorization=Basic …` line | optional |
+| `SENTRY_DSN` | Sentry project DSN. Empty disables Sentry; only panics are forwarded (OTel ships traces). | optional |
+| `RATE_LIMIT_DISABLED` | Set to `1` to bypass rate limits (local stress / unusual tooling only). Production MUST leave this unset. | optional |
+
+**Rate-limit defaults** (set in `internal/server/router.go`):
+
+| Scope | Rate (rps) | Burst |
+|---|---|---|
+| Global per-IP | 30 | 60 |
+| Per-IP on `/v1/auth/*` (brute-force mitigation) | 5 | 10 |
+| Per-user on authed routes (post-Auth middleware) | 60 | 120 |
+
+A rejected request returns `429 Too Many Requests` with `{"error":"rate_limited","code":"RATE_LIMITED"}` and `Retry-After: 1`.
+
+**Vendor signup is OPTIONAL.** Every observability key above can be left blank; the server boots cleanly with the SDK never initialized. No warnings, no degraded behavior. Wire one of OTEL/Sentry up only after creating the corresponding account.
 
 > **`local.env` auto-loading:** when `APP_ENV != "production"` the server walks up from CWD looking for `local.env` and loads it before reading env vars. Real env vars always win (godotenv is non-overriding). `local.env` is gitignored; commit `local.env.example` instead.
 
@@ -208,6 +225,9 @@ make check             Build + unit-test backend, integration when INTEGRATION_D
 - [ ] Real SMTP (SES / SendGrid / Postmark)
 - [ ] CDN for beverage label images
 - [ ] Structured log shipping (slog → Loki/Datadog)
-- [ ] Rate limiting on `POST /v1/auth/*`
-- [ ] Background job runner for: 30-day username hold cleanup, beverage `avg_rating` integrity sweep, expired email-verification cleanup
+- [x] Rate limiting on `POST /v1/auth/*` *(token bucket per IP, 5 rps / burst 10; see §3 table)*
+- [x] Background job runner for: 30-day username hold cleanup, beverage `avg_rating` integrity sweep, expired email-verification cleanup *(in-process scheduler at `internal/jobs/`)*
 - [ ] Crash reporting in Flutter (Sentry / Crashlytics)
+- [ ] OTLP endpoint provisioned (`OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` set in production)
+- [ ] Sentry project provisioned (`SENTRY_DSN` set in production)
+- [ ] `APP_VERSION` populated per deploy (release tag / git SHA) so OTel + Sentry can group by version
