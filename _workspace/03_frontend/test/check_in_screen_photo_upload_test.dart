@@ -58,6 +58,7 @@ class _FakeRepo extends CheckInRepository {
     Price? price,
     String? purchaseType,
     String? servingStyle,
+    Map<String, dynamic>? venue,
   }) async {
     return const Checkin(
       id: 'chk-1',

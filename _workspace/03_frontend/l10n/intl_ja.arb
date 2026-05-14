@@ -63,6 +63,27 @@
   "photoUploadDisabled": "写真のアップロードは利用できません — 写真なしで保存しました。",
   "photoUploadFailed": "写真をアップロードできませんでした。タップしてやり直し。",
 
+  "checkInWhereLabel": "どこで？",
+  "checkInWhereCta": "場所を追加",
+  "venuePickerSearchPlaceholder": "場所を検索",
+  "venuePickerEmptyHint": "バー、レストラン、酒販店を検索。",
+  "venuePickerNoResults": "該当なし。",
+  "venuePickerDisabled": "場所検索は未設定。場所なしでチェックインできます。",
+  "venuePickerRateLimited": "少しお待ちください。",
+  "feedCardAtVenue": "{name} · {locality}にて",
+  "@feedCardAtVenue": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "locality": { "type": "String" }
+    }
+  },
+  "feedCardAtVenueNoLocality": "{name}にて",
+  "@feedCardAtVenueNoLocality": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
   "flavorSweetness": "甘味",
   "flavorBody": "ボディ",
   "flavorAcidity": "酸味",

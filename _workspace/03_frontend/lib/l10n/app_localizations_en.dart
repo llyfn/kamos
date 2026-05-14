@@ -171,6 +171,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get photoUploadFailed => 'Photo failed to upload. Tap to retry.';
 
   @override
+  String get checkInWhereLabel => 'Where?';
+
+  @override
+  String get checkInWhereCta => 'Add a venue';
+
+  @override
+  String get venuePickerSearchPlaceholder => 'Search for a venue';
+
+  @override
+  String get venuePickerEmptyHint => 'Search for a bar, restaurant, or shop.';
+
+  @override
+  String get venuePickerNoResults => 'No venues found.';
+
+  @override
+  String get venuePickerDisabled =>
+      'Venue search is not configured. You can still check in without a venue.';
+
+  @override
+  String get venuePickerRateLimited => 'Slow down — try again in a moment.';
+
+  @override
+  String feedCardAtVenue(String name, String locality) {
+    return 'at $name · $locality';
+  }
+
+  @override
+  String feedCardAtVenueNoLocality(String name) {
+    return 'at $name';
+  }
+
+  @override
   String get flavorSweetness => 'Sweetness';
 
   @override

@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'beverage.dart';
 import 'flavor_tag.dart';
+import 'venue.dart';
 
 part 'checkin.freezed.dart';
 
@@ -58,6 +59,7 @@ abstract class Checkin with _$Checkin {
     Price? price,
     String? purchaseType,
     String? servingStyle,
+    VenueRef? venue,
     @Default(0) int toasts,
     @Default(false) bool youToasted,
     @Default('') String createdAt,
@@ -85,6 +87,9 @@ abstract class Checkin with _$Checkin {
             : null,
         purchaseType: json['purchase_type'] as String?,
         servingStyle: json['serving_style'] as String?,
+        venue: json['venue'] is Map<String, dynamic>
+            ? VenueRef.fromJson(json['venue'] as Map<String, dynamic>)
+            : null,
         toasts: (json['toasts'] as int?) ?? 0,
         youToasted: (json['you_toasted'] as bool?) ?? false,
         createdAt: (json['created_at'] as String?) ?? '',
@@ -101,6 +106,7 @@ abstract class FeedItem with _$FeedItem {
     double? rating,
     String? review,
     @Default(<FlavorTag>[]) List<FlavorTag> tags,
+    VenueRef? venue,
     @Default(0) int toasts,
     @Default(false) bool youToasted,
     @Default(0) int photoCount,
@@ -120,6 +126,9 @@ abstract class FeedItem with _$FeedItem {
         tags: ((json['tags'] as List?) ?? const [])
             .map((e) => FlavorTag.fromJson(e as Map<String, dynamic>))
             .toList(),
+        venue: json['venue'] is Map<String, dynamic>
+            ? VenueRef.fromJson(json['venue'] as Map<String, dynamic>)
+            : null,
         toasts: (json['toasts'] as int?) ?? 0,
         youToasted: (json['you_toasted'] as bool?) ?? false,
         photoCount: (json['photo_count'] as int?) ?? 0,

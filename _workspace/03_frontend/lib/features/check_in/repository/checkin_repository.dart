@@ -72,6 +72,7 @@ class CheckInRepository {
     Price? price,
     String? purchaseType,
     String? servingStyle,
+    Map<String, dynamic>? venue,
   }) async {
     final res = await dio.post(
       '/v1/check-ins',
@@ -84,6 +85,7 @@ class CheckInRepository {
         'price': ?price?.toJson(),
         'purchase_type': ?purchaseType,
         'serving_style': ?servingStyle,
+        if (venue != null && venue.isNotEmpty) 'venue': venue,
       },
     );
     return Checkin.fromJson(res.data as Map<String, dynamic>);

@@ -63,6 +63,27 @@
   "photoUploadDisabled": "Photo upload is not available — saved without photos.",
   "photoUploadFailed": "Photo failed to upload. Tap to retry.",
 
+  "checkInWhereLabel": "Where?",
+  "checkInWhereCta": "Add a venue",
+  "venuePickerSearchPlaceholder": "Search for a venue",
+  "venuePickerEmptyHint": "Search for a bar, restaurant, or shop.",
+  "venuePickerNoResults": "No venues found.",
+  "venuePickerDisabled": "Venue search is not configured. You can still check in without a venue.",
+  "venuePickerRateLimited": "Slow down — try again in a moment.",
+  "feedCardAtVenue": "at {name} · {locality}",
+  "@feedCardAtVenue": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "locality": { "type": "String" }
+    }
+  },
+  "feedCardAtVenueNoLocality": "at {name}",
+  "@feedCardAtVenueNoLocality": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
   "flavorSweetness": "Sweetness",
   "flavorBody": "Body",
   "flavorAcidity": "Acidity",
