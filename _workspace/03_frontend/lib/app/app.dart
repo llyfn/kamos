@@ -3,9 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/api/api_toast.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
+
+/// Global `ScaffoldMessenger` key so the API layer (which lives outside the
+/// widget tree) can surface localized snackbars via `apiToastBusProvider`.
+final kamosMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 class KamosApp extends ConsumerWidget {
   const KamosApp({super.key});
@@ -19,7 +24,41 @@ class KamosApp extends ConsumerWidget {
       theme: buildKamosTheme(),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      scaffoldMessengerKey: kamosMessengerKey,
       routerConfig: router,
+      builder: (context, child) {
+        return _ApiToastListener(child: child ?? const SizedBox.shrink());
+      },
     );
+  }
+}
+
+/// Listens for transport-level toasts emitted by `AuthInterceptor` and shows
+/// the localized copy (`errorUnauthorized`, `errorNetwork`) via the global
+/// messenger key. The listener clears the bus after each emission so the same
+/// kind can fire again later.
+class _ApiToastListener extends ConsumerWidget {
+  const _ApiToastListener({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<ApiToastKind?>(apiToastBusProvider, (_, next) {
+      if (next == null) return;
+      final messenger = kamosMessengerKey.currentState;
+      if (messenger == null) return;
+      final l = AppLocalizations.of(context);
+      final message = switch (next) {
+        ApiToastKind.unauthorized => l.errorUnauthorized,
+        ApiToastKind.network => l.errorNetwork,
+      };
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+      // One-shot semantics: clear so the next 401/network error re-triggers
+      // even if the kind is the same.
+      ref.read(apiToastBusProvider.notifier).clear();
+    });
+    return child;
   }
 }

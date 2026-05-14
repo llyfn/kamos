@@ -57,9 +57,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get searchPlaceholder => '양조장 · 술 · 지역으로 검색';
 
   @override
-  String get searchRecent => '최근 검색';
-
-  @override
   String get searchNoResultsTitle => '결과 없음';
 
   @override
@@ -158,9 +155,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInServingOther => '기타';
 
   @override
-  String get checkInSubmit => '게시';
-
-  @override
   String get checkInFirstToast => '첫 체크인을 기록했습니다. 건배!';
 
   @override
@@ -255,6 +249,21 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get authVerifyResend => '이메일 다시 보내기';
+
+  @override
+  String get verifyEmailTitle => '이메일 인증 중';
+
+  @override
+  String get verifyEmailLoading => '인증 링크를 확인하고 있습니다…';
+
+  @override
+  String get verifyEmailSuccess => '이메일이 인증되었습니다.';
+
+  @override
+  String get verifyEmailFailure => '링크를 인증할 수 없습니다. 만료되었을 수 있습니다.';
+
+  @override
+  String get verifyEmailBackToAuth => '로그인으로 돌아가기';
 
   @override
   String get profileEdit => '프로필 편집';
@@ -367,12 +376,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get collectionsPrivate => '비공개';
-
-  @override
-  String get collectionsDefault => '기본 컬렉션';
-
-  @override
-  String get collectionsCustom => '사용자 컬렉션';
 
   @override
   String collectionsBottleCountOne(int count) {

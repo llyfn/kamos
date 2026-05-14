@@ -109,10 +109,25 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                 onToast: () =>
                     ref.read(feedProvider.notifier).toggleToast(item.id),
               ),
-            PagingFooter(
-              isLoading: state.isLoadingMore,
-              hasMore: state.hasMore,
-            ),
+            if (state.isLoadingMore)
+              LoadingView(label: l.actionLoadingMore)
+            else if (!state.hasMore)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 20, horizontal: 16),
+                child: Center(
+                  child: Text(
+                    '— ${l.actionEndOfFeed} —',
+                    style: TextStyle(
+                      fontFamily: 'NotoSansJP',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.3,
+                      color: t.fg3,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ],
       ),

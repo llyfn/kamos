@@ -21,7 +21,6 @@
 
   "searchHeader": "探す",
   "searchPlaceholder": "蔵元・銘柄・都道府県で検索",
-  "searchRecent": "最近の検索",
   "searchNoResultsTitle": "該当なし",
   "searchNoResultsBody": "該当なし。別の言葉で試してください。",
   "searchCategoryAll": "すべて",
@@ -58,7 +57,6 @@
   "checkInServingBottle": "瓶",
   "checkInServingCan": "缶",
   "checkInServingOther": "その他",
-  "checkInSubmit": "投稿",
   "checkInFirstToast": "最初のチェックイン。乾杯！",
   "checkInPostFailed": "投稿できませんでした。タップしてやり直し。",
   "checkInPhotoLimitReached": "写真は4枚までです。",
@@ -94,6 +92,12 @@
   "authVerifyExpiry": "リンクは24時間有効です。未確認でもアプリは利用できます。",
   "authVerifyContinue": "KAMOSを始める",
   "authVerifyResend": "メールを再送",
+
+  "verifyEmailTitle": "メールを認証中",
+  "verifyEmailLoading": "認証リンクを確認しています…",
+  "verifyEmailSuccess": "メールが認証されました。",
+  "verifyEmailFailure": "リンクを認証できませんでした。期限切れの可能性があります。",
+  "verifyEmailBackToAuth": "サインインに戻る",
 
   "profileEdit": "プロフィール編集",
   "profileSettings": "設定",
@@ -134,8 +138,6 @@
   "collectionsCreateNew": "新しいコレクション",
   "collectionsNamePlaceholder": "コレクション名",
   "collectionsPrivate": "非公開",
-  "collectionsDefault": "デフォルト",
-  "collectionsCustom": "カスタム",
   "collectionsBottleCountOne": "{count}本",
   "@collectionsBottleCountOne": { "placeholders": { "count": { "type": "int" } } },
   "collectionsBottleCountOther": "{count}本",

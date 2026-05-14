@@ -157,6 +157,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
+            if (state.items.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    state.items.length == 1
+                        ? l.searchResultCountOne(state.items.length)
+                        : l.searchResultCountOther(state.items.length),
+                    style: TextStyle(
+                      fontFamily: 'NotoSansJP',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.3,
+                      color: t.fg3,
+                    ),
+                  ),
+                ),
+              ),
             Expanded(
               child: state.isLoading && state.items.isEmpty
                   ? Center(child: LoadingView(label: l.loadingLabel))
