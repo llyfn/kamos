@@ -1,0 +1,66 @@
+// KAMOS — Check-in controller + flavor-tag taxonomy provider.
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/api/api_exception.dart';
+import '../../../core/models/checkin.dart';
+import '../../../core/models/flavor_tag.dart';
+import '../repository/checkin_repository.dart';
+
+final flavorTagsProvider = FutureProvider<List<FlavorTag>>((ref) async {
+  return ref.read(checkInRepositoryProvider).tags();
+});
+
+class CheckInControllerState {
+  const CheckInControllerState({this.isSubmitting = false, this.posted, this.error});
+  final bool isSubmitting;
+  final Checkin? posted;
+  final String? error;
+}
+
+class CheckInController extends AutoDisposeNotifier<CheckInControllerState> {
+  @override
+  CheckInControllerState build() => const CheckInControllerState();
+
+  Future<Checkin?> submit({
+    required String beverageId,
+    double? rating,
+    String? review,
+    List<String> tags = const [],
+    List<String> photos = const [],
+    Price? price,
+    String? purchaseType,
+    String? servingStyle,
+  }) async {
+    state = const CheckInControllerState(isSubmitting: true);
+    try {
+      final posted = await ref.read(checkInRepositoryProvider).create(
+            beverageId: beverageId,
+            rating: rating,
+            review: review,
+            tags: tags,
+            photos: photos,
+            price: price,
+            purchaseType: purchaseType,
+            servingStyle: servingStyle,
+          );
+      state = CheckInControllerState(posted: posted);
+      return posted;
+    } on DioException catch (e) {
+      final err = e.error is ApiException
+          ? (e.error as ApiException).message
+          : (e.message ?? 'Request failed');
+      state = CheckInControllerState(error: err);
+      return null;
+    } catch (e) {
+      state = CheckInControllerState(error: e.toString());
+      return null;
+    }
+  }
+}
+
+final checkInControllerProvider =
+    AutoDisposeNotifierProvider<CheckInController, CheckInControllerState>(
+  CheckInController.new,
+);
