@@ -478,6 +478,24 @@ abstract class AppLocalizations {
   /// **'Continue with Google'**
   String get authContinueGoogle;
 
+  /// No description provided for @authGoogleSignInButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get authGoogleSignInButton;
+
+  /// No description provided for @authGoogleDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in not configured'**
+  String get authGoogleDisabled;
+
+  /// No description provided for @authGoogleSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in failed. Try again.'**
+  String get authGoogleSignInFailed;
+
   /// No description provided for @authNoAccount.
   ///
   /// In en, this message translates to:

@@ -206,6 +206,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authContinueGoogle => 'Googleで続行';
 
   @override
+  String get authGoogleSignInButton => 'Googleで続行';
+
+  @override
+  String get authGoogleDisabled => 'Googleサインインは未設定';
+
+  @override
+  String get authGoogleSignInFailed => 'Googleサインインに失敗しました。もう一度お試しください。';
+
+  @override
   String get authNoAccount => 'アカウントがない？';
 
   @override

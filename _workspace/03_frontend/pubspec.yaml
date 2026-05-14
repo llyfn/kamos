@@ -23,6 +23,10 @@ dependencies:
   # Secure JWT storage (SPEC §6.9 — never SharedPreferences for the token)
   flutter_secure_storage: ^10.2.0
 
+  # Google sign-in (gated behind --dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true;
+  # platform config files must also be in place — see README "Google sign-in setup")
+  google_sign_in: ^7.2.0
+
   # Codegen models
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0

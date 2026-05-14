@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AuthResponse {
 
- User get user; String get accessToken; String get tokenType; int get expiresIn;
+ User get user; String get accessToken; String get refreshToken; String get tokenType; int get expiresIn; int get refreshExpiresIn;
 /// Create a copy of AuthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AuthResponseCopyWith<AuthResponse> get copyWith => _$AuthResponseCopyWithImpl<A
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthResponse&&(identical(other.user, user) || other.user == user)&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.tokenType, tokenType) || other.tokenType == tokenType)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthResponse&&(identical(other.user, user) || other.user == user)&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.tokenType, tokenType) || other.tokenType == tokenType)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn)&&(identical(other.refreshExpiresIn, refreshExpiresIn) || other.refreshExpiresIn == refreshExpiresIn));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,user,accessToken,tokenType,expiresIn);
+int get hashCode => Object.hash(runtimeType,user,accessToken,refreshToken,tokenType,expiresIn,refreshExpiresIn);
 
 @override
 String toString() {
-  return 'AuthResponse(user: $user, accessToken: $accessToken, tokenType: $tokenType, expiresIn: $expiresIn)';
+  return 'AuthResponse(user: $user, accessToken: $accessToken, refreshToken: $refreshToken, tokenType: $tokenType, expiresIn: $expiresIn, refreshExpiresIn: $refreshExpiresIn)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AuthResponseCopyWith<$Res>  {
   factory $AuthResponseCopyWith(AuthResponse value, $Res Function(AuthResponse) _then) = _$AuthResponseCopyWithImpl;
 @useResult
 $Res call({
- User user, String accessToken, String tokenType, int expiresIn
+ User user, String accessToken, String refreshToken, String tokenType, int expiresIn, int refreshExpiresIn
 });
 
 
@@ -62,12 +62,14 @@ class _$AuthResponseCopyWithImpl<$Res>
 
 /// Create a copy of AuthResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? user = null,Object? accessToken = null,Object? tokenType = null,Object? expiresIn = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? user = null,Object? accessToken = null,Object? refreshToken = null,Object? tokenType = null,Object? expiresIn = null,Object? refreshExpiresIn = null,}) {
   return _then(_self.copyWith(
 user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as User,accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
+as String,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
 as String,tokenType: null == tokenType ? _self.tokenType : tokenType // ignore: cast_nullable_to_non_nullable
 as String,expiresIn: null == expiresIn ? _self.expiresIn : expiresIn // ignore: cast_nullable_to_non_nullable
+as int,refreshExpiresIn: null == refreshExpiresIn ? _self.refreshExpiresIn : refreshExpiresIn // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -162,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User user,  String accessToken,  String tokenType,  int expiresIn)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User user,  String accessToken,  String refreshToken,  String tokenType,  int expiresIn,  int refreshExpiresIn)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AuthResponse() when $default != null:
-return $default(_that.user,_that.accessToken,_that.tokenType,_that.expiresIn);case _:
+return $default(_that.user,_that.accessToken,_that.refreshToken,_that.tokenType,_that.expiresIn,_that.refreshExpiresIn);case _:
   return orElse();
 
 }
@@ -183,10 +185,10 @@ return $default(_that.user,_that.accessToken,_that.tokenType,_that.expiresIn);ca
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User user,  String accessToken,  String tokenType,  int expiresIn)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User user,  String accessToken,  String refreshToken,  String tokenType,  int expiresIn,  int refreshExpiresIn)  $default,) {final _that = this;
 switch (_that) {
 case _AuthResponse():
-return $default(_that.user,_that.accessToken,_that.tokenType,_that.expiresIn);case _:
+return $default(_that.user,_that.accessToken,_that.refreshToken,_that.tokenType,_that.expiresIn,_that.refreshExpiresIn);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +205,10 @@ return $default(_that.user,_that.accessToken,_that.tokenType,_that.expiresIn);ca
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User user,  String accessToken,  String tokenType,  int expiresIn)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User user,  String accessToken,  String refreshToken,  String tokenType,  int expiresIn,  int refreshExpiresIn)?  $default,) {final _that = this;
 switch (_that) {
 case _AuthResponse() when $default != null:
-return $default(_that.user,_that.accessToken,_that.tokenType,_that.expiresIn);case _:
+return $default(_that.user,_that.accessToken,_that.refreshToken,_that.tokenType,_that.expiresIn,_that.refreshExpiresIn);case _:
   return null;
 
 }
@@ -218,13 +220,15 @@ return $default(_that.user,_that.accessToken,_that.tokenType,_that.expiresIn);ca
 
 
 class _AuthResponse implements AuthResponse {
-  const _AuthResponse({required this.user, required this.accessToken, required this.tokenType, required this.expiresIn});
+  const _AuthResponse({required this.user, required this.accessToken, required this.refreshToken, required this.tokenType, required this.expiresIn, required this.refreshExpiresIn});
   
 
 @override final  User user;
 @override final  String accessToken;
+@override final  String refreshToken;
 @override final  String tokenType;
 @override final  int expiresIn;
+@override final  int refreshExpiresIn;
 
 /// Create a copy of AuthResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -236,16 +240,16 @@ _$AuthResponseCopyWith<_AuthResponse> get copyWith => __$AuthResponseCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthResponse&&(identical(other.user, user) || other.user == user)&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.tokenType, tokenType) || other.tokenType == tokenType)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthResponse&&(identical(other.user, user) || other.user == user)&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.tokenType, tokenType) || other.tokenType == tokenType)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn)&&(identical(other.refreshExpiresIn, refreshExpiresIn) || other.refreshExpiresIn == refreshExpiresIn));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,user,accessToken,tokenType,expiresIn);
+int get hashCode => Object.hash(runtimeType,user,accessToken,refreshToken,tokenType,expiresIn,refreshExpiresIn);
 
 @override
 String toString() {
-  return 'AuthResponse(user: $user, accessToken: $accessToken, tokenType: $tokenType, expiresIn: $expiresIn)';
+  return 'AuthResponse(user: $user, accessToken: $accessToken, refreshToken: $refreshToken, tokenType: $tokenType, expiresIn: $expiresIn, refreshExpiresIn: $refreshExpiresIn)';
 }
 
 
@@ -256,7 +260,7 @@ abstract mixin class _$AuthResponseCopyWith<$Res> implements $AuthResponseCopyWi
   factory _$AuthResponseCopyWith(_AuthResponse value, $Res Function(_AuthResponse) _then) = __$AuthResponseCopyWithImpl;
 @override @useResult
 $Res call({
- User user, String accessToken, String tokenType, int expiresIn
+ User user, String accessToken, String refreshToken, String tokenType, int expiresIn, int refreshExpiresIn
 });
 
 
@@ -273,12 +277,14 @@ class __$AuthResponseCopyWithImpl<$Res>
 
 /// Create a copy of AuthResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? user = null,Object? accessToken = null,Object? tokenType = null,Object? expiresIn = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? user = null,Object? accessToken = null,Object? refreshToken = null,Object? tokenType = null,Object? expiresIn = null,Object? refreshExpiresIn = null,}) {
   return _then(_AuthResponse(
 user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as User,accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
+as String,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
 as String,tokenType: null == tokenType ? _self.tokenType : tokenType // ignore: cast_nullable_to_non_nullable
 as String,expiresIn: null == expiresIn ? _self.expiresIn : expiresIn // ignore: cast_nullable_to_non_nullable
+as int,refreshExpiresIn: null == refreshExpiresIn ? _self.refreshExpiresIn : refreshExpiresIn // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }

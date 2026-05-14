@@ -1,5 +1,5 @@
 // KAMOS — AuthController. Drives login, register, Google handoff. On success
-// the JWT is persisted by the repository and authStateProvider is flipped.
+// the JWT pair is persisted by the repository and authStateProvider is flipped.
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +57,28 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
             email: email,
             password: password,
             displayName: displayName,
+            locale: locale,
+          );
+      ref.read(authStateProvider.notifier).signIn();
+      state = const AuthControllerState();
+    } on DioException catch (e) {
+      state = AuthControllerState(error: _readError(e));
+    } catch (e) {
+      state = AuthControllerState(error: e.toString());
+    }
+  }
+
+  /// Exchange a Google ID token (already obtained via the platform SDK) for a
+  /// KAMOS session. The Flutter app never sees the Google client secret —
+  /// the server is the only party that calls Google's verifier.
+  Future<void> signInWithGoogle({
+    required String idToken,
+    String locale = 'en',
+  }) async {
+    state = const AuthControllerState(isSubmitting: true);
+    try {
+      await ref.read(authRepositoryProvider).google(
+            idToken: idToken,
             locale: locale,
           );
       ref.read(authStateProvider.notifier).signIn();

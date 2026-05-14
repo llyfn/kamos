@@ -206,6 +206,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authContinueGoogle => 'Google로 계속하기';
 
   @override
+  String get authGoogleSignInButton => 'Google로 계속하기';
+
+  @override
+  String get authGoogleDisabled => 'Google 로그인이 설정되지 않았습니다';
+
+  @override
+  String get authGoogleSignInFailed => 'Google 로그인에 실패했습니다. 다시 시도해 주세요.';
+
+  @override
   String get authNoAccount => '계정이 없으신가요?';
 
   @override
