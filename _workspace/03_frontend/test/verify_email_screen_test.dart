@@ -66,6 +66,13 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> changeEmail(String newEmail) => throw UnimplementedError();
+
+  @override
+  Future<AuthResponse> refresh(String refreshToken) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> logout({String? refreshToken}) => throw UnimplementedError();
 }
 
 Widget _wrap(Widget child) {

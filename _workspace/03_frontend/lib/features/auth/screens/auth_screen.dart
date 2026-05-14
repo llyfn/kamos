@@ -2,15 +2,17 @@
 //
 // Google handoff: server-verified OAuth (SPEC §3.1). The Flutter app only
 // transmits the Google ID token, never the client secret (brief §6.10).
-// We do NOT bundle `google_sign_in` because adding it would require platform
-// configuration (Info.plist URL schemes, google-services.json) that is the
-// user's responsibility post-handoff. The button is wired to a STUB until
-// that configuration lands.
+//
+// Activation is gated by `kIsGoogleConfigured` (see
+// `core/auth/google_signin_service.dart`). When the dart-define is absent the
+// button renders disabled with a tooltip; when present the button drives the
+// platform SDK and on success calls `signInWithGoogle(idToken: ...)`.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/auth/google_signin_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/auth_controller.dart';
 
@@ -92,15 +94,27 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       }
                     }
                   },
-                  onGoogleHandoff: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Google sign-in needs platform config. See README_flutter.md.',
-                          style: TextStyle(color: t.fgOnDark),
-                        ),
-                      ),
-                    );
+                  onGoogleHandoff: () async {
+                    if (!kIsGoogleConfigured) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    final locale = Localizations.localeOf(context).languageCode;
+                    final l = AppLocalizations.of(context);
+                    final idToken = await ref
+                        .read(googleSignInServiceProvider)
+                        .signInAndGetIdToken();
+                    if (idToken == null) {
+                      if (!mounted) return;
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(l.authGoogleSignInFailed)),
+                      );
+                      return;
+                    }
+                    await ref
+                        .read(authControllerProvider.notifier)
+                        .signInWithGoogle(
+                          idToken: idToken,
+                          locale: locale,
+                        );
                   },
                 ),
               if (controller.error != null)
@@ -298,10 +312,17 @@ class _SignInOrUp extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 18),
-        OutlinedButton.icon(
-          onPressed: onGoogleHandoff,
-          icon: const Icon(Icons.g_mobiledata, size: 24),
-          label: Text(l.authContinueGoogle),
+        Tooltip(
+          message: kIsGoogleConfigured ? '' : l.authGoogleDisabled,
+          child: OutlinedButton.icon(
+            onPressed: kIsGoogleConfigured ? onGoogleHandoff : null,
+            icon: const Icon(Icons.g_mobiledata, size: 24),
+            label: Text(
+              kIsGoogleConfigured
+                  ? l.authGoogleSignInButton
+                  : l.authGoogleDisabled,
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         Center(

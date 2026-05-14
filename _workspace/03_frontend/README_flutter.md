@@ -43,16 +43,32 @@ flutter run --dart-define=KAMOS_API_BASE_URL=https://api.staging.kamos.example
 | `KAMOS_SENTRY_DSN` | _(empty)_ | Empty disables Sentry entirely; no SDK init, no network calls. |
 | `KAMOS_ENV` | `dev` | Sentry `environment` tag. Use `staging` / `production` when deployed. |
 | `KAMOS_VERSION` | `dev` | Sentry `release` tag. CI should pass the build version. |
+| `KAMOS_GOOGLE_SIGN_IN_ENABLED` | `false` | When `true`, the Google button drives the platform SDK. Off by default so dev runs and `flutter test` need no native config. |
+| `KAMOS_GOOGLE_CLIENT_ID` | _(empty)_ | Optional server/web OAuth client ID. Used as `serverClientId` for Android; ignored on iOS (which reads `GoogleService-Info.plist`). |
 
-All three Sentry flags are optional in dev — the app runs identically with or without them.
+All Sentry flags are optional in dev — the app runs identically with or without them.
 
-Google Sign-In is wired through `/v1/auth/google`. The Flutter app only transmits the Google ID token; the client secret stays server-side (SPEC §3.1 / brief §6.10). To enable the button you must:
+## Google sign-in setup
 
-1. Add `google_sign_in` to `pubspec.yaml`.
-2. Drop `google-services.json` into `android/app/` and `GoogleService-Info.plist` into `ios/Runner/`.
-3. Wire the `onGoogleHandoff` callback in `auth_screen.dart` to `GoogleSignIn.signIn` and pass the resulting `id_token` to `authRepositoryProvider.google(idToken: ...)`.
+The Google button is gated behind `--dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true`. When the flag is absent the button renders disabled with a "Google sign-in not configured" tooltip — this is the default for new clones until Google Cloud Console setup is complete (cookbook §C1 in the post-MVP roadmap).
 
-For MVP/test runs the button is stubbed; tap to see a snackbar pointing at this README.
+The backend exchange is `POST /v1/auth/google` with `{ id_token }`. The Flutter app only ever transmits the Google-issued ID token; the OAuth client secret stays server-side (SPEC §3.1 / brief §6.10).
+
+To enable:
+
+1. **Cloud Console** — finish setup of OAuth client IDs for iOS, Android, and the backend ("Web application" type for the server verifier).
+2. **iOS** — drop `GoogleService-Info.plist` into `ios/Runner/`. Add the reversed-client-ID URL scheme to `ios/Runner/Info.plist` under `CFBundleURLTypes`. See the [google_sign_in iOS guide](https://pub.dev/packages/google_sign_in_ios#integration).
+3. **Android** — reference the OAuth client ID in `android/app/build.gradle.kts` per the [google_sign_in_android guide](https://pub.dev/packages/google_sign_in_android#integration). `google-services.json` is NOT required for the ID-token flow.
+4. **Run** with the dart-define:
+
+   ```bash
+   flutter run \
+     --dart-define=KAMOS_API_BASE_URL=https://api.staging.kamos.example \
+     --dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true \
+     --dart-define=KAMOS_GOOGLE_CLIENT_ID=YOUR-SERVER-CLIENT-ID.apps.googleusercontent.com
+   ```
+
+Until step 1–3 are complete, leaving the dart-define off (the default) keeps the button visibly disabled and never touches the SDK.
 
 ## Build
 
@@ -68,7 +84,7 @@ flutter build appbundle --release --dart-define=KAMOS_API_BASE_URL=https://api.k
 
 ```bash
 flutter analyze                                # should pass clean
-flutter test                                   # 18+ tests; category/ARB parity + i18n fallback
+flutter test                                   # 23+ tests; ARB parity, category strings, refresh interceptor
 grep -rn 'SharedPreferences' lib/ | grep -i token   # must be empty (SPEC §6.9 — JWT is in flutter_secure_storage)
 ```
 
@@ -89,6 +105,6 @@ Feature-first layout under `lib/features/`. Shared widgets in `lib/shared/widget
 - **Review ≤ 500 chars** — `TextField.maxLength: 500` with `MaxLengthEnforcement.enforced` in the check-in screen.
 - **Photos ≤ 4** — UI cap in `lib/features/check_in/screens/check_in_screen.dart`; server is the backstop.
 - **Cursor pagination** — every list provider holds `(items, nextCursor, hasMore)` and never sends an offset. Page size 20 on the feed.
-- **JWT storage** — `flutter_secure_storage` only, via `lib/core/storage/secure_storage.dart`. No `SharedPreferences` token usage anywhere in the tree (see verification command above).
+- **JWT storage** — both the access token and the rotating refresh token live in `flutter_secure_storage` only, via `lib/core/storage/secure_storage.dart`. No `SharedPreferences` token usage anywhere in the tree (see verification command above). The Dio interceptor (`lib/core/api/auth_interceptor.dart`) auto-exchanges the refresh token on 401 with single-flight semantics.
 - **i18n fallback** — `lib/core/i18n/beverage_name.dart` falls back to `en` for missing `ja` / `ko` beverage names per SPEC §6.5.
 - **No emoji in UI** — the toast button uses the brand kanpai mark (`assets/images/logo_white.png` overlay).
