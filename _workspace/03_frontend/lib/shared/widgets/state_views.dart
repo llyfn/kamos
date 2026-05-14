@@ -137,15 +137,33 @@ class ErrorView extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: t.border2, style: BorderStyle.solid),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            message ?? l.errorGeneric,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'NotoSansJP',
-              fontSize: 14,
-              color: t.fg2,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                message ?? l.errorGeneric,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'NotoSansJP',
+                  fontSize: 14,
+                  color: t.fg2,
+                ),
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l.actionRetry.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'NotoSansJP',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.3,
+                    color: t.fgLink,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

@@ -21,7 +21,6 @@
 
   "searchHeader": "Discover",
   "searchPlaceholder": "Search breweries, beverages, prefectures.",
-  "searchRecent": "Recent searches",
   "searchNoResultsTitle": "No results",
   "searchNoResultsBody": "No matches. Try a different search.",
   "searchCategoryAll": "All",
@@ -58,7 +57,6 @@
   "checkInServingBottle": "Bottle",
   "checkInServingCan": "Can",
   "checkInServingOther": "Other",
-  "checkInSubmit": "Post",
   "checkInFirstToast": "First check-in saved. Kanpai!",
   "checkInPostFailed": "Could not post. Tap to retry.",
   "checkInPhotoLimitReached": "You can attach up to 4 photos.",
@@ -94,6 +92,12 @@
   "authVerifyExpiry": "The link expires in 24 hours. You can still use the app while unverified.",
   "authVerifyContinue": "Continue to KAMOS",
   "authVerifyResend": "Resend email",
+
+  "verifyEmailTitle": "Verifying your email",
+  "verifyEmailLoading": "Confirming your verification link…",
+  "verifyEmailSuccess": "Your email is verified.",
+  "verifyEmailFailure": "We could not verify this link. It may have expired.",
+  "verifyEmailBackToAuth": "Back to sign in",
 
   "profileEdit": "Edit profile",
   "profileSettings": "Settings",
@@ -134,8 +138,6 @@
   "collectionsCreateNew": "Create new collection",
   "collectionsNamePlaceholder": "Collection name",
   "collectionsPrivate": "Private",
-  "collectionsDefault": "Default collection",
-  "collectionsCustom": "Custom collection",
   "collectionsBottleCountOne": "{count} bottle",
   "@collectionsBottleCountOne": { "placeholders": { "count": { "type": "int" } } },
   "collectionsBottleCountOther": "{count} bottles",

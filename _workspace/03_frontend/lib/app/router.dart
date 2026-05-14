@@ -2,7 +2,7 @@
 //
 // Paths:
 //   /auth                          unauthenticated landing
-//   /auth/verify-email             post-registration banner
+//   /auth/verify-email             token-based email verification landing
 //   /                              feed (shell root)
 //   /search                        discover
 //   /check-in                      modal (needs a Beverage extra)
@@ -17,7 +17,9 @@
 //   /breweries/:id                 brewery detail
 //
 // Unauthenticated users are redirected to `/auth`; authenticated users on
-// `/auth` are redirected to `/`.
+// `/auth` are redirected to `/`. The `/auth/verify-email` route is exempt
+// from the unauth redirect so a verification deeplink works even when no
+// session token is present.
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +28,7 @@ import 'package:go_router/go_router.dart';
 import '../core/models/beverage.dart';
 import '../features/auth/providers/auth_state.dart';
 import '../features/auth/screens/auth_screen.dart';
+import '../features/auth/screens/verify_email_screen.dart';
 import '../features/beverages/screens/beverage_detail_screen.dart';
 import '../features/breweries/screens/brewery_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
@@ -48,14 +51,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.isLoading) return null;
       final path = state.uri.path;
       final atAuth = path.startsWith('/auth');
+      // The email-verification deeplink is always reachable, even when no
+      // session token is present (newly-registered users may not have signed
+      // in on this device yet).
+      final isVerifyEmail = path == '/auth/verify-email';
       if (!auth.isAuthenticated && !atAuth) return '/auth';
-      if (auth.isAuthenticated && atAuth) return '/';
+      if (auth.isAuthenticated && atAuth && !isVerifyEmail) return '/';
       return null;
     },
     routes: [
       GoRoute(
         path: '/auth',
         builder: (_, _) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: '/auth/verify-email',
+        builder: (_, state) => VerifyEmailScreen(
+          token: state.uri.queryParameters['token'] ?? '',
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) =>

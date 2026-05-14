@@ -3,16 +3,24 @@
 // SPEC §6.9: JWT is read from `flutter_secure_storage` only.
 // On 401 from any non-auth endpoint, clear the token. Routing reacts to the
 // auth state change via Riverpod and bounces to `/auth`.
+//
+// User-facing copy: the interceptor publishes an `ApiToastKind` on the
+// `apiToastBusProvider` for the two transport-level cases that warrant a
+// visible toast (`unauthorized`, `network`). The actual localized strings
+// (`errorUnauthorized`, `errorNetwork`) are rendered by the app root listening
+// to that bus — see `app.dart`.
 
 import 'package:dio/dio.dart';
 
 import 'api_exception.dart';
+import 'api_toast.dart';
 import '../storage/secure_storage.dart';
 
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({
     required this.storage,
     required this.onAuthExpired,
+    required this.onApiToast,
   });
 
   final SecureStorageService storage;
@@ -20,6 +28,11 @@ class AuthInterceptor extends Interceptor {
   /// Called once when a non-auth request returns 401. Clears stored token and
   /// notifies the auth controller to switch state.
   final void Function() onAuthExpired;
+
+  /// Called when the interceptor wants to surface a localized toast. The host
+  /// app translates the [ApiToastKind] into copy from `intl_*.arb` (i.e.
+  /// `errorUnauthorized` / `errorNetwork`).
+  final void Function(ApiToastKind kind) onApiToast;
 
   static const _authPaths = {
     '/v1/auth/login',
@@ -48,9 +61,18 @@ class AuthInterceptor extends Interceptor {
     final isAuthCall = _authPaths.any(path.startsWith);
 
     if (status == 401 && !isAuthCall) {
+      // Surface the localized toast BEFORE clearing the token so the router
+      // doesn't unmount the messenger out from under the snackbar.
+      onApiToast(ApiToastKind.unauthorized);
       // Fire-and-forget; the token clear is best-effort and the router can
       // react on the next provider read.
       storage.clearToken().then((_) => onAuthExpired());
+    } else if (status == 0 &&
+        (err.type == DioExceptionType.connectionTimeout ||
+            err.type == DioExceptionType.connectionError ||
+            err.type == DioExceptionType.sendTimeout ||
+            err.type == DioExceptionType.receiveTimeout)) {
+      onApiToast(ApiToastKind.network);
     }
 
     // Translate any Dio failure into an ApiException so downstream layers

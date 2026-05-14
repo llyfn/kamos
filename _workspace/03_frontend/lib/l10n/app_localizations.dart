@@ -196,12 +196,6 @@ abstract class AppLocalizations {
   /// **'Search breweries, beverages, prefectures.'**
   String get searchPlaceholder;
 
-  /// No description provided for @searchRecent.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent searches'**
-  String get searchRecent;
-
   /// No description provided for @searchNoResultsTitle.
   ///
   /// In en, this message translates to:
@@ -381,12 +375,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get checkInServingOther;
-
-  /// No description provided for @checkInSubmit.
-  ///
-  /// In en, this message translates to:
-  /// **'Post'**
-  String get checkInSubmit;
 
   /// No description provided for @checkInFirstToast.
   ///
@@ -579,6 +567,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resend email'**
   String get authVerifyResend;
+
+  /// No description provided for @verifyEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying your email'**
+  String get verifyEmailTitle;
+
+  /// No description provided for @verifyEmailLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming your verification link…'**
+  String get verifyEmailLoading;
+
+  /// No description provided for @verifyEmailSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email is verified.'**
+  String get verifyEmailSuccess;
+
+  /// No description provided for @verifyEmailFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not verify this link. It may have expired.'**
+  String get verifyEmailFailure;
+
+  /// No description provided for @verifyEmailBackToAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign in'**
+  String get verifyEmailBackToAuth;
 
   /// No description provided for @profileEdit.
   ///
@@ -801,18 +819,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Private'**
   String get collectionsPrivate;
-
-  /// No description provided for @collectionsDefault.
-  ///
-  /// In en, this message translates to:
-  /// **'Default collection'**
-  String get collectionsDefault;
-
-  /// No description provided for @collectionsCustom.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom collection'**
-  String get collectionsCustom;
 
   /// No description provided for @collectionsBottleCountOne.
   ///

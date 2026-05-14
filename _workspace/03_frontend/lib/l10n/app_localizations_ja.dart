@@ -57,9 +57,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get searchPlaceholder => '蔵元・銘柄・都道府県で検索';
 
   @override
-  String get searchRecent => '最近の検索';
-
-  @override
   String get searchNoResultsTitle => '該当なし';
 
   @override
@@ -158,9 +155,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInServingOther => 'その他';
 
   @override
-  String get checkInSubmit => '投稿';
-
-  @override
   String get checkInFirstToast => '最初のチェックイン。乾杯！';
 
   @override
@@ -255,6 +249,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get authVerifyResend => 'メールを再送';
+
+  @override
+  String get verifyEmailTitle => 'メールを認証中';
+
+  @override
+  String get verifyEmailLoading => '認証リンクを確認しています…';
+
+  @override
+  String get verifyEmailSuccess => 'メールが認証されました。';
+
+  @override
+  String get verifyEmailFailure => 'リンクを認証できませんでした。期限切れの可能性があります。';
+
+  @override
+  String get verifyEmailBackToAuth => 'サインインに戻る';
 
   @override
   String get profileEdit => 'プロフィール編集';
@@ -367,12 +376,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get collectionsPrivate => '非公開';
-
-  @override
-  String get collectionsDefault => 'デフォルト';
-
-  @override
-  String get collectionsCustom => 'カスタム';
 
   @override
   String collectionsBottleCountOne(int count) {

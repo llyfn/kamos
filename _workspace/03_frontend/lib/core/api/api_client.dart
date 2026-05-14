@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/providers/auth_state.dart';
 import 'api_config.dart';
+import 'api_toast.dart';
 import 'auth_interceptor.dart';
 
 final dioProvider = Provider<Dio>((ref) {
@@ -36,6 +37,9 @@ final dioProvider = Provider<Dio>((ref) {
         // The auth controller observes the token; calling logout() also
         // invalidates dependent providers.
         ref.read(authStateProvider.notifier).onUnauthorized();
+      },
+      onApiToast: (kind) {
+        ref.read(apiToastBusProvider.notifier).emit(kind);
       },
     ),
   );

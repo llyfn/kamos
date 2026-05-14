@@ -103,7 +103,7 @@ class CollectionsListScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  '${c.entryCount} · ${l.collectionsPrivate}',
+                                  '${c.entryCount == 1 ? l.collectionsBottleCountOne(c.entryCount) : l.collectionsBottleCountOther(c.entryCount)} · ${l.collectionsPrivate}',
                                   style: TextStyle(
                                       fontSize: 12, color: t.fg2),
                                 ),

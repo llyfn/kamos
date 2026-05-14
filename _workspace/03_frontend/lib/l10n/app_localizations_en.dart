@@ -57,9 +57,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchPlaceholder => 'Search breweries, beverages, prefectures.';
 
   @override
-  String get searchRecent => 'Recent searches';
-
-  @override
   String get searchNoResultsTitle => 'No results';
 
   @override
@@ -156,9 +153,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkInServingOther => 'Other';
-
-  @override
-  String get checkInSubmit => 'Post';
 
   @override
   String get checkInFirstToast => 'First check-in saved. Kanpai!';
@@ -258,6 +252,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authVerifyResend => 'Resend email';
+
+  @override
+  String get verifyEmailTitle => 'Verifying your email';
+
+  @override
+  String get verifyEmailLoading => 'Confirming your verification link…';
+
+  @override
+  String get verifyEmailSuccess => 'Your email is verified.';
+
+  @override
+  String get verifyEmailFailure =>
+      'We could not verify this link. It may have expired.';
+
+  @override
+  String get verifyEmailBackToAuth => 'Back to sign in';
 
   @override
   String get profileEdit => 'Edit profile';
@@ -372,12 +382,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get collectionsPrivate => 'Private';
-
-  @override
-  String get collectionsDefault => 'Default collection';
-
-  @override
-  String get collectionsCustom => 'Custom collection';
 
   @override
   String collectionsBottleCountOne(int count) {
