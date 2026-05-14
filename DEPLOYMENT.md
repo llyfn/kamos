@@ -7,9 +7,9 @@ Local-development and staging deployment notes for the KAMOS MVP. Production har
 | Tool | Version |
 |---|---|
 | Docker (Engine + Compose v2) | 24+ |
-| Go | 1.24+ |
+| Go | 1.26+ |
 | Flutter | stable channel |
-| PostgreSQL client (`psql`) | 15+ — used by `make db-migrate` |
+| PostgreSQL client (`psql`) | 18+ — used by `make db-migrate` |
 | Xcode (iOS build) | 15+ on macOS |
 | Android Studio / SDK | API 26+ |
 
@@ -39,6 +39,8 @@ Copy `_workspace/02_backend/api/.env.example` to `.env` at the repo root (or whe
 | `GOOGLE_CLIENT_SECRET` | Server-side only; **never ship to the Flutter app** | only if Google sign-in is enabled |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Verification email | **production** — dev logs the link instead |
 
+> **`local.env` auto-loading:** when `APP_ENV != "production"` the server walks up from CWD looking for `local.env` and loads it before reading env vars. Real env vars always win (godotenv is non-overriding). `local.env` is gitignored; commit `local.env.example` instead.
+
 Generate a JWT secret:
 
 ```sh
@@ -46,6 +48,8 @@ openssl rand -base64 48
 ```
 
 ## 4. Quick start — local
+
+### Option A — fully Dockerized
 
 ```sh
 # 1. start postgres + api (api builds via docker)
@@ -58,6 +62,17 @@ make db-migrate         # applies 001_initial.sql + 002_seed_taxonomy.sql
 cd _workspace/03_frontend
 flutter pub get
 flutter run --dart-define=KAMOS_API_BASE_URL=http://localhost:8080
+```
+
+### Option B — host Postgres 18, host Go
+
+```sh
+# Copy the template, then fill in JWT_SECRET and any other secrets.
+cp local.env.example local.env
+
+# Run the API against the local Postgres pointed at by DATABASE_URL in
+# local.env. The server auto-loads local.env in non-production.
+make api-run-local
 ```
 
 For Android emulator, replace `localhost` with `10.0.2.2`. For iOS simulator, `localhost` works.
@@ -148,10 +163,10 @@ curl -X POST http://localhost:8080/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"username":"smoketest","email":"smoke@example.com","password":"hunter2hunter2","display_name":"Smoke","locale":"en"}'
 
-# 2. login → capture JWT
+# 2. login → capture JWT (OAuth2-style response: access_token, token_type, expires_in)
 TOKEN=$(curl -sX POST http://localhost:8080/v1/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"smoke@example.com","password":"hunter2hunter2"}' | jq -r .token)
+  -d '{"email":"smoke@example.com","password":"hunter2hunter2"}' | jq -r .access_token)
 
 # 3. read taxonomy (category strings should be character-exact SPEC §2.1)
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/v1/categories
@@ -174,12 +189,15 @@ make down              docker compose down
 make db-migrate        Apply all SQL migrations
 make db-reset          DROP + recreate db (confirmation prompted)
 make api-run           Run Go API locally
-make api-test          go test ./...
+make api-run-local     Run Go API with local.env auto-sourced
+make api-test          go test ./... (unit only)
+make api-test-unit     Alias for api-test
+make api-test-int      go test -tags=integration (real Postgres 18)
 make api-build         go build ./...
 make flutter-run       Run Flutter app
 make flutter-test      flutter test
 make flutter-analyze   flutter analyze
-make check             Build + test backend, analyze + test frontend
+make check             Build + unit-test backend, integration when INTEGRATION_DATABASE_URL is set, analyze + test frontend
 ```
 
 ## 12. Production hardening checklist (post-MVP)
