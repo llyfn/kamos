@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kamos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kamos
+      POSTGRES_PASSWORD: kamos
+      POSTGRES_DB: kamos
+    ports:
+      - "5432:5432"
+    volumes:
+      - kamos_pgdata:/var/lib/postgresql/data
+      - ./_workspace/02_backend/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kamos -d kamos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./_workspace/02_backend/api
+      dockerfile: Dockerfile
+    container_name: kamos-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      APP_ENV: dev
+      APP_BASE_URL: http://localhost:8080
+      DATABASE_URL: postgres://kamos:kamos@postgres:5432/kamos?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-please-at-least-32-bytes-long-aaaa}
+      JWT_TTL: 720h
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  kamos_pgdata:
