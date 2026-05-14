@@ -136,7 +136,7 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 - Translucent overlays use `rgba(15, 35, 80, 0.5)` — kon-iro at 50%.
 
 ### Fixed elements
-- Bottom tab bar is always fixed (Flutter `BottomNavigationBar` analogue): 5 tabs — **Feed · Search · Check in · Collections · Profile**.
+- Bottom tab bar is always fixed (Flutter `BottomNavigationBar` analogue): 5 tabs — **Feed · Search · Check in · Lists · Me**. The center "Check in" tab is a raised circular Ai-iro button; the others are hairline icons.
 - Top app bar is **not** fixed by default — scrolls away — except on the Check-in flow where the action button must remain reachable.
 
 ---
@@ -176,18 +176,28 @@ preview/                   Cards rendered into the Design System tab
   type-display.html        ...etc
 
 ui_kits/
-  mobile/                  Flutter app recreation in HTML/JSX
-    README.md              Component map
-    index.html             Demo: live 5-tab app + beverage detail + check-in
+  mobile/                          Flutter app recreation in HTML/JSX
+    README.md                      Component map + SPEC compliance notes
+    index.html                     Demo: live 5-tab app + locale toggle + every flow rendered
     components/
-      Primitives.jsx       Avatar, Label, Stars, Btn, Chip, Card, Icon
-      Shell.jsx            Phone, TopBar, TabBar, Sheet
-      FeedScreen.jsx       Following feed with toast reaction
-      SearchScreen.jsx     Discover / search with category chips
-      BeverageScreen.jsx   Beverage detail
-      CheckInScreen.jsx    Modal check-in flow (rating + tags)
-      ProfileLists.jsx     Profile (Me) + Collections (Lists)
-      data.jsx             Sample catalog, feed, collections
+      data.jsx                     i18n catalog, breweries, feed, collections, follow requests, ME
+      Primitives.jsx               Avatar · Label · Stars · StarsInput (0.5 steps) · Btn · Chip · Card · Icon
+                                   EmptyState · LoadingState · ErrorState · PagingFooter
+                                   Toggle · FormField · TextField · TextArea · SegmentedControl
+                                   Row · PhotoTile · Badge · LocaleContext / useLocale
+      Shell.jsx                    Phone frame, TopBar, TabBar, Sheet
+      FeedScreen.jsx               Following feed with toast reaction + bell badge → inbox
+      SearchScreen.jsx             Discover · category chips (exact SPEC strings) · recent + no-results
+      BeverageScreen.jsx           Beverage detail · link to brewery · CTAs to check-in + collection picker
+      CheckInScreen.jsx            Modal check-in flow · 0.5-step rating · counter · 4-photo grid · price · purchase · serving
+      ProfileLists.jsx             Lists (Collections) + Profile (Me) with locale toggle
+      AuthScreen.jsx               Sign in · Create account · Forgot password · Verify email · Google OAuth
+      EditProfileScreen.jsx        Display name + bio + avatar
+      SettingsScreen.jsx           Email + password · privacy toggle · locale · account-deletion confirm sheet
+      InboxScreen.jsx              Follow request inbox · Approve / Decline
+      BreweryScreen.jsx            Brewery detail · listing of all beverages
+      CollectionPickerSheet.jsx    Multi-select sheet with inline new-collection
+      CollectionDetailScreen.jsx   Collection contents · rename + delete with confirmation
 
 fonts/                     (empty — Google Fonts loaded via colors_and_type.css)
 ```
@@ -199,9 +209,48 @@ fonts/                     (empty — Google Fonts loaded via colors_and_type.cs
 
 ---
 
+## COVERAGE — SPEC features × JSX files
+
+| SPEC domain | Surfaces | Files |
+|---|---|---|
+| Auth (§3.1) | Sign in, Create account, Forgot password, Verify email, Google OAuth | `AuthScreen.jsx` |
+| User profile (§3.2) | Profile view, stats, locale toggle | `ProfileLists.jsx::ProfileScreen` |
+| Account actions (§3.3) | Edit display name + bio + avatar; change email + password; delete account with 30-day hold | `EditProfileScreen.jsx`, `SettingsScreen.jsx` |
+| Privacy mode (§5.1) | Public/Private toggle, private pill on profile | `SettingsScreen.jsx`, `ProfileLists.jsx` |
+| Beverage catalog (§2.1–§2.2) | Category overline + chips with exact i18n strings | `data.jsx::CATEGORY_LABELS`, `SearchScreen.jsx`, `BeverageScreen.jsx` |
+| Beverage detail (§7) | Catalog info, avg rating, aggregated flavor, recent check-ins, brewery link | `BeverageScreen.jsx` |
+| Brewery detail (§2.3, §7) | i18n name + region + founded + website + beverage list | `BreweryScreen.jsx` |
+| Check-in (§4) | 0.5-step rating, 500-char review, ≤4 photos, price + currency, per-serving / per-bottle, purchase type, serving style | `CheckInScreen.jsx` |
+| Rating widget (§4.2) | 0.5-step input + display | `Primitives.jsx::StarsInput` + `Primitives.jsx::Stars` |
+| Toast reactions (§5.3) | Kanpai-mark toggle with animation | `FeedScreen.jsx::FeedItem` |
+| Feed (§5.2) | Reverse-chronological list + cursor pagination footer | `FeedScreen.jsx`, `Primitives.jsx::PagingFooter` |
+| Follow-request inbox (§5.4) | Approve / Decline list, badge on bell | `InboxScreen.jsx`, `Primitives.jsx::Badge` |
+| Collections (§6) | List of collections, default `Inventory` + `Wishlist`, custom lists | `ProfileLists.jsx::ListsScreen` |
+| Collection detail (§6) | Contents, rename, delete with confirmation | `CollectionDetailScreen.jsx` |
+| Collection picker (§6.3) | Multi-select sheet with inline create | `CollectionPickerSheet.jsx` |
+| Search / discovery (§7) | Full-text search across i18n names; category filter chips; recent + no-results | `SearchScreen.jsx` |
+| i18n (§8) | en / ja / ko at runtime; `ko→en`, `ja→en` fallback | `data.jsx::t` + `Primitives.jsx::useLocale` |
+| Empty / loading / error | Calm type-driven empty states; hairline spinner; retryable error | `Primitives.jsx::EmptyState/LoadingState/ErrorState` |
+
+---
+
+## i18n layout check
+
+Every screen was walked across `en`, `ja`, and `ko` via the demo's locale toggle. Notes:
+
+- **Category chips on Search** are the widest surface. With four chips in a single horizontal row, `Nihonshu (Sake)` overflows the visible area on a 390-wide phone in EN. Mitigation already in place: the chip strip uses `overflow-x: auto` so it scrolls — no truncation, no line-break. Acceptable but flagged for Flutter; consider wrapping to two rows if Flutter test devices show a worse cut-off.
+- **Buttons** are widest in KO (`로그인으로 돌아가기`, `비밀번호 재설정`). Currently fit within the 280-wide Auth form column. No truncation in any tested locale.
+- **CheckInScreen segmented controls** (per-serving / per-bottle) are widest in EN (`Per serving` / `Per bottle`). They fit on 390-wide phones. JA (`一杯` / `一本`) is narrowest; the control auto-sizes.
+- **Profile stat tiles** use `Followers / フォロワー / 팔로워` — all fit. Korean is the longest at 3 chars on the overline; still fine.
+- **No proper-noun line-breaks** are forced. The beverage display name (`Shippori Mincho`) naturally wraps on word boundaries; we never split a kanji compound.
+
+---
+
 ## Open questions / caveats for the user
 
-- 🟡 **Display font (Shippori Mincho)** is a substitution recommendation — please confirm or specify your preferred mincho.
-- 🟡 **Icon set (Phosphor)** is a substitution — confirm or replace with the real Flutter set.
-- 🟡 The brand has a single warm accent (terracotta **Koh**) retained from the original logo lineage. We use it only for the *toast* reaction. Tell us if you want it cut entirely.
-- 🟡 No real product screenshots exist (no codebase, spec only) — every screen below is a designer's interpretation of the spec, not a recreation.
+- 🟡 **Display font (Shippori Mincho)** is a substitution recommendation — please confirm or specify your preferred mincho. Swap by changing `--font-display` in `colors_and_type.css`.
+- 🟡 **Icon set (Phosphor)** is a substitution — confirm or replace with the real Flutter set. The kit ships a small inline SVG icon set (`Primitives.jsx::Icon`) to stay self-contained; Flutter will pick its own family.
+- 🟡 **Koh accent retention** — the brand has a single warm accent (terracotta Koh `#C97B5A`), retained from the original logo lineage. We use it only for the *toast* reaction and the Wishlist glyph background. Tell us if you want it cut entirely (single-hue brand) — `colors_and_type.css::--c-koh` would be removed and Wishlist would default to Kinari.
+- 🟡 **Toast / kanpai mark in i18n** — the icon is glyph-free; the word "toast" only appears in microcopy. Confirm the localised verb (currently rendered passively as part of feed cards, not as a button label).
+- 🟡 **Star half-step glyph (`⯨`)** — the U+2BE8 half-star is used by `Stars` and `StarsInput` to render 0.5 increments. It renders inconsistently across operating systems. Flutter should substitute a real half-fill icon path (Material `star_half`, Phosphor `Star fill 50%`, or a custom SVG).
+- 🟡 **Photo handling** — the kit shows placeholder tiles; real camera roll integration is Flutter's call. The 4-photo cap is enforced UI-side in `CheckInScreen` and must also be enforced server-side per SPEC §4.1.

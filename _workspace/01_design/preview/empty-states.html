@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Empty / Loading / Error states</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 280px); gap: 18px; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border-1); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-1); padding: 18px; min-height: 240px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  }
+  .glyph { font-family: var(--font-display); font-size: 48px; color: var(--c-gray-300); line-height: 1; margin-bottom: 8px; }
+  .title { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--fg-1); margin-bottom: 6px; }
+  .body  { font-family: var(--font-body); font-size: 14px; color: var(--fg-2); line-height: 1.55; max-width: 220px; }
+  .lbl   { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 10px; }
+  .spinner {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--c-gray-200); border-top-color: var(--c-ai);
+    animation: kspin 700ms linear infinite;
+  }
+  @keyframes kspin { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+  .err {
+    border: 1px dashed var(--border-2); border-radius: var(--radius-md);
+    padding: 20px 16px; font-family: var(--font-body); font-size: 14px; color: var(--fg-2);
+    width: 100%; box-sizing: border-box;
+  }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div>
+      <div class="card">
+        <div class="glyph">醸</div>
+        <div class="title">No check-ins yet</div>
+        <div class="body">Follow some people, or tap + to log your first.</div>
+      </div>
+      <div class="lbl">empty · feed</div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="spinner"></div>
+        <div class="body" style="margin-top: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--fg-3);">Loading more</div>
+      </div>
+      <div class="lbl">loading · cursor footer</div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="err">Could not load. Tap to retry.</div>
+      </div>
+      <div class="lbl">error · retryable</div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="glyph">—</div>
+        <div class="title">No results</div>
+        <div class="body">Try a different search.</div>
+      </div>
+      <div class="lbl">empty · search no-results</div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="glyph">∅</div>
+        <div class="title">Empty collection</div>
+        <div class="body">Add beverages from a beverage page or check-in screen.</div>
+      </div>
+      <div class="lbl">empty · collection</div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="glyph">封</div>
+        <div class="title">Verify your email</div>
+        <div class="body">We sent a link valid for 24 hours.</div>
+      </div>
+      <div class="lbl">prompt · email verification</div>
+    </div>
+  </div>
+</body>
+</html>
