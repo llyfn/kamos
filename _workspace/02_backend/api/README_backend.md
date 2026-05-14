@@ -47,7 +47,8 @@ migrations/                 (mirror of ../db/migrations)
 | Collections + entries | 8 |
 | Search | 1 |
 | Taxonomy + feedback | 3 |
-| **Total** | **43** |
+| Venues (Phase 4) | 1 |
+| **Total** | **44** |
 
 Every list endpoint returns the canonical `{ items, next_cursor, has_more }` shape. Error responses are uniformly `{ "error": "...", "code": "..." }`.
 

@@ -27,6 +27,7 @@ type Repos struct {
 	Taxonomy      *TaxonomyRepo
 	RefreshTokens *RefreshTokenRepo
 	PhotoUploads  *PhotoUploadRepo
+	Venues        *VenueRepo
 }
 
 // New wires the bundle.
@@ -44,6 +45,7 @@ func New(db *pgxpool.Pool) *Repos {
 		Taxonomy:      &TaxonomyRepo{db: db},
 		RefreshTokens: &RefreshTokenRepo{db: db},
 		PhotoUploads:  &PhotoUploadRepo{db: db},
+		Venues:        &VenueRepo{db: db},
 	}
 }
 

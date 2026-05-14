@@ -15,6 +15,7 @@ import (
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/email"
+	"github.com/kamos/api/internal/foursquare"
 	"github.com/kamos/api/internal/handlers"
 	"github.com/kamos/api/internal/jobs"
 	"github.com/kamos/api/internal/observability"
@@ -119,9 +120,21 @@ func main() {
 		log.Info("mailer disabled (RESEND_API_KEY or EMAIL_FROM unset) — using LogMailer")
 	}
 
+	// Phase 4 — Foursquare Places client. Empty FOURSQUARE_API_KEY puts the
+	// client in Disabled mode; GET /v1/venues/search returns 503
+	// VENUE_SEARCH_DISABLED in that case. The check-in venue.foursquare_id
+	// upsert path is independent of this client and still works.
+	fsq := foursquare.New(cfg.FoursquareAPIKey)
+	if fsq.Disabled() {
+		log.Info("foursquare disabled (FOURSQUARE_API_KEY unset)")
+	} else {
+		log.Info("foursquare enabled")
+	}
+
 	h := handlers.New(cfg, log, repos, signer, google).
 		WithStorage(store).
-		WithMailer(mailer)
+		WithMailer(mailer).
+		WithFoursquare(fsq)
 	mux := server.New(log, signer, h)
 
 	// Background-job scheduler — four maintenance jobs registered before

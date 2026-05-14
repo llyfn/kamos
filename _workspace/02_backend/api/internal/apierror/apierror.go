@@ -39,6 +39,13 @@ var (
 	ErrUploadNotCompleted = errors.New("upload_not_completed")
 	// ErrNotImplemented is the disabled-storage no-op refusal.
 	ErrNotImplemented = errors.New("not_implemented")
+	// ErrVenueSearchDisabled is returned by GET /v1/venues/search when the
+	// server has no Foursquare API key — the Phase 4 vendor-gated mirror of
+	// ErrStorageDisabled. The handler writes 503 VENUE_SEARCH_DISABLED.
+	ErrVenueSearchDisabled = errors.New("venue_search_disabled")
+	// ErrVenueRateLimited surfaces a Foursquare 429 to the handler. The
+	// handler writes 503 VENUE_RATE_LIMITED with a Retry-After header.
+	ErrVenueRateLimited = errors.New("venue_rate_limited")
 )
 
 // APIError is the body shape every error response uses.
@@ -95,6 +102,12 @@ func WriteFrom(w http.ResponseWriter, log *slog.Logger, op string, err error) {
 	case errors.Is(err, ErrStorageDisabled), errors.Is(err, ErrNotImplemented):
 		WriteError(w, http.StatusServiceUnavailable, "STORAGE_DISABLED",
 			"photo uploads not configured on this server")
+	case errors.Is(err, ErrVenueSearchDisabled):
+		WriteError(w, http.StatusServiceUnavailable, "VENUE_SEARCH_DISABLED",
+			"venue search not configured on this server")
+	case errors.Is(err, ErrVenueRateLimited):
+		WriteError(w, http.StatusServiceUnavailable, "VENUE_RATE_LIMITED",
+			"venue search is rate limited")
 	case errors.Is(err, ErrUploadNotCompleted):
 		WriteError(w, http.StatusConflict, "UPLOAD_NOT_COMPLETED",
 			"upload has not been completed")

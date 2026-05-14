@@ -35,6 +35,17 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "beverage not found")
 		return
 	}
+
+	// Phase 4 — optional venue tag. Three accepted shapes (see domain doc):
+	//   { id }                                  → look up; 404 if missing.
+	//   { foursquare_id, name, ... }            → upsert by fsq id.
+	//   anything else (incl. empty {})          → silent drop.
+	venueID, err := h.resolveCheckinVenue(r, req.Venue)
+	if err != nil {
+		h.writeErr(w, "CreateCheckin venue", err)
+		return
+	}
+
 	p := repository.CreateCheckinParams{
 		UserID:       uid,
 		BeverageID:   req.BeverageID,
@@ -44,6 +55,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		ServingStyle: req.ServingStyle,
 		PhotoURLs:    req.Photos,
 		TagSlugs:     req.Tags,
+		VenueID:      venueID,
 	}
 	if req.Price != nil {
 		amt := req.Price.Amount
@@ -278,4 +290,40 @@ func authedIDOrEmpty(r *http.Request) string {
 		return u.ID
 	}
 	return ""
+}
+
+// resolveCheckinVenue translates the optional CheckinVenue payload into a
+// venue UUID for the check-in row. nil return means "no venue" (the FK
+// stays NULL). Returns ErrNotFound if `id` was supplied but the venue
+// doesn't exist; that maps to 404 via writeErr.
+func (h *Handler) resolveCheckinVenue(r *http.Request, v *domain.CheckinVenue) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	if v.ID != nil && *v.ID != "" {
+		got, err := h.Repos.Venues.GetByID(r.Context(), *v.ID)
+		if err != nil {
+			return nil, err
+		}
+		id := got.ID
+		return &id, nil
+	}
+	if v.FoursquareID != nil && *v.FoursquareID != "" && v.Name != nil && *v.Name != "" {
+		id, err := h.Repos.Venues.UpsertByFoursquareID(r.Context(), repository.UpsertVenueInput{
+			FoursquareID: *v.FoursquareID,
+			Name:         *v.Name,
+			Address:      v.Address,
+			Lat:          v.Lat,
+			Lng:          v.Lng,
+			Country:      v.Country,
+			Prefecture:   v.Prefecture,
+			Locality:     v.Locality,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &id, nil
+	}
+	// Silent drop — incomplete venue payload (e.g., empty object).
+	return nil, nil
 }

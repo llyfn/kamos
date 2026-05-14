@@ -97,6 +97,12 @@ type Config struct {
 	// logs the verification link instead of sending an email (dev default).
 	ResendAPIKey string
 	EmailFrom    string
+
+	// Phase 4 — Foursquare Places API for the optional venue tag on
+	// check-ins. Empty value means the feature is OFF: the search endpoint
+	// returns 503 VENUE_SEARCH_DISABLED; check-in venue.foursquare_id
+	// payloads still succeed (the upsert path does not need the API key).
+	FoursquareAPIKey string
 }
 
 // Load reads env vars and returns a Config, erroring on missing required
@@ -126,6 +132,7 @@ func Load() (*Config, error) {
 		R2PublicBaseURL:   os.Getenv("R2_PUBLIC_BASE_URL"),
 		ResendAPIKey:      os.Getenv("RESEND_API_KEY"),
 		EmailFrom:         os.Getenv("EMAIL_FROM"),
+		FoursquareAPIKey:  os.Getenv("FOURSQUARE_API_KEY"),
 	}
 
 	// Access-token TTL. Phase 2 (refresh-tokens): default lowered from 720h

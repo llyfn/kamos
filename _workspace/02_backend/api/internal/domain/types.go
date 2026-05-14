@@ -381,14 +381,62 @@ type Price struct {
 
 // CreateCheckinRequest — POST /v1/check-ins.
 type CreateCheckinRequest struct {
-	BeverageID    string   `json:"beverage_id"`
-	Rating        *float64 `json:"rating,omitempty"`
-	Review        *string  `json:"review,omitempty"`
-	Tags          []string `json:"tags,omitempty"` // flavor_tag slugs
-	Photos        []string `json:"photos,omitempty"`
-	Price         *Price   `json:"price,omitempty"`
-	PurchaseType  *string  `json:"purchase_type,omitempty"`
-	ServingStyle  *string  `json:"serving_style,omitempty"`
+	BeverageID    string        `json:"beverage_id"`
+	Rating        *float64      `json:"rating,omitempty"`
+	Review        *string       `json:"review,omitempty"`
+	Tags          []string      `json:"tags,omitempty"` // flavor_tag slugs
+	Photos        []string      `json:"photos,omitempty"`
+	Price         *Price        `json:"price,omitempty"`
+	PurchaseType  *string       `json:"purchase_type,omitempty"`
+	ServingStyle  *string       `json:"serving_style,omitempty"`
+	// Venue is the optional Phase-4 venue tag. Three shapes are accepted:
+	//   - { id } existing venue UUID → attach as-is.
+	//   - { foursquare_id, name, ... } Foursquare hit → upsert by fsq id.
+	//   - {} / null → ignored (silent drop). This keeps the contract
+	//     permissive so Flutter clients on older builds can submit empty
+	//     objects without erroring.
+	Venue *CheckinVenue `json:"venue,omitempty"`
+}
+
+// CheckinVenue is the optional venue payload on POST /v1/check-ins. See
+// CreateCheckinRequest.Venue for the three accepted shapes.
+type CheckinVenue struct {
+	ID           *string  `json:"id,omitempty"`
+	FoursquareID *string  `json:"foursquare_id,omitempty"`
+	Name         *string  `json:"name,omitempty"`
+	Address      *string  `json:"address,omitempty"`
+	Lat          *float64 `json:"lat,omitempty"`
+	Lng          *float64 `json:"lng,omitempty"`
+	Country      *string  `json:"country,omitempty"`
+	Prefecture   *string  `json:"prefecture,omitempty"`
+	Locality     *string  `json:"locality,omitempty"`
+}
+
+// Venue is the full DB-backed venue record. Currently only exposed via the
+// CheckinVenue upsert + the embedded VenueRef projection on check-ins; a
+// future phase may add a public GET /v1/venues/{id} once the value is clear.
+type Venue struct {
+	ID           string    `json:"id"`
+	FoursquareID *string   `json:"foursquare_id,omitempty"`
+	Name         string    `json:"name"`
+	Address      *string   `json:"address,omitempty"`
+	Lat          *float64  `json:"lat,omitempty"`
+	Lng          *float64  `json:"lng,omitempty"`
+	Country      *string   `json:"country,omitempty"`
+	Prefecture   *string   `json:"prefecture,omitempty"`
+	Locality     *string   `json:"locality,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// VenueRef is the lightweight projection embedded on Checkin / FeedItem.
+// Feed cards render "at Daikoku, Tokyo" — id + name + locality + country is
+// enough; the full Venue is not.
+type VenueRef struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Locality *string `json:"locality,omitempty"`
+	Country  *string `json:"country,omitempty"`
 }
 
 var (
@@ -521,6 +569,7 @@ type Checkin struct {
 	Price        *Price         `json:"price,omitempty"`
 	PurchaseType *string        `json:"purchase_type,omitempty"`
 	ServingStyle *string        `json:"serving_style,omitempty"`
+	Venue        *VenueRef      `json:"venue,omitempty"`
 	Toasts       int            `json:"toasts"`
 	YouToasted   bool           `json:"you_toasted"`
 	CreatedAt    time.Time      `json:"created_at"`
@@ -575,6 +624,7 @@ type FeedItem struct {
 	Toasts     int         `json:"toasts"`
 	YouToasted bool        `json:"you_toasted"`
 	PhotoCount int         `json:"photo_count"`
+	Venue      *VenueRef   `json:"venue,omitempty"`
 	CreatedAt  time.Time   `json:"created_at"`
 }
 

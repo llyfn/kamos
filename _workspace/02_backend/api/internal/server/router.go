@@ -121,6 +121,10 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 			// Uploads — Phase 3 presigned PUT flow.
 			r.Post("/uploads/photo-presign", h.PhotoPresign)
 
+			// Venues — Phase 4 Foursquare-backed search proxy. 503
+			// VENUE_SEARCH_DISABLED when FOURSQUARE_API_KEY is unset.
+			r.Get("/venues/search", h.VenueSearch)
+
 			// Social.
 			r.Post("/users/{username}/follow", h.Follow)
 			r.Delete("/users/{username}/follow", h.Unfollow)
