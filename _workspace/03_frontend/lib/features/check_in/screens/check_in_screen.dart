@@ -18,6 +18,7 @@ import '../../../core/i18n/beverage_name.dart';
 import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/checkin.dart';
+import '../../../core/models/flavor_tag.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
@@ -43,19 +44,17 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   String? _purchase;
   String? _serving;
 
-  // STUB: tag selection is by english label until /v1/flavor-tags is queried.
-  // The future-version queries `flavorTagsProvider` for the canonical list
-  // and uses tag.slug as the value sent to the server. For MVP, we still
-  // POST these strings — the backend treats them as tag slugs.
-  // NOTE: clean wiring is part of the qa-inspector follow-ups.
-  final _tagDimensions = const {
-    'flavorSweetness': ['Dry', 'Off-dry', 'Sweet', 'Very sweet'],
-    'flavorBody': ['Light', 'Medium', 'Full'],
-    'flavorAcidity': ['Low', 'Crisp', 'Bright', 'Sharp'],
-    'flavorCharacter':
-        ['Fruity', 'Floral', 'Earthy', 'Umami', 'Smoky', 'Nutty', 'Woody'],
-    'flavorFinish': ['Short', 'Clean', 'Lingering', 'Warming'],
-  };
+  // Server-canonical dimensions, in display order. The labels for each tag are
+  // resolved from `flavorTagsProvider` and rendered per-locale via
+  // `resolveI18n`. The selected values stored in `_tags` are slugs (sent to
+  // the server as-is in the check-in POST body).
+  static const _dimensionOrder = [
+    'sweetness',
+    'body',
+    'acidity',
+    'character',
+    'finish',
+  ];
 
   @override
   void dispose() {
@@ -123,7 +122,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       final err = ref.read(checkInControllerProvider).error;
       if (err != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err)),
+          SnackBar(content: Text(l.checkInPostFailed)),
         );
       }
     }
@@ -142,7 +141,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         ? resolveI18n(widget.beverage.category.labelI18n, locale)
         : categoryLabel(context, slug);
 
-    final canPost = !state.isSubmitting && _review.text.length <= 500;
+    final reviewTooLong = _review.text.length > 500;
+    final canPost = !state.isSubmitting && !reviewTooLong;
 
     return Scaffold(
       appBar: AppBar(
@@ -171,7 +171,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : Text(l.checkInSubmit),
+                  : Text(l.actionPost),
             ),
           ),
         ],
@@ -253,48 +253,26 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
             TextField(
               controller: _review,
               maxLength: 500,
-              maxLengthEnforcement: MaxLengthEnforcement.enforced,
+              // SPEC §6.4 cap is 500 chars. We allow the field to momentarily
+              // exceed so `checkInReviewTooLong` can render as the validator
+              // error; the submit button is also gated on `!reviewTooLong`.
+              maxLengthEnforcement: MaxLengthEnforcement.none,
               maxLines: 4,
               minLines: 3,
               decoration: InputDecoration(
                 hintText: l.checkInReviewPlaceholder,
+                errorText: reviewTooLong ? l.checkInReviewTooLong : null,
               ),
               onChanged: (_) => setState(() {}),
             ),
             _Section(text: l.checkInFlavorTags),
-            for (final entry in _tagDimensions.entries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        _tagDimensionLabel(l, entry.key).toUpperCase(),
-                        style: TextStyle(
-                          fontFamily: 'NotoSansJP',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.3,
-                          color: t.fg3,
-                        ),
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: entry.value
-                          .map((tag) => KamosChip(
-                                label: tag,
-                                selected: _tags.contains(tag),
-                                onTap: () => _toggleTag(tag),
-                              ))
-                          .toList(),
-                    ),
-                  ],
-                ),
-              ),
+            _FlavorTagPicker(
+              selected: _tags,
+              locale: locale,
+              dimensionOrder: _dimensionOrder,
+              dimensionLabel: (key) => _dimensionLabel(l, key),
+              onToggle: _toggleTag,
+            ),
             _Section(text: l.checkInPhotosLabel),
             GridView.count(
               shrinkWrap: true,
@@ -402,21 +380,104 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     );
   }
 
-  String _tagDimensionLabel(AppLocalizations l, String key) {
-    switch (key) {
-      case 'flavorSweetness':
+  String _dimensionLabel(AppLocalizations l, String dimension) {
+    switch (dimension) {
+      case 'sweetness':
         return l.flavorSweetness;
-      case 'flavorBody':
+      case 'body':
         return l.flavorBody;
-      case 'flavorAcidity':
+      case 'acidity':
         return l.flavorAcidity;
-      case 'flavorCharacter':
+      case 'character':
         return l.flavorCharacter;
-      case 'flavorFinish':
+      case 'finish':
         return l.flavorFinish;
       default:
-        return key;
+        return dimension;
     }
+  }
+}
+
+/// Renders flavor-tag chips grouped by `dimension`, with locale-resolved
+/// labels. The list is fetched from `/v1/flavor-tags` via `flavorTagsProvider`.
+/// `selected` holds tag slugs.
+class _FlavorTagPicker extends ConsumerWidget {
+  const _FlavorTagPicker({
+    required this.selected,
+    required this.locale,
+    required this.dimensionOrder,
+    required this.dimensionLabel,
+    required this.onToggle,
+  });
+
+  final Set<String> selected;
+  final String locale;
+  final List<String> dimensionOrder;
+  final String Function(String dimension) dimensionLabel;
+  final void Function(String slug) onToggle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    final tagsAsync = ref.watch(flavorTagsProvider);
+    return tagsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: SizedBox(
+          height: 18,
+          width: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (tags) {
+        // Group tags by dimension, preserving server order within each group.
+        final byDimension = <String, List<FlavorTag>>{};
+        for (final tag in tags) {
+          byDimension.putIfAbsent(tag.dimension, () => []).add(tag);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final dim in dimensionOrder)
+              if ((byDimension[dim] ?? const []).isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          dimensionLabel(dim).toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: 'NotoSansJP',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.3,
+                            color: t.fg3,
+                          ),
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final tag in byDimension[dim]!)
+                            KamosChip(
+                              label: resolveI18n(tag.name, locale),
+                              selected: selected.contains(tag.slug),
+                              onTap: () => onToggle(tag.slug),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+        );
+      },
+    );
   }
 }
 
