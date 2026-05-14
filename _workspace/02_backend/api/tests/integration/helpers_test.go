@@ -107,14 +107,32 @@ WHERE schemaname = 'public'
 
 // newServer builds the full chi router with real repositories and starts
 // it on an httptest server. The caller is responsible for srv.Close().
+//
+// Rate limiting is OFF by default so cross-cutting integration tests
+// (which fire dozens of requests from a single localhost IP in a tight
+// loop) don't flake on the production limits. Tests that *want* the
+// limiter enabled call newServerWithRateLimit.
 func newServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return buildServer(t, true /*disableRateLimit*/)
+}
+
+// newServerWithRateLimit builds the same router with rate limiting
+// enabled — used by ratelimit_integration_test.go.
+func newServerWithRateLimit(t *testing.T) *httptest.Server {
+	t.Helper()
+	return buildServer(t, false)
+}
+
+func buildServer(t *testing.T, disableRateLimit bool) *httptest.Server {
 	t.Helper()
 	p := getPool(t)
 	cfg := &config.Config{
-		AppBaseURL: "http://localhost",
-		JWTSecret:  "integration-secret-please-replace-aaaaaaaaaaaa",
-		JWTTTL:     time.Hour,
-		Env:        "test",
+		AppBaseURL:        "http://localhost",
+		JWTSecret:         "integration-secret-please-replace-aaaaaaaaaaaa",
+		JWTTTL:            time.Hour,
+		Env:               "test",
+		RateLimitDisabled: disableRateLimit,
 	}
 	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))

@@ -29,6 +29,7 @@ var (
 	ErrFollowSelf        = errors.New("follow_self")
 	ErrTokenExpired      = errors.New("token_expired")
 	ErrInvalidCredential = errors.New("invalid_credential")
+	ErrRateLimited       = errors.New("rate_limited")
 )
 
 // APIError is the body shape every error response uses.
@@ -80,6 +81,8 @@ func WriteFrom(w http.ResponseWriter, log *slog.Logger, op string, err error) {
 		WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 	case errors.Is(err, ErrTokenExpired):
 		WriteError(w, http.StatusGone, "TOKEN_EXPIRED", "token expired")
+	case errors.Is(err, ErrRateLimited):
+		WriteError(w, http.StatusTooManyRequests, "RATE_LIMITED", "rate_limited")
 	default:
 		if log != nil {
 			log.Error("internal error", "op", op, "err", err)

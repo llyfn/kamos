@@ -13,11 +13,31 @@ import (
 )
 
 // New constructs the HTTP handler tree.
+//
+// Middleware order:
+//   - RequestID   — first so subsequent middleware can log it.
+//   - Trace       — span starts before recover/log so panics show up in OTel.
+//   - RecoverWithSentry — converts panics to 500s and forwards to Sentry.
+//   - AccessLog   — logs the final status code.
+//   - RateLimitByIP — global; rejects abusive callers before any business logic.
+//
+// Stricter per-group limits (auth brute-force / per-user fairness) layer
+// inside their respective r.Route / r.Group blocks below.
 func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.Recover(log))
+	r.Use(middleware.Trace)
+	r.Use(middleware.RecoverWithSentry(log))
 	r.Use(middleware.AccessLog(log))
+	// Global IP-based rate limit. 30 rps, burst 60 — well above any
+	// legitimate single-client traffic, low enough to throttle scrapers.
+	// RATE_LIMIT_DISABLED=1 bypasses the limit entirely (test runs,
+	// localhost stress checks); the integration suite and the README
+	// document this. Production must leave RATE_LIMIT_DISABLED unset.
+	rateLimited := h.Cfg == nil || !h.Cfg.RateLimitDisabled
+	if rateLimited {
+		r.Use(middleware.RateLimitByIP(log, 30, 60))
+	}
 
 	// Health. Expose both /health (project convention) and /healthz (k8s
 	// convention, also documented in DEPLOYMENT.md §6 and used by the
@@ -31,8 +51,12 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 
 	r.Route("/v1", func(r chi.Router) {
 
-		// Auth — all public.
+		// Auth — all public. Stricter per-IP cap to mitigate
+		// brute-force / enumeration against /v1/auth/* (5 rps, burst 10).
 		r.Route("/auth", func(r chi.Router) {
+			if rateLimited {
+				r.Use(middleware.RateLimitByIP(log, 5, 10))
+			}
 			r.Post("/register", h.Register)
 			r.Post("/login", h.Login)
 			r.Post("/google", h.GoogleLogin)
@@ -67,9 +91,13 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 			r.Get("/check-ins/{id}", h.GetCheckin)
 		})
 
-		// Authed surface.
+		// Authed surface. Per-user limit on top of the global IP limit
+		// (60 rps, burst 120 — comfortable for power users).
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(signer))
+			if rateLimited {
+				r.Use(middleware.RateLimitByUser(log, 60, 120))
+			}
 
 			r.Get("/users/me", h.GetMe)
 			r.Patch("/users/me", h.UpdateMe)

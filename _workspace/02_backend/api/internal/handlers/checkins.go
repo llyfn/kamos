@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -62,6 +63,8 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin reload", err)
 		return
 	}
+	// Business metric for the OTel meter. No-op when OTel is disabled.
+	observability.IncCheckinsCreated(r.Context())
 	apierror.WriteJSON(w, http.StatusCreated, out)
 }
 

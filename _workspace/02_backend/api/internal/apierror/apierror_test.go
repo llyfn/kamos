@@ -78,6 +78,7 @@ func TestWriteFromSentinels(t *testing.T) {
 		{"bad_request", ErrBadRequest, http.StatusBadRequest, "BAD_REQUEST"},
 		{"invalid_credential", ErrInvalidCredential, http.StatusUnauthorized, "INVALID_CREDENTIAL"},
 		{"token_expired", ErrTokenExpired, http.StatusGone, "TOKEN_EXPIRED"},
+		{"rate_limited", ErrRateLimited, http.StatusTooManyRequests, "RATE_LIMITED"},
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for _, tc := range cases {
