@@ -1,0 +1,203 @@
+// KAMOS — Settings screen (SPEC §3.3, §5.1, §8).
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/theme.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/state_views.dart';
+import '../../auth/providers/auth_state.dart';
+import '../providers/profile_providers.dart';
+import '../repository/profile_repository.dart';
+
+class SettingsScreen extends ConsumerStatefulWidget {
+  const SettingsScreen({super.key});
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    final async = ref.watch(meProvider);
+    return Scaffold(
+      appBar: AppBar(title: Text(l.profileSettings)),
+      body: async.when(
+        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
+        error: (e, _) => Center(child: ErrorView(message: l.errorGeneric)),
+        data: (me) {
+          return ListView(
+            children: [
+              _SectionTitle(l.settingsAccount),
+              _Row(
+                label: l.settingsEmail,
+                value: me.user.email ?? '',
+                onTap: () {},
+              ),
+              _Row(
+                label: l.settingsEmailVerification,
+                value: me.user.emailVerified
+                    ? l.settingsEmailVerified
+                    : l.settingsEmailPending,
+              ),
+              _Row(
+                label: l.settingsPassword,
+                value: '••••••••',
+                onTap: () {},
+              ),
+              _SectionTitle(l.settingsPrivacy),
+              SwitchListTile(
+                title: Text(l.settingsPrivateAccount),
+                subtitle: Text(l.settingsPrivateBody),
+                value: me.user.privacyMode == 'private',
+                onChanged: (v) async {
+                  await ref
+                      .read(profileRepositoryProvider)
+                      .updateMe(privacyMode: v ? 'private' : 'public');
+                  ref.invalidate(meProvider);
+                },
+                activeThumbColor: t.ai,
+              ),
+              _SectionTitle(l.settingsPreferences),
+              ListTile(
+                title: Text(l.settingsLanguage),
+                subtitle: Text(_localeLabel(me.user.locale)),
+                onTap: () async {
+                  final picked = await showModalBottomSheet<String>(
+                    context: context,
+                    showDragHandle: true,
+                    builder: (_) => ListView(
+                      shrinkWrap: true,
+                      children: const [
+                        _LocaleTile(code: 'en', label: 'English'),
+                        _LocaleTile(code: 'ja', label: '日本語'),
+                        _LocaleTile(code: 'ko', label: '한국어'),
+                      ],
+                    ),
+                  );
+                  if (picked != null) {
+                    await ref
+                        .read(profileRepositoryProvider)
+                        .updateMe(locale: picked);
+                    ref.invalidate(meProvider);
+                  }
+                },
+              ),
+              _SectionTitle(l.settingsDangerZone),
+              ListTile(
+                title: Text(
+                  l.settingsDeleteAccount,
+                  style: TextStyle(color: t.fgDanger, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(l.settingsDeleteAccountHelper),
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text(l.settingsConfirmDelete),
+                      content: Text(l.settingsConfirmDeleteBody),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(l.actionCancel),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: t.akane),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Text(l.actionDelete),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await ref.read(profileRepositoryProvider).deleteMe();
+                    await ref.read(authStateProvider.notifier).logout();
+                    if (context.mounted) context.go('/auth');
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  l.settingsVersion,
+                  style: TextStyle(
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 11,
+                    color: t.fg3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _localeLabel(String code) {
+    switch (code) {
+      case 'ja':
+        return '日本語';
+      case 'ko':
+        return '한국어';
+      case 'en':
+      default:
+        return 'English';
+    }
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.3,
+          color: t.fg3,
+        ),
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.label, this.value, this.onTap});
+  final String label;
+  final String? value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return ListTile(
+      title: Text(label),
+      trailing: value == null
+          ? null
+          : Text(value!, style: TextStyle(color: t.fg2)),
+      onTap: onTap,
+    );
+  }
+}
+
+class _LocaleTile extends StatelessWidget {
+  const _LocaleTile({required this.code, required this.label});
+  final String code;
+  final String label;
+  @override
+  Widget build(BuildContext context) => ListTile(
+        title: Text(label),
+        onTap: () => Navigator.pop(context, code),
+      );
+}
