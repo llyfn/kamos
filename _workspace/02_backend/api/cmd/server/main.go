@@ -15,6 +15,8 @@ import (
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/handlers"
+	"github.com/kamos/api/internal/jobs"
+	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/server"
 )
@@ -32,6 +34,42 @@ func main() {
 		log.Error("config", "err", err)
 		os.Exit(1)
 	}
+
+	// Observability — both Init calls are no-ops when the respective env
+	// vars are empty. We log "disabled" so operators can see at a glance
+	// which side is unconfigured.
+	initCtx, initCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer initCancel()
+
+	otelShutdown, err := observability.InitOTel(initCtx, cfg)
+	if err != nil {
+		log.Error("otel init", "err", err)
+		os.Exit(1)
+	}
+	if cfg.OTLPEndpoint == "" {
+		log.Info("otel disabled (OTEL_EXPORTER_OTLP_ENDPOINT unset)")
+	} else {
+		log.Info("otel enabled", "endpoint", cfg.OTLPEndpoint)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			log.Error("otel shutdown", "err", err)
+		}
+	}()
+
+	sentryFlush, err := observability.InitSentry(cfg)
+	if err != nil {
+		log.Error("sentry init", "err", err)
+		os.Exit(1)
+	}
+	if cfg.SentryDSN == "" {
+		log.Info("sentry disabled (SENTRY_DSN unset)")
+	} else {
+		log.Info("sentry enabled")
+	}
+	defer sentryFlush(2 * time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -52,6 +90,17 @@ func main() {
 	h := handlers.New(cfg, log, repos, signer, google)
 	mux := server.New(log, signer, h)
 
+	// Background-job scheduler — three maintenance jobs registered before
+	// the HTTP server starts. The scheduler owns its own context derived
+	// from a long-lived parent so jobs survive request churn but cleanly
+	// stop on shutdown.
+	sched := jobs.NewScheduler(context.Background(), log, pool)
+	sched.Register("username_hold_cleanup", time.Hour, jobs.JobUsernameHoldCleanup(log))
+	sched.Register("email_verification_cleanup", 6*time.Hour, jobs.JobEmailVerificationCleanup(log))
+	sched.Register("avg_rating_sweep", 24*time.Hour, jobs.JobAvgRatingSweep(log))
+	sched.Start()
+	defer sched.Stop()
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,
@@ -62,7 +111,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info("server starting", "port", cfg.Port, "env", cfg.Env)
+		log.Info("server starting", "port", cfg.Port, "env", cfg.Env, "version", cfg.Version)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("listen", "err", err)
 			os.Exit(1)
