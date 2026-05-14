@@ -1,15 +1,16 @@
 # KAMOS — Backend
 
-Go 1.24 REST API for KAMOS. PostgreSQL 15+ backend, JWT auth, Google OAuth, cursor-paginated lists, full i18n.
+Go 1.26 REST API for KAMOS. PostgreSQL 18+ backend, JWT auth, Google OAuth, cursor-paginated lists, full i18n.
 
 ## Stack
 
-- Go 1.24+
+- Go 1.26+
 - `chi` v5 router
 - `pgx/v5` directly (no ORM)
 - `golang-jwt/v5` (HS256)
 - `golang.org/x/crypto/bcrypt`
 - `google.golang.org/api/idtoken` (Google ID-token verification)
+- `joho/godotenv` (local.env auto-loading in non-production)
 - Stdlib `log/slog`
 
 ## Layout
@@ -50,13 +51,15 @@ Every list endpoint returns the canonical `{ items, next_cursor, has_more }` sha
 
 ## Local development
 
-### 1. Start PostgreSQL
+### 1. Start PostgreSQL 18
 
 ```bash
 docker run --rm -d --name kamos-pg \
   -e POSTGRES_USER=kamos -e POSTGRES_PASSWORD=kamos -e POSTGRES_DB=kamos \
-  -p 5432:5432 postgres:15
+  -p 5432:5432 postgres:18
 ```
+
+Or use a host install of Postgres 18 — that is what `local.env.example` assumes.
 
 ### 2. Apply migrations
 
@@ -74,15 +77,29 @@ psql "$DATABASE_URL" -c "SELECT slug, name_i18n FROM beverage_categories ORDER B
 
 ### 3. Configure env
 
+Two options:
+
+**Option A — `local.env` at the repo root (recommended for local dev).**
+The binary auto-loads `local.env` in non-production environments. Real env
+vars always override; godotenv is non-overriding.
+
+```bash
+cp local.env.example local.env   # at repo root
+# fill JWT_SECRET (openssl rand -base64 48), DATABASE_URL, etc.
+```
+
+**Option B — explicit shell sourcing.**
+
 ```bash
 cp .env.example .env
-# fill in JWT_SECRET (openssl rand -base64 48), optionally GOOGLE_CLIENT_ID
 set -a; source .env; set +a
 ```
 
 ### 4. Run
 
 ```bash
+make api-run-local        # auto-sources local.env from repo root
+# or directly:
 go run ./cmd/server
 ```
 
@@ -94,11 +111,37 @@ curl http://localhost:8080/health
 
 ## Testing
 
+### Unit tests (no DB)
+
 ```bash
 go test ./...
+go test -cover ./...
+make api-test            # shorthand
 ```
 
-Integration tests against a real PostgreSQL DB are the standard for this repo — see `_workspace/04_qa` for the QA cross-check.
+The unit suite uses the stdlib `testing` package only — no testify, no mocks
+of the pgx driver. Handler tests live in `internal/handlers/handlers_test.go`
+as an external `handlers_test` package so they can drive the real chi router
+through `server.New`; routes are exercised at auth/validation boundaries that
+short-circuit before any repository call. Repository success paths are
+covered by the integration suite below.
+
+### Integration tests (real Postgres 18)
+
+```bash
+INTEGRATION_DATABASE_URL=postgres://kamos_local@localhost:5432/kamos_test?sslmode=disable \
+JWT_SECRET=$(openssl rand -base64 48) \
+APP_ENV=test \
+APP_BASE_URL=http://localhost:8080 \
+go test -tags=integration -count=1 ./tests/integration/...
+
+# Or via Makefile (auto-sources local.env):
+make api-test-int
+```
+
+Each test wipes the user-data tables (every table except `beverage_categories`
+and `flavor_tags`) before running so order is not significant. The build tag
+`integration` keeps these tests out of the default `go test` run.
 
 ## Verification
 
@@ -107,7 +150,8 @@ Pre-merge checks the maintainer should run:
 ```bash
 go build ./...
 go vet ./...
-go test ./...
+go test -cover ./...
+make api-test-int        # if Postgres 18 is available
 ```
 
 ## Auth notes
