@@ -14,6 +14,7 @@
     width: 100%; max-width: 1240px;
     display: flex; align-items: baseline; justify-content: space-between;
     margin-bottom: 24px;
+    flex-wrap: wrap; gap: 16px;
   }
   .heading h1 { font-family: var(--font-display); font-weight: 600; font-size: 28px; margin: 0; color: var(--fg-1); }
   .heading p  { font-size: 13px; color: var(--fg-3); margin: 0; max-width: 520px; }
@@ -26,6 +27,22 @@
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
     color: var(--fg-2); text-transform: uppercase; letter-spacing: 0.12em;
   }
+  .group-label {
+    width: 100%; max-width: 1240px;
+    font-family: var(--font-display); font-size: 18px; font-weight: 600;
+    color: var(--fg-1); margin: 40px 0 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-1);
+  }
+  .locale-bar {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: #fff; border: 1px solid var(--border-2); border-radius: 999px;
+  }
+  .locale-bar button {
+    border: none; background: transparent; padding: 4px 10px; border-radius: 999px;
+    font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer;
+    color: var(--fg-2);
+  }
+  .locale-bar button.active { background: var(--c-ai); color: #fff; }
   /* Hide native scrollbars in phone interior so they don't show through the bezel */
   .kamos-phone div::-webkit-scrollbar { width: 0; height: 0; }
 </style>
@@ -34,9 +51,10 @@
   <div class="heading">
     <div>
       <h1>KAMOS — Mobile UI Kit</h1>
-      <p style="margin-top:6px">Five-tab Flutter app, recreated in HTML. Click tabs and cards — all of these screens are interactive.</p>
+      <p style="margin-top:6px">Five-tab Flutter app, recreated in HTML/JSX. All screens are interactive — tap tabs, cards, the bell icon, and the floating check-in button.</p>
     </div>
-    <div style="display:flex; align-items:center; gap:10px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div id="locale-bar"></div>
       <img src="../../assets/logo.png" style="width:42px; height:42px;" alt="">
       <div style="font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em; color: var(--c-kon)">KAMOS</div>
     </div>
@@ -48,6 +66,8 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
+  <!-- data first so window.t/UI/CATEGORY_LABELS exist for primitives that consume them -->
+  <script type="text/babel" src="components/data.jsx"></script>
   <script type="text/babel" src="components/Primitives.jsx"></script>
   <script type="text/babel" src="components/Shell.jsx"></script>
   <script type="text/babel" src="components/FeedScreen.jsx"></script>
@@ -55,33 +75,72 @@
   <script type="text/babel" src="components/BeverageScreen.jsx"></script>
   <script type="text/babel" src="components/CheckInScreen.jsx"></script>
   <script type="text/babel" src="components/ProfileLists.jsx"></script>
-  <script type="text/babel" src="components/data.jsx"></script>
+  <script type="text/babel" src="components/AuthScreen.jsx"></script>
+  <script type="text/babel" src="components/EditProfileScreen.jsx"></script>
+  <script type="text/babel" src="components/SettingsScreen.jsx"></script>
+  <script type="text/babel" src="components/InboxScreen.jsx"></script>
+  <script type="text/babel" src="components/BreweryScreen.jsx"></script>
+  <script type="text/babel" src="components/CollectionPickerSheet.jsx"></script>
+  <script type="text/babel" src="components/CollectionDetailScreen.jsx"></script>
 
   <script type="text/babel">
+    // -------------------------------------------------------------------
+    // Locale provider shared by all phones on the stage.
+    // -------------------------------------------------------------------
+    function LocaleProvider({ locale, setLocale, children }) {
+      return <LocaleContext.Provider value={{ locale, setLocale }}>{children}</LocaleContext.Provider>;
+    }
+
+    // -------------------------------------------------------------------
+    // Live 5-tab app. Maintains its own overlay stack for deep screens.
+    // -------------------------------------------------------------------
     function App() {
       const [tab, setTab] = React.useState('feed');
-      const [stack, setStack] = React.useState([]); // overlay stack: 'beverage' | 'checkin'
+      const [stack, setStack] = React.useState([]); // overlay frames
       const [picked, setPicked] = React.useState(null);
+      const [pickedBrewery, setPickedBrewery] = React.useState(null);
+      const [pickedCollection, setPickedCollection] = React.useState(null);
+      const [pickerOpen, setPickerOpen] = React.useState(false);
 
-      const openBeverage = (b) => { setPicked(b); setStack(['beverage']); };
-      const openCheckIn = (b) => { setPicked(b); setStack(s => [...s, 'checkin']); };
-      const popOverlay = () => setStack(s => s.slice(0, -1));
+      const push = (name) => setStack(s => [...s, name]);
+      const pop  = () => setStack(s => s.slice(0, -1));
+
+      const openBeverage = (b) => { setPicked(b); push('beverage'); };
+      const openCheckIn  = (b) => { setPicked(b); push('checkin'); };
+      const openBrewery  = (id) => { setPickedBrewery(window.BREWERIES?.[id]); push('brewery'); };
+      const openCollection = (c) => { setPickedCollection(c); push('collection'); };
+      const openInbox    = () => push('inbox');
+      const openEdit     = () => push('editprofile');
+      const openSettings = () => push('settings');
 
       const top = stack[stack.length - 1];
 
       let body;
       if (top === 'beverage' && picked) {
-        body = <BeverageScreen b={picked} onBack={popOverlay} onCheckIn={() => openCheckIn(picked)} onAddToList={() => {}} />;
+        body = <BeverageScreen b={picked} onBack={pop}
+                  onCheckIn={() => openCheckIn(picked)}
+                  onAddToList={() => setPickerOpen(true)}
+                  onOpenBrewery={openBrewery}/>;
       } else if (top === 'checkin' && picked) {
-        body = <CheckInScreen b={picked} onClose={popOverlay} onSubmit={() => { setStack([]); setTab('feed'); }} />;
+        body = <CheckInScreen b={picked} onClose={pop} onSubmit={() => { setStack([]); setTab('feed'); }}/>;
+      } else if (top === 'inbox') {
+        body = <InboxScreen requests={FOLLOW_REQUESTS} onClose={pop}/>;
+      } else if (top === 'editprofile') {
+        body = <EditProfileScreen user={ME} onClose={pop} onSave={pop}/>;
+      } else if (top === 'settings') {
+        body = <SettingsScreen user={ME} onClose={pop}/>;
+      } else if (top === 'brewery' && pickedBrewery) {
+        body = <BreweryScreen brewery={pickedBrewery} onBack={pop} onOpenBeverage={openBeverage}/>;
+      } else if (top === 'collection' && pickedCollection) {
+        body = <CollectionDetailScreen collection={pickedCollection} onBack={pop} onOpenBeverage={openBeverage}/>;
       } else {
         body = (
           <>
-            {tab === 'feed' && <FeedScreen data={FEED}/>}
-            {tab === 'search' && <SearchScreen catalog={CATALOG} onPickBeverage={openBeverage}/>}
+            {tab === 'feed'    && <FeedScreen data={FEED} onOpenBeverage={openBeverage} onOpenInbox={openInbox} pendingRequests={FOLLOW_REQUESTS.length}/>}
+            {tab === 'search'  && <SearchScreen catalog={CATALOG} onPickBeverage={openBeverage}/>}
             {tab === 'checkin' && <SearchScreen catalog={CATALOG} onPickBeverage={openCheckIn}/>}
-            {tab === 'lists' && <ListsScreen collections={COLLECTIONS}/>}
-            {tab === 'me' && <ProfileScreen user={ME} recent={MY_RECENT}/>}
+            {tab === 'lists'   && <ListsScreen collections={COLLECTIONS} onOpenCollection={openCollection}/>}
+            {tab === 'me'      && <ProfileScreen user={ME} recent={MY_RECENT} onEditProfile={openEdit} onOpenSettings={openSettings}/>}
           </>
         );
       }
@@ -92,32 +151,154 @@
         <Phone>
           {body}
           {showTabs && <TabBar tab={tab} setTab={setTab}/>}
+          <CollectionPickerSheet
+            open={pickerOpen}
+            beverage={picked}
+            collections={COLLECTIONS}
+            onClose={() => setPickerOpen(false)}
+            onSave={() => setPickerOpen(false)}
+          />
         </Phone>
       );
     }
 
-    // Render a row of phones: live app + a couple of "deep" screens for show.
+    // -------------------------------------------------------------------
+    // Top-level stage. Renders multiple phones to showcase the new screens
+    // side-by-side, plus the live app at top-left.
+    // -------------------------------------------------------------------
     function Stage() {
-      const [pickedA] = React.useState(CATALOG[0]); // dassai
+      const [locale, setLocale] = React.useState('en');
+
+      // Render the locale toggle into the heading bar.
+      React.useEffect(() => {
+        const el = document.getElementById('locale-bar');
+        if (!el) return;
+        el.innerHTML = '';
+        const wrap = document.createElement('div');
+        wrap.className = 'locale-bar';
+        ['en', 'ja', 'ko'].forEach(lc => {
+          const b = document.createElement('button');
+          b.textContent = lc === 'en' ? 'EN' : lc === 'ja' ? '日本語' : '한국어';
+          b.className = locale === lc ? 'active' : '';
+          b.onclick = () => setLocale(lc);
+          wrap.appendChild(b);
+        });
+        el.appendChild(wrap);
+      }, [locale]);
+
+      // Sample beverage / collection / brewery used by the static demo phones
+      const dassai   = CATALOG[0];
+      const kuromatsu = CATALOG.find(b => b.id === 'kuromatsu');
+      const inventory = COLLECTIONS.find(c => c.id === 'inv');
+      const asahi    = BREWERIES['asahi-shuzo'];
+
       return (
-        <div className="stage">
-          <div className="col">
-            <App/>
-            <div className="label">Live · five-tab app</div>
+        <LocaleProvider locale={locale} setLocale={setLocale}>
+          <div className="group-label">Live · 5-tab app + flows</div>
+          <div className="stage">
+            <div className="col">
+              <App/>
+              <div className="label">Live · five-tab app ({locale.toUpperCase()})</div>
+            </div>
+            <div className="col">
+              <Phone><BeverageScreen b={dassai} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => {}} onOpenBrewery={() => {}}/></Phone>
+              <div className="label">Beverage detail · Dassai 23</div>
+            </div>
+            <div className="col">
+              <Phone><CheckInScreen b={dassai} onClose={() => {}} onSubmit={() => {}}/></Phone>
+              <div className="label">Check-in flow</div>
+            </div>
           </div>
-          <div className="col">
-            <Phone>
-              <BeverageScreen b={CATALOG[0]} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => {}}/>
-            </Phone>
-            <div className="label">Beverage detail · Dassai 23</div>
+
+          <div className="group-label">Auth flows</div>
+          <div className="stage">
+            <AuthDemo mode="signIn"/>
+            <AuthDemo mode="signUp"/>
+            <AuthDemo mode="verifyEmail"/>
+            <AuthDemo mode="forgot"/>
           </div>
-          <div className="col">
-            <Phone>
-              <CheckInScreen b={CATALOG[0]} onClose={() => {}} onSubmit={() => {}}/>
-            </Phone>
-            <div className="label">Check-in flow</div>
+
+          <div className="group-label">Profile, settings, inbox</div>
+          <div className="stage">
+            <div className="col">
+              <Phone><EditProfileScreen user={ME} onClose={() => {}} onSave={() => {}}/></Phone>
+              <div className="label">Edit profile</div>
+            </div>
+            <div className="col">
+              <Phone><SettingsScreen user={ME} onClose={() => {}}/></Phone>
+              <div className="label">Settings</div>
+            </div>
+            <div className="col">
+              <Phone><InboxScreen requests={FOLLOW_REQUESTS} onClose={() => {}}/></Phone>
+              <div className="label">Follow requests inbox</div>
+            </div>
           </div>
+
+          <div className="group-label">Discovery & collections</div>
+          <div className="stage">
+            <div className="col">
+              <Phone><BreweryScreen brewery={asahi} onBack={() => {}} onOpenBeverage={() => {}}/></Phone>
+              <div className="label">Brewery · Asahi Shuzo</div>
+            </div>
+            <div className="col">
+              <Phone><CollectionDetailScreen collection={inventory} onBack={() => {}} onOpenBeverage={() => {}}/></Phone>
+              <div className="label">Collection · Inventory</div>
+            </div>
+            <div className="col">
+              <PickerDemo beverage={kuromatsu}/>
+              <div className="label">Collection picker (multi-select)</div>
+            </div>
+          </div>
+
+          <div className="group-label">Empty &amp; loading states</div>
+          <div className="stage">
+            <div className="col">
+              <Phone><FeedScreen data={[]} onOpenBeverage={() => {}} onOpenInbox={() => {}}/></Phone>
+              <div className="label">Feed · empty</div>
+            </div>
+            <div className="col">
+              <Phone><SearchScreen catalog={CATALOG} onPickBeverage={() => {}} recentSearches={RECENT_SEARCHES} placeholderMode/></Phone>
+              <div className="label">Search · recent searches</div>
+            </div>
+            <div className="col">
+              <Phone>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <TopBar title="Loading"/>
+                  <LoadingState label="Loading"/>
+                  <ErrorState onRetry={() => {}}/>
+                </div>
+              </Phone>
+              <div className="label">Loading + error</div>
+            </div>
+          </div>
+        </LocaleProvider>
+      );
+    }
+
+    function AuthDemo({ mode }) {
+      const [m, setM] = React.useState(mode);
+      const label = { signIn: 'Sign in', signUp: 'Create account', forgot: 'Forgot password', verifyEmail: 'Verify email' }[m];
+      return (
+        <div className="col">
+          <Phone><AuthScreen mode={m} onModeChange={setM} onSignedIn={() => {}}/></Phone>
+          <div className="label">Auth · {label}</div>
         </div>
+      );
+    }
+
+    function PickerDemo({ beverage }) {
+      const [open, setOpen] = React.useState(true);
+      return (
+        <Phone>
+          <BeverageScreen b={beverage} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => setOpen(true)} onOpenBrewery={() => {}}/>
+          <CollectionPickerSheet
+            open={open}
+            beverage={beverage}
+            collections={COLLECTIONS}
+            onClose={() => setOpen(false)}
+            onSave={() => setOpen(false)}
+          />
+        </Phone>
       );
     }
 

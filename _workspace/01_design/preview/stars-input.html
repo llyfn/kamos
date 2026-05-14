@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAMOS — Stars (0.5-step rating)</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .row { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .stars { display: inline-flex; gap: 4px; }
+  .stars span { font-size: 28px; color: var(--c-yamabuki); line-height: 1; }
+  .stars .off { color: var(--c-gray-200); }
+  .mono { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--fg-2); }
+  .lbl { font-family: var(--font-mono); font-size: 10px; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.12em; }
+  h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 12px; color: var(--fg-1); }
+</style>
+</head>
+<body>
+  <h2>Rating — 0.5–5.0 in 0.5 steps (SPEC §4.2)</h2>
+
+  <div class="row">
+    <div class="stars">
+      <span class="off">☆</span><span class="off">☆</span><span class="off">☆</span><span class="off">☆</span><span class="off">☆</span>
+    </div>
+    <div class="mono">— / 5.0</div>
+    <div class="lbl">no rating · valid</div>
+  </div>
+
+  <div class="row">
+    <div class="stars">
+      <span>⯨</span><span class="off">☆</span><span class="off">☆</span><span class="off">☆</span><span class="off">☆</span>
+    </div>
+    <div class="mono">0.5 / 5.0</div>
+    <div class="lbl">minimum</div>
+  </div>
+
+  <div class="row">
+    <div class="stars">
+      <span>★</span><span>★</span><span>★</span><span>⯨</span><span class="off">☆</span>
+    </div>
+    <div class="mono">3.5 / 5.0</div>
+    <div class="lbl">half-step</div>
+  </div>
+
+  <div class="row">
+    <div class="stars">
+      <span>★</span><span>★</span><span>★</span><span>★</span><span>⯨</span>
+    </div>
+    <div class="mono">4.5 / 5.0</div>
+    <div class="lbl">common</div>
+  </div>
+
+  <div class="row">
+    <div class="stars">
+      <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+    </div>
+    <div class="mono">5.0 / 5.0</div>
+    <div class="lbl">maximum</div>
+  </div>
+
+  <p style="margin-top: 18px; font-family: var(--font-body); font-size: 13px; color: var(--fg-2); line-height: 1.55; max-width: 520px;">
+    Rating is <strong>optional</strong> per SPEC §4.2 — a check-in with no rating is valid. Display format is always <code class="mono">X.X / 5.0</code>.
+    The half-step glyph is U+2BE8 (⯨); see the README's substitution flags — Flutter should swap it for a real half-fill icon path.
+  </p>
+</body>
+</html>
