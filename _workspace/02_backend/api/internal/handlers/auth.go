@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
@@ -10,6 +11,34 @@ import (
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 )
+
+// refreshTTL returns the configured refresh TTL, or the package default.
+func (h *Handler) refreshTTL() time.Duration {
+	if h.Cfg != nil && h.Cfg.RefreshTTL > 0 {
+		return h.Cfg.RefreshTTL
+	}
+	return auth.DefaultRefreshTTL
+}
+
+// issueAuthPair generates a fresh access JWT and a new originating refresh
+// token (parent_id = nil, family_id = self) for the given user. Used by
+// register / login / google login.
+func (h *Handler) issueAuthPair(r *http.Request, user *domain.User) (string, string, error) {
+	access, err := h.Signer.Sign(user.ID, user.Username)
+	if err != nil {
+		return "", "", err
+	}
+	raw, hash, err := auth.NewRefreshSecret()
+	if err != nil {
+		return "", "", err
+	}
+	if _, err := h.Repos.RefreshTokens.Insert(
+		r.Context(), user.ID, hash, nil, "", h.refreshTTL(),
+	); err != nil {
+		return "", "", err
+	}
+	return access, raw, nil
+}
 
 // Register implements POST /v1/auth/register.
 //   1. Validate the body (username regex, password ≥ 8, etc.)
@@ -79,16 +108,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
 	)
 
-	tok, err := h.Signer.Sign(user.ID, user.Username)
+	access, refresh, err := h.issueAuthPair(r, user)
 	if err != nil {
-		h.writeErr(w, "Register sign", err)
+		h.writeErr(w, "Register issue", err)
 		return
 	}
 	apierror.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
-		User:        *user,
-		AccessToken: tok,
-		TokenType:   "Bearer",
-		ExpiresIn:   int64(h.Cfg.JWTTTL.Seconds()),
+		User:             *user,
+		AccessToken:      access,
+		RefreshToken:     refresh,
+		TokenType:        "Bearer",
+		ExpiresIn:        int64(h.Cfg.JWTTTL.Seconds()),
+		RefreshExpiresIn: int64(h.refreshTTL().Seconds()),
 	})
 }
 
@@ -121,16 +152,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 		return
 	}
-	tok, err := h.Signer.Sign(row.ID, row.Username)
+	access, refresh, err := h.issueAuthPair(r, &row.User)
 	if err != nil {
-		h.writeErr(w, "Login sign", err)
+		h.writeErr(w, "Login issue", err)
 		return
 	}
 	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
-		User:        row.User,
-		AccessToken: tok,
-		TokenType:   "Bearer",
-		ExpiresIn:   int64(h.Cfg.JWTTTL.Seconds()),
+		User:             row.User,
+		AccessToken:      access,
+		RefreshToken:     refresh,
+		TokenType:        "Bearer",
+		ExpiresIn:        int64(h.Cfg.JWTTTL.Seconds()),
+		RefreshExpiresIn: int64(h.refreshTTL().Seconds()),
 	})
 }
 
@@ -245,16 +278,18 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		user = newUser
 	}
 
-	tok, err := h.Signer.Sign(user.ID, user.Username)
+	access, refresh, err := h.issueAuthPair(r, user)
 	if err != nil {
-		h.writeErr(w, "GoogleLogin sign", err)
+		h.writeErr(w, "GoogleLogin issue", err)
 		return
 	}
 	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
-		User:        *user,
-		AccessToken: tok,
-		TokenType:   "Bearer",
-		ExpiresIn:   int64(h.Cfg.JWTTTL.Seconds()),
+		User:             *user,
+		AccessToken:      access,
+		RefreshToken:     refresh,
+		TokenType:        "Bearer",
+		ExpiresIn:        int64(h.Cfg.JWTTTL.Seconds()),
+		RefreshExpiresIn: int64(h.refreshTTL().Seconds()),
 	})
 }
 
@@ -372,6 +407,180 @@ func (h *Handler) EmailChange(w http.ResponseWriter, r *http.Request) {
 		"link", h.Cfg.AppBaseURL+"/verify?token="+token,
 	)
 	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"re_verification_sent": true})
+}
+
+// RefreshToken implements POST /v1/auth/refresh.
+//
+// Rotating refresh tokens with re-use detection:
+//
+//   1. Hash the presented secret; look up by hash.
+//   2. Miss → 401 + token_invalid. No family revocation (nothing to revoke).
+//   3. Hit AND already revoked → 401 + token_invalid AND revoke the entire
+//      family. A revoked token being presented means somewhere a stolen copy
+//      escaped; treat every sibling as compromised.
+//   4. Hit, not revoked, but expired → 401 + token_expired. No family revoke
+//      (expiry is benign).
+//   5. Hit, not revoked, owner soft-deleted → 401 + token_invalid.
+//   6. Otherwise: revoke the presented token, insert a successor (parent_id
+//      = old.id, family_id = old.family_id), issue a new access JWT, return
+//      the standard AuthResponse.
+//
+// The endpoint is public (no Auth middleware) — possession of a valid raw
+// refresh secret IS the authentication. The `/v1/auth/*` rate-limit applies.
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var req domain.RefreshTokenRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "RefreshToken decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "RefreshToken validate", err)
+		return
+	}
+
+	ctx := r.Context()
+	hash := auth.HashRefreshToken(req.RefreshToken)
+	row, err := h.Repos.RefreshTokens.LookupByHash(ctx, hash)
+	if err != nil {
+		if errors.Is(err, apierror.ErrNotFound) {
+			apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+			return
+		}
+		h.writeErr(w, "RefreshToken lookup", err)
+		return
+	}
+
+	// Re-use detection: the presented token is in the DB but already revoked.
+	// Burn the whole family.
+	if row.RevokedAt != nil {
+		n, ferr := h.Repos.RefreshTokens.RevokeFamily(ctx, row.FamilyID)
+		if ferr != nil {
+			h.Log.Error("RefreshToken family revoke", "err", ferr,
+				"user_id", row.UserID, "family_id", row.FamilyID)
+		}
+		h.Log.Warn("refresh_token_reuse_detected",
+			"user_id", row.UserID,
+			"family_id", row.FamilyID,
+			"revoked_count", n,
+		)
+		apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+		return
+	}
+
+	if time.Now().After(row.ExpiresAt) {
+		apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_EXPIRED", "refresh token expired")
+		return
+	}
+
+	// Owner must still be alive.
+	user, err := h.Repos.Users.FindByID(ctx, row.UserID)
+	if err != nil {
+		if errors.Is(err, apierror.ErrNotFound) {
+			apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+			return
+		}
+		h.writeErr(w, "RefreshToken find user", err)
+		return
+	}
+
+	// Rotate: revoke the presented token, insert a successor in the same
+	// family. The order matters — if the insert fails we still want the
+	// caller's token to be valid so a retry doesn't bury them.
+	access, err := h.Signer.Sign(user.ID, user.Username)
+	if err != nil {
+		h.writeErr(w, "RefreshToken sign", err)
+		return
+	}
+	raw, newHash, err := auth.NewRefreshSecret()
+	if err != nil {
+		h.writeErr(w, "RefreshToken new secret", err)
+		return
+	}
+	parentID := row.ID
+	if _, err := h.Repos.RefreshTokens.Insert(
+		ctx, user.ID, newHash, &parentID, row.FamilyID, h.refreshTTL(),
+	); err != nil {
+		h.writeErr(w, "RefreshToken insert successor", err)
+		return
+	}
+	if err := h.Repos.RefreshTokens.MarkRevoked(ctx, row.ID); err != nil {
+		// The successor is already issued; we log but do not error out the
+		// caller — leaving the predecessor live for a moment is the lesser
+		// evil. The successor is what the client will use next.
+		h.Log.Error("RefreshToken revoke predecessor", "err", err,
+			"user_id", user.ID, "token_id", row.ID)
+	}
+
+	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
+		User:             *user,
+		AccessToken:      access,
+		RefreshToken:     raw,
+		TokenType:        "Bearer",
+		ExpiresIn:        int64(h.Cfg.JWTTTL.Seconds()),
+		RefreshExpiresIn: int64(h.refreshTTL().Seconds()),
+	})
+}
+
+// Logout implements POST /v1/auth/logout (authed).
+//
+// Optional body: { "refresh_token": "..." }
+//   * Present → revoke that one token only (mobile single-device sign-out).
+//   * Absent  → revoke EVERY active refresh token for the authed user
+//     (web-style "sign out everywhere" / no-refresh-token fallback).
+//
+// The endpoint always returns 204 — silent success even if the refresh
+// token presented does not belong to the authed user (we don't 403 there
+// because clients commonly retry on flakes and a 403 there leaks
+// ownership). When the token belongs to a different user, we still log
+// the mismatch.
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	uid, ok := h.authedID(w, r)
+	if !ok {
+		return
+	}
+	// Tolerate a missing/empty body — both common (no Content-Length, or
+	// {}).
+	var req domain.LogoutRequest
+	if r.ContentLength > 0 {
+		if err := decodeJSON(r, &req); err != nil {
+			h.writeErr(w, "Logout decode", err)
+			return
+		}
+	}
+
+	ctx := r.Context()
+	if req.RefreshToken != "" {
+		hash := auth.HashRefreshToken(req.RefreshToken)
+		row, err := h.Repos.RefreshTokens.LookupByHash(ctx, hash)
+		if err != nil {
+			if !errors.Is(err, apierror.ErrNotFound) {
+				h.writeErr(w, "Logout lookup", err)
+				return
+			}
+			// Unknown token → succeed silently. Best-effort cleanup.
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if row.UserID != uid {
+			h.Log.Warn("logout_token_owner_mismatch",
+				"authed_user_id", uid, "token_user_id", row.UserID)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if err := h.Repos.RefreshTokens.MarkRevoked(ctx, row.ID); err != nil {
+			h.writeErr(w, "Logout revoke", err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Revoke every active refresh token for this user.
+	if _, err := h.Repos.RefreshTokens.RevokeAllForUser(ctx, uid); err != nil {
+		h.writeErr(w, "Logout revoke all", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // sanitizeUsernameCandidate strips disallowed characters and trims to the

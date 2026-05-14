@@ -111,6 +111,48 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshToken
+      security: []
+      description: |
+        Rotating refresh tokens. The server hashes the raw secret (SHA-256)
+        and looks it up; on match it revokes the presented token and issues a
+        new access + refresh pair in the same family. Re-using an already
+        revoked token revokes the entire family (re-use / theft detection).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshTokenRequest" }
+      responses:
+        "200":
+          description: rotated; new access + refresh pair returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      description: |
+        Revoke refresh tokens. With a body `{ "refresh_token": "..." }` only
+        that token is revoked (single-device sign-out). With an empty body
+        every active refresh token for the authed user is revoked
+        (sign-out-everywhere). Always returns 204.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LogoutRequest" }
+      responses:
+        "204": { description: token(s) revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /v1/auth/verify-email:
     post:
       tags: [auth]
@@ -1116,12 +1158,34 @@ components:
 
     AuthResponse:
       type: object
-      required: [user, access_token, token_type, expires_in]
+      required: [user, access_token, refresh_token, token_type, expires_in, refresh_expires_in]
       properties:
         user: { $ref: "#/components/schemas/User" }
-        access_token: { type: string, description: "Bearer JWT (HS256)" }
+        access_token: { type: string, description: "Bearer JWT (HS256), short-lived" }
+        refresh_token:
+          type: string
+          description: |
+            Raw refresh secret (base64-rawurl, 43 chars). Long-lived but
+            revocable; rotated on every use via POST /v1/auth/refresh. The
+            server stores only its SHA-256 hash.
         token_type: { type: string, enum: [Bearer] }
-        expires_in: { type: integer, description: "seconds until expiry" }
+        expires_in: { type: integer, description: "access-token TTL in seconds" }
+        refresh_expires_in: { type: integer, description: "refresh-token TTL in seconds" }
+
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string, description: "raw secret previously issued by the server" }
+
+    LogoutRequest:
+      type: object
+      description: |
+        Optional body. With `refresh_token`, only that single token is revoked.
+        Without, every active refresh token for the authed user is revoked
+        (sign-out-everywhere).
+      properties:
+        refresh_token: { type: string }
 
     Brewery:
       type: object

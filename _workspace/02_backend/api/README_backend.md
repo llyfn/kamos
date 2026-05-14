@@ -199,9 +199,22 @@ Each job runs **once on startup** ("cold start") so a fresh deploy doesn't wait 
 
 ## Auth notes
 
-- JWT is HS256 with the server `JWT_SECRET`. TTL is `JWT_TTL` (default 720h). Refresh is deferred to v1.1 per SPEC; clients re-login on expiry.
+- JWT is HS256 with the server `JWT_SECRET`. Access-token TTL is `JWT_TTL` (default `15m` as of Phase 2 — formerly `720h`).
 - Google OAuth: the Flutter client sends the ID token to `POST /v1/auth/google`. The server validates it against Google's published JWKS using `idtoken.Validate` with `GOOGLE_CLIENT_ID` as the audience. The client secret is NOT used for ID-token validation — it is kept in `.env` only for completeness of OAuth2 if a future server-side flow is added.
-- The Flutter app must store the JWT in `flutter_secure_storage` only (SPEC §6.9).
+- The Flutter app must store both the access token AND the raw refresh secret in `flutter_secure_storage` only (SPEC §6.9).
+
+## Tokens (Phase 2)
+
+| Token | Default TTL | Storage | Rotates? |
+|---|---|---|---|
+| Access (`access_token`) | `JWT_TTL` (default **15m**) | HS256 JWT signed with `JWT_SECRET`; carried in `Authorization: Bearer …` | No — re-issue on refresh |
+| Refresh (`refresh_token`) | `REFRESH_TTL` (default **720h** = 30 days) | DB row `refresh_tokens.token_hash` holds **only** the SHA-256 hash of the raw secret. The client sends the raw base64-rawurl 43-char secret. | **Yes** — every call to `POST /v1/auth/refresh` revokes the presented token and issues a new pair. |
+
+**Rotation chain.** Each refresh token belongs to a `family_id` (the originating token's id). Rotations link to their predecessor via `parent_id`.
+
+**Re-use detection.** When `POST /v1/auth/refresh` is called with a token that is already revoked (i.e., a previous rotation already happened), the server revokes every active token in the entire family and returns `401 TOKEN_INVALID`. The handler logs `refresh_token_reuse_detected` at WARN with `user_id` + `family_id`. Expiry of a still-valid token is benign and returns `401 TOKEN_EXPIRED` without family-wide revocation.
+
+**Logout.** `POST /v1/auth/logout` (authed). With a body `{"refresh_token": "..."}` only that single token is revoked (single-device sign-out). With an empty body every active refresh token for the authed user is revoked (sign-out-everywhere). Always 204.
 
 ## Photo upload (MVP decision)
 

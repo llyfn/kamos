@@ -42,15 +42,16 @@ func newTestServer(t *testing.T) (http.Handler, *auth.Signer) {
 	// (nil here). Handlers we test in this file return before dereferencing
 	// it.
 	repos := &repository.Repos{
-		Users:       &repository.UserRepo{},
-		Beverages:   &repository.BeverageRepo{},
-		Breweries:   &repository.BreweryRepo{},
-		Checkins:    &repository.CheckinRepo{},
-		Feed:        &repository.FeedRepo{},
-		Social:      &repository.SocialRepo{},
-		Collections: &repository.CollectionRepo{},
-		Search:      &repository.SearchRepo{},
-		Taxonomy:    &repository.TaxonomyRepo{},
+		Users:         &repository.UserRepo{},
+		Beverages:     &repository.BeverageRepo{},
+		Breweries:     &repository.BreweryRepo{},
+		Checkins:      &repository.CheckinRepo{},
+		Feed:          &repository.FeedRepo{},
+		Social:        &repository.SocialRepo{},
+		Collections:   &repository.CollectionRepo{},
+		Search:        &repository.SearchRepo{},
+		Taxonomy:      &repository.TaxonomyRepo{},
+		RefreshTokens: &repository.RefreshTokenRepo{},
 	}
 	google := auth.NewGoogleVerifier("")
 	h := handlers.New(cfg, log, repos, signer, google)

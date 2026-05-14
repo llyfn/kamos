@@ -277,12 +277,35 @@ func (r *UpdateMeRequest) Validate() error {
 // Auth response
 // ---------------------------------------------------------------------------
 
-// AuthResponse is the body returned by register / login / google.
+// AuthResponse is the body returned by register / login / google / refresh.
+// The refresh_token is the raw (base64-rawurl 43-char) secret — the server
+// stores only its SHA-256 hash. expires_in / refresh_expires_in are seconds.
 type AuthResponse struct {
-	User        User   `json:"user"`
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"` // "Bearer"
-	ExpiresIn   int64  `json:"expires_in"` // seconds
+	User             User   `json:"user"`
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	TokenType        string `json:"token_type"` // "Bearer"
+	ExpiresIn        int64  `json:"expires_in"`         // access-token TTL, seconds
+	RefreshExpiresIn int64  `json:"refresh_expires_in"` // refresh-token TTL, seconds
+}
+
+// RefreshTokenRequest is the body for POST /v1/auth/refresh.
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (r *RefreshTokenRequest) Validate() error {
+	if r.RefreshToken == "" {
+		return wrapValidation("refresh_token is required")
+	}
+	return nil
+}
+
+// LogoutRequest is the optional body for POST /v1/auth/logout. When the
+// refresh_token is present, only that token is revoked; when absent, every
+// active refresh token for the authed user is revoked (logout-everywhere).
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
