@@ -19,11 +19,15 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 	r.Use(middleware.Recover(log))
 	r.Use(middleware.AccessLog(log))
 
-	// Health.
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	// Health. Expose both /health (project convention) and /healthz (k8s
+	// convention, also documented in DEPLOYMENT.md §6 and used by the
+	// docker-compose healthcheck).
+	healthHandler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
+	}
+	r.Get("/health", healthHandler)
+	r.Get("/healthz", healthHandler)
 
 	r.Route("/v1", func(r chi.Router) {
 
