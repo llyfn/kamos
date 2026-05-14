@@ -164,6 +164,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPhotoLimitReached => 'You can attach up to 4 photos.';
 
   @override
+  String get photoUploadDisabled =>
+      'Photo upload is not available — saved without photos.';
+
+  @override
+  String get photoUploadFailed => 'Photo failed to upload. Tap to retry.';
+
+  @override
   String get flavorSweetness => 'Sweetness';
 
   @override

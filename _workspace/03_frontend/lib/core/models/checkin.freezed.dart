@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PhotoRef {
 
- String get url; int get sortOrder;
+ String get url; String get id; int get sortOrder;
 /// Create a copy of PhotoRef
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $PhotoRefCopyWith<PhotoRef> get copyWith => _$PhotoRefCopyWithImpl<PhotoRef>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoRef&&(identical(other.url, url) || other.url == url)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhotoRef&&(identical(other.url, url) || other.url == url)&&(identical(other.id, id) || other.id == id)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,url,sortOrder);
+int get hashCode => Object.hash(runtimeType,url,id,sortOrder);
 
 @override
 String toString() {
-  return 'PhotoRef(url: $url, sortOrder: $sortOrder)';
+  return 'PhotoRef(url: $url, id: $id, sortOrder: $sortOrder)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $PhotoRefCopyWith<$Res>  {
   factory $PhotoRefCopyWith(PhotoRef value, $Res Function(PhotoRef) _then) = _$PhotoRefCopyWithImpl;
 @useResult
 $Res call({
- String url, int sortOrder
+ String url, String id, int sortOrder
 });
 
 
@@ -62,9 +62,10 @@ class _$PhotoRefCopyWithImpl<$Res>
 
 /// Create a copy of PhotoRef
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? url = null,Object? sortOrder = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? url = null,Object? id = null,Object? sortOrder = null,}) {
   return _then(_self.copyWith(
 url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -151,10 +152,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String url,  int sortOrder)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String url,  String id,  int sortOrder)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PhotoRef() when $default != null:
-return $default(_that.url,_that.sortOrder);case _:
+return $default(_that.url,_that.id,_that.sortOrder);case _:
   return orElse();
 
 }
@@ -172,10 +173,10 @@ return $default(_that.url,_that.sortOrder);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String url,  int sortOrder)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String url,  String id,  int sortOrder)  $default,) {final _that = this;
 switch (_that) {
 case _PhotoRef():
-return $default(_that.url,_that.sortOrder);case _:
+return $default(_that.url,_that.id,_that.sortOrder);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -192,10 +193,10 @@ return $default(_that.url,_that.sortOrder);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String url,  int sortOrder)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String url,  String id,  int sortOrder)?  $default,) {final _that = this;
 switch (_that) {
 case _PhotoRef() when $default != null:
-return $default(_that.url,_that.sortOrder);case _:
+return $default(_that.url,_that.id,_that.sortOrder);case _:
   return null;
 
 }
@@ -207,10 +208,11 @@ return $default(_that.url,_that.sortOrder);case _:
 
 
 class _PhotoRef implements PhotoRef {
-  const _PhotoRef({required this.url, this.sortOrder = 0});
+  const _PhotoRef({required this.url, this.id = '', this.sortOrder = 0});
   
 
 @override final  String url;
+@override@JsonKey() final  String id;
 @override@JsonKey() final  int sortOrder;
 
 /// Create a copy of PhotoRef
@@ -223,16 +225,16 @@ _$PhotoRefCopyWith<_PhotoRef> get copyWith => __$PhotoRefCopyWithImpl<_PhotoRef>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoRef&&(identical(other.url, url) || other.url == url)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhotoRef&&(identical(other.url, url) || other.url == url)&&(identical(other.id, id) || other.id == id)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,url,sortOrder);
+int get hashCode => Object.hash(runtimeType,url,id,sortOrder);
 
 @override
 String toString() {
-  return 'PhotoRef(url: $url, sortOrder: $sortOrder)';
+  return 'PhotoRef(url: $url, id: $id, sortOrder: $sortOrder)';
 }
 
 
@@ -243,7 +245,7 @@ abstract mixin class _$PhotoRefCopyWith<$Res> implements $PhotoRefCopyWith<$Res>
   factory _$PhotoRefCopyWith(_PhotoRef value, $Res Function(_PhotoRef) _then) = __$PhotoRefCopyWithImpl;
 @override @useResult
 $Res call({
- String url, int sortOrder
+ String url, String id, int sortOrder
 });
 
 
@@ -260,9 +262,10 @@ class __$PhotoRefCopyWithImpl<$Res>
 
 /// Create a copy of PhotoRef
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? url = null,Object? sortOrder = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? url = null,Object? id = null,Object? sortOrder = null,}) {
   return _then(_PhotoRef(
 url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
 as int,
   ));

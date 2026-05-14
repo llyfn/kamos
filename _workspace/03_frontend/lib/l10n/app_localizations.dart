@@ -394,6 +394,18 @@ abstract class AppLocalizations {
   /// **'You can attach up to 4 photos.'**
   String get checkInPhotoLimitReached;
 
+  /// No description provided for @photoUploadDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo upload is not available — saved without photos.'**
+  String get photoUploadDisabled;
+
+  /// No description provided for @photoUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo failed to upload. Tap to retry.'**
+  String get photoUploadFailed;
+
   /// No description provided for @flavorSweetness.
   ///
   /// In en, this message translates to:
