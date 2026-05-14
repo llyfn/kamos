@@ -1,9 +1,11 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kamos/api/internal/apierror"
 )
@@ -162,5 +164,131 @@ func TestI18nResolveFallback(t *testing.T) {
 	t2 := I18nText{EN: "X", KO: "K"}
 	if got := t2.Resolve("ja"); got != "X" {
 		t.Errorf("ja missing → en fallback: got %q", got)
+	}
+}
+
+// M3 invariant: the public-profile projection must not contain `email` or
+// `email_verified`. This is both a SPEC privacy requirement and a security
+// invariant — the QA M3 finding tracked exactly this leak.
+func TestUserToPublicJSONDoesNotLeakEmail(t *testing.T) {
+	u := User{
+		ID:              "u-1",
+		Username:        "yamamoto",
+		DisplayUsername: "Yamamoto",
+		Email:           "secret@example.com",
+		EmailVerified:   true,
+		DisplayName:     "Yamamoto-san",
+		Locale:          "ja",
+		PrivacyMode:     "public",
+		CreatedAt:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	pub := u.ToPublic()
+	b, err := json.Marshal(pub)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	s := string(b)
+	// Public username MUST appear.
+	if !strings.Contains(s, `"username"`) {
+		t.Errorf("public JSON missing username: %s", s)
+	}
+	if !strings.Contains(s, `"yamamoto"`) {
+		t.Errorf("public JSON missing username value: %s", s)
+	}
+	// Email MUST NOT appear under any of its possible JSON forms.
+	for _, leak := range []string{`"email"`, `"email_verified"`, "secret@example.com"} {
+		if strings.Contains(s, leak) {
+			t.Errorf("public JSON leaks %q: %s", leak, s)
+		}
+	}
+}
+
+// Sanity: the full User shape (used only for /v1/users/me) DOES include
+// the email — this is the contrast case that proves the public projection
+// is actively scrubbing.
+func TestUserFullJSONIncludesEmail(t *testing.T) {
+	u := User{
+		ID:       "u-1",
+		Username: "yamamoto",
+		Email:    "secret@example.com",
+	}
+	b, err := json.Marshal(u)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"email":"secret@example.com"`) {
+		t.Errorf("full User JSON should include email; got %s", b)
+	}
+}
+
+func TestLocalizedDefaultCollectionsConstant(t *testing.T) {
+	// All three locales currently return the English names — when the
+	// designer pins localized strings this test will need updating per
+	// the comment in types.go.
+	for _, loc := range []string{"en", "ja", "ko"} {
+		inv, wish := LocalizedDefaultCollections(loc)
+		if inv != "Inventory" || wish != "Wishlist" {
+			t.Errorf("locale %q: got (%q, %q)", loc, inv, wish)
+		}
+	}
+}
+
+func TestUpdateMeRequestValidate(t *testing.T) {
+	pn := func(s string) *string { return &s }
+	cases := []struct {
+		name string
+		in   UpdateMeRequest
+		want string
+	}{
+		{"no fields", UpdateMeRequest{}, ""},
+		{"empty display_name", UpdateMeRequest{DisplayName: pn(" ")}, "display_name"},
+		{"long display_name", UpdateMeRequest{DisplayName: pn(strings.Repeat("a", 51))}, "display_name"},
+		{"long bio", UpdateMeRequest{Bio: pn(strings.Repeat("b", 201))}, "bio"},
+		{"bad locale", UpdateMeRequest{Locale: pn("fr")}, "locale"},
+		{"good locale", UpdateMeRequest{Locale: pn("ja")}, ""},
+		{"bad privacy", UpdateMeRequest{PrivacyMode: pn("public-ish")}, "privacy_mode"},
+		{"good privacy", UpdateMeRequest{PrivacyMode: pn("private")}, ""},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.in.Validate()
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("want nil, got %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want error containing %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestUpdateCheckinRejectsBeverageChange(t *testing.T) {
+	bid := "bev-1"
+	req := UpdateCheckinRequest{BeverageID: &bid}
+	err := req.Validate()
+	if err == nil {
+		t.Fatalf("want error on beverage_id change")
+	}
+	if !errors.Is(err, apierror.ErrValidation) {
+		t.Errorf("want ErrValidation, got %v", err)
+	}
+}
+
+func TestCreateCollectionValidate(t *testing.T) {
+	r := CreateCollectionRequest{Name: ""}
+	if err := r.Validate(); err == nil {
+		t.Fatalf("empty name: want error")
+	}
+	r2 := CreateCollectionRequest{Name: strings.Repeat("x", 51)}
+	if err := r2.Validate(); err == nil {
+		t.Fatalf("too long name: want error")
+	}
+	r3 := CreateCollectionRequest{Name: "Reserve"}
+	if err := r3.Validate(); err != nil {
+		t.Errorf("ok name: %v", err)
 	}
 }

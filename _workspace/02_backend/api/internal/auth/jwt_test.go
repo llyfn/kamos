@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestJWTRoundtrip(t *testing.T) {
@@ -26,8 +29,13 @@ func TestJWTRoundtrip(t *testing.T) {
 func TestJWTRejectsModifiedToken(t *testing.T) {
 	s := NewSigner("secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Hour)
 	tok, _ := s.Sign("u", "n")
-	// flip last char
-	bad := tok[:len(tok)-1] + "X"
+	// Flip last char to a different base64url char so the tamper is always
+	// observable (overwriting 'X' with 'X' would be a no-op).
+	flip := byte('X')
+	if tok[len(tok)-1] == flip {
+		flip = 'Y'
+	}
+	bad := tok[:len(tok)-1] + string(flip)
 	if _, err := s.Verify(bad); err == nil {
 		t.Fatalf("expected verify failure on tampered token")
 	}
@@ -51,5 +59,102 @@ func TestPasswordRoundtrip(t *testing.T) {
 	}
 	if err := VerifyPassword(h, "wrong"); err == nil {
 		t.Errorf("VerifyPassword bad: expected error")
+	}
+}
+
+// A token signed by a different secret must NOT verify.
+func TestJWTRejectsWrongSecret(t *testing.T) {
+	a := NewSigner("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Hour)
+	b := NewSigner("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", time.Hour)
+	tok, err := a.Sign("u", "n")
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+	if _, err := b.Verify(tok); err == nil {
+		t.Fatalf("expected verify failure with wrong secret")
+	}
+}
+
+// Verifying garbage input must error, not panic.
+func TestJWTVerifyMalformed(t *testing.T) {
+	s := NewSigner("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Hour)
+	for _, bad := range []string{
+		"",
+		"not.a.jwt",
+		"plain-string",
+		"a.b.c",
+	} {
+		if _, err := s.Verify(bad); err == nil {
+			t.Errorf("Verify(%q): expected error", bad)
+		}
+	}
+}
+
+// The "alg confusion" attack: a forged token whose header advertises a
+// different algorithm than the server expects must be rejected. We
+// hand-craft an `alg: none` token (header + payload, empty signature) and
+// confirm Verify refuses it.
+func TestJWTRejectsNoneAlg(t *testing.T) {
+	s := NewSigner("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Hour)
+	// Header `{"alg":"none","typ":"JWT"}` base64-encoded.
+	// Payload `{"uid":"u","username":"n"}` base64-encoded.
+	// Signature: empty (the "none" algorithm).
+	header := "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0"
+	payload := "eyJ1aWQiOiJ1IiwidXNlcm5hbWUiOiJuIn0"
+	forged := header + "." + payload + "."
+	if _, err := s.Verify(forged); err == nil {
+		t.Fatalf("expected Verify to reject alg=none token")
+	}
+}
+
+// A token signed with the right secret but the wrong signing method (e.g.
+// HS384) must be rejected.
+func TestJWTRejectsWrongAlgFamily(t *testing.T) {
+	secret := []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS384, Claims{
+		UserID:   "u",
+		Username: "n",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	})
+	raw, err := tok.SignedString(secret)
+	if err != nil {
+		t.Fatalf("sign HS384: %v", err)
+	}
+	s := NewSigner(string(secret), time.Hour)
+	if _, err := s.Verify(raw); err == nil {
+		t.Fatalf("expected Verify to reject HS384 token")
+	}
+}
+
+// Verifying a token whose NotBefore is in the future should fail.
+func TestJWTNotBefore(t *testing.T) {
+	secret := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+		UserID:   "u",
+		Username: "n",
+		RegisteredClaims: jwt.RegisteredClaims{
+			NotBefore: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	})
+	raw, err := tok.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	s := NewSigner(secret, time.Hour)
+	if _, err := s.Verify(raw); err == nil {
+		t.Fatalf("expected nbf rejection")
+	}
+}
+
+// Google verifier without a configured client ID must refuse.
+func TestGoogleVerifierUnconfigured(t *testing.T) {
+	g := NewGoogleVerifier("")
+	if _, err := g.Verify(context.Background(), "any.id.token"); err == nil {
+		t.Fatalf("expected error when GOOGLE_CLIENT_ID is empty")
 	}
 }
