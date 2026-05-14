@@ -15,8 +15,8 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 
 ## Stack
 
-- **Backend:** Go 1.24+ (latest LTS), `chi` router, `pgx/v5` directly (no ORM), JWT (HS256 or RS256), Google OAuth2
-- **DB:** PostgreSQL 15+ with `pgcrypto` for `gen_random_uuid()`
+- **Backend:** Go 1.26+ (latest LTS), `chi` router, `pgx/v5` directly (no ORM), JWT (HS256 or RS256), Google OAuth2
+- **DB:** PostgreSQL 18+ with `pgcrypto` for `gen_random_uuid()`
 - **Mobile:** Flutter (stable channel), Riverpod, `go_router`, `dio`, `flutter_secure_storage`
 - **Locales:** `en`, `ja`, `ko` (full coverage in MVP)
 - **Min platforms:** iOS 13+, Android API 26+
