@@ -52,6 +52,7 @@ func newTestServer(t *testing.T) (http.Handler, *auth.Signer) {
 		Search:        &repository.SearchRepo{},
 		Taxonomy:      &repository.TaxonomyRepo{},
 		RefreshTokens: &repository.RefreshTokenRepo{},
+		PhotoUploads:  &repository.PhotoUploadRepo{},
 	}
 	google := auth.NewGoogleVerifier("")
 	h := handlers.New(cfg, log, repos, signer, google)
@@ -314,13 +315,14 @@ func TestCreateCollectionValidation(t *testing.T) {
 	}
 }
 
-// UploadCheckinPhoto without a url field is rejected by the handler.
-func TestUploadCheckinPhotoRequiresURL(t *testing.T) {
+// UploadCheckinPhoto without an upload_id is rejected by the handler.
+// (Phase 3 replaced the MVP `{ url }` body with `{ upload_id }`.)
+func TestUploadCheckinPhotoRequiresUploadID(t *testing.T) {
 	srv, signer := newTestServer(t)
 	tok, _ := signer.Sign("u-1", "yamamoto")
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/check-ins/some-id/photos",
-		bytes.NewReader([]byte(`{"url":""}`)))
+		bytes.NewReader([]byte(`{"upload_id":""}`)))
 	req.Header.Set("Authorization", "Bearer "+tok)
 	srv.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnprocessableEntity {

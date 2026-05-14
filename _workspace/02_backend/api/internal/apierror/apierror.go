@@ -30,6 +30,15 @@ var (
 	ErrTokenExpired      = errors.New("token_expired")
 	ErrInvalidCredential = errors.New("invalid_credential")
 	ErrRateLimited       = errors.New("rate_limited")
+	// ErrStorageDisabled is returned when an endpoint that needs the blob
+	// store is called but R2 was not configured (env vars empty). The
+	// presign endpoint maps this to 503.
+	ErrStorageDisabled = errors.New("storage_disabled")
+	// ErrUploadNotCompleted is returned when a client tries to attach a
+	// photo_uploads row that hasn't reached an attachable state yet.
+	ErrUploadNotCompleted = errors.New("upload_not_completed")
+	// ErrNotImplemented is the disabled-storage no-op refusal.
+	ErrNotImplemented = errors.New("not_implemented")
 )
 
 // APIError is the body shape every error response uses.
@@ -83,6 +92,12 @@ func WriteFrom(w http.ResponseWriter, log *slog.Logger, op string, err error) {
 		WriteError(w, http.StatusGone, "TOKEN_EXPIRED", "token expired")
 	case errors.Is(err, ErrRateLimited):
 		WriteError(w, http.StatusTooManyRequests, "RATE_LIMITED", "rate_limited")
+	case errors.Is(err, ErrStorageDisabled), errors.Is(err, ErrNotImplemented):
+		WriteError(w, http.StatusServiceUnavailable, "STORAGE_DISABLED",
+			"photo uploads not configured on this server")
+	case errors.Is(err, ErrUploadNotCompleted):
+		WriteError(w, http.StatusConflict, "UPLOAD_NOT_COMPLETED",
+			"upload has not been completed")
 	default:
 		if log != nil {
 			log.Error("internal error", "op", op, "err", err)

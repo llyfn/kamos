@@ -17,23 +17,42 @@ import (
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/cursor"
+	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/storage"
 )
 
 // Handler is the bundle every route handler shares.
 type Handler struct {
-	Cfg      *config.Config
-	Log      *slog.Logger
-	Repos    *repository.Repos
-	Signer   *auth.Signer
-	Google   *auth.GoogleVerifier
+	Cfg     *config.Config
+	Log     *slog.Logger
+	Repos   *repository.Repos
+	Signer  *auth.Signer
+	Google  *auth.GoogleVerifier
+	Storage storage.Storage
+	Mailer  email.Mailer
 }
 
-// New creates the bundle.
+// New creates the bundle. Storage/Mailer default to no-op implementations
+// when nil is passed so test helpers don't need to wire them.
 func New(cfg *config.Config, log *slog.Logger, repos *repository.Repos, signer *auth.Signer, google *auth.GoogleVerifier) *Handler {
-	return &Handler{Cfg: cfg, Log: log, Repos: repos, Signer: signer, Google: google}
+	return &Handler{
+		Cfg:     cfg,
+		Log:     log,
+		Repos:   repos,
+		Signer:  signer,
+		Google:  google,
+		Storage: storage.Disabled{},
+		Mailer:  email.LogMailer{Log: log},
+	}
 }
+
+// WithStorage wires a real blob backend.
+func (h *Handler) WithStorage(s storage.Storage) *Handler { h.Storage = s; return h }
+
+// WithMailer wires a real mail backend.
+func (h *Handler) WithMailer(m email.Mailer) *Handler { h.Mailer = m; return h }
 
 // ---------------------------------------------------------------------------
 // Helpers

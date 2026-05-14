@@ -118,6 +118,9 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 			r.Post("/check-ins/{id}/photos", h.UploadCheckinPhoto)
 			r.Post("/check-ins/{id}/toast", h.ToggleToast)
 
+			// Uploads — Phase 3 presigned PUT flow.
+			r.Post("/uploads/photo-presign", h.PhotoPresign)
+
 			// Social.
 			r.Post("/users/{username}/follow", h.Follow)
 			r.Delete("/users/{username}/follow", h.Unfollow)
