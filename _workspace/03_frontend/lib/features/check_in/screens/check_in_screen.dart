@@ -28,11 +28,13 @@ import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
+import '../../../core/models/venue.dart';
 import '../../../core/observability/sentry_observer.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_input.dart';
+import '../../venues/widgets/venue_picker_sheet.dart';
 import '../providers/checkin_providers.dart';
 import '../repository/checkin_repository.dart';
 
@@ -68,6 +70,7 @@ class CheckInScreen extends ConsumerStatefulWidget {
     super.key,
     required this.beverage,
     @visibleForTesting this.initialPhotos = const [],
+    @visibleForTesting this.initialVenue,
     @visibleForTesting this.onSubmitted,
   });
   final Beverage beverage;
@@ -76,6 +79,10 @@ class CheckInScreen extends ConsumerStatefulWidget {
   /// platform binding in widget tests).
   @visibleForTesting
   final List<XFile> initialPhotos;
+
+  /// Pre-seeded venue. Tests bypass the bottom-sheet picker via this seam.
+  @visibleForTesting
+  final FoursquarePlace? initialVenue;
 
   /// When set (only by tests), this replaces the `context.pop()` call at the
   /// end of a successful submit. Production callers leave it null so the
@@ -98,6 +105,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   String _priceMode = 'serving';
   String? _purchase;
   String? _serving;
+  FoursquarePlace? _venue;
   bool _uploadingPhotos = false;
 
   // Server-canonical dimensions, in display order. The labels for each tag are
@@ -121,7 +129,16 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         List.generate(widget.initialPhotos.length, (_) => const PhotoUploadState()),
       );
     }
+    _venue = widget.initialVenue;
   }
+
+  Future<void> _pickVenue() async {
+    final picked = await showVenuePicker(context);
+    if (!mounted || picked == null) return;
+    setState(() => _venue = picked);
+  }
+
+  void _clearVenue() => setState(() => _venue = null);
 
   @override
   void dispose() {
@@ -258,6 +275,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               price: price,
               purchaseType: _purchase,
               servingStyle: _serving,
+              venue: _venue?.toCheckinVenueJson(),
             );
     if (posted == null) {
       if (mounted) {
@@ -500,6 +518,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               dimensionLabel: (key) => _dimensionLabel(l, key),
               onToggle: _toggleTag,
             ),
+            _Section(text: l.checkInWhereLabel),
+            _VenuePickerRow(
+              venue: _venue,
+              onPick: _pickVenue,
+              onClear: _clearVenue,
+            ),
             _Section(text: l.checkInPhotosLabel),
             GridView.count(
               shrinkWrap: true,
@@ -715,6 +739,75 @@ class _FlavorTagPicker extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _VenuePickerRow extends StatelessWidget {
+  const _VenuePickerRow({
+    required this.venue,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final FoursquarePlace? venue;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    final picked = venue;
+    return InkWell(
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: t.bgSurface,
+          border: Border.all(color: t.border1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.place_outlined, color: t.fg2),
+            const SizedBox(width: 10),
+            Expanded(
+              child: picked == null
+                  ? Text(
+                      l.checkInWhereCta,
+                      style: TextStyle(color: t.fg2),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          picked.name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: t.fg1,
+                          ),
+                        ),
+                        if ((picked.locality ?? '').isNotEmpty)
+                          Text(
+                            picked.locality!,
+                            style: TextStyle(fontSize: 12, color: t.fg2),
+                          ),
+                      ],
+                    ),
+            ),
+            if (picked != null)
+              IconButton(
+                icon: Icon(Icons.close, color: t.fg3, size: 18),
+                onPressed: onClear,
+              )
+            else
+              Icon(Icons.chevron_right, color: t.fg3),
+          ],
+        ),
+      ),
     );
   }
 }

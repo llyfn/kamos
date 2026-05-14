@@ -170,6 +170,37 @@ class AppLocalizationsKo extends AppLocalizations {
   String get photoUploadFailed => '사진을 업로드하지 못했습니다. 탭하여 다시 시도하세요.';
 
   @override
+  String get checkInWhereLabel => '어디서?';
+
+  @override
+  String get checkInWhereCta => '장소 추가';
+
+  @override
+  String get venuePickerSearchPlaceholder => '장소 검색';
+
+  @override
+  String get venuePickerEmptyHint => '바, 레스토랑, 주류 판매점 검색.';
+
+  @override
+  String get venuePickerNoResults => '결과 없음.';
+
+  @override
+  String get venuePickerDisabled => '장소 검색이 설정되지 않았습니다. 장소 없이 체크인할 수 있습니다.';
+
+  @override
+  String get venuePickerRateLimited => '잠시 후 다시 시도하세요.';
+
+  @override
+  String feedCardAtVenue(String name, String locality) {
+    return '$locality · $name에서';
+  }
+
+  @override
+  String feedCardAtVenueNoLocality(String name) {
+    return '$name에서';
+  }
+
+  @override
   String get flavorSweetness => '단맛';
 
   @override

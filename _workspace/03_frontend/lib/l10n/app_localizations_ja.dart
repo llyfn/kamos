@@ -170,6 +170,37 @@ class AppLocalizationsJa extends AppLocalizations {
   String get photoUploadFailed => '写真をアップロードできませんでした。タップしてやり直し。';
 
   @override
+  String get checkInWhereLabel => 'どこで？';
+
+  @override
+  String get checkInWhereCta => '場所を追加';
+
+  @override
+  String get venuePickerSearchPlaceholder => '場所を検索';
+
+  @override
+  String get venuePickerEmptyHint => 'バー、レストラン、酒販店を検索。';
+
+  @override
+  String get venuePickerNoResults => '該当なし。';
+
+  @override
+  String get venuePickerDisabled => '場所検索は未設定。場所なしでチェックインできます。';
+
+  @override
+  String get venuePickerRateLimited => '少しお待ちください。';
+
+  @override
+  String feedCardAtVenue(String name, String locality) {
+    return '$name · $localityにて';
+  }
+
+  @override
+  String feedCardAtVenueNoLocality(String name) {
+    return '$nameにて';
+  }
+
+  @override
   String get flavorSweetness => '甘味';
 
   @override

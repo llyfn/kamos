@@ -406,6 +406,60 @@ abstract class AppLocalizations {
   /// **'Photo failed to upload. Tap to retry.'**
   String get photoUploadFailed;
 
+  /// No description provided for @checkInWhereLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Where?'**
+  String get checkInWhereLabel;
+
+  /// No description provided for @checkInWhereCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a venue'**
+  String get checkInWhereCta;
+
+  /// No description provided for @venuePickerSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for a venue'**
+  String get venuePickerSearchPlaceholder;
+
+  /// No description provided for @venuePickerEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for a bar, restaurant, or shop.'**
+  String get venuePickerEmptyHint;
+
+  /// No description provided for @venuePickerNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No venues found.'**
+  String get venuePickerNoResults;
+
+  /// No description provided for @venuePickerDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue search is not configured. You can still check in without a venue.'**
+  String get venuePickerDisabled;
+
+  /// No description provided for @venuePickerRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow down — try again in a moment.'**
+  String get venuePickerRateLimited;
+
+  /// No description provided for @feedCardAtVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'at {name} · {locality}'**
+  String feedCardAtVenue(String name, String locality);
+
+  /// No description provided for @feedCardAtVenueNoLocality.
+  ///
+  /// In en, this message translates to:
+  /// **'at {name}'**
+  String feedCardAtVenueNoLocality(String name);
+
   /// No description provided for @flavorSweetness.
   ///
   /// In en, this message translates to:

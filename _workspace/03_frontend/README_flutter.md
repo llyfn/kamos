@@ -112,6 +112,17 @@ Uploads run **sequentially** per check-in (one PUT in flight at a time) — frie
 
 **Photo cap of 4** is enforced both client-side (UI cap in `lib/features/check_in/screens/check_in_screen.dart`, `checkInPhotoLimitReached` ARB key) and server-side. A failed PUT is recoverable per-tile via the `actionRetry` button overlay; the check-in itself is already saved before any upload begins.
 
+## Venues (Phase 4)
+
+Check-ins may optionally attach a venue (bar / restaurant / shop). Two paths:
+
+1. **Picker → Foursquare-backed attach.** The check-in screen exposes a "Where?" row that opens the bottom-sheet picker (`lib/features/venues/widgets/venue_picker_sheet.dart`). The sheet talks to `GET /v1/venues/search` via `VenueRepository`, which proxies Foursquare Places server-side. Tapping a result attaches it to the check-in by `foursquare_id`; the backend upserts the row on `POST /v1/check-ins`.
+2. **Already-known venue.** When the client already has a `venue.id` (e.g., picked from a recent-venues list), it can post `venue: { id }` directly without going through Foursquare.
+
+**Search requires `FOURSQUARE_API_KEY` on the backend** (cookbook §C5). When unset, `GET /v1/venues/search` returns `503 { code: VENUE_SEARCH_DISABLED }`; the picker surfaces `venuePickerDisabled` and offers a Close button. **Check-in venue attachment works without the API key** — the upsert path is DB-only, so the user can still pick a place from a saved venue list, or omit a venue entirely.
+
+Upstream 429s from Foursquare bubble out as `503 { code: VENUE_RATE_LIMITED }`; the picker shows `venuePickerRateLimited` and lets the user retry.
+
 ## SPEC invariants the code enforces
 
 - **Category strings** — `lib/core/i18n/category_labels.dart` hardcodes the SPEC §2.1 strings character-for-character; `test/category_strings_test.dart` enforces parity.

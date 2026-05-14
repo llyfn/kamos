@@ -173,6 +173,18 @@ class CheckInCard extends StatelessWidget {
                     color: t.fgMuted, size: 28),
               ),
             ],
+            if (item.venue != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                (item.venue!.locality ?? '').isEmpty
+                    ? l.feedCardAtVenueNoLocality(item.venue!.name)
+                    : l.feedCardAtVenue(
+                        item.venue!.name,
+                        item.venue!.locality!,
+                      ),
+                style: TextStyle(fontSize: 12, color: t.fg3),
+              ),
+            ],
             const SizedBox(height: 12),
             Container(
               height: 1,

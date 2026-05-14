@@ -32,6 +32,7 @@ class CheckInController extends Notifier<CheckInControllerState> {
     Price? price,
     String? purchaseType,
     String? servingStyle,
+    Map<String, dynamic>? venue,
   }) async {
     state = const CheckInControllerState(isSubmitting: true);
     try {
@@ -44,6 +45,7 @@ class CheckInController extends Notifier<CheckInControllerState> {
             price: price,
             purchaseType: purchaseType,
             servingStyle: servingStyle,
+            venue: venue,
           );
       state = CheckInControllerState(posted: posted);
       return posted;
