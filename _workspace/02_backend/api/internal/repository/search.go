@@ -17,19 +17,14 @@ type SearchResult struct {
 	Brewery  *domain.Brewery  `json:"brewery,omitempty"`
 }
 
-// Search performs cross-locale FTS on beverages OR breweries. When `typ` is
-// empty it searches both — the result list interleaves them by id.
-func (r *SearchRepo) Search(ctx context.Context, q string, typ *string, cursor *string, limit int) ([]SearchResult, error) {
+// SearchBeverages fetches up to limit+1 beverages matching q, keyset-
+// paginated by id. `cursorID` is the inclusive-exclusive (`<`) id boundary;
+// nil for the first page.
+func (r *SearchRepo) SearchBeverages(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-
-	doBev := typ == nil || *typ == "" || *typ == "beverage"
-	doBrw := typ == nil || *typ == "" || *typ == "brewery"
-
-	var out []SearchResult
-	if doBev {
-		const bq = beverageSelect + `
+	const bq = beverageSelect + `
 WHERE to_tsvector('simple',
         coalesce(b.name_i18n->>'en','') || ' ' ||
         coalesce(b.name_i18n->>'ja','') || ' ' ||
@@ -38,28 +33,33 @@ WHERE to_tsvector('simple',
   AND ($2::text IS NULL OR b.id::text < $2)
 ORDER BY b.check_in_count DESC, b.id DESC
 LIMIT $3;`
-		rows, err := r.db.Query(ctx, bq, q, cursor, limit+1)
-		if err != nil {
-			return nil, fmt.Errorf("Search beverages: %w", err)
-		}
-		brepo := BeverageRepo{db: r.db}
-		for rows.Next() {
-			bv, err := scanBeverage(rows)
-			if err != nil {
-				rows.Close()
-				return nil, fmt.Errorf("Search beverages scan: %w", err)
-			}
-			d, err := brepo.toBeverage(bv)
-			if err != nil {
-				rows.Close()
-				return nil, err
-			}
-			out = append(out, SearchResult{Type: "beverage", Beverage: &d})
-		}
-		rows.Close()
+	rows, err := r.db.Query(ctx, bq, q, cursorID, limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("SearchBeverages: %w", err)
 	}
-	if doBrw {
-		const brq = `
+	defer rows.Close()
+	brepo := BeverageRepo{db: r.db}
+	var out []SearchResult
+	for rows.Next() {
+		bv, err := scanBeverage(rows)
+		if err != nil {
+			return nil, fmt.Errorf("SearchBeverages scan: %w", err)
+		}
+		d, err := brepo.toBeverage(bv)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, SearchResult{Type: "beverage", Beverage: &d})
+	}
+	return out, rows.Err()
+}
+
+// SearchBreweries fetches up to limit+1 breweries matching q.
+func (r *SearchRepo) SearchBreweries(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	const brq = `
 SELECT id, name_i18n, prefecture, region, founded_year, website, description_i18n, created_at
 FROM breweries
 WHERE to_tsvector('simple',
@@ -70,19 +70,18 @@ WHERE to_tsvector('simple',
   AND ($2::text IS NULL OR id::text < $2)
 ORDER BY id DESC
 LIMIT $3;`
-		rows, err := r.db.Query(ctx, brq, q, cursor, limit+1)
-		if err != nil {
-			return nil, fmt.Errorf("Search breweries: %w", err)
-		}
-		for rows.Next() {
-			b, err := scanBrewery(rows)
-			if err != nil {
-				rows.Close()
-				return nil, fmt.Errorf("Search breweries scan: %w", err)
-			}
-			out = append(out, SearchResult{Type: "brewery", Brewery: b})
-		}
-		rows.Close()
+	rows, err := r.db.Query(ctx, brq, q, cursorID, limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("SearchBreweries: %w", err)
 	}
-	return out, nil
+	defer rows.Close()
+	var out []SearchResult
+	for rows.Next() {
+		b, err := scanBrewery(rows)
+		if err != nil {
+			return nil, fmt.Errorf("SearchBreweries scan: %w", err)
+		}
+		out = append(out, SearchResult{Type: "brewery", Brewery: b})
+	}
+	return out, rows.Err()
 }

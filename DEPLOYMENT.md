@@ -36,7 +36,6 @@ Copy `_workspace/02_backend/api/.env.example` to `.env` at the repo root (or whe
 | `JWT_TTL` | Token lifetime; MVP is long-lived (refresh deferred) | yes (default `720h`) |
 | `APP_BASE_URL` | Base URL used in verification-email links | yes |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (used as ID-token audience) | only if Google sign-in is enabled |
-| `GOOGLE_CLIENT_SECRET` | Server-side only; **never ship to the Flutter app** | only if Google sign-in is enabled |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Verification email | **production** — dev logs the link instead |
 
 > **`local.env` auto-loading:** when `APP_ENV != "production"` the server walks up from CWD looking for `local.env` and loads it before reading env vars. Real env vars always win (godotenv is non-overriding). `local.env` is gitignored; commit `local.env.example` instead.
@@ -139,9 +138,8 @@ Android notes:
 1. Create OAuth 2.0 credentials in Google Cloud Console.
 2. iOS / Android client → drop the client ID into Flutter's platform-specific config (per `google_sign_in` package docs, pending wiring — see `README_flutter.md`).
 3. Web/Server client → set `GOOGLE_CLIENT_ID` on the API. This is the audience the server verifies ID tokens against.
-4. `GOOGLE_CLIENT_SECRET` stays server-side. It is not required for ID-token verification but kept in env for any future browser-flow exchange.
 
-> The Flutter app **never** holds the client secret. SPEC invariant — verified by qa-inspector.
+> The Flutter app **never** holds a client secret, and neither does the API: the ID-token verification flow used here does not require one. SPEC invariant — verified by qa-inspector.
 
 ## 9. Known deferred items (MVP gaps)
 

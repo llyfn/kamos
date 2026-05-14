@@ -182,5 +182,4 @@ make api-test-int        # if Postgres 18 is available
 ## Open items
 
 - `// TODO`: SMTP wiring for verification email — currently the link is logged.
-- `// TODO`: localized default-collection names. HANDOFF.md does not pin localized strings; we use English ("Inventory" / "Wishlist") across all locales for now. See `domain.LocalizedDefaultCollections`.
 - `// CONFIGURE`: `GOOGLE_CLIENT_ID` must be set before Google sign-in works. The verifier rejects with a clear error if unset.

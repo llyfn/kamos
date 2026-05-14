@@ -51,19 +51,23 @@ func LoadDotenv() {
 }
 
 // Config holds every tunable the server needs.
+//
+// Google OAuth note: only `GoogleClientID` is needed server-side. The
+// API verifies ID tokens by audience match against the client ID;
+// no client *secret* is required for that flow. The secret stays out
+// of the codebase entirely.
 type Config struct {
-	Port               string
-	DatabaseURL        string
-	JWTSecret          string
-	JWTTTL             time.Duration
-	GoogleClientID     string
-	GoogleClientSecret string
-	SMTPHost           string
-	SMTPPort           int
-	SMTPUser           string
-	SMTPPass           string
-	AppBaseURL         string
-	Env                string // "dev" | "prod"
+	Port           string
+	DatabaseURL    string
+	JWTSecret      string
+	JWTTTL         time.Duration
+	GoogleClientID string
+	SMTPHost       string
+	SMTPPort       int
+	SMTPUser       string
+	SMTPPass       string
+	AppBaseURL     string
+	Env            string // "dev" | "prod"
 }
 
 // Load reads env vars and returns a Config, erroring on missing required
@@ -72,16 +76,15 @@ type Config struct {
 // edge).
 func Load() (*Config, error) {
 	c := &Config{
-		Port:               getenv("PORT", "8080"),
-		DatabaseURL:        os.Getenv("DATABASE_URL"),
-		JWTSecret:          os.Getenv("JWT_SECRET"),
-		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		SMTPHost:           os.Getenv("SMTP_HOST"),
-		SMTPUser:           os.Getenv("SMTP_USER"),
-		SMTPPass:           os.Getenv("SMTP_PASS"),
-		AppBaseURL:         getenv("APP_BASE_URL", "http://localhost:3000"),
-		Env:                getenv("APP_ENV", "dev"),
+		Port:           getenv("PORT", "8080"),
+		DatabaseURL:    os.Getenv("DATABASE_URL"),
+		JWTSecret:      os.Getenv("JWT_SECRET"),
+		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
+		SMTPHost:       os.Getenv("SMTP_HOST"),
+		SMTPUser:       os.Getenv("SMTP_USER"),
+		SMTPPass:       os.Getenv("SMTP_PASS"),
+		AppBaseURL:     getenv("APP_BASE_URL", "http://localhost:3000"),
+		Env:            getenv("APP_ENV", "dev"),
 	}
 
 	ttlStr := getenv("JWT_TTL", "720h")

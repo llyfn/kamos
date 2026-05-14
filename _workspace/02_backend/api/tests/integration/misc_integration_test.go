@@ -4,6 +4,7 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -145,6 +146,138 @@ func TestSearchRequiresQuery(t *testing.T) {
 	code, _ := doReq(t, srv, http.MethodGet, "/v1/search", "", nil)
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d", code)
+	}
+}
+
+// MIN-D 4 regression: typeless /v1/search must paginate cleanly through
+// beverages first then breweries, without skipping or duplicating items as
+// the cursor crosses the sub-stream boundary.
+//
+// Setup: 3 beverages + 3 breweries whose names all contain the token
+// "Saketown" — FTS will surface all 6. With limit=2 we expect:
+//   page 1 → 2 beverages, has_more=true
+//   page 2 → 1 beverage + 1 brewery (rollover), has_more=true
+//   page 3 → 2 breweries, has_more=false (last 2 of 3)
+// Every item must appear exactly once across the three pages.
+func TestSearchTypelessCursor(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	// Seed 3 beverages whose en name contains "Saketown" so FTS picks them.
+	// seedBeverage already creates a new brewery per beverage, but those
+	// breweries are named "Test Brewery" so they won't match "Saketown" —
+	// good, they shouldn't pollute the brewery results. We seed the three
+	// matching breweries below by direct SQL.
+	for i := 0; i < 3; i++ {
+		seedBeverage(t, "Saketown-Bev-"+string(rune('A'+i)))
+	}
+
+	p := getPool(t)
+	for i := 0; i < 3; i++ {
+		nameJSON, _ := json.Marshal(map[string]string{
+			"en": "Saketown-Brewery-" + string(rune('A'+i)),
+			"ja": "テスト酒造",
+		})
+		if _, err := p.Exec(context.Background(),
+			`INSERT INTO breweries (name_i18n) VALUES ($1::jsonb);`,
+			string(nameJSON)); err != nil {
+			t.Fatalf("seed brewery %d: %v", i, err)
+		}
+	}
+
+	type page struct {
+		Items []struct {
+			Type     string                 `json:"type"`
+			Beverage map[string]any         `json:"beverage,omitempty"`
+			Brewery  map[string]any         `json:"brewery,omitempty"`
+		} `json:"items"`
+		NextCursor string `json:"next_cursor"`
+		HasMore    bool   `json:"has_more"`
+	}
+
+	get := func(t *testing.T, urlSuffix string) page {
+		t.Helper()
+		code, raw := doReq(t, srv, http.MethodGet, "/v1/search?q=Saketown&limit=2"+urlSuffix, "", nil)
+		if code != http.StatusOK {
+			t.Fatalf("search %q: status=%d body=%s", urlSuffix, code, raw)
+		}
+		var pg page
+		if err := json.Unmarshal(raw, &pg); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		return pg
+	}
+
+	// Track which item ids we've already returned. Every item must be unique.
+	seen := map[string]bool{}
+	itemID := func(it struct {
+		Type     string                 `json:"type"`
+		Beverage map[string]any         `json:"beverage,omitempty"`
+		Brewery  map[string]any         `json:"brewery,omitempty"`
+	}) string {
+		switch it.Type {
+		case "beverage":
+			return it.Type + ":" + it.Beverage["id"].(string)
+		case "brewery":
+			return it.Type + ":" + it.Brewery["id"].(string)
+		}
+		t.Fatalf("unknown item type: %q", it.Type)
+		return ""
+	}
+
+	totalBev, totalBrw := 0, 0
+	pageNum := 0
+	cursor := ""
+	for {
+		pageNum++
+		if pageNum > 10 {
+			t.Fatalf("paginated past 10 pages — pagination is not converging")
+		}
+		suffix := ""
+		if cursor != "" {
+			suffix = "&cursor=" + cursor
+		}
+		pg := get(t, suffix)
+		if len(pg.Items) == 0 && pg.HasMore {
+			t.Fatalf("page %d: has_more=true but no items returned", pageNum)
+		}
+		for _, it := range pg.Items {
+			key := itemID(it)
+			if seen[key] {
+				t.Errorf("page %d: duplicate item %s", pageNum, key)
+			}
+			seen[key] = true
+			switch it.Type {
+			case "beverage":
+				totalBev++
+			case "brewery":
+				totalBrw++
+			}
+		}
+		if !pg.HasMore {
+			if pg.NextCursor != "" {
+				t.Errorf("page %d: has_more=false but next_cursor is non-empty: %q", pageNum, pg.NextCursor)
+			}
+			break
+		}
+		if pg.NextCursor == "" {
+			t.Fatalf("page %d: has_more=true but next_cursor is empty", pageNum)
+		}
+		cursor = pg.NextCursor
+	}
+
+	if totalBev != 3 {
+		t.Errorf("beverage total: got %d want 3", totalBev)
+	}
+	if totalBrw != 3 {
+		t.Errorf("brewery total: got %d want 3", totalBrw)
+	}
+	// We expect exactly 3 pages with limit=2: 2 + 2 + 2 = 6 items, but the
+	// rollover boundary means page 2 has 1 beverage + 1 brewery, page 3 has
+	// the remaining 2 breweries. Either way the page count is exactly 3.
+	if pageNum != 3 {
+		t.Errorf("page count: got %d want 3", pageNum)
 	}
 }
 

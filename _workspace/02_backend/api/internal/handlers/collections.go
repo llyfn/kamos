@@ -155,6 +155,9 @@ func (h *Handler) AddCollectionEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateCollectionEntry — PATCH /v1/collections/{id}/entries/{beverage_id}.
+//
+// Status: scaffold-for-Phase6 (collection entry note edits, low cost to keep
+// pre-wired). Endpoint is intentionally pre-wired; no Flutter caller in MVP.
 func (h *Handler) UpdateCollectionEntry(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {

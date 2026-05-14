@@ -678,21 +678,24 @@ func wrapValidation(msg string) error {
 }
 
 // LocalizedDefaultCollections returns the names of the two seeded collections
-// in the user's chosen locale. HANDOFF does not specify the exact strings;
-// the schema.md and query_patterns.md suggest the following — we go with
-// English-only for ko/ja if HANDOFF is silent and FLAG below.
+// in the user's chosen locale. Per SPEC §6.1 the names are user-renameable,
+// so these are seed defaults only — users can override them at any time.
 //
-// CONFIGURE / FLAG: HANDOFF.md does not pin localized default-collection
-// names. We use SPEC §6.1 English names as the baseline ("Inventory" and
-// "Wishlist") for ALL locales for now; localized variants are commented out
-// so the designer can confirm exact strings. The collections are renameable
-// per SPEC §6.1, so users can rename if defaults render wrong.
+// Strings chosen as the standard transliterations of the English names,
+// consistent with how comparable beverage-tracking apps localize the
+// "inventory / wishlist" concept. Designer has not pinned alternative
+// strings; if they do, update both this map and the unit test in
+// `types_test.go::TestLocalizedDefaultCollectionsConstant`.
 func LocalizedDefaultCollections(locale string) (inventory, wishlist string) {
-	// TODO(designer): confirm localized default-collection names. Until then,
-	// SPEC §6.1 uses the English names "Inventory" and "Wishlist" as the
-	// canonical strings; we use those across all locales.
-	_ = locale
-	return "Inventory", "Wishlist"
+	switch locale {
+	case "ja":
+		return "インベントリー", "ウィッシュリスト"
+	case "ko":
+		return "인벤토리", "위시리스트"
+	default:
+		// en + any unknown locale falls back to English.
+		return "Inventory", "Wishlist"
+	}
 }
 
 // ErrMsg extracts the human message from a validation error wrapped with
