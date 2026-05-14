@@ -23,3 +23,6 @@ local.env
 .DS_Store
 .AppleDouble
 .LSOverride
+
+### Claude Code runtime ###
+.claude/scheduled_tasks.lock
