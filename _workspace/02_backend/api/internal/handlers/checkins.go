@@ -66,6 +66,10 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetCheckin — GET /v1/check-ins/{id}.
+//
+// Status: scaffold-for-Phase6 (comments need a check-in detail view) and
+// Phase5 (admin moderation surface). Endpoint is intentionally pre-wired;
+// no Flutter caller in MVP.
 func (h *Handler) GetCheckin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	viewerID := ""
@@ -81,6 +85,9 @@ func (h *Handler) GetCheckin(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateCheckin — PATCH /v1/check-ins/{id}.
+//
+// Status: scaffold-for-Phase5 (admin edit surface). Endpoint is intentionally
+// pre-wired; no Flutter caller in MVP.
 func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -100,15 +107,15 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 			"beverage_id cannot be changed after a check-in is created")
 		return
 	}
+	// Re-decode the same raw map into the typed struct. Unknown fields would
+	// have already been caught above (none are accepted on this endpoint),
+	// so strict-decode is unnecessary on the second pass — every json tag
+	// on UpdateCheckinRequest (including the `clear_*` flags) is known.
 	var req domain.UpdateCheckinRequest
-	// Re-decode strictly so we get the typed fields back. We've already
-	// rejected beverage_id above; the typed decode is safe to disregard.
 	rawBytes, _ := json.Marshal(raw)
-	dec := json.NewDecoder(bytesReader(rawBytes))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&req); err != nil {
-		// Tolerate unknown clear_* fields by re-decoding without strict mode.
-		_ = json.Unmarshal(rawBytes, &req)
+	if err := json.Unmarshal(rawBytes, &req); err != nil {
+		h.writeErr(w, "UpdateCheckin decode typed", err)
+		return
 	}
 	if err := req.Validate(); err != nil {
 		h.writeErr(w, "UpdateCheckin validate", err)
@@ -157,6 +164,9 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteCheckin — DELETE /v1/check-ins/{id}.
+//
+// Status: scaffold-for-Phase5 (admin moderation). Endpoint is intentionally
+// pre-wired; no Flutter caller in MVP.
 func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -185,6 +195,11 @@ type uploadPhotoRequest struct {
 	URL string `json:"url"`
 }
 
+// UploadCheckinPhoto — POST /v1/check-ins/{id}/photos.
+//
+// Status: scaffold-for-Phase3 (real photo upload flow will wire on top of
+// this endpoint). Endpoint is intentionally pre-wired; no Flutter caller in
+// MVP.
 func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {

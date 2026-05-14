@@ -14,11 +14,15 @@ import (
 // Cursor is the opaque payload encoded into a base64 token.
 // CreatedAt + ID is the keyset on which feed/profile/beverage check-in lists
 // sort. For non-time-ordered lists (e.g. popularity search), reuse the same
-// shape with the numeric value stuffed into Score.
+// shape with the numeric value stuffed into Score. `Type` is used only by
+// /v1/search to disambiguate which sub-stream the cursor is mid-page in
+// (`beverage` while draining beverages, `brewery` once the cursor has
+// crossed into breweries).
 type Cursor struct {
 	CreatedAt time.Time `json:"c,omitempty"`
 	ID        string    `json:"i,omitempty"`
 	Score     *int64    `json:"s,omitempty"`
+	Type      string    `json:"t,omitempty"`
 }
 
 // Encode produces a URL-safe base64 of the JSON representation.

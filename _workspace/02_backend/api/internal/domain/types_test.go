@@ -222,13 +222,21 @@ func TestUserFullJSONIncludesEmail(t *testing.T) {
 }
 
 func TestLocalizedDefaultCollectionsConstant(t *testing.T) {
-	// All three locales currently return the English names — when the
-	// designer pins localized strings this test will need updating per
-	// the comment in types.go.
-	for _, loc := range []string{"en", "ja", "ko"} {
-		inv, wish := LocalizedDefaultCollections(loc)
-		if inv != "Inventory" || wish != "Wishlist" {
-			t.Errorf("locale %q: got (%q, %q)", loc, inv, wish)
+	cases := []struct {
+		locale, wantInv, wantWish string
+	}{
+		{"en", "Inventory", "Wishlist"},
+		{"ja", "インベントリー", "ウィッシュリスト"},
+		{"ko", "인벤토리", "위시리스트"},
+		// Unknown locales fall back to English.
+		{"", "Inventory", "Wishlist"},
+		{"fr", "Inventory", "Wishlist"},
+	}
+	for _, tc := range cases {
+		inv, wish := LocalizedDefaultCollections(tc.locale)
+		if inv != tc.wantInv || wish != tc.wantWish {
+			t.Errorf("locale %q: got (%q, %q) want (%q, %q)",
+				tc.locale, inv, wish, tc.wantInv, tc.wantWish)
 		}
 	}
 }

@@ -149,11 +149,17 @@ func (h *Handler) GetUserCheckins(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUserFollowers — GET /v1/users/{username}/followers.
+//
+// Status: scaffold-for-Phase6 (future profile screen iteration: followers
+// list). Endpoint is intentionally pre-wired; no Flutter caller in MVP.
 func (h *Handler) GetUserFollowers(w http.ResponseWriter, r *http.Request) {
 	h.listSocial(w, r, true)
 }
 
 // GetUserFollowing — GET /v1/users/{username}/following.
+//
+// Status: scaffold-for-Phase6 (future profile screen iteration: following
+// list). Endpoint is intentionally pre-wired; no Flutter caller in MVP.
 func (h *Handler) GetUserFollowing(w http.ResponseWriter, r *http.Request) {
 	h.listSocial(w, r, false)
 }

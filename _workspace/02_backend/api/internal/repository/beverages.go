@@ -316,31 +316,33 @@ func (r *BreweryRepo) List(ctx context.Context, q *string, cursor *string, limit
 		limit = 20
 	}
 	const sql = `
-SELECT id, name_i18n, prefecture, region, founded_year, website, description_i18n, created_at
-FROM breweries
+SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
+       (SELECT COUNT(*)::int FROM beverages bv WHERE bv.brewery_id = b.id) AS beverage_count
+FROM breweries b
 WHERE ($1::text IS NULL OR
        to_tsvector('simple',
-         coalesce(name_i18n->>'en','') || ' ' ||
-         coalesce(name_i18n->>'ja','') || ' ' ||
-         coalesce(name_i18n->>'ko','')
+         coalesce(b.name_i18n->>'en','') || ' ' ||
+         coalesce(b.name_i18n->>'ja','') || ' ' ||
+         coalesce(b.name_i18n->>'ko','')
        ) @@ plainto_tsquery('simple', $1))
-  AND ($2::text IS NULL OR id::text < $2::text)
-ORDER BY id DESC
+  AND ($2::text IS NULL OR b.id::text < $2::text)
+ORDER BY b.id DESC
 LIMIT $3;`
 	rows, err := r.db.Query(ctx, sql, q, cursor, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("BreweryRepo.List: %w", err)
 	}
 	defer rows.Close()
-	return scanBreweries(rows)
+	return scanBreweriesWithCount(rows)
 }
 
 func (r *BreweryRepo) Detail(ctx context.Context, id string) (*domain.Brewery, error) {
 	const sql = `
-SELECT id, name_i18n, prefecture, region, founded_year, website, description_i18n, created_at
-FROM breweries WHERE id = $1;`
+SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
+       (SELECT COUNT(*)::int FROM beverages bv WHERE bv.brewery_id = b.id) AS beverage_count
+FROM breweries b WHERE b.id = $1;`
 	row := r.db.QueryRow(ctx, sql, id)
-	out, err := scanBrewery(row)
+	out, err := scanBreweryWithCount(row)
 	if err != nil {
 		return nil, wrapNoRows("BreweryRepo.Detail", err)
 	}
@@ -392,12 +394,43 @@ func scanBrewery(row pgx.Row) (*domain.Brewery, error) {
 	return &b, nil
 }
 
+// scanBreweryWithCount scans the brewery row plus a trailing beverage_count
+// column. Used by BreweryRepo.List/Detail; search.go still uses the count-
+// free variant.
+func scanBreweryWithCount(row pgx.Row) (*domain.Brewery, error) {
+	var b domain.Brewery
+	var nameJSON, descJSON []byte
+	var count int
+	if err := row.Scan(&b.ID, &nameJSON, &b.Prefecture, &b.Region, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt, &count); err != nil {
+		return nil, err
+	}
+	b.Name, _ = domain.I18nFromJSON(nameJSON)
+	if len(descJSON) > 0 {
+		d, _ := domain.I18nFromJSON(descJSON)
+		b.Description = &d
+	}
+	b.BeverageCount = &count
+	return &b, nil
+}
+
 func scanBreweries(rows pgx.Rows) ([]domain.Brewery, error) {
 	var out []domain.Brewery
 	for rows.Next() {
 		b, err := scanBrewery(rows)
 		if err != nil {
 			return nil, fmt.Errorf("scanBreweries: %w", err)
+		}
+		out = append(out, *b)
+	}
+	return out, rows.Err()
+}
+
+func scanBreweriesWithCount(rows pgx.Rows) ([]domain.Brewery, error) {
+	var out []domain.Brewery
+	for rows.Next() {
+		b, err := scanBreweryWithCount(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanBreweriesWithCount: %w", err)
 		}
 		out = append(out, *b)
 	}

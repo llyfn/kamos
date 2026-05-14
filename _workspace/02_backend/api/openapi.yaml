@@ -293,6 +293,9 @@ paths:
     get:
       tags: [users, social]
       operationId: getUserFollowers
+      description: |
+        Status: scaffold-for-Phase6 — pre-wired for the followers list screen
+        in a future profile iteration. No Flutter caller in MVP.
       security:
         - bearerAuth: []
         - {}
@@ -319,6 +322,9 @@ paths:
     get:
       tags: [users, social]
       operationId: getUserFollowing
+      description: |
+        Status: scaffold-for-Phase6 — pre-wired for the following list screen
+        in a future profile iteration. No Flutter caller in MVP.
       security:
         - bearerAuth: []
         - {}
@@ -389,6 +395,11 @@ paths:
     get:
       tags: [beverages, checkins]
       operationId: getBeverageCheckins
+      description: |
+        Status: scaffold-for-Phase6 (discovery surfaces) and Phase5 (admin
+        moderation by beverage). Endpoint is intentionally pre-wired; no
+        Flutter caller in MVP (BeverageDetailScreen uses the inline
+        `recent_check_ins` from `getBeverage`).
       security: []
       responses:
         "200":
@@ -471,6 +482,10 @@ paths:
     get:
       tags: [checkins]
       operationId: getCheckin
+      description: |
+        Status: scaffold-for-Phase6 (comments need a check-in detail view)
+        and Phase5 (admin moderation surface). Endpoint is intentionally
+        pre-wired; no Flutter caller in MVP.
       security:
         - bearerAuth: []
         - {}
@@ -484,6 +499,9 @@ paths:
     patch:
       tags: [checkins]
       operationId: updateCheckin
+      description: |
+        Status: scaffold-for-Phase5 (admin edit surface). Endpoint is
+        intentionally pre-wired; no Flutter caller in MVP.
       requestBody:
         required: true
         content:
@@ -509,6 +527,9 @@ paths:
     delete:
       tags: [checkins]
       operationId: deleteCheckin
+      description: |
+        Status: scaffold-for-Phase5 (admin moderation). Endpoint is
+        intentionally pre-wired; no Flutter caller in MVP.
       responses:
         "204": { description: soft-deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -524,6 +545,10 @@ paths:
     post:
       tags: [checkins]
       operationId: addCheckinPhoto
+      description: |
+        Status: scaffold-for-Phase3 — the real photo upload flow (presigned
+        URL or multipart) will wire on top of this endpoint. Endpoint is
+        intentionally pre-wired; no Flutter caller in MVP.
       requestBody:
         required: true
         content:
@@ -789,6 +814,10 @@ paths:
     patch:
       tags: [collections]
       operationId: updateCollectionEntry
+      description: |
+        Status: scaffold-for-Phase6 (collection entry note edits, low cost
+        to keep pre-wired). Endpoint is intentionally pre-wired; no Flutter
+        caller in MVP.
       requestBody:
         required: true
         content:
@@ -839,6 +868,10 @@ paths:
     get:
       tags: [taxonomy]
       operationId: getCategories
+      description: |
+        Status: scaffold-for-Phase5 — server-validated taxonomy used by the
+        admin surface to populate category dropdowns. Endpoint is
+        intentionally pre-wired; Flutter MVP uses local `kCategoryStrings`.
       security: []
       responses:
         "200":
@@ -867,6 +900,10 @@ paths:
     post:
       tags: [taxonomy]
       operationId: submitBeverageRequest
+      description: |
+        Status: scaffold-for-Phase5 — user-submitted beverages will wire the
+        user-side form on top of this endpoint. Endpoint is intentionally
+        pre-wired; no Flutter caller in MVP.
       requestBody:
         required: true
         content:
@@ -1031,6 +1068,11 @@ components:
 
     UpdateMeRequest:
       type: object
+      description: |
+        PATCH semantics: omit a field to leave it unchanged. For the
+        clearable optional fields (`bio`, `avatar_url`) send an explicit
+        `null` to clear the existing value. `display_name`, `locale`, and
+        `privacy_mode` are non-clearable — omit to leave unchanged.
       properties:
         display_name: { type: string, minLength: 1, maxLength: 50 }
         bio: { type: string, maxLength: 200, nullable: true }
@@ -1083,35 +1125,55 @@ components:
 
     Brewery:
       type: object
+      description: |
+        Optional fields (`prefecture`, `region`, `founded_year`, `website`,
+        `description`, `beverage_count`) use the **absent-when-unknown**
+        convention: the Go server emits them with `omitempty`, so the JSON
+        key is omitted entirely rather than set to `null`. Clients should
+        treat an absent key the same as `null`.
       required: [id, name, created_at]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
-        prefecture: { type: string, nullable: true }
-        region: { type: string, nullable: true }
-        founded_year: { type: integer, nullable: true }
-        website: { type: string, format: uri, nullable: true }
-        description: { $ref: "#/components/schemas/I18nText", nullable: true }
+        prefecture: { type: string }
+        region: { type: string }
+        founded_year: { type: integer }
+        website: { type: string, format: uri }
+        description: { $ref: "#/components/schemas/I18nText" }
+        beverage_count:
+          type: integer
+          minimum: 0
+          description: |
+            Number of beverages associated with this brewery. Populated by
+            `GetBrewery` and `ListBreweries`; absent in nested `BreweryRef`
+            embeddings and in `/v1/search` brewery results.
         created_at: { type: string, format: date-time }
 
     Beverage:
       type: object
-      required: [id, name, brewery, category, flavor_profile, check_in_count, created_at]
+      description: |
+        Optional fields (`subcategory`, `abv`, `polishing_ratio`, `prefecture`,
+        `region`, `description`, `label_image_url`) use the **absent-when-
+        unknown** convention: the Go server emits them with `omitempty`, so
+        the JSON key is omitted entirely rather than set to `null`. The
+        exception is `avg_rating`, which is `*float64` without `omitempty` —
+        it is always present and is `null` when no ratings exist.
+      required: [id, name, brewery, category, flavor_profile, avg_rating, check_in_count, created_at]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
         brewery: { $ref: "#/components/schemas/Brewery" }
         category: { $ref: "#/components/schemas/CategoryLabel" }
-        subcategory: { $ref: "#/components/schemas/I18nText", nullable: true }
-        abv: { type: number, nullable: true }
-        polishing_ratio: { type: integer, nullable: true, description: "Nihonshu only" }
-        prefecture: { type: string, nullable: true }
-        region: { type: string, nullable: true }
+        subcategory: { $ref: "#/components/schemas/I18nText" }
+        abv: { type: number }
+        polishing_ratio: { type: integer, description: "Nihonshu only" }
+        prefecture: { type: string }
+        region: { type: string }
         flavor_profile:
           type: array
           items: { type: string, description: "flavor tag slug" }
-        description: { $ref: "#/components/schemas/I18nText", nullable: true }
-        label_image_url: { type: string, format: uri, nullable: true }
+        description: { $ref: "#/components/schemas/I18nText" }
+        label_image_url: { type: string, format: uri }
         avg_rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0 }
         check_in_count: { type: integer }
         created_at: { type: string, format: date-time }
@@ -1159,21 +1221,29 @@ components:
 
     BeverageRef:
       type: object
+      description: |
+        Compact beverage embedding used by check-in / feed / collection
+        entries. `label_image_url` follows the absent-when-unknown
+        convention (Go `omitempty`).
       required: [id, name, brewery, category]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
         brewery: { $ref: "#/components/schemas/BreweryRef" }
         category: { $ref: "#/components/schemas/CategoryLabel" }
-        label_image_url: { type: string, format: uri, nullable: true }
+        label_image_url: { type: string, format: uri }
 
     BreweryRef:
       type: object
+      description: |
+        Compact brewery embedding used by check-in / feed / collection
+        entries. `region` follows the absent-when-unknown convention
+        (Go `omitempty`).
       required: [id, name]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
-        region: { type: string, nullable: true }
+        region: { type: string }
 
     PhotoRef:
       type: object

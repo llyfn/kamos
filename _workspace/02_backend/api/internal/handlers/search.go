@@ -9,6 +9,18 @@ import (
 )
 
 // Search — GET /v1/search?q=&type=&cursor=&limit=.
+//
+// Typeless ordering: beverages first (drained in popularity-then-id order),
+// then breweries (id DESC). The cursor's `t` discriminator records which
+// sub-stream the next page should continue in:
+//   - empty / no cursor → start at beverages
+//   - `t=beverage`      → continue beverages with id < cursor.ID
+//   - `t=brewery`       → continue breweries with id < cursor.ID
+// When the beverage sub-stream is exhausted on a typeless query, the page
+// rolls over to breweries and the next cursor carries `t=brewery`.
+//
+// TODO Phase 7 caching: revisit if we add cross-type ranking; for now this
+// keeps cursor semantics deterministic without introducing a unified score.
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
@@ -16,30 +28,79 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	typ := r.URL.Query().Get("type")
-	var typPtr *string
-	if typ != "" {
-		typPtr = &typ
-	}
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "Search cursor", err)
 		return
 	}
+
+	// Effective sub-stream this page is in. Caller-pinned `type` always wins
+	// over the cursor's `t`. For typeless queries the cursor's `t` decides.
+	stream := typ
+	if stream == "" {
+		stream = c.Type
+		if stream == "" {
+			stream = "beverage"
+		}
+	}
+
 	cid := optString(c.ID)
-	results, err := h.Repos.Search.Search(r.Context(), q, typPtr, cid, limit)
+
+	if stream == "beverage" {
+		results, err := h.Repos.Search.SearchBeverages(r.Context(), q, cid, limit)
+		if err != nil {
+			h.writeErr(w, "Search beverages", err)
+			return
+		}
+		items, next, hasMore := cursor.SliceAndCursor(results, limit, func(s repository.SearchResult) cursor.Cursor {
+			return cursor.Cursor{ID: s.Beverage.ID, Type: "beverage"}
+		})
+		// Typeless query rollover. Two cases when the beverage sub-stream
+		// is exhausted (`!hasMore`):
+		//   1. items < limit → fill the rest of this page with breweries.
+		//   2. items == limit → page is full but next call must continue
+		//      into breweries, so synthesize a "start of brewery" cursor.
+		if !hasMore && typ == "" {
+			if len(items) < limit {
+				brw, err := h.Repos.Search.SearchBreweries(r.Context(), q, nil, limit-len(items))
+				if err != nil {
+					h.writeErr(w, "Search beverages rollover", err)
+					return
+				}
+				brwItems, brwNext, brwMore := cursor.SliceAndCursor(brw, limit-len(items), func(s repository.SearchResult) cursor.Cursor {
+					return cursor.Cursor{ID: s.Brewery.ID, Type: "brewery"}
+				})
+				items = append(items, brwItems...)
+				next, hasMore = brwNext, brwMore
+			} else {
+				// Probe brewery stream for at least one row so we know
+				// whether to advertise has_more.
+				probe, err := h.Repos.Search.SearchBreweries(r.Context(), q, nil, 1)
+				if err != nil {
+					h.writeErr(w, "Search beverages probe", err)
+					return
+				}
+				if len(probe) > 0 {
+					next = cursor.Encode(cursor.Cursor{Type: "brewery"})
+					hasMore = true
+				}
+			}
+		}
+		apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.SearchResult]{
+			Items: items, NextCursor: next, HasMore: hasMore,
+		})
+		return
+	}
+
+	// stream == "brewery"
+	results, err := h.Repos.Search.SearchBreweries(r.Context(), q, cid, limit)
 	if err != nil {
-		h.writeErr(w, "Search", err)
+		h.writeErr(w, "Search breweries", err)
 		return
 	}
 	items, next, hasMore := cursor.SliceAndCursor(results, limit, func(s repository.SearchResult) cursor.Cursor {
-		id := ""
-		if s.Beverage != nil {
-			id = s.Beverage.ID
-		} else if s.Brewery != nil {
-			id = s.Brewery.ID
-		}
-		return cursor.Cursor{ID: id}
+		return cursor.Cursor{ID: s.Brewery.ID, Type: "brewery"}
 	})
 	apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.SearchResult]{
 		Items: items, NextCursor: next, HasMore: hasMore,

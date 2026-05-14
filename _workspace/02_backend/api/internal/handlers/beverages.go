@@ -90,6 +90,11 @@ func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBeverageCheckins — GET /v1/beverages/{id}/check-ins. Cursor-paginated.
+//
+// Status: scaffold-for-Phase6 (discovery surfaces) and Phase5 (admin
+// moderation by beverage). Endpoint is intentionally pre-wired; no Flutter
+// caller in MVP (BeverageDetailScreen uses `recent_check_ins` inlined in
+// `getBeverage`).
 func (h *Handler) GetBeverageCheckins(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	limit := parseLimit(r, 20, 50)
