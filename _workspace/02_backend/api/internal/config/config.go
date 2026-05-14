@@ -6,9 +6,49 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 )
+
+// LoadDotenv looks for a local.env file (in CWD, alongside the binary, or
+// at any parent directory up to 5 levels) and loads it into the process
+// environment when APP_ENV != "production". Real environment variables
+// always win over dotenv values — godotenv.Load by default DOES NOT
+// override pre-existing env vars, so this is safe.
+//
+// Intentionally separate from Load so tests can opt out.
+func LoadDotenv() {
+	if os.Getenv("APP_ENV") == "production" {
+		return
+	}
+	candidates := []string{"local.env"}
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "local.env"))
+	}
+	// Walk up a few levels from CWD to find local.env at the repo root
+	// (useful when running `go run ./cmd/server` from a nested dir).
+	if cwd, err := os.Getwd(); err == nil {
+		dir := cwd
+		for i := 0; i < 5; i++ {
+			candidates = append(candidates, filepath.Join(dir, "local.env"))
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			// godotenv.Load is non-overriding by default — real env wins.
+			_ = godotenv.Load(path)
+			return
+		}
+	}
+}
 
 // Config holds every tunable the server needs.
 type Config struct {

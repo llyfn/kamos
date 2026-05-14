@@ -23,6 +23,10 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(log)
 
+	// Load local.env (when APP_ENV != "production") before reading env vars.
+	// Real env vars always win — godotenv.Load is non-overriding by default.
+	config.LoadDotenv()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Error("config", "err", err)
