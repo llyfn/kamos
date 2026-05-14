@@ -60,6 +60,8 @@
   "checkInFirstToast": "最初のチェックイン。乾杯！",
   "checkInPostFailed": "投稿できませんでした。タップしてやり直し。",
   "checkInPhotoLimitReached": "写真は4枚までです。",
+  "photoUploadDisabled": "写真のアップロードは利用できません — 写真なしで保存しました。",
+  "photoUploadFailed": "写真をアップロードできませんでした。タップしてやり直し。",
 
   "flavorSweetness": "甘味",
   "flavorBody": "ボディ",

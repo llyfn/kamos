@@ -164,6 +164,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPhotoLimitReached => '写真は4枚までです。';
 
   @override
+  String get photoUploadDisabled => '写真のアップロードは利用できません — 写真なしで保存しました。';
+
+  @override
+  String get photoUploadFailed => '写真をアップロードできませんでした。タップしてやり直し。';
+
+  @override
   String get flavorSweetness => '甘味';
 
   @override

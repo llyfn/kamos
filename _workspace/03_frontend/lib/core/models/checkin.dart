@@ -12,11 +12,13 @@ part 'checkin.freezed.dart';
 abstract class PhotoRef with _$PhotoRef {
   const factory PhotoRef({
     required String url,
+    @Default('') String id,
     @Default(0) int sortOrder,
   }) = _PhotoRef;
 
   factory PhotoRef.fromJson(Map<String, dynamic> json) => PhotoRef(
         url: (json['url'] as String?) ?? '',
+        id: (json['id'] as String?) ?? '',
         sortOrder: (json['sort_order'] as int?) ?? 0,
       );
 }

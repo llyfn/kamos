@@ -98,6 +98,20 @@ Feature-first layout under `lib/features/`. Shared widgets in `lib/shared/widget
 - **Icon set** — design recommended Phosphor; the Flutter app uses Material Symbols (`Icons.*`) until product confirms. Switch to `phosphor_flutter` by importing the package and replacing icon glyphs site-by-site.
 - **Half-star glyph** — the `U+2BE8` codepoint renders inconsistently across platforms. KAMOS uses a custom `CustomPainter` in `lib/shared/widgets/stars_display.dart` and `stars_input.dart` instead.
 
+## Photos
+
+Check-in photos use a 3-step presigned upload (`lib/features/check_in/repository/checkin_repository.dart#uploadPhotoAndAttach`):
+
+1. `POST /v1/uploads/photo-presign` — authed; returns `upload_id`, signed `upload_url`, and `headers` to apply on the PUT.
+2. `PUT <upload_url>` — through a separate Dio with **no** interceptors (the presigned URL signs the request itself; an `Authorization` header would invalidate the signature).
+3. `POST /v1/check-ins/{id}/photos { upload_id }` — authed; returns the `PhotoRef` (`id`, `url`) attached to the check-in.
+
+Uploads run **sequentially** per check-in (one PUT in flight at a time) — friendlier to the rate limiter and avoids same-`blob_key` races. Per-photo progress + retry are tracked in `_photoStates` on the check-in screen.
+
+**Backend must have R2 configured** (cookbook §C2 in the post-MVP roadmap) for uploads to succeed. When it is not, the presign endpoint returns `503 { code: STORAGE_DISABLED }`; the Flutter app surfaces this as a `StorageDisabledException`, drops the photos, completes the check-in without them, and shows the `photoUploadDisabled` SnackBar.
+
+**Photo cap of 4** is enforced both client-side (UI cap in `lib/features/check_in/screens/check_in_screen.dart`, `checkInPhotoLimitReached` ARB key) and server-side. A failed PUT is recoverable per-tile via the `actionRetry` button overlay; the check-in itself is already saved before any upload begins.
+
 ## SPEC invariants the code enforces
 
 - **Category strings** — `lib/core/i18n/category_labels.dart` hardcodes the SPEC §2.1 strings character-for-character; `test/category_strings_test.dart` enforces parity.

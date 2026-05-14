@@ -164,6 +164,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInPhotoLimitReached => '사진은 최대 4장까지 첨부할 수 있습니다.';
 
   @override
+  String get photoUploadDisabled => '사진 업로드를 사용할 수 없습니다 — 사진 없이 저장했습니다.';
+
+  @override
+  String get photoUploadFailed => '사진을 업로드하지 못했습니다. 탭하여 다시 시도하세요.';
+
+  @override
   String get flavorSweetness => '단맛';
 
   @override

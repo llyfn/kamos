@@ -6,12 +6,21 @@
 // - Up to 4 photos (UI cap; the server is the backstop)
 // - Price (amount + currency + per-serving|per-bottle)
 // - Purchase type, serving style
+//
+// Photo upload (Phase 3): on submit, the check-in is created first; then each
+// selected photo is uploaded sequentially through the 3-step presign → PUT →
+// attach flow on `CheckInRepository.uploadPhotoAndAttach`. Per-photo status
+// is tracked in `_photoStates`. If the storage provider is disabled, the
+// upload is skipped and the check-in still succeeds.
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
@@ -19,15 +28,60 @@ import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
+import '../../../core/observability/sentry_observer.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_input.dart';
 import '../providers/checkin_providers.dart';
+import '../repository/checkin_repository.dart';
+
+/// Per-photo upload state machine.
+enum PhotoUploadStatus { idle, uploading, done, failed }
+
+/// Snapshot of one selected photo's upload progress.
+class PhotoUploadState {
+  const PhotoUploadState({
+    this.status = PhotoUploadStatus.idle,
+    this.progress = 0.0,
+    this.photoRef,
+  });
+
+  final PhotoUploadStatus status;
+  final double progress; // 0.0–1.0
+  final PhotoRef? photoRef;
+
+  PhotoUploadState copyWith({
+    PhotoUploadStatus? status,
+    double? progress,
+    PhotoRef? photoRef,
+  }) =>
+      PhotoUploadState(
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        photoRef: photoRef ?? this.photoRef,
+      );
+}
 
 class CheckInScreen extends ConsumerStatefulWidget {
-  const CheckInScreen({super.key, required this.beverage});
+  const CheckInScreen({
+    super.key,
+    required this.beverage,
+    @visibleForTesting this.initialPhotos = const [],
+    @visibleForTesting this.onSubmitted,
+  });
   final Beverage beverage;
+
+  /// Pre-seeded photos. Tests use this to bypass `image_picker` (which has no
+  /// platform binding in widget tests).
+  @visibleForTesting
+  final List<XFile> initialPhotos;
+
+  /// When set (only by tests), this replaces the `context.pop()` call at the
+  /// end of a successful submit. Production callers leave it null so the
+  /// router-driven default runs.
+  @visibleForTesting
+  final void Function(Checkin posted)? onSubmitted;
 
   @override
   ConsumerState<CheckInScreen> createState() => _CheckInScreenState();
@@ -39,10 +93,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   final _price = TextEditingController();
   final Set<String> _tags = {};
   final List<XFile> _photos = [];
+  final List<PhotoUploadState> _photoStates = [];
   String _currency = 'JPY';
   String _priceMode = 'serving';
   String? _purchase;
   String? _serving;
+  bool _uploadingPhotos = false;
 
   // Server-canonical dimensions, in display order. The labels for each tag are
   // resolved from `flavorTagsProvider` and rendered per-locale via
@@ -55,6 +111,17 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     'character',
     'finish',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPhotos.isNotEmpty) {
+      _photos.addAll(widget.initialPhotos);
+      _photoStates.addAll(
+        List.generate(widget.initialPhotos.length, (_) => const PhotoUploadState()),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -75,7 +142,10 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.gallery);
       if (file != null && mounted) {
-        setState(() => _photos.add(file));
+        setState(() {
+          _photos.add(file);
+          _photoStates.add(const PhotoUploadState());
+        });
       }
     } catch (_) {
       // Image picker not available (sim/test) — silently no-op.
@@ -92,6 +162,86 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     });
   }
 
+  /// Sequentially upload selected photos. The check-in must already exist.
+  /// Returns true if all photos uploaded (or there were none); false if any
+  /// failed. A [StorageDisabledException] short-circuits with `false` and a
+  /// SnackBar so the caller knows to drop the photos entirely.
+  Future<bool> _uploadSelectedPhotos(String checkInId) async {
+    if (_photos.isEmpty) return true;
+    setState(() => _uploadingPhotos = true);
+    final l = AppLocalizations.of(context);
+    final repo = ref.read(checkInRepositoryProvider);
+    var allOk = true;
+    var storageDisabledShown = false;
+    for (var i = 0; i < _photos.length; i++) {
+      final state = _photoStates[i];
+      // Skip already-uploaded photos (retry path).
+      if (state.status == PhotoUploadStatus.done) continue;
+      final file = File(_photos[i].path);
+      if (mounted) {
+        setState(() {
+          _photoStates[i] = state.copyWith(
+            status: PhotoUploadStatus.uploading,
+            progress: 0,
+          );
+        });
+      }
+      try {
+        final photoRef = await repo.uploadPhotoAndAttach(
+          checkInId: checkInId,
+          file: file,
+          onProgress: (pct) {
+            if (!mounted) return;
+            setState(() {
+              _photoStates[i] = _photoStates[i].copyWith(progress: pct);
+            });
+          },
+        );
+        if (!mounted) return allOk;
+        setState(() {
+          _photoStates[i] = _photoStates[i].copyWith(
+            status: PhotoUploadStatus.done,
+            progress: 1.0,
+            photoRef: photoRef,
+          );
+        });
+      } on StorageDisabledException {
+        allOk = false;
+        if (!storageDisabledShown && mounted) {
+          storageDisabledShown = true;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.photoUploadDisabled)),
+          );
+        }
+        // Skip the remaining photos — storage is off for everyone.
+        if (mounted) {
+          setState(() {
+            for (var k = i; k < _photoStates.length; k++) {
+              if (_photoStates[k].status != PhotoUploadStatus.done) {
+                _photoStates[k] = _photoStates[k].copyWith(
+                  status: PhotoUploadStatus.failed,
+                );
+              }
+            }
+          });
+        }
+        break;
+      } catch (e, st) {
+        allOk = false;
+        if (kSentryConfigured) {
+          unawaitedSafe(Sentry.captureException(e, stackTrace: st));
+        }
+        if (!mounted) return allOk;
+        setState(() {
+          _photoStates[i] =
+              _photoStates[i].copyWith(status: PhotoUploadStatus.failed);
+        });
+      }
+    }
+    if (mounted) setState(() => _uploadingPhotos = false);
+    return allOk;
+  }
+
   Future<void> _submit() async {
     final l = AppLocalizations.of(context);
     Price? price;
@@ -99,10 +249,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     if (amount != null && amount > 0) {
       price = Price(amount: amount, currency: _currency, mode: _priceMode);
     }
-    // NOTE: photos are uploaded URL-by-reference per QA MAJOR #1. Until the
-    // backend wires blob storage, this screen does not actually transmit
-    // photo bytes — only the count. The future flow swaps in a presigned-URL
-    // request before POST /v1/check-ins.
     final posted =
         await ref.read(checkInControllerProvider.notifier).submit(
               beverageId: widget.beverage.id,
@@ -113,19 +259,100 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               purchaseType: _purchase,
               servingStyle: _serving,
             );
-    if (posted != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.checkInFirstToast)),
-      );
-      context.pop();
-    } else if (mounted) {
-      final err = ref.read(checkInControllerProvider).error;
-      if (err != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.checkInPostFailed)),
-        );
+    if (posted == null) {
+      if (mounted) {
+        final err = ref.read(checkInControllerProvider).error;
+        if (err != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.checkInPostFailed)),
+          );
+        }
       }
+      return;
     }
+    final uploadsOk = await _uploadSelectedPhotos(posted.id);
+    if (!mounted) return;
+    if (!uploadsOk && _photoStates.any((s) => s.status == PhotoUploadStatus.failed)) {
+      // At least one failed upload — keep the screen open so the user can
+      // retry (per-tile retry button). The check-in itself is already saved.
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l.checkInFirstToast)),
+    );
+    final onSubmitted = widget.onSubmitted;
+    if (onSubmitted != null) {
+      onSubmitted(posted);
+    } else {
+      context.pop();
+    }
+  }
+
+  /// Retry one previously-failed photo upload.
+  Future<void> _retryPhoto(int index) async {
+    final posted = ref.read(checkInControllerProvider).posted;
+    if (posted == null) return;
+    final l = AppLocalizations.of(context);
+    final state = _photoStates[index];
+    setState(() {
+      _photoStates[index] = state.copyWith(
+        status: PhotoUploadStatus.uploading,
+        progress: 0,
+      );
+    });
+    try {
+      final repo = ref.read(checkInRepositoryProvider);
+      final photoRef = await repo.uploadPhotoAndAttach(
+        checkInId: posted.id,
+        file: File(_photos[index].path),
+        onProgress: (pct) {
+          if (!mounted) return;
+          setState(() {
+            _photoStates[index] = _photoStates[index].copyWith(progress: pct);
+          });
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _photoStates[index] = _photoStates[index].copyWith(
+          status: PhotoUploadStatus.done,
+          progress: 1.0,
+          photoRef: photoRef,
+        );
+      });
+      // If all are done, complete the flow.
+      if (_photoStates.every((s) => s.status == PhotoUploadStatus.done)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.checkInFirstToast)),
+        );
+        context.pop();
+      }
+    } on StorageDisabledException {
+      if (!mounted) return;
+      setState(() {
+        _photoStates[index] =
+            _photoStates[index].copyWith(status: PhotoUploadStatus.failed);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.photoUploadDisabled)),
+      );
+    } catch (e, st) {
+      if (kSentryConfigured) {
+        unawaitedSafe(Sentry.captureException(e, stackTrace: st));
+      }
+      if (!mounted) return;
+      setState(() {
+        _photoStates[index] =
+            _photoStates[index].copyWith(status: PhotoUploadStatus.failed);
+      });
+    }
+  }
+
+  void _removePhoto(int i) {
+    setState(() {
+      _photos.removeAt(i);
+      _photoStates.removeAt(i);
+    });
   }
 
   @override
@@ -142,7 +369,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         : categoryLabel(context, slug);
 
     final reviewTooLong = _review.text.length > 500;
-    final canPost = !state.isSubmitting && !reviewTooLong;
+    final canPost = !state.isSubmitting && !_uploadingPhotos && !reviewTooLong;
 
     return Scaffold(
       appBar: AppBar(
@@ -162,7 +389,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 visualDensity: VisualDensity.compact,
               ),
-              child: state.isSubmitting
+              child: (state.isSubmitting || _uploadingPhotos)
                   ? const SizedBox(
                       width: 14,
                       height: 14,
@@ -284,7 +511,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                 if (i < _photos.length) {
                   return _PhotoTile(
                     filled: true,
-                    onRemove: () => setState(() => _photos.removeAt(i)),
+                    state: _photoStates[i],
+                    onRemove: () => _removePhoto(i),
+                    onRetry: _photoStates[i].status == PhotoUploadStatus.failed
+                        ? () => _retryPhoto(i)
+                        : null,
+                    retryLabel: l.actionRetry,
                   );
                 }
                 return _PhotoTile(filled: false, onTap: _addPhoto);
@@ -398,6 +630,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   }
 }
 
+/// Local `unawaited` replacement that swallows any error from the awaited
+/// future. Kept private so we never leak un-handled futures into the harness.
+void unawaitedSafe(Future<dynamic> f) {
+  f.catchError((_) {});
+}
+
 /// Renders flavor-tag chips grouped by `dimension`, with locale-resolved
 /// labels. The list is fetched from `/v1/flavor-tags` via `flavorTagsProvider`.
 /// `selected` holds tag slugs.
@@ -505,16 +743,33 @@ class _Section extends StatelessWidget {
 }
 
 class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({required this.filled, this.onTap, this.onRemove});
+  const _PhotoTile({
+    required this.filled,
+    this.state,
+    this.onTap,
+    this.onRemove,
+    this.onRetry,
+    this.retryLabel,
+  });
+
   final bool filled;
+  final PhotoUploadState? state;
   final VoidCallback? onTap;
   final VoidCallback? onRemove;
+  final VoidCallback? onRetry;
+  final String? retryLabel;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final uploadState = state;
+    final isUploading =
+        uploadState?.status == PhotoUploadStatus.uploading;
+    final isDone = uploadState?.status == PhotoUploadStatus.done;
+    final isFailed = uploadState?.status == PhotoUploadStatus.failed;
+
     return InkWell(
-      onTap: filled ? null : onTap,
+      onTap: filled ? (isFailed ? onRetry : null) : onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         decoration: BoxDecoration(
@@ -529,12 +784,50 @@ class _PhotoTile extends StatelessWidget {
           children: [
             Center(
               child: Icon(
-                Icons.photo_camera_outlined,
-                color: filled ? t.fg2 : t.fgMuted,
+                isDone
+                    ? Icons.check
+                    : (isFailed
+                        ? Icons.error_outline
+                        : Icons.photo_camera_outlined),
+                color: isDone
+                    ? t.fg1
+                    : (isFailed ? Colors.red : (filled ? t.fg2 : t.fgMuted)),
                 size: filled ? 24 : 20,
               ),
             ),
-            if (filled)
+            if (isUploading)
+              Positioned(
+                left: 4,
+                right: 4,
+                bottom: 4,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: uploadState?.progress ?? 0,
+                    minHeight: 3,
+                  ),
+                ),
+              ),
+            if (isFailed && retryLabel != null)
+              Positioned(
+                left: 4,
+                right: 4,
+                bottom: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  color: Colors.red.withValues(alpha: 0.85),
+                  child: Text(
+                    retryLabel!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            if (filled && !isUploading)
               Positioned(
                 top: 4,
                 right: 4,
