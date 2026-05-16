@@ -111,7 +111,9 @@ SELECT
   br.id AS brewery_id, br.name_i18n AS brewery_name_i18n, br.region AS brewery_region,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   (SELECT COUNT(*) FROM toasts WHERE check_in_id = ci.id) AS toasts,
-  EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted
+  EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,
+  -- Phase 6a comment_count projection.
+  (SELECT COUNT(*) FROM comments cm WHERE cm.check_in_id = ci.id AND cm.deleted_at IS NULL) AS comment_count
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
@@ -142,6 +144,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 		venueCountry  *string
 		toasts        int64
 		youToasted    bool
+		commentCnt    int64
 	)
 	err := row.Scan(
 		&c.ID, &userIDVal, &bevIDVal,
@@ -154,11 +157,12 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 		&catNameJSON,
 		&brwID, &brwName, &brwRegion,
 		&venueID, &venueName, &venueLocality, &venueCountry,
-		&toasts, &youToasted,
+		&toasts, &youToasted, &commentCnt,
 	)
 	if err != nil {
 		return nil, wrapNoRows("CheckinRepo.Get", err)
 	}
+	c.CommentCount = int(commentCnt)
 	if venueID != nil && venueName != nil {
 		c.Venue = &domain.VenueRef{
 			ID:       *venueID,
@@ -533,7 +537,9 @@ SELECT
   br.id, br.name_i18n, br.region,
   v.id, v.name, v.locality, v.country,
   (SELECT COUNT(*) FROM toasts WHERE check_in_id = ci.id),
-  EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid)
+  EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
+  -- Phase 6a comment_count.
+  (SELECT COUNT(*) FROM comments cm WHERE cm.check_in_id = ci.id AND cm.deleted_at IS NULL)
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
@@ -575,6 +581,7 @@ LIMIT $5;`
 			toastCnt                  int64
 			youToast                  bool
 			userPrivacy               string
+			commentCnt                int64
 		)
 		if err := rows.Scan(
 			&c.ID, &userIDVal, &bevID,
@@ -587,13 +594,14 @@ LIMIT $5;`
 			&catName,
 			&brwID, &brwName, &brwRegion,
 			&venueID, &venueName, &venueLocality, &venueCtry,
-			&toastCnt, &youToast,
+			&toastCnt, &youToast, &commentCnt,
 		); err != nil {
 			return nil, fmt.Errorf("UserCheckins scan: %w", err)
 		}
 		c.User.ID = userIDVal
 		c.Toasts = int(toastCnt)
 		c.YouToasted = youToast
+		c.CommentCount = int(commentCnt)
 		n, _ := domain.I18nFromJSON(bevName)
 		cn, _ := domain.I18nFromJSON(catName)
 		brn, _ := domain.I18nFromJSON(brwName)

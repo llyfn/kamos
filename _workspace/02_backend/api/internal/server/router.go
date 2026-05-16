@@ -113,6 +113,11 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// viewers; we add the middleware so a future "personalized
 			// discovery" overlay can plug in without re-routing.
 			r.Get("/collections/public", h.ListPublicCollections)
+
+			// Phase 6a — comment list is also a public-read surface.
+			// OptionalAuth for forward compatibility (we may add a
+			// "you_replied" or similar viewer-relative field).
+			r.Get("/check-ins/{id}/comments", h.ListComments)
 		})
 
 		// Authed surface. Per-user limit on top of the global IP limit
@@ -171,6 +176,18 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 
 			// Beverage feedback.
 			r.Post("/beverage-requests", h.SubmitBeverageRequest)
+
+			// Phase 6a — comments. POST is heavily spammable, so we
+			// stack a tight per-user limit on top of the global authed
+			// 60/120: 3 rps / burst 6 caps comment-spam attempts without
+			// throttling legit conversation.
+			if rateLimited {
+				r.With(middleware.RateLimitByUser(log, 3, 6)).
+					Post("/check-ins/{id}/comments", h.CreateComment)
+			} else {
+				r.Post("/check-ins/{id}/comments", h.CreateComment)
+			}
+			r.Delete("/comments/{id}", h.DeleteComment)
 		})
 
 		// Phase 5a — admin surface. Authed + role-gated per-route. Generous

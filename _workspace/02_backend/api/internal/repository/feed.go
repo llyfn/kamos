@@ -32,6 +32,10 @@ SELECT
   (SELECT COUNT(*) FROM toasts t WHERE t.check_in_id = ci.id),
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
   (SELECT COUNT(*) FROM check_in_photos p WHERE p.check_in_id = ci.id),
+  -- Phase 6a comment_count. Correlated subquery mirroring the toasts/photos
+  -- pattern. A counter-cache on check_ins could replace this if p95
+  -- metrics flag it; for now we lean on idx_comments_checkin_recent.
+  (SELECT COUNT(*) FROM comments cm WHERE cm.check_in_id = ci.id AND cm.deleted_at IS NULL),
   v.id, v.name, v.locality, v.country
 FROM check_ins ci
 JOIN follows f
@@ -68,6 +72,7 @@ LIMIT $4;`
 			brwRegion    *string
 			toastCnt     int64
 			photoCnt     int64
+			commentCnt   int64
 			youToast     bool
 			userIDVal    string
 			beverageID   string
@@ -92,11 +97,13 @@ LIMIT $4;`
 			&toastCnt,
 			&youToast,
 			&photoCnt,
+			&commentCnt,
 			&venueID, &venueName, &venueLocality, &venueCountry,
 		); err != nil {
 			return nil, fmt.Errorf("FeedRepo.Page scan: %w", err)
 		}
 		it.User.ID = userIDVal
+		it.CommentCount = int(commentCnt)
 		bn, _ := domain.I18nFromJSON(bevName)
 		cn, _ := domain.I18nFromJSON(catName)
 		rn, _ := domain.I18nFromJSON(brwName)
