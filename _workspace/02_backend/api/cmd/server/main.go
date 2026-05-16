@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kamos/api/internal/auth"
+	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/foursquare"
@@ -152,11 +153,17 @@ func main() {
 		log.Info("foursquare enabled")
 	}
 
+	// Phase 7 — in-process LRU bundle for taxonomy/beverage/brewery hot
+	// rows. Default sizing + TTLs live in cache.NewCaches; commit 5 wires
+	// the Prometheus observers onto each named cache.
+	caches := cache.NewCaches()
+
 	h := handlers.New(cfg, log, repos, signer, google).
 		WithStorage(store).
 		WithMailer(mailer).
 		WithFoursquare(fsq).
-		WithSoftDeleteCache(softDelete)
+		WithSoftDeleteCache(softDelete).
+		WithCaches(caches)
 	mux := server.New(log, signer, softDelete, h)
 
 	// Background-job scheduler — four maintenance jobs registered before
