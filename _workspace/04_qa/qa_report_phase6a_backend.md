@@ -131,9 +131,9 @@ new endpoints inherit existing rules):
   explains: this is the same data the comment author chose to attach to
   a public surface; if Phase 7 surfaces a private-feed regression here,
   we'll add the privacy join.
-- **`beverage_request` enum value** added to `moderation_target_type` in
-  migration 008 (via `ALTER TYPE ... ADD VALUE` on both DBs after the
-  initial CREATE TYPE). The migration file is byte-identical between
+- **`beverage_request` enum value** included in `moderation_target_type`:
+  Single `CREATE TYPE moderation_target_type AS ENUM ('check_in', 'comment', 'user', 'beverage_request')` — no `ALTER TYPE` after the fact, no lock-stall risk on deploy.
+  The migration file is byte-identical between
   `_workspace/02_backend/db/migrations/` and
   `_workspace/02_backend/api/migrations/`.
 - **No counter-cache on `check_ins.comment_count`.** Same defer reasoning
