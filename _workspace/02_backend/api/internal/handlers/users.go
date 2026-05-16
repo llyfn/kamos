@@ -14,12 +14,16 @@ import (
 )
 
 // GetMe — GET /v1/users/me.
+//
+// Phase 5a: response includes `role` (RBAC) and `deleted_at` so the admin
+// client can branch on privileges + the Flutter app can surface
+// suspension state.
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
 	}
-	user, err := h.Repos.Users.FindByID(r.Context(), uid)
+	me, err := h.Repos.Users.FindMe(r.Context(), uid)
 	if err != nil {
 		h.writeErr(w, "GetMe find", err)
 		return
@@ -29,7 +33,12 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "GetMe stats", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, domain.Me{User: *user, Stats: stats})
+	apierror.WriteJSON(w, http.StatusOK, domain.Me{
+		User:      me.User,
+		Stats:     stats,
+		Role:      me.Role,
+		DeletedAt: me.DeletedAt,
+	})
 }
 
 // UpdateMe — PATCH /v1/users/me.

@@ -116,6 +116,15 @@ type UserStats struct {
 type Me struct {
 	User
 	Stats UserStats `json:"stats"`
+	// Phase 5a: role surfaces RBAC state so the admin Flutter client can
+	// decide whether to show admin UI. Read from users.role on every /me
+	// request (no JWT claim) so a demotion takes effect immediately.
+	Role UserRole `json:"role"`
+	// DeletedAt surfaces soft-delete status. Pre-suspension this is null;
+	// after admin suspension or self-DELETE, the JWT is also revoked by
+	// the SoftDeleteCache, so this field is normally only seen by admin
+	// queues looking at lapsed soft-deleted accounts.
+	DeletedAt *time.Time `json:"deleted_at"`
 }
 
 // RegisterRequest is the body shape for POST /v1/auth/register.

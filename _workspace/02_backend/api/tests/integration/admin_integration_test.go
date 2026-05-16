@@ -376,6 +376,44 @@ func TestAdmin_UpdateUserRole(t *testing.T) {
 	}
 }
 
+// TestMeIncludesRole — GET /v1/users/me must include role + deleted_at so
+// the admin Flutter client can decide whether to show admin UI.
+func TestMeIncludesRole(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, uid := mustRegister(t, srv, "me_role", "mr@example.com", "password-123")
+
+	// Fresh user: role should be "user", deleted_at null.
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/users/me", tok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("/me: %d body=%s", code, raw)
+	}
+	var me map[string]any
+	if err := json.Unmarshal(raw, &me); err != nil {
+		t.Fatalf("decode /me: %v", err)
+	}
+	if me["role"] != "user" {
+		t.Errorf("default role: %v (want \"user\")", me["role"])
+	}
+	if me["deleted_at"] != nil {
+		t.Errorf("deleted_at on fresh user: %v (want nil)", me["deleted_at"])
+	}
+
+	// Promote and verify the field flips immediately on the next request —
+	// the role is read from users.role on every /me request, not cached.
+	promoteToAdmin(t, uid)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/me", tok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("/me after promotion: %d", code)
+	}
+	_ = json.Unmarshal(raw, &me)
+	if me["role"] != "admin" {
+		t.Errorf("post-promotion role: %v (want \"admin\")", me["role"])
+	}
+}
+
 // TestAdmin_SuspendUserRevokesTokens — admin suspends a user; the user's
 // JWT is revoked via the SoftDeleteCache (same SEC-006 path as DeleteMe).
 func TestAdmin_SuspendUserRevokesTokens(t *testing.T) {

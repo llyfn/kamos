@@ -199,6 +199,48 @@ LIMIT 1;`
 	return &u, nil
 }
 
+// FindMe is like FindByID but additionally returns the user's role and
+// deleted_at — surfaced on GET /v1/users/me so the admin client can
+// branch on RBAC state and pick up soft-delete signals.
+//
+// Note: GET /v1/users/me runs behind the SEC-006 revocation cache, so a
+// soft-deleted user normally cannot reach this method (the auth middleware
+// rejects them first). We still return deleted_at for safety + for the
+// brief window before the next cache refresh in the unlikely event of a
+// missed Add() call.
+type MeRow struct {
+	User      domain.User
+	Role      domain.UserRole
+	DeletedAt *time.Time
+}
+
+func (r *UserRepo) FindMe(ctx context.Context, id string) (*MeRow, error) {
+	const q = `
+SELECT id, username, display_username, email, email_verified,
+       display_name, avatar_url, bio, locale, privacy_mode, created_at,
+       role::text, deleted_at
+FROM users
+WHERE id = $1
+LIMIT 1;`
+	var out MeRow
+	var roleStr string
+	row := r.db.QueryRow(ctx, q, id)
+	if err := row.Scan(
+		&out.User.ID, &out.User.Username, &out.User.DisplayUsername,
+		&out.User.Email, &out.User.EmailVerified,
+		&out.User.DisplayName, &out.User.AvatarURL, &out.User.Bio,
+		&out.User.Locale, &out.User.PrivacyMode, &out.User.CreatedAt,
+		&roleStr, &out.DeletedAt,
+	); err != nil {
+		return nil, wrapNoRows("UserRepo.FindMe", err)
+	}
+	out.Role = domain.UserRole(roleStr)
+	if !out.Role.Valid() {
+		return nil, fmt.Errorf("UserRepo.FindMe: unknown role %q", roleStr)
+	}
+	return &out, nil
+}
+
 // FindByUsername returns a live user by lowercase handle. NotFound on miss.
 func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
 	const q = `
