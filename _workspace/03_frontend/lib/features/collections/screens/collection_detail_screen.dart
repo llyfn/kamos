@@ -12,6 +12,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/state_views.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/collection_providers.dart';
 import '../repository/collection_repository.dart';
 
@@ -142,18 +143,16 @@ class CollectionDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               // Phase 6 — the visibility toggle must only render for the
-              // collection's OWNER. Because the wire `Collection` schema does
-              // not yet expose `user_id` / `is_own`, we approximate ownership
-              // by checking whether this collection id appears in the
-              // signed-in user's own collections list (`collectionsProvider`).
-              // If the list hasn't loaded yet, has errored, or the id is
-              // absent (e.g., reached from the public-collections discover
-              // tab), the toggle is hidden. The server-side ownership check
-              // remains the source of truth and rejects a non-owner PATCH
+              // collection's OWNER. Phase 6a added `owner_id` to the wire
+              // `Collection` schema, so ownership is a direct compare against
+              // the signed-in user's id from `meProvider`. If `meProvider`
+              // hasn't resolved yet (loading / error), the toggle is hidden;
+              // the server-side ownership check on PATCH /v1/collections/{id}
+              // remains the source of truth and rejects a non-owner write
               // with 403.
-              if (_viewerOwnsCollection(ref, collection.id))
+              if (_viewerOwnsCollection(ref, collection))
                 _VisibilityToggle(collection: collection),
-              if (_viewerOwnsCollection(ref, collection.id))
+              if (_viewerOwnsCollection(ref, collection))
                 const SizedBox(height: 12),
               if (entries.items.isEmpty)
                 EmptyView(
@@ -212,21 +211,14 @@ class CollectionDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Checks whether the signed-in user owns the collection at [collectionId].
-/// Membership in `collectionsProvider` (the user's own collections list) is
-/// the ownership signal. Returns `false` when the list is still loading or
-/// has errored — the visibility toggle is hidden in those states.
-///
-/// LIMITATION: `collectionsProvider` currently exposes only the first page of
-/// the user's collections (default page size 50). For users with more than 50
-/// collections this can produce a false negative on the viewer's own
-/// collection. The proper fix is for the backend to add `user_id` to the
-/// `Collection` schema on `GET /v1/collections/{id}` — coordinate with the
-/// backend-engineer to land that.
-bool _viewerOwnsCollection(WidgetRef ref, String collectionId) {
-  final mine = ref.watch(collectionsProvider).asData?.value;
-  if (mine == null) return false;
-  return mine.items.any((c) => c.id == collectionId);
+/// Checks whether the signed-in user owns [collection] by directly comparing
+/// the viewer's id (`meProvider`) against `collection.ownerId` (Phase 6a wire
+/// field). Returns `false` when `meProvider` is still loading or has errored
+/// so the visibility toggle stays hidden in those transient states.
+bool _viewerOwnsCollection(WidgetRef ref, Collection collection) {
+  final me = ref.watch(meProvider).asData?.value;
+  if (me == null) return false;
+  return me.user.id == collection.ownerId;
 }
 
 /// Phase 6 — public/private toggle for an OWN collection. Rendered only when

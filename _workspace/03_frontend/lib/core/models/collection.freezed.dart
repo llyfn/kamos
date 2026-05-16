@@ -14,7 +14,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Collection {
 
- String get id; String get name; int get entryCount; CollectionVisibility get visibility; String get createdAt; String get updatedAt;
+ String get id;// Phase 6a — owner_id is required on the wire (`Collection` schema in
+// openapi.yaml). Used to gate owner-only UI such as the visibility toggle
+// without an extra `/v1/users/me` lookup or a membership approximation.
+ String get ownerId; String get name; int get entryCount; CollectionVisibility get visibility; String get createdAt; String get updatedAt;
 /// Create a copy of Collection
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +28,16 @@ $CollectionCopyWith<Collection> get copyWith => _$CollectionCopyWithImpl<Collect
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Collection&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.entryCount, entryCount) || other.entryCount == entryCount)&&(identical(other.visibility, visibility) || other.visibility == visibility)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Collection&&(identical(other.id, id) || other.id == id)&&(identical(other.ownerId, ownerId) || other.ownerId == ownerId)&&(identical(other.name, name) || other.name == name)&&(identical(other.entryCount, entryCount) || other.entryCount == entryCount)&&(identical(other.visibility, visibility) || other.visibility == visibility)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,entryCount,visibility,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,ownerId,name,entryCount,visibility,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Collection(id: $id, name: $name, entryCount: $entryCount, visibility: $visibility, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Collection(id: $id, ownerId: $ownerId, name: $name, entryCount: $entryCount, visibility: $visibility, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -45,7 +48,7 @@ abstract mixin class $CollectionCopyWith<$Res>  {
   factory $CollectionCopyWith(Collection value, $Res Function(Collection) _then) = _$CollectionCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, int entryCount, CollectionVisibility visibility, String createdAt, String updatedAt
+ String id, String ownerId, String name, int entryCount, CollectionVisibility visibility, String createdAt, String updatedAt
 });
 
 
@@ -62,9 +65,10 @@ class _$CollectionCopyWithImpl<$Res>
 
 /// Create a copy of Collection
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? entryCount = null,Object? visibility = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? ownerId = null,Object? name = null,Object? entryCount = null,Object? visibility = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,ownerId: null == ownerId ? _self.ownerId : ownerId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,entryCount: null == entryCount ? _self.entryCount : entryCount // ignore: cast_nullable_to_non_nullable
 as int,visibility: null == visibility ? _self.visibility : visibility // ignore: cast_nullable_to_non_nullable
@@ -155,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  int entryCount,  CollectionVisibility visibility,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String ownerId,  String name,  int entryCount,  CollectionVisibility visibility,  String createdAt,  String updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Collection() when $default != null:
-return $default(_that.id,_that.name,_that.entryCount,_that.visibility,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.ownerId,_that.name,_that.entryCount,_that.visibility,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -176,10 +180,10 @@ return $default(_that.id,_that.name,_that.entryCount,_that.visibility,_that.crea
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  int entryCount,  CollectionVisibility visibility,  String createdAt,  String updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String ownerId,  String name,  int entryCount,  CollectionVisibility visibility,  String createdAt,  String updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Collection():
-return $default(_that.id,_that.name,_that.entryCount,_that.visibility,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.ownerId,_that.name,_that.entryCount,_that.visibility,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -196,10 +200,10 @@ return $default(_that.id,_that.name,_that.entryCount,_that.visibility,_that.crea
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  int entryCount,  CollectionVisibility visibility,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String ownerId,  String name,  int entryCount,  CollectionVisibility visibility,  String createdAt,  String updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Collection() when $default != null:
-return $default(_that.id,_that.name,_that.entryCount,_that.visibility,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.ownerId,_that.name,_that.entryCount,_that.visibility,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -211,10 +215,14 @@ return $default(_that.id,_that.name,_that.entryCount,_that.visibility,_that.crea
 
 
 class _Collection implements Collection {
-  const _Collection({required this.id, required this.name, this.entryCount = 0, this.visibility = CollectionVisibility.private, this.createdAt = '', this.updatedAt = ''});
+  const _Collection({required this.id, required this.ownerId, required this.name, this.entryCount = 0, this.visibility = CollectionVisibility.private, this.createdAt = '', this.updatedAt = ''});
   
 
 @override final  String id;
+// Phase 6a — owner_id is required on the wire (`Collection` schema in
+// openapi.yaml). Used to gate owner-only UI such as the visibility toggle
+// without an extra `/v1/users/me` lookup or a membership approximation.
+@override final  String ownerId;
 @override final  String name;
 @override@JsonKey() final  int entryCount;
 @override@JsonKey() final  CollectionVisibility visibility;
@@ -231,16 +239,16 @@ _$CollectionCopyWith<_Collection> get copyWith => __$CollectionCopyWithImpl<_Col
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Collection&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.entryCount, entryCount) || other.entryCount == entryCount)&&(identical(other.visibility, visibility) || other.visibility == visibility)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Collection&&(identical(other.id, id) || other.id == id)&&(identical(other.ownerId, ownerId) || other.ownerId == ownerId)&&(identical(other.name, name) || other.name == name)&&(identical(other.entryCount, entryCount) || other.entryCount == entryCount)&&(identical(other.visibility, visibility) || other.visibility == visibility)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,entryCount,visibility,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,ownerId,name,entryCount,visibility,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Collection(id: $id, name: $name, entryCount: $entryCount, visibility: $visibility, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Collection(id: $id, ownerId: $ownerId, name: $name, entryCount: $entryCount, visibility: $visibility, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -251,7 +259,7 @@ abstract mixin class _$CollectionCopyWith<$Res> implements $CollectionCopyWith<$
   factory _$CollectionCopyWith(_Collection value, $Res Function(_Collection) _then) = __$CollectionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, int entryCount, CollectionVisibility visibility, String createdAt, String updatedAt
+ String id, String ownerId, String name, int entryCount, CollectionVisibility visibility, String createdAt, String updatedAt
 });
 
 
@@ -268,9 +276,10 @@ class __$CollectionCopyWithImpl<$Res>
 
 /// Create a copy of Collection
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? entryCount = null,Object? visibility = null,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? ownerId = null,Object? name = null,Object? entryCount = null,Object? visibility = null,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Collection(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,ownerId: null == ownerId ? _self.ownerId : ownerId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,entryCount: null == entryCount ? _self.entryCount : entryCount // ignore: cast_nullable_to_non_nullable
 as int,visibility: null == visibility ? _self.visibility : visibility // ignore: cast_nullable_to_non_nullable
