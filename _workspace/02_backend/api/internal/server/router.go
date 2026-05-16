@@ -42,6 +42,11 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	r.Use(middleware.Trace)
 	r.Use(middleware.RecoverWithSentry(log))
 	r.Use(middleware.AccessLog(log))
+	// Phase 7 — global ETag middleware. Only acts on GET/HEAD + 2xx
+	// (see internal/middleware/etag.go); other methods pass through with
+	// no overhead. Mounted globally rather than per-route so a new GET
+	// route gets ETag support by default — write paths are unaffected.
+	r.Use(middleware.ETag)
 	// Global IP-based rate limit. 30 rps, burst 60 — well above any
 	// legitimate single-client traffic, low enough to throttle scrapers.
 	// RATE_LIMIT_DISABLED=1 bypasses the limit entirely (test runs,
@@ -85,16 +90,28 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(middleware.Auth(signer, softDelete)).Post("/logout", h.Logout)
 		})
 
-		// Taxonomy — public reads.
-		r.Get("/categories", h.Categories)
-		r.Get("/flavor-tags", h.FlavorTags)
+		// Taxonomy — public reads. Phase 7: long Cache-Control TTL (1h)
+		// because the taxonomy effectively never changes during a deploy
+		// window. stale-while-revalidate lets intermediaries serve from
+		// cache while they background-refresh.
+		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
+			Get("/categories", h.Categories)
+		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
+			Get("/flavor-tags", h.FlavorTags)
 
-		// Beverages / breweries — public reads.
+		// Beverages / breweries — public reads. Beverage detail uses a
+		// shorter TTL (5m) because avg_rating + check_in_count drift as
+		// new check-ins land; the in-process LRU invalidator (commit 4)
+		// busts the entry on write, but downstream caches honor the
+		// header for clients that don't replay our invalidation.
+		// Brewery TTL is 10m — same shape, slower-moving aggregates.
 		r.Get("/beverages", h.ListBeverages)
-		r.Get("/beverages/{id}", h.GetBeverage)
+		r.With(middleware.CacheControl("public, max-age=300, stale-while-revalidate=86400")).
+			Get("/beverages/{id}", h.GetBeverage)
 		r.Get("/beverages/{id}/check-ins", h.GetBeverageCheckins)
 		r.Get("/breweries", h.ListBreweries)
-		r.Get("/breweries/{id}", h.GetBrewery)
+		r.With(middleware.CacheControl("public, max-age=600, stale-while-revalidate=86400")).
+			Get("/breweries/{id}", h.GetBrewery)
 
 		// Search — public.
 		r.Get("/search", h.Search)
@@ -102,7 +119,16 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		// Users (public reads, with optional auth for follow state).
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.OptionalAuth(signer, softDelete))
-			r.Get("/users/{username}", h.GetUser)
+			// Phase 7: public-profile response varies by the viewer's
+			// follow state (follow_state, restricted), so we can't share
+			// a LRU entry across viewers and we can't mark it public
+			// without leaking one viewer's relationship to another via
+			// downstream caches. Cache-Control: private + must-revalidate
+			// means "only the end-user's browser/app may cache, and only
+			// after re-validating with us each time". The ETag layer
+			// still helps — same viewer, same state → 304.
+			r.With(middleware.CacheControl("private, must-revalidate")).
+				Get("/users/{username}", h.GetUser)
 			r.Get("/users/{username}/check-ins", h.GetUserCheckins)
 			r.Get("/users/{username}/followers", h.GetUserFollowers)
 			r.Get("/users/{username}/following", h.GetUserFollowing)

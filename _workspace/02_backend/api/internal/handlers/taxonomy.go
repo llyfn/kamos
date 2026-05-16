@@ -10,24 +10,51 @@ import (
 
 // Categories — GET /v1/categories.
 //
+// Phase 7: in-process LRU cache keyed on Accept-Language. The repository
+// returns all locales in the i18n JSON column, so the locale axis of the
+// key is currently a forward-compat hedge — keeping it lets a future
+// "locale-narrowed taxonomy" pivot drop in without a wire change. TTL +
+// size live in cache.NewCaches.
+//
 // Status: scaffold-for-Phase5 (admin needs server-validated taxonomy to
 // populate dropdowns). Endpoint is intentionally pre-wired; Flutter uses
 // the local `kCategoryStrings` constant in MVP.
 func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
+	key := localeKey(r)
+	if h.Caches != nil {
+		if rows, ok := h.Caches.Categories.Get(key); ok {
+			apierror.WriteJSON(w, http.StatusOK, rows)
+			return
+		}
+	}
 	rows, err := h.Repos.Taxonomy.Categories(r.Context())
 	if err != nil {
 		h.writeErr(w, "Categories", err)
 		return
 	}
+	if h.Caches != nil {
+		h.Caches.Categories.Set(key, rows)
+	}
 	apierror.WriteJSON(w, http.StatusOK, rows)
 }
 
-// FlavorTags — GET /v1/flavor-tags.
+// FlavorTags — GET /v1/flavor-tags. See Categories for the cache key
+// rationale; same shape, same TTL bucket.
 func (h *Handler) FlavorTags(w http.ResponseWriter, r *http.Request) {
+	key := localeKey(r)
+	if h.Caches != nil {
+		if rows, ok := h.Caches.FlavorTags.Get(key); ok {
+			apierror.WriteJSON(w, http.StatusOK, rows)
+			return
+		}
+	}
 	rows, err := h.Repos.Taxonomy.FlavorTags(r.Context())
 	if err != nil {
 		h.writeErr(w, "FlavorTags", err)
 		return
+	}
+	if h.Caches != nil {
+		h.Caches.FlavorTags.Set(key, rows)
 	}
 	apierror.WriteJSON(w, http.StatusOK, rows)
 }

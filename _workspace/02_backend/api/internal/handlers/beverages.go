@@ -61,8 +61,26 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBeverage — GET /v1/beverages/{id}. Includes aggregated flavor + recent.
+//
+// Phase 7: in-process LRU cache keyed on <id>:<locale>. The cached value
+// is *domain.BeverageDetail — see cache.NewCaches for size/TTL. The
+// response varies per viewer ONLY in scaffolded fields that aren't on
+// BeverageDetail today (no you_toasted on this endpoint), so we serve
+// the cached pointer directly. If a future commit adds a viewer-relative
+// field to BeverageDetail, that handler MUST deep-copy before mutating —
+// the cache hands out the same pointer to every concurrent request.
+//
+// Write-path invalidation (commit 4) busts <id>:* on every check-in
+// create/update/delete so avg_rating + check_in_count stay fresh.
 func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	cacheKey := id + ":" + localeKey(r)
+	if h.Caches != nil {
+		if cached, ok := h.Caches.BeverageDetail.Get(cacheKey); ok {
+			apierror.WriteJSON(w, http.StatusOK, cached)
+			return
+		}
+	}
 	bv, err := h.Repos.Beverages.Detail(r.Context(), id)
 	if err != nil {
 		h.writeErr(w, "GetBeverage detail", err)
@@ -85,6 +103,9 @@ func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(recent) > 10 {
 		out.RecentCheckins = recent[:10]
+	}
+	if h.Caches != nil {
+		h.Caches.BeverageDetail.Set(cacheKey, &out)
 	}
 	apierror.WriteJSON(w, http.StatusOK, out)
 }
@@ -145,12 +166,35 @@ func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBrewery — GET /v1/breweries/{id}. Includes beverage list (first page).
+//
+// Phase 7: only the brewery row itself is cached (LRU keyed on
+// <id>:<locale>). The inline beverages page is intentionally NOT cached
+// here — it's cursor-paginated and adding the cursor to the cache key
+// would balloon the entry count. The beverage list query is already fast
+// (<2ms p95 per Phase 1 metrics) and the brewery row is the expensive
+// part (it carries the i18n description + beverage_count aggregate).
+//
+// ETag still hashes the combined response, so byte-identical repeat
+// requests still short-circuit at the middleware layer.
 func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	br, err := h.Repos.Breweries.Detail(r.Context(), id)
-	if err != nil {
-		h.writeErr(w, "GetBrewery", err)
-		return
+	cacheKey := id + ":" + localeKey(r)
+	var br *domain.Brewery
+	if h.Caches != nil {
+		if cached, ok := h.Caches.BreweryDetail.Get(cacheKey); ok {
+			br = cached
+		}
+	}
+	if br == nil {
+		fetched, err := h.Repos.Breweries.Detail(r.Context(), id)
+		if err != nil {
+			h.writeErr(w, "GetBrewery", err)
+			return
+		}
+		br = fetched
+		if h.Caches != nil {
+			h.Caches.BreweryDetail.Set(cacheKey, br)
+		}
 	}
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
