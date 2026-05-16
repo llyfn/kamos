@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kamos/api/internal/auth"
+	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/handlers"
 	"github.com/kamos/api/internal/middleware"
 
@@ -27,7 +28,15 @@ import (
 // softDelete may be nil — in that case the auth middleware skips the SEC-006
 // revocation check. main.go always passes a real cache; tests pass nil when
 // they don't care about revocation semantics.
+//
+// roleResolver is derived from the handler's Repos.DB when non-nil. Passing
+// it explicitly keeps server.New testable with stub repos (a nil resolver
+// fails closed on every admin route).
 func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache, h *handlers.Handler) http.Handler {
+	var roleResolver *middleware.RoleResolver
+	if h != nil && h.Repos != nil && h.Repos.DB != nil {
+		roleResolver = middleware.NewRoleResolver(h.Repos.DB)
+	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Trace)
@@ -156,6 +165,31 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 
 			// Beverage feedback.
 			r.Post("/beverage-requests", h.SubmitBeverageRequest)
+		})
+
+		// Phase 5a — admin surface. Authed + role-gated per-route. Generous
+		// per-user rate limit (30/60) — admin tooling fires bursts of
+		// reads during triage but doesn't need the 60/120 of the regular
+		// authed surface.
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.Auth(signer, softDelete))
+			if rateLimited {
+				r.Use(middleware.RateLimitByUser(log, 30, 60))
+			}
+
+			// Moderator-or-admin endpoints — triage, listing, soft-delete of
+			// individual rows.
+			modOrAdmin := roleResolver.RequireRole(domain.RoleModerator, domain.RoleAdmin)
+			r.With(modOrAdmin).Get("/beverage-requests", h.AdminListBeverageRequests)
+			r.With(modOrAdmin).Post("/beverage-requests/{id}/reject", h.AdminRejectBeverageRequest)
+			r.With(modOrAdmin).Post("/check-ins/{id}/moderate", h.AdminModerateCheckin)
+			r.With(modOrAdmin).Get("/users", h.AdminListUsers)
+
+			// Admin-only endpoints — destructive or privilege-altering.
+			adminOnly := roleResolver.RequireRole(domain.RoleAdmin)
+			r.With(adminOnly).Post("/beverage-requests/{id}/approve", h.AdminApproveBeverageRequest)
+			r.With(adminOnly).Post("/users/{id}/suspend", h.AdminSuspendUser)
+			r.With(adminOnly).Post("/users/{id}/role", h.AdminUpdateUserRole)
 		})
 	})
 

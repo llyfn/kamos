@@ -37,6 +37,7 @@ tags:
   - name: search
   - name: taxonomy
   - name: venues
+  - name: admin
 
 security:
   - bearerAuth: []
@@ -1105,6 +1106,242 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/Validation" }
 
+  # ==========================================================================
+  # Phase 5a — admin surface. All endpoints require Bearer auth + a moderator
+  # or admin role (specified per-operation). 403 ROLE_REQUIRED on mismatch;
+  # 401 ACCOUNT_DELETED on revoked JWTs (SEC-006).
+  # ==========================================================================
+
+  /v1/admin/beverage-requests:
+    get:
+      tags: [admin]
+      operationId: adminListBeverageRequests
+      description: |
+        List user-submitted beverage addition requests. Requires moderator
+        or admin role. Cursor-paginated.
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected] }
+        - in: query
+          name: cursor
+          required: false
+          schema: { type: string }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of requests
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, has_more]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminBeverageRequest" }
+                  next_cursor: { type: string, nullable: true }
+                  has_more: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/admin/beverage-requests/{id}/approve:
+    post:
+      tags: [admin]
+      operationId: adminApproveBeverageRequest
+      description: |
+        Approve a pending beverage request and insert a canonical beverage
+        in the same transaction. Admin role required. The admin supplies
+        the canonical fields (brewery_id, category_id, name_i18n, ...)
+        based on the user-submitted payload.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBeverageRequestApproval" }
+      responses:
+        "200":
+          description: approved; beverage created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, beverage_id]
+                properties:
+                  request_id: { type: string, format: uuid }
+                  beverage_id: { type: string, format: uuid }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/beverage-requests/{id}/reject:
+    post:
+      tags: [admin]
+      operationId: adminRejectBeverageRequest
+      description: |
+        Reject a pending beverage request with required reviewer notes.
+        Moderator or admin role.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notes]
+              properties:
+                notes: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "200":
+          description: rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id: { type: string, format: uuid }
+                  status: { type: string, enum: [rejected] }
+                  notes: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/check-ins/{id}/moderate:
+    post:
+      tags: [admin]
+      operationId: adminModerateCheckin
+      description: |
+        Soft-delete a check-in regardless of owner. Moderator or admin role.
+        Optional notes are recorded in the structured access log.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes: { type: string, maxLength: 500 }
+      responses:
+        "204":
+          description: moderated
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/admin/users:
+    get:
+      tags: [admin]
+      operationId: adminListUsers
+      description: |
+        List users. Moderator or admin role.
+      parameters:
+        - in: query
+          name: role
+          required: false
+          schema: { type: string, enum: [user, moderator, admin] }
+        - in: query
+          name: include_deleted
+          required: false
+          schema: { type: string, enum: ["0", "1"] }
+        - in: query
+          name: cursor
+          required: false
+          schema: { type: string }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, has_more]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminUser" }
+                  next_cursor: { type: string, nullable: true }
+                  has_more: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/admin/users/{id}/role:
+    post:
+      tags: [admin]
+      operationId: adminUpdateUserRole
+      description: |
+        Update a user's role. Admin only. Self-role-changes are blocked
+        with 403 to prevent accidental admin lockout.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminUserRoleUpdate" }
+      responses:
+        "200":
+          description: role updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id: { type: string, format: uuid }
+                  role: { type: string, enum: [user, moderator, admin] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/users/{id}/suspend:
+    post:
+      tags: [admin]
+      operationId: adminSuspendUser
+      description: |
+        Admin-initiated soft-delete. Sets the 30-day username hold and
+        adds the user id to the SEC-006 revocation cache so the user's
+        outstanding JWTs are rejected immediately.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: suspended
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1794,3 +2031,93 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/SearchResult" }
+
+    # ========================================================================
+    # Phase 5a — RBAC + admin
+    # ========================================================================
+
+    UserRole:
+      type: string
+      enum: [user, moderator, admin]
+      description: |
+        RBAC role from migration 007. Roles live on users.role and are
+        not embedded in JWT claims, so a demotion takes effect on the
+        next admin request rather than after the token TTL.
+
+    AdminBeverageRequest:
+      type: object
+      required: [id, payload, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid, nullable: true }
+        username:
+          type: string
+          nullable: true
+          description: display_username of the submitter, or null if the user was hard-purged
+        payload:
+          type: object
+          additionalProperties: true
+          description: original user-submitted free-form payload
+        status: { type: string, enum: [pending, approved, rejected] }
+        reviewed_by:
+          type: string
+          format: uuid
+          nullable: true
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        created_at: { type: string, format: date-time }
+
+    AdminBeverageRequestApproval:
+      type: object
+      required: [brewery_id, category_id, name_i18n]
+      properties:
+        brewery_id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid }
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        subcategory_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+        abv:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0
+          maximum: 70
+        prefecture: { type: string, nullable: true }
+        region: { type: string, nullable: true }
+        label_image_url: { type: string, format: uri, nullable: true }
+        flavor_profile:
+          type: array
+          items: { type: string }
+        notes:
+          type: string
+          nullable: true
+          description: reviewer notes recorded on the request row
+
+    AdminUser:
+      type: object
+      required: [id, username, display_username, email, email_verified, role, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_username: { type: string }
+        email: { type: string, format: email }
+        email_verified: { type: boolean }
+        role: { $ref: "#/components/schemas/UserRole" }
+        created_at: { type: string, format: date-time }
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AdminUserRoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/UserRole" }

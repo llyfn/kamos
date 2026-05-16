@@ -1,0 +1,356 @@
+// Package repository — admin queries (Phase 5a).
+//
+// Admin-only access to:
+//   - beverage_addition_requests (list / approve / reject)
+//   - check_ins (moderate)
+//   - users (list / role update / suspend)
+//
+// The handler layer (handlers/admin) gates each route by middleware.RequireRole
+// before touching these methods. We do NOT re-check the role here — keep the
+// repository layer focused on SQL.
+package repository
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/domain"
+)
+
+// AdminRepo wraps administrative SQL.
+type AdminRepo struct{ db *pgxpool.Pool }
+
+// ============================================================================
+// Beverage addition requests
+// ============================================================================
+
+// BeverageRequestRow is the admin-list shape for beverage_addition_requests.
+type BeverageRequestRow struct {
+	ID         string     `json:"id"`
+	UserID     *string    `json:"user_id"`
+	Username   *string    `json:"username,omitempty"`
+	Payload    []byte     `json:"-"`
+	PayloadRaw map[string]any `json:"payload"`
+	Status     string     `json:"status"`
+	ReviewedBy *string    `json:"reviewed_by,omitempty"`
+	ReviewedAt *time.Time `json:"reviewed_at,omitempty"`
+	Notes      *string    `json:"notes,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+// ListBeverageRequestsParams supports cursor pagination on (created_at, id).
+// statusFilter "" means "all"; otherwise pass 'pending'|'approved'|'rejected'.
+type ListBeverageRequestsParams struct {
+	StatusFilter string
+	CursorTs     *time.Time
+	CursorID     *string
+	Limit        int
+}
+
+// ListBeverageRequests pages through the queue. JOIN against users lets the
+// admin UI display "submitted by @username" without a second round trip.
+func (r *AdminRepo) ListBeverageRequests(ctx context.Context, p ListBeverageRequestsParams) ([]BeverageRequestRow, error) {
+	if p.Limit <= 0 {
+		p.Limit = 20
+	}
+	const q = `
+SELECT bar.id, bar.user_id, u.display_username,
+       bar.payload, bar.status,
+       bar.reviewed_by, bar.reviewed_at, bar.notes, bar.created_at
+FROM beverage_addition_requests bar
+LEFT JOIN users u ON u.id = bar.user_id
+WHERE ($1::text = '' OR bar.status = $1)
+  AND ($2::timestamptz IS NULL OR (bar.created_at, bar.id::text) < ($2::timestamptz, $3::text))
+ORDER BY bar.created_at DESC, bar.id DESC
+LIMIT $4;`
+	rows, err := r.db.Query(ctx, q, p.StatusFilter, p.CursorTs, p.CursorID, p.Limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("AdminRepo.ListBeverageRequests: %w", err)
+	}
+	defer rows.Close()
+	out := make([]BeverageRequestRow, 0, p.Limit+1)
+	for rows.Next() {
+		var row BeverageRequestRow
+		if err := rows.Scan(&row.ID, &row.UserID, &row.Username,
+			&row.Payload, &row.Status,
+			&row.ReviewedBy, &row.ReviewedAt, &row.Notes, &row.CreatedAt); err != nil {
+			return nil, fmt.Errorf("AdminRepo.ListBeverageRequests scan: %w", err)
+		}
+		// Materialize the JSONB payload so the handler can emit it directly.
+		// Errors here would mean the DB has corrupted JSON — surface as 500.
+		row.PayloadRaw, err = unmarshalJSONBToMap(row.Payload)
+		if err != nil {
+			return nil, fmt.Errorf("AdminRepo.ListBeverageRequests payload: %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+// ApproveBeverageRequestParams carries the canonical beverage fields the
+// admin fills in based on the original request payload.
+type ApproveBeverageRequestParams struct {
+	RequestID     string
+	BreweryID     string
+	CategoryID    string
+	NameI18n      domain.I18nText
+	Subcategory   *domain.I18nText
+	ABV           *float64
+	Prefecture    *string
+	Region        *string
+	LabelImageURL *string
+	FlavorProfile []string
+	ReviewerID    string
+	Notes         *string
+}
+
+// ApproveBeverageRequest creates the beverage row and marks the request
+// approved in one transaction. Returns the new beverage_id.
+// 409 CONFLICT if the request is not in 'pending' state.
+func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverageRequestParams) (string, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("ApproveBeverageRequest begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Lock the request row and verify pending.
+	var status, categorySlug string
+	const lockReq = `SELECT status FROM beverage_addition_requests WHERE id = $1 FOR UPDATE;`
+	if err := tx.QueryRow(ctx, lockReq, p.RequestID).Scan(&status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", apierror.ErrNotFound
+		}
+		return "", fmt.Errorf("ApproveBeverageRequest lock: %w", err)
+	}
+	if status != "pending" {
+		return "", fmt.Errorf("ApproveBeverageRequest: %w (status=%s)", apierror.ErrConflict, status)
+	}
+
+	// Resolve category slug from the category id — beverages CHECK
+	// requires (slug, id) to be consistent.
+	if err := tx.QueryRow(ctx,
+		`SELECT slug FROM beverage_categories WHERE id = $1;`,
+		p.CategoryID).Scan(&categorySlug); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", fmt.Errorf("ApproveBeverageRequest: %w (category)", apierror.ErrValidation)
+		}
+		return "", fmt.Errorf("ApproveBeverageRequest category lookup: %w", err)
+	}
+
+	nameJSON, err := jsonMarshalI18n(p.NameI18n)
+	if err != nil {
+		return "", err
+	}
+	// subcategory: pass a *string so absent → SQL NULL, present → JSONB literal.
+	// pgx serializes nil-string and empty-string both as text NULL when the
+	// column accepts NULL, but the `::jsonb` cast on an empty string would
+	// raise "invalid input syntax for type json" — keeping it nullable here.
+	var subJSON *string
+	if p.Subcategory != nil {
+		b, err := jsonMarshalI18n(*p.Subcategory)
+		if err != nil {
+			return "", err
+		}
+		s := string(b)
+		subJSON = &s
+	}
+
+	const insBev = `
+INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n,
+                       subcategory_i18n, abv, prefecture, region,
+                       label_image_url, flavor_profile)
+VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9, COALESCE($10, '{}'::text[]))
+RETURNING id;`
+	var bevID string
+	if err := tx.QueryRow(ctx, insBev,
+		p.BreweryID, p.CategoryID, categorySlug, string(nameJSON),
+		subJSON, p.ABV, p.Prefecture, p.Region,
+		p.LabelImageURL, p.FlavorProfile,
+	).Scan(&bevID); err != nil {
+		return "", fmt.Errorf("ApproveBeverageRequest insert beverage: %w", err)
+	}
+
+	const updReq = `
+UPDATE beverage_addition_requests
+SET status = 'approved', reviewed_by = $2, reviewed_at = NOW(), notes = $3
+WHERE id = $1;`
+	if _, err := tx.Exec(ctx, updReq, p.RequestID, p.ReviewerID, p.Notes); err != nil {
+		return "", fmt.Errorf("ApproveBeverageRequest update request: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("ApproveBeverageRequest commit: %w", err)
+	}
+	return bevID, nil
+}
+
+// RejectBeverageRequest marks the request rejected with the given notes.
+// 409 CONFLICT if the row is not in 'pending' state.
+func (r *AdminRepo) RejectBeverageRequest(ctx context.Context, requestID, reviewerID, notes string) error {
+	const q = `
+UPDATE beverage_addition_requests
+SET status = 'rejected', reviewed_by = $2, reviewed_at = NOW(), notes = $3
+WHERE id = $1 AND status = 'pending'
+RETURNING id;`
+	var id string
+	if err := r.db.QueryRow(ctx, q, requestID, reviewerID, notes).Scan(&id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Could be missing OR already non-pending; distinguish for a
+			// clearer error.
+			var status string
+			if err2 := r.db.QueryRow(ctx,
+				`SELECT status FROM beverage_addition_requests WHERE id = $1;`,
+				requestID).Scan(&status); err2 != nil {
+				if errors.Is(err2, pgx.ErrNoRows) {
+					return apierror.ErrNotFound
+				}
+				return fmt.Errorf("RejectBeverageRequest status probe: %w", err2)
+			}
+			return fmt.Errorf("RejectBeverageRequest: %w (status=%s)", apierror.ErrConflict, status)
+		}
+		return fmt.Errorf("RejectBeverageRequest: %w", err)
+	}
+	return nil
+}
+
+// ============================================================================
+// Check-in moderation
+// ============================================================================
+
+// ModerateCheckin soft-deletes a check-in regardless of owner, attributing
+// the action to the moderator. The notes go into a system-only column we
+// don't yet have — for MVP we just soft-delete and audit via the
+// reviewed_by/notes columns on beverage_addition_requests; check-in
+// moderation logs can land in a future migration. For now the notes
+// argument is recorded in the slog access log via the handler.
+func (r *AdminRepo) ModerateCheckin(ctx context.Context, checkinID string) error {
+	const q = `
+UPDATE check_ins SET deleted_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id;`
+	var got string
+	if err := r.db.QueryRow(ctx, q, checkinID).Scan(&got); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierror.ErrNotFound
+		}
+		return fmt.Errorf("ModerateCheckin: %w", err)
+	}
+	return nil
+}
+
+// ============================================================================
+// User admin
+// ============================================================================
+
+// AdminUserRow is the list shape for GET /v1/admin/users.
+type AdminUserRow struct {
+	ID              string     `json:"id"`
+	Username        string     `json:"username"`
+	DisplayUsername string     `json:"display_username"`
+	Email           string     `json:"email"`
+	EmailVerified   bool       `json:"email_verified"`
+	Role            string     `json:"role"`
+	CreatedAt       time.Time  `json:"created_at"`
+	DeletedAt       *time.Time `json:"deleted_at"`
+}
+
+// ListUsersParams supports cursor pagination on (created_at, id) plus
+// filters for role and "include soft-deleted".
+type ListUsersParams struct {
+	RoleFilter      string
+	IncludeDeleted  bool
+	CursorTs        *time.Time
+	CursorID        *string
+	Limit           int
+}
+
+// ListUsers pages through users; soft-deleted users are excluded by
+// default. Caller must already have moderator+ role.
+func (r *AdminRepo) ListUsers(ctx context.Context, p ListUsersParams) ([]AdminUserRow, error) {
+	if p.Limit <= 0 {
+		p.Limit = 20
+	}
+	const q = `
+SELECT id, username, display_username, email, email_verified,
+       role::text, created_at, deleted_at
+FROM users
+WHERE ($1::boolean OR deleted_at IS NULL)
+  AND ($2::text = '' OR role::text = $2)
+  AND ($3::timestamptz IS NULL OR (created_at, id::text) < ($3::timestamptz, $4::text))
+ORDER BY created_at DESC, id DESC
+LIMIT $5;`
+	rows, err := r.db.Query(ctx, q, p.IncludeDeleted, p.RoleFilter, p.CursorTs, p.CursorID, p.Limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("AdminRepo.ListUsers: %w", err)
+	}
+	defer rows.Close()
+	out := make([]AdminUserRow, 0, p.Limit+1)
+	for rows.Next() {
+		var u AdminUserRow
+		if err := rows.Scan(&u.ID, &u.Username, &u.DisplayUsername,
+			&u.Email, &u.EmailVerified, &u.Role, &u.CreatedAt, &u.DeletedAt); err != nil {
+			return nil, fmt.Errorf("AdminRepo.ListUsers scan: %w", err)
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// UpdateUserRole rewrites the role column. Validates against the enum.
+func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID string, role domain.UserRole) error {
+	if !role.Valid() {
+		return fmt.Errorf("UpdateUserRole: %w (role=%s)", apierror.ErrValidation, role)
+	}
+	const q = `UPDATE users SET role = $2::user_role WHERE id = $1 AND deleted_at IS NULL;`
+	ct, err := r.db.Exec(ctx, q, userID, string(role))
+	if err != nil {
+		return fmt.Errorf("UpdateUserRole: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return apierror.ErrNotFound
+	}
+	return nil
+}
+
+// SuspendUser is admin-initiated soft-delete: marks deleted_at and starts
+// the 30-day username hold. Returns ErrNotFound when the user doesn't
+// exist or was already suspended.
+func (r *AdminRepo) SuspendUser(ctx context.Context, userID string) error {
+	const q = `
+UPDATE users SET
+  deleted_at = NOW(),
+  username_release_at = NOW() + INTERVAL '30 days',
+  role = 'user'::user_role
+WHERE id = $1 AND deleted_at IS NULL;`
+	ct, err := r.db.Exec(ctx, q, userID)
+	if err != nil {
+		return fmt.Errorf("SuspendUser: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return apierror.ErrNotFound
+	}
+	return nil
+}
+
+// GetUserRole returns the role for a live user. Used by /v1/users/me.
+func (r *UserRepo) GetUserRole(ctx context.Context, userID string) (domain.UserRole, error) {
+	const q = `SELECT role::text FROM users WHERE id = $1 AND deleted_at IS NULL;`
+	var s string
+	if err := r.db.QueryRow(ctx, q, userID).Scan(&s); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", apierror.ErrNotFound
+		}
+		return "", fmt.Errorf("GetUserRole: %w", err)
+	}
+	role := domain.UserRole(s)
+	if !role.Valid() {
+		return "", fmt.Errorf("GetUserRole: unknown role %q", s)
+	}
+	return role, nil
+}

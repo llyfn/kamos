@@ -28,6 +28,7 @@ type Repos struct {
 	RefreshTokens *RefreshTokenRepo
 	PhotoUploads  *PhotoUploadRepo
 	Venues        *VenueRepo
+	Admin         *AdminRepo
 }
 
 // New wires the bundle.
@@ -46,6 +47,7 @@ func New(db *pgxpool.Pool) *Repos {
 		RefreshTokens: &RefreshTokenRepo{db: db},
 		PhotoUploads:  &PhotoUploadRepo{db: db},
 		Venues:        &VenueRepo{db: db},
+		Admin:         &AdminRepo{db: db},
 	}
 }
 
