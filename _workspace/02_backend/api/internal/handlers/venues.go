@@ -5,15 +5,22 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/foursquare"
 )
 
-// venueSearchLimit caps the result page exposed to the client. Foursquare
-// itself caps at 50 (see foursquare.maxLimit); we mirror that here so clients
-// can't ask for more.
-const venueSearchLimit = 50
+// venueSearchLimit caps the result page exposed to the client. Lowered from
+// 50 to 20 (SEC-007 bundle) so a single search burns at most 20 places of
+// Foursquare quota — Foursquare's own cap is 50 but the picker UI only ever
+// renders the top results.
+const venueSearchLimit = 20
+
+// venueQueryMaxRunes caps the `q` query param to keep the LRU cache bounded
+// and prevent a single client from burning Foursquare quota on long unique
+// strings (SEC-007).
+const venueQueryMaxRunes = 100
 
 // venueSearchResponse is the flat envelope returned by GET /v1/venues/search.
 // NOT cursor-paginated — Foursquare's own response is bounded by `limit`,
@@ -41,6 +48,11 @@ func (h *Handler) VenueSearch(w http.ResponseWriter, r *http.Request) {
 	if q == "" {
 		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"q is required")
+		return
+	}
+	if utf8.RuneCountInString(q) > venueQueryMaxRunes {
+		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+			"q too long (max 100 chars)")
 		return
 	}
 

@@ -25,6 +25,27 @@ import (
 //      with an empty `{}` venue → 201 and no venue (silent drop per the
 //      "permissive on incomplete payloads" decision in CreateCheckin).
 
+// SEC-012: /v1/venues/search must require an Authorization bearer token.
+// Regression guard so the route can't accidentally be moved out of the
+// authed group.
+func TestVenueSearchRequiresAuth(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/venues/search?q=x", "", nil)
+	if code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", code, raw)
+	}
+	var e errBodyShape
+	if err := json.Unmarshal(raw, &e); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if e.Code != "UNAUTHORIZED" {
+		t.Errorf("code: %q (want UNAUTHORIZED)", e.Code)
+	}
+}
+
 func TestVenueSearchReturns503WhenDisabled(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)

@@ -732,7 +732,7 @@ paths:
         - in: query
           name: q
           required: true
-          schema: { type: string, minLength: 1 }
+          schema: { type: string, minLength: 1, maxLength: 100 }
         - in: query
           name: lat
           schema: { type: number, minimum: -90, maximum: 90 }
@@ -744,7 +744,7 @@ paths:
           schema: { type: string, enum: [en, ja, ko] }
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
       responses:
         "200":
           description: list of matching venues from Foursquare

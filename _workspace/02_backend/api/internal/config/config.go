@@ -170,6 +170,13 @@ func Load() (*Config, error) {
 	if c.JWTSecret == "" {
 		return nil, fmt.Errorf("Load: JWT_SECRET is required")
 	}
+	// SEC-004 production safety guard: never let the brute-force backstop
+	// on /v1/auth/* be silently disabled in production. Local stress runs
+	// and the integration suite still set RATE_LIMIT_DISABLED=1 (with
+	// APP_ENV != "production").
+	if c.Env == "production" && c.RateLimitDisabled {
+		return nil, fmt.Errorf("config.Load: RATE_LIMIT_DISABLED must not be set in production")
+	}
 	return c, nil
 }
 
