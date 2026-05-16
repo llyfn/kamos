@@ -356,3 +356,63 @@ func TestCreateCheckinWithEmptyVenueIsSilentDrop(t *testing.T) {
 		t.Errorf("venue key should be absent on empty payload: %s", raw)
 	}
 }
+
+// STYLE-011 (phase 4 follow-on): resolveCheckinVenue silently drops any
+// venue payload that doesn't carry either (a) a valid `id` referencing an
+// existing row, or (b) BOTH `foursquare_id` AND `name`. Each branch below
+// is documented in `handlers/checkins.go:305-335`; without this guard a
+// future refactor could flip "silent drop" into "422 VALIDATION" and the
+// MVP-shipping Flutter client would start failing.
+//
+// Each case: the check-in must be created (201) AND the response must omit
+// the `venue` key. No venue rows must exist in the DB afterwards.
+func TestCreateCheckinSilentDropVenueBranches(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, _ := mustRegister(t, srv, "silentdrop", "silentdrop@example.com", "password11")
+	bevID := seedBeverage(t, "SilentDropBev")
+
+	cases := []struct {
+		name  string
+		venue map[string]any
+	}{
+		{"foursquare_id only, no name", map[string]any{"foursquare_id": "fsq-no-name"}},
+		{"name only, no foursquare_id", map[string]any{"name": "OrphanName"}},
+		{"empty-string id", map[string]any{"id": ""}},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{
+				"beverage_id": bevID,
+				"venue":       tc.venue,
+			}
+			code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, body)
+			if code != http.StatusCreated {
+				t.Fatalf("status=%d body=%s", code, raw)
+			}
+			var ci map[string]any
+			if err := json.Unmarshal(raw, &ci); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if v, present := ci["venue"]; present && v != nil {
+				t.Errorf("venue must be absent/null on silent-drop branch %q: %s", tc.name, raw)
+			}
+		})
+	}
+
+	// Across every silent-drop case above, no venue rows should have leaked
+	// into the venues table.
+	p := getPool(t)
+	var venueCount int
+	if err := p.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM venues;`).Scan(&venueCount); err != nil {
+		t.Fatalf("count venues: %v", err)
+	}
+	if venueCount != 0 {
+		t.Errorf("expected 0 venue rows after silent-drops, got %d", venueCount)
+	}
+}
