@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -27,6 +28,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"golang.org/x/sync/singleflight"
 )
 
 // ErrDisabled is returned by Search when the client has no API key.
@@ -35,6 +37,11 @@ var ErrDisabled = errors.New("foursquare disabled")
 // ErrRateLimited is returned on HTTP 429 from Foursquare. The handler maps
 // it to a 503 VENUE_RATE_LIMITED with a Retry-After header.
 var ErrRateLimited = errors.New("foursquare rate limited")
+
+// ErrAuth signals a Foursquare 401/403. Auth failures are config bugs, not
+// transient — callers should not retry, and we surface a typed sentinel so
+// tests + log filters can distinguish them from other upstream errors.
+var ErrAuth = errors.New("foursquare: auth failed")
 
 const (
 	// apiBase is the Places v3 search endpoint.
@@ -99,15 +106,30 @@ type Client struct {
 	apiKey string
 	http   *http.Client
 	cache  *expirable.LRU[string, []Place]
+	sf     singleflight.Group
 }
 
-// New constructs a client. An empty apiKey returns a Disabled client whose
-// Search always returns ErrDisabled — the caller still gets a non-nil *Client
-// so handlers can hold a value type without nil-checks.
+// New constructs a client. The API key is TrimSpace'd; an empty (or
+// whitespace-only) apiKey returns a Disabled client whose Search always
+// returns ErrDisabled — the caller still gets a non-nil *Client so handlers
+// can hold a value type without nil-checks.
+//
+// A dedicated *http.Transport is wired so the client doesn't share Go's
+// default 2-idle-conns-per-host budget with the rest of the process; under
+// burst load this matters even with the LRU + singleflight in front.
 func New(apiKey string) *Client {
+	apiKey = strings.TrimSpace(apiKey)
+	tr := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 32,
+		MaxConnsPerHost:     64,
+		IdleConnTimeout:     90 * time.Second,
+		ForceAttemptHTTP2:   true,
+		TLSHandshakeTimeout: 5 * time.Second,
+	}
 	return &Client{
 		apiKey: apiKey,
-		http:   &http.Client{Timeout: httpTimeout},
+		http:   &http.Client{Timeout: httpTimeout, Transport: tr},
 		cache:  expirable.NewLRU[string, []Place](cacheSize, nil, cacheTTL),
 	}
 }
@@ -133,12 +155,22 @@ func (c *Client) Search(ctx context.Context, opts SearchOptions) ([]Place, error
 		return cached, nil
 	}
 
-	places, err := c.fetchWithRetry(ctx, opts)
+	// PERF-003: collapse concurrent cache-miss callers for the same key
+	// into one upstream call. The first caller fetches; the others wait
+	// on the result. The result is cached inside the singleflight closure
+	// so a duplicate Add isn't observable to subsequent callers.
+	v, err, _ := c.sf.Do(key, func() (interface{}, error) {
+		places, fetchErr := c.fetchWithRetry(ctx, opts)
+		if fetchErr != nil {
+			return nil, fetchErr
+		}
+		c.cache.Add(key, places)
+		return places, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	c.cache.Add(key, places)
-	return places, nil
+	return v.([]Place), nil
 }
 
 // fetchWithRetry performs the upstream call with one retry on 5xx. Auth
@@ -153,10 +185,14 @@ func (c *Client) fetchWithRetry(ctx context.Context, opts SearchOptions) ([]Plac
 	if !errors.As(err, &serverErr) {
 		return nil, err
 	}
+	// PERF-019: uniform jitter in [retryBackoff, 2*retryBackoff) so a
+	// stampede of clients hitting the same outage doesn't align their
+	// retries on the same millisecond.
+	jitter := time.Duration(rand.Int64N(int64(retryBackoff)))
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-time.After(retryBackoff):
+	case <-time.After(retryBackoff + jitter):
 	}
 	return c.fetchOnce(ctx, opts)
 }
@@ -205,8 +241,9 @@ func (c *Client) fetchOnce(ctx context.Context, opts SearchOptions) ([]Place, er
 	case resp.StatusCode == http.StatusOK:
 		// Decode below.
 	case resp.StatusCode == http.StatusUnauthorized, resp.StatusCode == http.StatusForbidden:
-		// Config bug — do not page Sentry, do not retry.
-		return nil, fmt.Errorf("fetchOnce: auth failed (%d)", resp.StatusCode)
+		// Config bug — do not page Sentry, do not retry. STYLE-002: wrap
+		// the typed ErrAuth sentinel so callers can errors.Is(err, ErrAuth).
+		return nil, fmt.Errorf("fetchOnce: %w (%d)", ErrAuth, resp.StatusCode)
 	case resp.StatusCode == http.StatusTooManyRequests:
 		return nil, ErrRateLimited
 	case resp.StatusCode >= 500:
