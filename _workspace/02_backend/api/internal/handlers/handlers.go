@@ -15,6 +15,7 @@ import (
 
 	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
+	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/email"
@@ -39,6 +40,11 @@ type Handler struct {
 	// (tests that don't bring up the cache also don't care about revocation
 	// semantics). Production wiring lives in cmd/server/main.go.
 	SoftDelete *auth.SoftDeleteCache
+	// Caches is the Phase 7 in-process LRU bundle (taxonomy + beverage +
+	// brewery hot rows). Nil-safe — handlers null-check before using; tests
+	// that don't care about caching pass nil and the path falls through to
+	// the DB on every call.
+	Caches *cache.Caches
 }
 
 // New creates the bundle. Storage/Mailer/Foursquare default to disabled
@@ -79,6 +85,14 @@ func (h *Handler) WithFoursquare(c *foursquare.Client) *Handler {
 // skips the immediate-Add() call.
 func (h *Handler) WithSoftDeleteCache(c *auth.SoftDeleteCache) *Handler {
 	h.SoftDelete = c
+	return h
+}
+
+// WithCaches wires the Phase 7 LRU bundle. Nil-safe; tests that don't
+// care about caching can either omit this call (no bundle) or pass a
+// fresh one for isolation.
+func (h *Handler) WithCaches(c *cache.Caches) *Handler {
+	h.Caches = c
 	return h
 }
 
