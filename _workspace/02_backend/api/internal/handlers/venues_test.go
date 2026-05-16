@@ -47,7 +47,8 @@ func newVenueTestServer(t *testing.T) (http.Handler, *auth.Signer) {
 	}
 	google := auth.NewGoogleVerifier("")
 	h := handlers.New(cfg, log, repos, signer, google)
-	return server.New(log, signer, h), signer
+	// SEC-006: nil softDelete — handler-only tests don't bring up the cache.
+	return server.New(log, signer, nil, h), signer
 }
 
 type venuesErrBody struct {

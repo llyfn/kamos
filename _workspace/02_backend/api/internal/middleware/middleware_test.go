@@ -87,7 +87,7 @@ func TestAuthMiddleware(t *testing.T) {
 	expiredSigner := auth.NewSigner("test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", -time.Minute)
 
 	var capturedUser *AuthedUser
-	protected := Auth(signer)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	protected := Auth(signer, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedUser = UserFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -170,7 +170,7 @@ func TestAuthMiddleware(t *testing.T) {
 func TestOptionalAuthMiddleware(t *testing.T) {
 	signer := auth.NewSigner("opt-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Hour)
 	var captured *AuthedUser
-	h := OptionalAuth(signer)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := OptionalAuth(signer, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captured = UserFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))

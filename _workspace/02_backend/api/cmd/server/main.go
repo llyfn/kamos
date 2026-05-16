@@ -91,6 +91,27 @@ func main() {
 	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)
 	google := auth.NewGoogleVerifier(cfg.GoogleClientID)
 
+	// SEC-006 — soft-deleted-user JWT revocation cache. The window MUST be
+	// >= JWT_TTL: if a user soft-deletes their account, their tokens are
+	// still verifiable until they expire, and we need the cache to keep
+	// rejecting them for that full window.
+	//
+	// Default window: max(30m, JWT_TTL). Local dev runs with JWT_TTL=720h,
+	// so the cache effectively holds soft-deletes from the last 30 days
+	// (the same horizon as the username-release hold), which is the
+	// correct upper bound.
+	softDeleteWindow := 30 * time.Minute
+	if cfg.JWTTTL > softDeleteWindow {
+		softDeleteWindow = cfg.JWTTTL
+	}
+	softDelete := auth.NewSoftDeleteCache(pool, time.Minute, softDeleteWindow)
+	// Run the refresh loop until shutdown. We derive a long-lived context
+	// from Background; the loop exits cleanly when this context is canceled
+	// at shutdown time below.
+	softDeleteCtx, softDeleteCancel := context.WithCancel(context.Background())
+	defer softDeleteCancel()
+	go softDelete.Run(softDeleteCtx, log)
+
 	// Phase 3 — blob storage. Two cases:
 	//   (a) R2_ACCESS_KEY_ID + R2_BUCKET set → real Cloudflare R2 backend.
 	//   (b) Either empty → Disabled (the presign endpoint returns 503,
@@ -134,8 +155,9 @@ func main() {
 	h := handlers.New(cfg, log, repos, signer, google).
 		WithStorage(store).
 		WithMailer(mailer).
-		WithFoursquare(fsq)
-	mux := server.New(log, signer, h)
+		WithFoursquare(fsq).
+		WithSoftDeleteCache(softDelete)
+	mux := server.New(log, signer, softDelete, h)
 
 	// Background-job scheduler — four maintenance jobs registered before
 	// the HTTP server starts. The scheduler owns its own context derived

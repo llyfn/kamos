@@ -158,8 +158,14 @@ func buildServerWithTTL(
 	log := slog.New(handler)
 	repos := repository.New(p)
 	google := auth.NewGoogleVerifier("")
-	h := handlers.New(cfg, log, repos, signer, google)
-	mux := server.New(log, signer, h)
+	// SEC-006: bring up a real soft-delete cache backed by the test DB.
+	// 30s refresh is generous for an integration suite; tests that need
+	// immediate revocation rely on the DeleteMe handler's synchronous
+	// Add() call rather than waiting for the periodic refresh.
+	softDelete := auth.NewSoftDeleteCache(p, 30*time.Second, jwtTTL+time.Hour)
+	h := handlers.New(cfg, log, repos, signer, google).
+		WithSoftDeleteCache(softDelete)
+	mux := server.New(log, signer, softDelete, h)
 	return httptest.NewServer(mux)
 }
 

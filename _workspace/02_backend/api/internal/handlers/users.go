@@ -56,6 +56,11 @@ func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteMe — DELETE /v1/users/me. Soft-delete + 30-day username hold.
+//
+// After the DB UPDATE commits we Add(uid) to the in-memory soft-delete
+// cache (SEC-006). This revokes the user's outstanding JWTs immediately —
+// the next request with the now-doomed token gets 401 ACCOUNT_DELETED
+// instead of waiting for the access-token TTL to expire.
 func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -64,6 +69,9 @@ func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 	if err := h.Repos.Users.SoftDelete(r.Context(), uid); err != nil {
 		h.writeErr(w, "DeleteMe", err)
 		return
+	}
+	if h.SoftDelete != nil {
+		h.SoftDelete.Add(uid)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

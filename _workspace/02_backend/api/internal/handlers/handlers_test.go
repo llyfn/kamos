@@ -56,7 +56,9 @@ func newTestServer(t *testing.T) (http.Handler, *auth.Signer) {
 	}
 	google := auth.NewGoogleVerifier("")
 	h := handlers.New(cfg, log, repos, signer, google)
-	return server.New(log, signer, h), signer
+	// SEC-006: nil softDelete is intentional — these tests exercise
+	// auth/validation short-circuits that don't depend on revocation state.
+	return server.New(log, signer, nil, h), signer
 }
 
 // decodeAPIError matches the canonical { error, code } body shape used by

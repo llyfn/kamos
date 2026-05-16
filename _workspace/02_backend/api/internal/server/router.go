@@ -23,7 +23,11 @@ import (
 //
 // Stricter per-group limits (auth brute-force / per-user fairness) layer
 // inside their respective r.Route / r.Group blocks below.
-func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handler {
+//
+// softDelete may be nil — in that case the auth middleware skips the SEC-006
+// revocation check. main.go always passes a real cache; tests pass nil when
+// they don't care about revocation semantics.
+func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache, h *handlers.Handler) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Trace)
@@ -66,10 +70,10 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 			// 5 rps / burst 10 limit above.
 			r.Post("/refresh", h.RefreshToken)
 			// Authed:
-			r.With(middleware.Auth(signer)).Post("/resend-verification", h.ResendVerification)
-			r.With(middleware.Auth(signer)).Post("/password-change", h.PasswordChange)
-			r.With(middleware.Auth(signer)).Post("/email-change", h.EmailChange)
-			r.With(middleware.Auth(signer)).Post("/logout", h.Logout)
+			r.With(middleware.Auth(signer, softDelete)).Post("/resend-verification", h.ResendVerification)
+			r.With(middleware.Auth(signer, softDelete)).Post("/password-change", h.PasswordChange)
+			r.With(middleware.Auth(signer, softDelete)).Post("/email-change", h.EmailChange)
+			r.With(middleware.Auth(signer, softDelete)).Post("/logout", h.Logout)
 		})
 
 		// Taxonomy — public reads.
@@ -88,7 +92,7 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 
 		// Users (public reads, with optional auth for follow state).
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.OptionalAuth(signer))
+			r.Use(middleware.OptionalAuth(signer, softDelete))
 			r.Get("/users/{username}", h.GetUser)
 			r.Get("/users/{username}/check-ins", h.GetUserCheckins)
 			r.Get("/users/{username}/followers", h.GetUserFollowers)
@@ -99,7 +103,7 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 		// Authed surface. Per-user limit on top of the global IP limit
 		// (60 rps, burst 120 — comfortable for power users).
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.Auth(signer))
+			r.Use(middleware.Auth(signer, softDelete))
 			if rateLimited {
 				r.Use(middleware.RateLimitByUser(log, 60, 120))
 			}
