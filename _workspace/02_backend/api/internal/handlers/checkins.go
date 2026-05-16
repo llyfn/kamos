@@ -81,9 +81,25 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin reload", err)
 		return
 	}
+	// Phase 7 — bust the BeverageDetail cache for every locale of this
+	// beverage: the trigger has already updated avg_rating and
+	// check_in_count, so the cached pointer is now stale.
+	h.invalidateBeverageDetail(req.BeverageID)
 	// Business metric for the OTel meter. No-op when OTel is disabled.
 	observability.IncCheckinsCreated(r.Context())
 	apierror.WriteJSON(w, http.StatusCreated, out)
+}
+
+// invalidateBeverageDetail busts every locale-suffixed entry for the
+// given beverage. Cheap (cache size <= 1000) and best-effort —
+// downstream HTTP caches still honor max-age=300 from the
+// Cache-Control header, but in-process readers see fresh data
+// immediately.
+func (h *Handler) invalidateBeverageDetail(beverageID string) {
+	if h.Caches == nil || beverageID == "" {
+		return
+	}
+	h.Caches.BeverageDetail.InvalidatePrefix(beverageID + ":")
 }
 
 // GetCheckin — GET /v1/check-ins/{id}.
@@ -181,6 +197,9 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UpdateCheckin reload", err)
 		return
 	}
+	// Phase 7 — invalidate even when only non-rating fields changed: the
+	// detail response includes review/tags surfaced via recent_check_ins.
+	h.invalidateBeverageDetail(out.Beverage.ID)
 	apierror.WriteJSON(w, http.StatusOK, out)
 }
 
@@ -194,10 +213,19 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	// Phase 7 — fetch the beverage_id before soft-deleting so we know which
+	// LRU entry to bust. If the Get fails we still attempt the delete; the
+	// cache TTL ceiling (5m) bounds the staleness window. Get + SoftDelete
+	// is two PK lookups in the same request — cheap.
+	var bevID string
+	if cached, err := h.Repos.Checkins.Get(r.Context(), id, uid); err == nil {
+		bevID = cached.Beverage.ID
+	}
 	if err := h.Repos.Checkins.SoftDelete(r.Context(), id, uid); err != nil {
 		h.writeErr(w, "DeleteCheckin", err)
 		return
 	}
+	h.invalidateBeverageDetail(bevID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
