@@ -1,8 +1,8 @@
 // KAMOS — CommentRepository tests (Phase 6).
 //
 // Drives the three comment endpoints through a custom Dio adapter:
-// * GET    /v1/check-ins/{id}/comments → parsed list (accepts both `items`
-//   envelope and a bare array).
+// * GET    /v1/check-ins/{id}/comments → parsed Page<Comment> envelope.
+// * GET    with cursor → cursor is threaded into the query string.
 // * POST   /v1/check-ins/{id}/comments → body sent + parsed comment returned.
 // * POST   with >500 char body → CommentTooLongException, no request.
 // * DELETE /v1/comments/{id} on 403 → CommentForbiddenException.
@@ -55,7 +55,7 @@ Dio _dio(_Adapter adapter) {
 
 void main() {
   group('CommentRepository.list', () {
-    test('parses {"items":[...]} envelope', () async {
+    test('parses PageOfComment envelope', () async {
       final adapter = _Adapter(status: 200, body: const {
         'items': [
           {
@@ -66,33 +66,45 @@ void main() {
             'created_at': '2026-05-01T00:00:00Z',
           },
         ],
+        'next_cursor': 'cur-2',
+        'has_more': true,
       });
       final repo = CommentRepository(_dio(adapter));
 
-      final results = await repo.list('ci42');
+      final page = await repo.list('ci42');
 
-      expect(results, hasLength(1));
-      expect(results.first.id, 'cm1');
-      expect(results.first.body, 'Yum.');
+      expect(page.items, hasLength(1));
+      expect(page.items.first.id, 'cm1');
+      expect(page.items.first.body, 'Yum.');
+      expect(page.nextCursor, 'cur-2');
+      expect(page.hasMore, isTrue);
       expect(adapter.lastRequest!.path, '/v1/check-ins/ci42/comments');
     });
 
-    test('parses a bare top-level array', () async {
-      final adapter = _Adapter(status: 200, body: const [
-        {
-          'id': 'cm1',
-          'body': 'a',
-        },
-        {
-          'id': 'cm2',
-          'body': 'b',
-        },
-      ]);
+    test('threads cursor into the query string', () async {
+      final adapter = _Adapter(status: 200, body: const {
+        'items': [],
+        'has_more': false,
+      });
       final repo = CommentRepository(_dio(adapter));
 
-      final results = await repo.list('ci42');
+      await repo.list('ci42', cursor: 'tok-7');
 
-      expect(results, hasLength(2));
+      expect(adapter.lastRequest!.queryParameters['cursor'], 'tok-7');
+    });
+
+    test('empty page tail is parsed as hasMore=false', () async {
+      final adapter = _Adapter(status: 200, body: const {
+        'items': [],
+        'has_more': false,
+      });
+      final repo = CommentRepository(_dio(adapter));
+
+      final page = await repo.list('ci42');
+
+      expect(page.items, isEmpty);
+      expect(page.nextCursor, isNull);
+      expect(page.hasMore, isFalse);
     });
   });
 
