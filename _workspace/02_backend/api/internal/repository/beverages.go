@@ -2,9 +2,7 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -437,7 +435,3 @@ func scanBreweriesWithCount(rows pgx.Rows) ([]domain.Brewery, error) {
 	return out, rows.Err()
 }
 
-// Sentinel: keep linters / IDEs from complaining about strings import in
-// debug builds where we don't yet branch on driver error messages.
-var _ = strings.Contains
-var _ = errors.Is
