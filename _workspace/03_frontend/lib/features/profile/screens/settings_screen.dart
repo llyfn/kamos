@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/models/user.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../../auth/providers/auth_state.dart';
@@ -23,136 +24,217 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final async = ref.watch(meProvider);
+
+    // The "Suggest a beverage" tile must remain reachable even if `meProvider`
+    // errors — it does not depend on profile data. Render it as a top-level
+    // section, OUTSIDE the `async.when` switch. Profile-dependent sections
+    // (email, privacy, language, danger zone) stay gated on the data branch.
+    final suggestTile = ListTile(
+      title: Text(l.settingsSuggestBeverage),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/beverage-requests/new'),
+    );
+
+    // Profile-dependent slices (account, privacy, language tile, danger zone)
+    // collapse to a single status widget when `meProvider` is loading/erroring.
+    final accountPrivacy = async.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: LoadingView(label: l.loadingLabel)),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: ErrorView(message: l.errorGeneric)),
+      ),
+      data: (me) => _AccountAndPrivacySections(me: me),
+    );
+
+    final languageTile = async.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, _) => const SizedBox.shrink(),
+      data: (me) => _LanguageTile(me: me),
+    );
+
+    final dangerZone = async.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, _) => const SizedBox.shrink(),
+      data: (_) => const _DangerZoneSection(),
+    );
+
     return Scaffold(
       appBar: AppBar(title: Text(l.profileSettings)),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(child: ErrorView(message: l.errorGeneric)),
-        data: (me) {
-          return ListView(
-            children: [
-              _SectionTitle(l.settingsAccount),
-              _Row(
-                label: l.settingsEmail,
-                value: me.user.email ?? '',
-                onTap: () {},
+      body: ListView(
+        children: [
+          accountPrivacy,
+          // "Preferences" header + "Suggest a beverage" tile are reachable
+          // regardless of `meProvider` state — the suggest route does not
+          // depend on profile data. Language tile slots in above when data
+          // is available.
+          _SectionTitle(l.settingsPreferences),
+          languageTile,
+          suggestTile,
+          dangerZone,
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              l.settingsVersion,
+              style: TextStyle(
+                fontFamily: 'JetBrainsMono',
+                fontSize: 11,
+                color: t.fg3,
               ),
-              _Row(
-                label: l.settingsEmailVerification,
-                value: me.user.emailVerified
-                    ? l.settingsEmailVerified
-                    : l.settingsEmailPending,
-              ),
-              _Row(
-                label: l.settingsPassword,
-                value: '••••••••',
-                onTap: () {},
-              ),
-              _SectionTitle(l.settingsPrivacy),
-              SwitchListTile(
-                title: Text(l.settingsPrivateAccount),
-                subtitle: Text(l.settingsPrivateBody),
-                value: me.user.privacyMode == 'private',
-                onChanged: (v) async {
-                  await ref
-                      .read(profileRepositoryProvider)
-                      .updateMe(privacyMode: v ? 'private' : 'public');
-                  ref.invalidate(meProvider);
-                },
-                activeThumbColor: t.ai,
-              ),
-              _SectionTitle(l.settingsPreferences),
-              ListTile(
-                title: Text(l.settingsLanguage),
-                subtitle: Text(_localeLabel(me.user.locale)),
-                onTap: () async {
-                  final picked = await showModalBottomSheet<String>(
-                    context: context,
-                    showDragHandle: true,
-                    builder: (_) => ListView(
-                      shrinkWrap: true,
-                      children: const [
-                        _LocaleTile(code: 'en', label: 'English'),
-                        _LocaleTile(code: 'ja', label: '日本語'),
-                        _LocaleTile(code: 'ko', label: '한국어'),
-                      ],
-                    ),
-                  );
-                  if (picked != null) {
-                    await ref
-                        .read(profileRepositoryProvider)
-                        .updateMe(locale: picked);
-                    ref.invalidate(meProvider);
-                  }
-                },
-              ),
-              ListTile(
-                title: Text(l.settingsSuggestBeverage),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/beverage-requests/new'),
-              ),
-              _SectionTitle(l.settingsDangerZone),
-              ListTile(
-                title: Text(
-                  l.settingsDeleteAccount,
-                  style: TextStyle(color: t.fgDanger, fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(l.settingsDeleteAccountHelper),
-                onTap: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(l.settingsConfirmDelete),
-                      content: Text(l.settingsConfirmDeleteBody),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: Text(l.actionCancel),
-                        ),
-                        FilledButton(
-                          style: FilledButton.styleFrom(backgroundColor: t.akane),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: Text(l.actionDelete),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true) {
-                    await ref.read(profileRepositoryProvider).deleteMe();
-                    await ref.read(authStateProvider.notifier).logout();
-                    if (context.mounted) context.go('/auth');
-                  }
-                },
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: Text(
-                  l.settingsVersion,
-                  style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 11,
-                    color: t.fg3,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          );
-        },
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
+}
 
-  String _localeLabel(String code) {
-    switch (code) {
-      case 'ja':
-        return '日本語';
-      case 'ko':
-        return '한국어';
-      case 'en':
-      default:
-        return 'English';
-    }
+String _localeLabel(String code) {
+  switch (code) {
+    case 'ja':
+      return '日本語';
+    case 'ko':
+      return '한국어';
+    case 'en':
+    default:
+      return 'English';
+  }
+}
+
+/// Account + Privacy sections. Renders only when `meProvider` is in the
+/// data state.
+class _AccountAndPrivacySections extends ConsumerWidget {
+  const _AccountAndPrivacySections({required this.me});
+  final Me me;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(l.settingsAccount),
+        _Row(
+          label: l.settingsEmail,
+          value: me.user.email ?? '',
+          onTap: () {},
+        ),
+        _Row(
+          label: l.settingsEmailVerification,
+          value: me.user.emailVerified
+              ? l.settingsEmailVerified
+              : l.settingsEmailPending,
+        ),
+        _Row(
+          label: l.settingsPassword,
+          value: '••••••••',
+          onTap: () {},
+        ),
+        _SectionTitle(l.settingsPrivacy),
+        SwitchListTile(
+          title: Text(l.settingsPrivateAccount),
+          subtitle: Text(l.settingsPrivateBody),
+          value: me.user.privacyMode == 'private',
+          onChanged: (v) async {
+            await ref
+                .read(profileRepositoryProvider)
+                .updateMe(privacyMode: v ? 'private' : 'public');
+            ref.invalidate(meProvider);
+          },
+          activeThumbColor: t.ai,
+        ),
+      ],
+    );
+  }
+}
+
+/// Language picker tile. Renders only when `meProvider` is in the data state
+/// (needs `me.user.locale` to show the current value).
+class _LanguageTile extends ConsumerWidget {
+  const _LanguageTile({required this.me});
+  final Me me;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    return ListTile(
+      title: Text(l.settingsLanguage),
+      subtitle: Text(_localeLabel(me.user.locale)),
+      onTap: () async {
+        final picked = await showModalBottomSheet<String>(
+          context: context,
+          showDragHandle: true,
+          builder: (_) => ListView(
+            shrinkWrap: true,
+            children: const [
+              _LocaleTile(code: 'en', label: 'English'),
+              _LocaleTile(code: 'ja', label: '日本語'),
+              _LocaleTile(code: 'ko', label: '한국어'),
+            ],
+          ),
+        );
+        if (picked != null) {
+          await ref
+              .read(profileRepositoryProvider)
+              .updateMe(locale: picked);
+          ref.invalidate(meProvider);
+        }
+      },
+    );
+  }
+}
+
+/// Danger zone (account deletion). Renders only when `meProvider` is in the
+/// data state — deletion requires a confirmed session.
+class _DangerZoneSection extends ConsumerWidget {
+  const _DangerZoneSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(l.settingsDangerZone),
+        ListTile(
+          title: Text(
+            l.settingsDeleteAccount,
+            style: TextStyle(color: t.fgDanger, fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(l.settingsDeleteAccountHelper),
+          onTap: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: Text(l.settingsConfirmDelete),
+                content: Text(l.settingsConfirmDeleteBody),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(l.actionCancel),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: t.akane),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(l.actionDelete),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true) {
+              await ref.read(profileRepositoryProvider).deleteMe();
+              await ref.read(authStateProvider.notifier).logout();
+              if (context.mounted) context.go('/auth');
+            }
+          },
+        ),
+      ],
+    );
   }
 }
 
