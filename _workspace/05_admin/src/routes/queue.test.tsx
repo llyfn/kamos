@@ -30,10 +30,29 @@ function renderQueue() {
   );
 }
 
+// Dispatches mocked GETs by path so the route's RoleGuard (which fetches
+// /v1/users/me) and the page's own query can be mocked independently.
+function setupApi(opts: {
+  me?: { role: 'admin' | 'moderator' | 'user' };
+  queue: { items: unknown[]; next_cursor: string | null; has_more: boolean };
+}) {
+  apiGet.mockImplementation((path: string) => {
+    if (path === '/v1/users/me') {
+      return Promise.resolve({
+        data: { role: opts.me?.role ?? 'admin' },
+      });
+    }
+    if (path === '/v1/admin/beverage-requests') {
+      return Promise.resolve({ data: opts.queue });
+    }
+    return Promise.resolve({ error: { error: 'not_mocked', code: 'NOT_MOCKED' } });
+  });
+}
+
 describe('/queue', () => {
   it('renders rows from the API response', async () => {
-    apiGet.mockResolvedValueOnce({
-      data: {
+    setupApi({
+      queue: {
         items: [
           {
             id: '11111111-1111-1111-1111-111111111111',
@@ -61,15 +80,15 @@ describe('/queue', () => {
     expect(screen.getByText('submitter_two')).toBeInTheDocument();
     // Two Approve buttons (one per row).
     expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(2);
-    await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(1));
-    const firstCall = apiGet.mock.calls[0];
-    expect(firstCall?.[0]).toBe('/v1/admin/beverage-requests');
+    await waitFor(() =>
+      expect(
+        apiGet.mock.calls.some((c) => c[0] === '/v1/admin/beverage-requests'),
+      ).toBe(true),
+    );
   });
 
   it('shows an empty state with no items', async () => {
-    apiGet.mockResolvedValueOnce({
-      data: { items: [], next_cursor: null, has_more: false },
-    });
+    setupApi({ queue: { items: [], next_cursor: null, has_more: false } });
     renderQueue();
     expect(await screen.findByText('No pending requests.')).toBeInTheDocument();
   });

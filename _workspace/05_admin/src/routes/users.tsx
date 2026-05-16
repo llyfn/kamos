@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
 import { useToast } from '@/components/toast';
 import { api } from '@/lib/api';
@@ -11,8 +12,16 @@ type AdminUser = components['schemas']['AdminUser'];
 type Role = components['schemas']['UserRole'];
 
 export const Route = createFileRoute('/users')({
-  component: UsersPage,
+  component: GuardedUsersPage,
 });
+
+function GuardedUsersPage() {
+  return (
+    <RoleGuard requires={['admin', 'moderator']}>
+      <UsersPage />
+    </RoleGuard>
+  );
+}
 
 function UsersPage() {
   const { isAdmin } = useAuth();

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import { RoleGuard } from '@/components/guard';
 import { JsonTree } from '@/components/json-tree';
 import { Modal } from '@/components/modal';
 import { useToast } from '@/components/toast';
@@ -11,11 +12,19 @@ type Request = components['schemas']['AdminBeverageRequest'];
 type Approval = components['schemas']['AdminBeverageRequestApproval'];
 
 export const Route = createFileRoute('/queue')({
-  component: QueuePage,
+  component: GuardedQueuePage,
 });
 
 interface QueueState {
   cursor: string | null;
+}
+
+function GuardedQueuePage() {
+  return (
+    <RoleGuard requires={['admin', 'moderator']}>
+      <QueuePage />
+    </RoleGuard>
+  );
 }
 
 function QueuePage() {
