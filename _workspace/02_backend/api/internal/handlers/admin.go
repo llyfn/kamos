@@ -229,7 +229,11 @@ func (h *Handler) AdminModerateCheckin(w http.ResponseWriter, r *http.Request) {
 		Notes string `json:"notes,omitempty"`
 	}
 	_ = decodeJSON(r, &body) // tolerate empty / missing
-	if err := h.Repos.Admin.ModerateCheckin(r.Context(), checkinID); err != nil {
+	var notesPtr *string
+	if body.Notes != "" {
+		notesPtr = &body.Notes
+	}
+	if err := h.Repos.Admin.ModerateCheckin(r.Context(), checkinID, uid, notesPtr); err != nil {
 		h.writeErr(w, "AdminModerateCheckin", err)
 		return
 	}
@@ -309,7 +313,7 @@ func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminUpdateUserRole validate", err)
 		return
 	}
-	if err := h.Repos.Admin.UpdateUserRole(r.Context(), userID, domain.UserRole(body.Role)); err != nil {
+	if err := h.Repos.Admin.UpdateUserRole(r.Context(), userID, uid, domain.UserRole(body.Role)); err != nil {
 		h.writeErr(w, "AdminUpdateUserRole", err)
 		return
 	}
@@ -344,7 +348,7 @@ func (h *Handler) AdminSuspendUser(w http.ResponseWriter, r *http.Request) {
 			"cannot suspend yourself")
 		return
 	}
-	if err := h.Repos.Admin.SuspendUser(r.Context(), userID); err != nil {
+	if err := h.Repos.Admin.SuspendUser(r.Context(), userID, uid); err != nil {
 		h.writeErr(w, "AdminSuspendUser", err)
 		return
 	}

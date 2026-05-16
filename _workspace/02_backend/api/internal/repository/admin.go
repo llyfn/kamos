@@ -12,6 +12,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -24,6 +25,40 @@ import (
 
 // AdminRepo wraps administrative SQL.
 type AdminRepo struct{ db *pgxpool.Pool }
+
+// insertModerationLog writes a single audit row inside the supplied tx. Phase
+// 6a contract: every admin write path that changes user-visible state writes
+// one of these. Callers carry their moderator id explicitly so the audit row
+// attributes the action to the actual signed-in admin, not some service
+// account. `metadata` is a free-form JSONB; pass nil when not useful.
+func insertModerationLog(
+	ctx context.Context,
+	tx pgx.Tx,
+	moderatorID string,
+	targetType string,
+	targetID string,
+	action string,
+	notes *string,
+	metadata map[string]any,
+) error {
+	var meta []byte
+	if len(metadata) > 0 {
+		b, err := json.Marshal(metadata)
+		if err != nil {
+			return fmt.Errorf("insertModerationLog marshal metadata: %w", err)
+		}
+		meta = b
+	}
+	const q = `
+INSERT INTO moderation_log
+  (moderator_id, target_type, target_id, action, notes, metadata)
+VALUES
+  ($1, $2::moderation_target_type, $3, $4::moderation_action_type, $5, $6::jsonb);`
+	if _, err := tx.Exec(ctx, q, moderatorID, targetType, targetID, action, notes, meta); err != nil {
+		return fmt.Errorf("insertModerationLog: %w", err)
+	}
+	return nil
+}
 
 // ============================================================================
 // Beverage addition requests
@@ -184,6 +219,19 @@ WHERE id = $1;`
 		return "", fmt.Errorf("ApproveBeverageRequest update request: %w", err)
 	}
 
+	// Phase 6a audit: every admin moderation action is logged. The new
+	// beverage_id is recorded in metadata so the admin UI can deep-link
+	// from the audit row to the produced canonical beverage.
+	if err := insertModerationLog(ctx, tx,
+		p.ReviewerID,
+		"beverage_request", p.RequestID,
+		"approve",
+		p.Notes,
+		map[string]any{"beverage_id": bevID},
+	); err != nil {
+		return "", err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return "", fmt.Errorf("ApproveBeverageRequest commit: %w", err)
 	}
@@ -192,19 +240,27 @@ WHERE id = $1;`
 
 // RejectBeverageRequest marks the request rejected with the given notes.
 // 409 CONFLICT if the row is not in 'pending' state.
+//
+// Phase 6a: writes a moderation_log row in the same transaction.
 func (r *AdminRepo) RejectBeverageRequest(ctx context.Context, requestID, reviewerID, notes string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("RejectBeverageRequest begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	const q = `
 UPDATE beverage_addition_requests
 SET status = 'rejected', reviewed_by = $2, reviewed_at = NOW(), notes = $3
 WHERE id = $1 AND status = 'pending'
 RETURNING id;`
 	var id string
-	if err := r.db.QueryRow(ctx, q, requestID, reviewerID, notes).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, q, requestID, reviewerID, notes).Scan(&id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Could be missing OR already non-pending; distinguish for a
 			// clearer error.
 			var status string
-			if err2 := r.db.QueryRow(ctx,
+			if err2 := tx.QueryRow(ctx,
 				`SELECT status FROM beverage_addition_requests WHERE id = $1;`,
 				requestID).Scan(&status); err2 != nil {
 				if errors.Is(err2, pgx.ErrNoRows) {
@@ -216,6 +272,21 @@ RETURNING id;`
 		}
 		return fmt.Errorf("RejectBeverageRequest: %w", err)
 	}
+
+	notesPtr := &notes
+	if err := insertModerationLog(ctx, tx,
+		reviewerID,
+		"beverage_request", requestID,
+		"reject",
+		notesPtr,
+		nil,
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("RejectBeverageRequest commit: %w", err)
+	}
 	return nil
 }
 
@@ -224,22 +295,40 @@ RETURNING id;`
 // ============================================================================
 
 // ModerateCheckin soft-deletes a check-in regardless of owner, attributing
-// the action to the moderator. The notes go into a system-only column we
-// don't yet have — for MVP we just soft-delete and audit via the
-// reviewed_by/notes columns on beverage_addition_requests; check-in
-// moderation logs can land in a future migration. For now the notes
-// argument is recorded in the slog access log via the handler.
-func (r *AdminRepo) ModerateCheckin(ctx context.Context, checkinID string) error {
+// the action to the moderator. Phase 6a: writes a moderation_log row in the
+// same transaction so the structured slog line is mirrored to a queryable
+// audit table. `notes` is optional — pass nil to omit.
+func (r *AdminRepo) ModerateCheckin(ctx context.Context, checkinID, moderatorID string, notes *string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("ModerateCheckin begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	const q = `
 UPDATE check_ins SET deleted_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id;`
 	var got string
-	if err := r.db.QueryRow(ctx, q, checkinID).Scan(&got); err != nil {
+	if err := tx.QueryRow(ctx, q, checkinID).Scan(&got); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apierror.ErrNotFound
 		}
 		return fmt.Errorf("ModerateCheckin: %w", err)
+	}
+
+	if err := insertModerationLog(ctx, tx,
+		moderatorID,
+		"check_in", checkinID,
+		"soft_delete",
+		notes,
+		nil,
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("ModerateCheckin commit: %w", err)
 	}
 	return nil
 }
@@ -302,18 +391,52 @@ LIMIT $5;`
 	return out, rows.Err()
 }
 
-// UpdateUserRole rewrites the role column. Validates against the enum.
-func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID string, role domain.UserRole) error {
+// UpdateUserRole rewrites the role column. Validates against the enum. Phase
+// 6a: writes a moderation_log row in the same transaction with metadata
+// {"old_role","new_role"} so the audit UI can show before/after.
+func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID string, role domain.UserRole) error {
 	if !role.Valid() {
 		return fmt.Errorf("UpdateUserRole: %w (role=%s)", apierror.ErrValidation, role)
 	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("UpdateUserRole begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Capture old role for the audit before the rewrite.
+	var oldRole string
+	if err := tx.QueryRow(ctx,
+		`SELECT role::text FROM users WHERE id = $1 AND deleted_at IS NULL;`,
+		userID,
+	).Scan(&oldRole); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierror.ErrNotFound
+		}
+		return fmt.Errorf("UpdateUserRole lookup: %w", err)
+	}
+
 	const q = `UPDATE users SET role = $2::user_role WHERE id = $1 AND deleted_at IS NULL;`
-	ct, err := r.db.Exec(ctx, q, userID, string(role))
+	ct, err := tx.Exec(ctx, q, userID, string(role))
 	if err != nil {
 		return fmt.Errorf("UpdateUserRole: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
 		return apierror.ErrNotFound
+	}
+
+	if err := insertModerationLog(ctx, tx,
+		moderatorID,
+		"user", userID,
+		"role_change",
+		nil,
+		map[string]any{"old_role": oldRole, "new_role": string(role)},
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("UpdateUserRole commit: %w", err)
 	}
 	return nil
 }
@@ -321,23 +444,47 @@ func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID string, role doma
 // SuspendUser is admin-initiated soft-delete: marks deleted_at and starts
 // the 30-day username hold. Returns ErrNotFound when the user doesn't
 // exist or was already suspended.
-func (r *AdminRepo) SuspendUser(ctx context.Context, userID string) error {
+//
+// Phase 6a: writes a moderation_log row in the same transaction with
+// metadata {"username_release_at": "..."} for post-hoc audit.
+func (r *AdminRepo) SuspendUser(ctx context.Context, userID, moderatorID string) error {
 	// Role is reset to 'user' BEFORE soft-deleting so that future un-suspend
 	// tooling (post-MVP) cannot auto-restore admin/moderator privileges. The
 	// deleted_at + username_release_at pair handles the 30-day username hold
 	// per SPEC §3.4; the role reset is the security half of the same action.
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("SuspendUser begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	const q = `
 UPDATE users SET
   deleted_at = NOW(),
   username_release_at = NOW() + INTERVAL '30 days',
   role = 'user'::user_role
-WHERE id = $1 AND deleted_at IS NULL;`
-	ct, err := r.db.Exec(ctx, q, userID)
-	if err != nil {
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING username_release_at;`
+	var releaseAt time.Time
+	if err := tx.QueryRow(ctx, q, userID).Scan(&releaseAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierror.ErrNotFound
+		}
 		return fmt.Errorf("SuspendUser: %w", err)
 	}
-	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+
+	if err := insertModerationLog(ctx, tx,
+		moderatorID,
+		"user", userID,
+		"suspend",
+		nil,
+		map[string]any{"username_release_at": releaseAt.UTC().Format(time.RFC3339)},
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("SuspendUser commit: %w", err)
 	}
 	return nil
 }
