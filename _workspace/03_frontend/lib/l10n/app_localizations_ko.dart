@@ -459,6 +459,20 @@ class AppLocalizationsKo extends AppLocalizations {
   String get collectionVisibilityPrivateSubtitle => '이 컬렉션은 본인만 볼 수 있습니다';
 
   @override
+  String get publicCollectionsTitle => '공개 컬렉션';
+
+  @override
+  String get publicCollectionsEmpty => '아직 공개된 컬렉션이 없습니다';
+
+  @override
+  String publicCollectionsByOwner(String username) {
+    return '작성: $username';
+  }
+
+  @override
+  String get publicCollectionsDiscoverCta => '공개 컬렉션 둘러보기';
+
+  @override
   String get inboxTitle => '팔로우 요청';
 
   @override

@@ -177,6 +177,11 @@
   "collectionVisibilityPublicTitle": "公開コレクション",
   "collectionVisibilityPublicSubtitle": "このコレクションは発見タブで誰でも見られます",
   "collectionVisibilityPrivateSubtitle": "このコレクションはあなただけが見られます",
+  "publicCollectionsTitle": "公開コレクション",
+  "publicCollectionsEmpty": "まだ公開されているコレクションはありません",
+  "publicCollectionsByOwner": "作成: {username}",
+  "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
+  "publicCollectionsDiscoverCta": "公開コレクションを見る",
 
   "inboxTitle": "フォローリクエスト",
   "inboxApprove": "承認",

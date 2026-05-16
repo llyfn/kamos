@@ -964,6 +964,30 @@ abstract class AppLocalizations {
   /// **'Only you can see this collection'**
   String get collectionVisibilityPrivateSubtitle;
 
+  /// No description provided for @publicCollectionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Public collections'**
+  String get publicCollectionsTitle;
+
+  /// No description provided for @publicCollectionsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No public collections yet'**
+  String get publicCollectionsEmpty;
+
+  /// No description provided for @publicCollectionsByOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'by {username}'**
+  String publicCollectionsByOwner(String username);
+
+  /// No description provided for @publicCollectionsDiscoverCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover public collections'**
+  String get publicCollectionsDiscoverCta;
+
   /// No description provided for @inboxTitle.
   ///
   /// In en, this message translates to:

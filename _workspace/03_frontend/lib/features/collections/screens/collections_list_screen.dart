@@ -57,6 +57,39 @@ class CollectionsListScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: KamosCard(
+                  onTap: () =>
+                      context.push('/discover/public-collections'),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: t.kinari,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(Icons.public, size: 22, color: t.fg2),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l.publicCollectionsDiscoverCta,
+                          style: const TextStyle(
+                            fontFamily: 'ShipporiMincho',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: t.fgMuted),
+                    ],
+                  ),
+                ),
+              ),
               if (page.items.isEmpty)
                 EmptyView(
                   glyph: '集',

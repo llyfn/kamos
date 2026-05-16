@@ -459,6 +459,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get collectionVisibilityPrivateSubtitle => 'このコレクションはあなただけが見られます';
 
   @override
+  String get publicCollectionsTitle => '公開コレクション';
+
+  @override
+  String get publicCollectionsEmpty => 'まだ公開されているコレクションはありません';
+
+  @override
+  String publicCollectionsByOwner(String username) {
+    return '作成: $username';
+  }
+
+  @override
+  String get publicCollectionsDiscoverCta => '公開コレクションを見る';
+
+  @override
   String get inboxTitle => 'フォローリクエスト';
 
   @override

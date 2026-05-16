@@ -470,6 +470,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only you can see this collection';
 
   @override
+  String get publicCollectionsTitle => 'Public collections';
+
+  @override
+  String get publicCollectionsEmpty => 'No public collections yet';
+
+  @override
+  String publicCollectionsByOwner(String username) {
+    return 'by $username';
+  }
+
+  @override
+  String get publicCollectionsDiscoverCta => 'Discover public collections';
+
+  @override
   String get inboxTitle => 'Follow requests';
 
   @override
