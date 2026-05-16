@@ -8,6 +8,7 @@
 //   /check-in                      modal (needs a Beverage extra)
 //   /collections                   lists root
 //   /collections/:id               detail
+//   /discover/public-collections   public collections discovery (Phase 6)
 //   /me                            self profile
 //   /me/edit                       edit profile
 //   /me/settings                   settings
@@ -36,6 +37,7 @@ import '../features/breweries/screens/brewery_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
+import '../features/discover/screens/public_collections_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
@@ -101,6 +103,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => CollectionDetailScreen(
           collectionId: state.pathParameters['id']!,
         ),
+      ),
+      GoRoute(
+        path: '/discover/public-collections',
+        builder: (_, _) => const PublicCollectionsScreen(),
       ),
       GoRoute(
         path: '/me/edit',

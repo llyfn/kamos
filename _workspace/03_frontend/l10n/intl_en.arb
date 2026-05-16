@@ -177,6 +177,11 @@
   "collectionVisibilityPublicTitle": "Public collection",
   "collectionVisibilityPublicSubtitle": "Anyone can see this collection on the discover tab",
   "collectionVisibilityPrivateSubtitle": "Only you can see this collection",
+  "publicCollectionsTitle": "Public collections",
+  "publicCollectionsEmpty": "No public collections yet",
+  "publicCollectionsByOwner": "by {username}",
+  "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
+  "publicCollectionsDiscoverCta": "Discover public collections",
 
   "inboxTitle": "Follow requests",
   "inboxApprove": "Approve",

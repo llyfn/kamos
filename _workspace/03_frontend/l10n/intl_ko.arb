@@ -177,6 +177,11 @@
   "collectionVisibilityPublicTitle": "공개 컬렉션",
   "collectionVisibilityPublicSubtitle": "이 컬렉션은 디스커버 탭에서 모두에게 표시됩니다",
   "collectionVisibilityPrivateSubtitle": "이 컬렉션은 본인만 볼 수 있습니다",
+  "publicCollectionsTitle": "공개 컬렉션",
+  "publicCollectionsEmpty": "아직 공개된 컬렉션이 없습니다",
+  "publicCollectionsByOwner": "작성: {username}",
+  "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
+  "publicCollectionsDiscoverCta": "공개 컬렉션 둘러보기",
 
   "inboxTitle": "팔로우 요청",
   "inboxApprove": "수락",
