@@ -12,6 +12,12 @@ final flavorTagsProvider = FutureProvider<List<FlavorTag>>((ref) async {
   return ref.read(checkInRepositoryProvider).tags();
 });
 
+/// Phase 6 — single check-in by id for the detail screen.
+final checkInDetailProvider = FutureProvider.autoDispose
+    .family<Checkin, String>((ref, id) async {
+  return ref.read(checkInRepositoryProvider).getOne(id);
+});
+
 class CheckInControllerState {
   const CheckInControllerState({this.isSubmitting = false, this.posted, this.error});
   final bool isSubmitting;

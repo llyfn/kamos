@@ -473,6 +473,38 @@ class AppLocalizationsJa extends AppLocalizations {
   String get publicCollectionsDiscoverCta => '公開コレクションを見る';
 
   @override
+  String get commentsTitle => 'コメント';
+
+  @override
+  String get commentsEmpty => 'コメントはまだありません';
+
+  @override
+  String get commentsComposerHint => 'コメントを追加…';
+
+  @override
+  String get commentsSubmit => '投稿';
+
+  @override
+  String get commentsDelete => '削除';
+
+  @override
+  String get commentsDeleteConfirm => 'このコメントを削除しますか？';
+
+  @override
+  String commentsCharCount(int count, int max) {
+    return '$count / $max';
+  }
+
+  @override
+  String get commentsTooLong => 'コメントが長すぎます（最大500文字）';
+
+  @override
+  String get commentsPostFailed => '投稿できませんでした。再試行してください。';
+
+  @override
+  String get commentsLoadFailed => 'コメントを読み込めませんでした';
+
+  @override
   String get inboxTitle => 'フォローリクエスト';
 
   @override

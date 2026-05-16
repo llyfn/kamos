@@ -988,6 +988,66 @@ abstract class AppLocalizations {
   /// **'Discover public collections'**
   String get publicCollectionsDiscoverCta;
 
+  /// No description provided for @commentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get commentsTitle;
+
+  /// No description provided for @commentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet'**
+  String get commentsEmpty;
+
+  /// No description provided for @commentsComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a comment…'**
+  String get commentsComposerHint;
+
+  /// No description provided for @commentsSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get commentsSubmit;
+
+  /// No description provided for @commentsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get commentsDelete;
+
+  /// No description provided for @commentsDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this comment?'**
+  String get commentsDeleteConfirm;
+
+  /// No description provided for @commentsCharCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / {max}'**
+  String commentsCharCount(int count, int max);
+
+  /// No description provided for @commentsTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment too long (max 500 chars)'**
+  String get commentsTooLong;
+
+  /// No description provided for @commentsPostFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not post. Try again.'**
+  String get commentsPostFailed;
+
+  /// No description provided for @commentsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load comments'**
+  String get commentsLoadFailed;
+
   /// No description provided for @inboxTitle.
   ///
   /// In en, this message translates to:

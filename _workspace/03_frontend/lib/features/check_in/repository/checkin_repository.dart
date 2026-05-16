@@ -91,6 +91,14 @@ class CheckInRepository {
     return Checkin.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// Phase 6 — fetches a single check-in by id for the detail screen. The
+  /// endpoint is OptionalAuth on the server side; signed-out users still get
+  /// a response gated by the check-in's visibility rules.
+  Future<Checkin> getOne(String id) async {
+    final res = await dio.get('/v1/check-ins/$id');
+    return Checkin.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<List<FlavorTag>> tags() async {
     final res = await dio.get('/v1/flavor-tags');
     final raw = (res.data as List?) ?? const [];

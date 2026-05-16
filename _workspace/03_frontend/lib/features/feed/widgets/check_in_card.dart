@@ -41,6 +41,7 @@ class CheckInCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: KamosCard(
+        onTap: () => context.push('/check-ins/${item.id}'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

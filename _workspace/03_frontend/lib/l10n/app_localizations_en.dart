@@ -484,6 +484,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get publicCollectionsDiscoverCta => 'Discover public collections';
 
   @override
+  String get commentsTitle => 'Comments';
+
+  @override
+  String get commentsEmpty => 'No comments yet';
+
+  @override
+  String get commentsComposerHint => 'Add a comment…';
+
+  @override
+  String get commentsSubmit => 'Post';
+
+  @override
+  String get commentsDelete => 'Delete';
+
+  @override
+  String get commentsDeleteConfirm => 'Delete this comment?';
+
+  @override
+  String commentsCharCount(int count, int max) {
+    return '$count / $max';
+  }
+
+  @override
+  String get commentsTooLong => 'Comment too long (max 500 chars)';
+
+  @override
+  String get commentsPostFailed => 'Could not post. Try again.';
+
+  @override
+  String get commentsLoadFailed => 'Could not load comments';
+
+  @override
   String get inboxTitle => 'Follow requests';
 
   @override

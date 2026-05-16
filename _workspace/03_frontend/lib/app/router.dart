@@ -14,6 +14,7 @@
 //   /me/settings                   settings
 //   /inbox                         follow request inbox
 //   /users/:username               other user
+//   /check-ins/:id                 check-in detail (Phase 6 — comments)
 //   /beverages/:id                 beverage detail
 //   /breweries/:id                 brewery detail
 //   /beverage-requests/new         user-side "suggest a beverage" form
@@ -34,6 +35,7 @@ import '../features/auth/screens/verify_email_screen.dart';
 import '../features/beverage_requests/screens/submit_beverage_request_screen.dart';
 import '../features/beverages/screens/beverage_detail_screen.dart';
 import '../features/breweries/screens/brewery_detail_screen.dart';
+import '../features/check_in/screens/check_in_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
@@ -121,6 +123,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/users/:username',
         builder: (_, state) =>
             OtherProfileScreen(username: state.pathParameters['username']!),
+      ),
+      GoRoute(
+        path: '/check-ins/:id',
+        builder: (_, state) =>
+            CheckInDetailScreen(checkInId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/beverages/:id',

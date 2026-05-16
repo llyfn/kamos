@@ -183,6 +183,23 @@
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
   "publicCollectionsDiscoverCta": "公開コレクションを見る",
 
+  "commentsTitle": "コメント",
+  "commentsEmpty": "コメントはまだありません",
+  "commentsComposerHint": "コメントを追加…",
+  "commentsSubmit": "投稿",
+  "commentsDelete": "削除",
+  "commentsDeleteConfirm": "このコメントを削除しますか？",
+  "commentsCharCount": "{count} / {max}",
+  "@commentsCharCount": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "commentsTooLong": "コメントが長すぎます（最大500文字）",
+  "commentsPostFailed": "投稿できませんでした。再試行してください。",
+  "commentsLoadFailed": "コメントを読み込めませんでした",
+
   "inboxTitle": "フォローリクエスト",
   "inboxApprove": "承認",
   "inboxDecline": "辞退",

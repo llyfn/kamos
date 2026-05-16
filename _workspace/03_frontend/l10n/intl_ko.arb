@@ -183,6 +183,23 @@
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
   "publicCollectionsDiscoverCta": "공개 컬렉션 둘러보기",
 
+  "commentsTitle": "댓글",
+  "commentsEmpty": "아직 댓글이 없습니다",
+  "commentsComposerHint": "댓글 추가…",
+  "commentsSubmit": "게시",
+  "commentsDelete": "삭제",
+  "commentsDeleteConfirm": "이 댓글을 삭제하시겠어요?",
+  "commentsCharCount": "{count} / {max}",
+  "@commentsCharCount": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "commentsTooLong": "댓글이 너무 깁니다 (최대 500자)",
+  "commentsPostFailed": "게시하지 못했습니다. 다시 시도하세요.",
+  "commentsLoadFailed": "댓글을 불러오지 못했습니다",
+
   "inboxTitle": "팔로우 요청",
   "inboxApprove": "수락",
   "inboxDecline": "거절",
