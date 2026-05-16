@@ -240,9 +240,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authOr => 'または';
 
   @override
-  String get authContinueGoogle => 'Googleで続行';
-
-  @override
   String get authGoogleSignInButton => 'Googleで続行';
 
   @override

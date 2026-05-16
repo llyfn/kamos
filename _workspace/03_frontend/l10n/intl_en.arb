@@ -98,7 +98,6 @@
   "authBackToSignIn": "Back to sign in",
   "authForgotPassword": "Forgot password?",
   "authOr": "or",
-  "authContinueGoogle": "Continue with Google",
   "authGoogleSignInButton": "Continue with Google",
   "authGoogleDisabled": "Google sign-in not configured",
   "authGoogleSignInFailed": "Google sign-in failed. Try again.",
