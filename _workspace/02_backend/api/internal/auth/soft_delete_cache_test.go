@@ -5,7 +5,7 @@ import (
 )
 
 // The DB-touching paths of SoftDeleteCache (Refresh, Run) are exercised by
-// tests/integration/softdelete_cache_integration_test.go — they need a
+// tests/integration/soft_delete_cache_integration_test.go — they need a
 // real Postgres to exercise the index. The unit tests here cover the pure
 // in-memory state transitions: Contains / Add / replace-on-Refresh.
 

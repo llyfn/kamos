@@ -8,7 +8,7 @@
 -- typed validation, postgres-side referential safety, and a 1-column read
 -- on every admin request.
 --
--- SEC-006 support: the in-memory soft-delete cache (auth/softdelete_cache.go)
+-- SEC-006 support: the in-memory soft-delete cache (auth/soft_delete_cache.go)
 -- refreshes its set every refreshInterval from
 --   SELECT id FROM users WHERE deleted_at > now() - INTERVAL '30 minutes'
 -- This partial index makes that query indexable; with millions of users the

@@ -322,6 +322,10 @@ func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID string, role doma
 // the 30-day username hold. Returns ErrNotFound when the user doesn't
 // exist or was already suspended.
 func (r *AdminRepo) SuspendUser(ctx context.Context, userID string) error {
+	// Role is reset to 'user' BEFORE soft-deleting so that future un-suspend
+	// tooling (post-MVP) cannot auto-restore admin/moderator privileges. The
+	// deleted_at + username_release_at pair handles the 30-day username hold
+	// per SPEC §3.4; the role reset is the security half of the same action.
 	const q = `
 UPDATE users SET
   deleted_at = NOW(),

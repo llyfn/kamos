@@ -122,7 +122,7 @@ func (c *SoftDeleteCache) Refresh(ctx context.Context) error {
 // which is safe — a doomed token simply gets one more grace request).
 func (c *SoftDeleteCache) Run(ctx context.Context, log CacheLogger) {
 	if err := c.Refresh(ctx); err != nil && log != nil {
-		log.Error("softdelete_cache initial refresh failed", "err", err)
+		log.Error("soft_delete_cache initial refresh failed", "err", err)
 	}
 	t := time.NewTicker(c.refreshInterval)
 	defer t.Stop()
@@ -132,7 +132,7 @@ func (c *SoftDeleteCache) Run(ctx context.Context, log CacheLogger) {
 			return
 		case <-t.C:
 			if err := c.Refresh(ctx); err != nil && log != nil {
-				log.Error("softdelete_cache periodic refresh failed", "err", err)
+				log.Error("soft_delete_cache periodic refresh failed", "err", err)
 			}
 		}
 	}
