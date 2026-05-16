@@ -118,7 +118,10 @@ func TestAuthedRoutesRequireBearer(t *testing.T) {
 		{http.MethodPost, "/v1/follow-requests/u-1/decline"},
 		{http.MethodGet, "/v1/collections"},
 		{http.MethodPost, "/v1/collections"},
-		{http.MethodGet, "/v1/collections/c-1"},
+		// GET /v1/collections/{id} is OptionalAuth as of Phase 6a — the
+		// public-discovery route deep-links here, so anonymous viewers
+		// must succeed on public rows. Excluded from the bearer-required
+		// list deliberately.
 		{http.MethodPatch, "/v1/collections/c-1"},
 		{http.MethodDelete, "/v1/collections/c-1"},
 		{http.MethodPost, "/v1/collections/c-1/entries"},

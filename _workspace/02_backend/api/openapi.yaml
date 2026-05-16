@@ -1026,6 +1026,14 @@ paths:
     get:
       tags: [collections]
       operationId: getCollection
+      description: |
+        Phase 6a. OptionalAuth: owner reads their own row (any
+        visibility); anyone (including anonymous viewers) reads a
+        `visibility=public` row. Private rows for non-owners collapse
+        to 404 — we do not leak existence.
+      security:
+        - bearerAuth: []
+        - {}
       responses:
         "200":
           description: collection with entries
@@ -2137,9 +2145,17 @@ components:
 
     Collection:
       type: object
-      required: [id, name, entry_count, visibility, created_at, updated_at]
+      required: [id, owner_id, name, entry_count, visibility, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
+        owner_id:
+          type: string
+          format: uuid
+          description: |
+            Phase 6a. The user_id of the collection's owner. Exposed so
+            clients can gate owner-only UI (visibility toggle, edit
+            controls) without a separate /v1/users/me round trip and
+            without leaking the owner's email or other private fields.
         name: { type: string, minLength: 1, maxLength: 50 }
         entry_count: { type: integer }
         visibility:

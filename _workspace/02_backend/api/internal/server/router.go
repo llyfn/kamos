@@ -118,6 +118,13 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// OptionalAuth for forward compatibility (we may add a
 			// "you_replied" or similar viewer-relative field).
 			r.Get("/check-ins/{id}/comments", h.ListComments)
+
+			// Phase 6a — collection detail is OptionalAuth so the
+			// discovery feed → detail-screen route works for non-owners
+			// of public collections (and for anonymous link visitors).
+			// Handler enforces the visibility gate: owner sees their
+			// own row, anyone sees a public row, anything else is 404.
+			r.Get("/collections/{id}", h.GetCollection)
 		})
 
 		// Authed surface. Per-user limit on top of the global IP limit
@@ -167,7 +174,8 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// Collections.
 			r.Get("/collections", h.ListCollections)
 			r.Post("/collections", h.CreateCollection)
-			r.Get("/collections/{id}", h.GetCollection)
+			// GET /v1/collections/{id} is mounted under OptionalAuth
+			// above so anonymous viewers can read public collections.
 			r.Patch("/collections/{id}", h.UpdateCollection)
 			r.Delete("/collections/{id}", h.DeleteCollection)
 			r.Post("/collections/{id}/entries", h.AddCollectionEntry)

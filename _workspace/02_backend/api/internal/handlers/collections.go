@@ -7,6 +7,7 @@ import (
 	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -82,17 +83,40 @@ func (h *Handler) CreateCollection(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetCollection — GET /v1/collections/{id}.
+//
+// OptionalAuth. Visibility rule:
+//   - Owner can read their own collection (any visibility).
+//   - Anyone (including anonymous) can read a `public` collection.
+//   - All other cases collapse to 404 — do NOT 403, which would leak
+//     existence of private rows. This mirrors the SPEC §3 private-account
+//     handling on `GET /v1/check-ins/{id}`.
+//
+// The Entries projection is included for the owner and for anyone hitting
+// a public collection — the discovery feed deep-links here, so non-owners
+// need to see the contents.
 func (h *Handler) GetCollection(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.authedID(w, r)
-	if !ok {
-		return
+	// viewerID is "" for anonymous requests; only used for the ownership
+	// branch of the visibility decision.
+	var viewerID string
+	if u := middleware.UserFromContext(r.Context()); u != nil {
+		viewerID = u.ID
 	}
+
 	id := chi.URLParam(r, "id")
-	c, err := h.Repos.Collections.Get(r.Context(), uid, id)
+	c, err := h.Repos.Collections.Get(r.Context(), id)
 	if err != nil {
 		h.writeErr(w, "GetCollection", err)
 		return
 	}
+
+	// Visibility gate. Owner always passes; everyone else must hit a
+	// public row. Private-to-non-owner collapses to 404 (do not leak).
+	isOwner := viewerID != "" && c.OwnerID == viewerID
+	if !isOwner && c.Visibility != "public" {
+		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
+		return
+	}
+
 	limit := parseLimit(r, 50, 100)
 	cur, err := parseCursor(r)
 	if err != nil {
@@ -100,7 +124,11 @@ func (h *Handler) GetCollection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ts, cid := optTimestamp(cur), optString(cur.ID)
-	entries, err := h.Repos.Collections.Entries(r.Context(), uid, id, ts, cid, limit)
+	// Entries are owner-agnostic (the row passes the visibility gate above).
+	// The Entries repo function uses the collection's own owner for its
+	// ownership-baked join, so pass c.OwnerID instead of viewerID — this
+	// lets a non-owner view a public collection's entries.
+	entries, err := h.Repos.Collections.Entries(r.Context(), c.OwnerID, id, ts, cid, limit)
 	if err != nil {
 		h.writeErr(w, "GetCollection entries", err)
 		return

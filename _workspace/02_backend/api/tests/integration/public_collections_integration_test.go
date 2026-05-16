@@ -212,6 +212,117 @@ func TestUpdateCollection_EmptyBodyRejected(t *testing.T) {
 	}
 }
 
+// TestGetCollection_OwnerCanReadPrivate — the owner can fetch their own
+// private collection (default visibility on a freshly-created row).
+func TestGetCollection_OwnerCanReadPrivate(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, uid := mustRegister(t, srv, "go_owner", "go_owner@example.com", "password-123")
+	id := mustCreateCollectionCompat(t, srv, tok, "Owner Private")
+
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/collections/"+id, tok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("owner read private: %d body=%s", code, raw)
+	}
+	var c map[string]any
+	_ = json.Unmarshal(raw, &c)
+	if c["id"] != id {
+		t.Errorf("response id=%v want %s", c["id"], id)
+	}
+	if c["owner_id"] != uid {
+		t.Errorf("owner_id=%v want %s", c["owner_id"], uid)
+	}
+	if c["visibility"] != "private" {
+		t.Errorf("visibility=%v want private", c["visibility"])
+	}
+}
+
+// TestGetCollection_NonOwnerCannotReadPrivate — a non-owner hitting a
+// private collection gets 404 (we do not leak existence via 403).
+func TestGetCollection_NonOwnerCannotReadPrivate(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	ownerTok, _ := mustRegister(t, srv, "go_priv_owner", "gpo@example.com", "password-123")
+	strangerTok, _ := mustRegister(t, srv, "go_priv_stranger", "gps@example.com", "password-123")
+	id := mustCreateCollectionCompat(t, srv, ownerTok, "Strictly Private")
+
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/collections/"+id, strangerTok, nil)
+	if code != http.StatusNotFound {
+		t.Errorf("stranger GET private: %d body=%s (want 404)", code, raw)
+	}
+}
+
+// TestGetCollection_AnyoneCanReadPublic — authed non-owner can read a
+// collection the owner has flipped to public.
+func TestGetCollection_AnyoneCanReadPublic(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	ownerTok, ownerID := mustRegister(t, srv, "go_pub_owner", "gpubo@example.com", "password-123")
+	strangerTok, _ := mustRegister(t, srv, "go_pub_stranger", "gpubs@example.com", "password-123")
+	id := mustCreateCollectionCompat(t, srv, ownerTok, "Anyone Can See")
+
+	// Flip to public.
+	code, raw := doReq(t, srv, http.MethodPatch, "/v1/collections/"+id, ownerTok,
+		map[string]any{"visibility": "public"})
+	if code != http.StatusOK {
+		t.Fatalf("patch public: %d body=%s", code, raw)
+	}
+
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/collections/"+id, strangerTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("stranger GET public: %d body=%s", code, raw)
+	}
+	var c map[string]any
+	_ = json.Unmarshal(raw, &c)
+	if c["id"] != id {
+		t.Errorf("response id=%v want %s", c["id"], id)
+	}
+	if c["owner_id"] != ownerID {
+		t.Errorf("owner_id=%v want %s", c["owner_id"], ownerID)
+	}
+	if c["visibility"] != "public" {
+		t.Errorf("visibility=%v want public", c["visibility"])
+	}
+}
+
+// TestGetCollection_AnonymousCanReadPublic — anonymous (no bearer) can
+// read a public collection. Verifies the route is OptionalAuth and the
+// visibility branch admits unauthenticated viewers.
+func TestGetCollection_AnonymousCanReadPublic(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	ownerTok, _ := mustRegister(t, srv, "go_anon_owner", "gao@example.com", "password-123")
+	id := mustCreateCollectionCompat(t, srv, ownerTok, "Link-Shareable")
+
+	code, raw := doReq(t, srv, http.MethodPatch, "/v1/collections/"+id, ownerTok,
+		map[string]any{"visibility": "public"})
+	if code != http.StatusOK {
+		t.Fatalf("patch public: %d body=%s", code, raw)
+	}
+
+	// Anonymous: pass "" as the token.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/collections/"+id, "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("anonymous GET public: %d body=%s", code, raw)
+	}
+	var c map[string]any
+	_ = json.Unmarshal(raw, &c)
+	if c["id"] != id {
+		t.Errorf("response id=%v want %s", c["id"], id)
+	}
+	if _, hasOwnerID := c["owner_id"]; !hasOwnerID {
+		t.Errorf("missing owner_id in anonymous response: %s", raw)
+	}
+}
+
 // countWithID counts how many items in a paginated response carry the given
 // id. Used by visibility round-trip tests.
 func countWithID(raw []byte, id string) int {
