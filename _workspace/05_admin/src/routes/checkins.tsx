@@ -1,12 +1,21 @@
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import { RoleGuard } from '@/components/guard';
 import { useToast } from '@/components/toast';
 import { api } from '@/lib/api';
 
 export const Route = createFileRoute('/checkins')({
-  component: CheckinsPage,
+  component: GuardedCheckinsPage,
 });
+
+function GuardedCheckinsPage() {
+  return (
+    <RoleGuard requires={['admin', 'moderator']}>
+      <CheckinsPage />
+    </RoleGuard>
+  );
+}
 
 function CheckinsPage() {
   const toast = useToast();

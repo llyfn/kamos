@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useAuth, type Role } from '@/lib/auth';
+import { clearTokens } from '@/lib/tokens';
 
 interface RoleGuardProps {
   requires: Role[];
@@ -14,7 +15,31 @@ export function RoleGuard({ requires, children, fallback }: RoleGuardProps) {
   }
   if (!role || !requires.includes(role)) {
     if (fallback !== undefined) return <>{fallback}</>;
-    throw new Error('insufficient_role');
+    return <InsufficientPrivileges />;
   }
   return <>{children}</>;
+}
+
+// Shared "insufficient privileges" panel. Kept here so the copy lives in one
+// place; once the admin client grows an i18n layer this is the only line to
+// thread through it.
+export function InsufficientPrivileges() {
+  return (
+    <div className="max-w-md mx-auto mt-12 border border-[color:var(--color-border)] bg-[color:var(--color-surface)] rounded p-6 text-sm">
+      <h2 className="text-base font-semibold mb-2">Insufficient privileges</h2>
+      <p className="text-[color:var(--color-muted)] mb-4">
+        Insufficient privileges — admin or moderator role required.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          clearTokens();
+          window.location.assign('/login');
+        }}
+        className="px-3 py-1 border border-[color:var(--color-border)] rounded"
+      >
+        Log out
+      </button>
+    </div>
+  );
 }
