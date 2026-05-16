@@ -97,13 +97,33 @@ func TestAuthFailureNotCached(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected auth error")
 	}
-	if !strings.Contains(err.Error(), "auth failed") {
-		t.Errorf("error message: %v", err)
+	if !errors.Is(err, ErrAuth) {
+		t.Errorf("expected errors.Is(err, ErrAuth), got %v", err)
 	}
 	// Second call must also reach upstream — auth failures aren't cached.
 	_, _ = c.Search(context.Background(), opts)
 	if hits.Load() != 2 {
 		t.Errorf("upstream hits = %d (want 2)", hits.Load())
+	}
+}
+
+// SEC-003: New TrimSpace's the API key so accidental whitespace in env vars
+// doesn't surface as a 401 from Foursquare.
+func TestNewTrimsAPIKey(t *testing.T) {
+	c := New(" key-with-spaces  ")
+	if c.apiKey != "key-with-spaces" {
+		t.Errorf("apiKey: %q (want %q)", c.apiKey, "key-with-spaces")
+	}
+	if c.Disabled() {
+		t.Errorf("Disabled() = true after TrimSpace (expected false)")
+	}
+}
+
+// Whitespace-only key trims to empty → Disabled client.
+func TestNewWhitespaceKeyIsDisabled(t *testing.T) {
+	c := New("   ")
+	if !c.Disabled() {
+		t.Errorf("Disabled() = false (want true for whitespace-only key)")
 	}
 }
 

@@ -102,12 +102,11 @@ func WriteFrom(w http.ResponseWriter, log *slog.Logger, op string, err error) {
 	case errors.Is(err, ErrStorageDisabled), errors.Is(err, ErrNotImplemented):
 		WriteError(w, http.StatusServiceUnavailable, "STORAGE_DISABLED",
 			"photo uploads not configured on this server")
-	case errors.Is(err, ErrVenueSearchDisabled):
-		WriteError(w, http.StatusServiceUnavailable, "VENUE_SEARCH_DISABLED",
-			"venue search not configured on this server")
-	case errors.Is(err, ErrVenueRateLimited):
-		WriteError(w, http.StatusServiceUnavailable, "VENUE_RATE_LIMITED",
-			"venue search is rate limited")
+	// STYLE-007: Venue search "disabled" / "rate-limited" branches were
+	// never reached — the handler at handlers/venues.go:91 writes the 503
+	// response inline (and sets Retry-After on the rate-limit branch).
+	// Removed to avoid divergent error messages on a code path that gets
+	// silently dead-stripped from the trace.
 	case errors.Is(err, ErrUploadNotCompleted):
 		WriteError(w, http.StatusConflict, "UPLOAD_NOT_COMPLETED",
 			"upload has not been completed")
