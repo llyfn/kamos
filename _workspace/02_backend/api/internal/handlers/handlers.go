@@ -34,6 +34,11 @@ type Handler struct {
 	Storage    storage.Storage
 	Mailer     email.Mailer
 	Foursquare *foursquare.Client
+	// SoftDelete is the SEC-006 in-memory revocation cache. Nil-safe — the
+	// DeleteMe handler skips Add() when nil, which is the test-helper path
+	// (tests that don't bring up the cache also don't care about revocation
+	// semantics). Production wiring lives in cmd/server/main.go.
+	SoftDelete *auth.SoftDeleteCache
 }
 
 // New creates the bundle. Storage/Mailer/Foursquare default to disabled
@@ -66,6 +71,14 @@ func (h *Handler) WithFoursquare(c *foursquare.Client) *Handler {
 	if c != nil {
 		h.Foursquare = c
 	}
+	return h
+}
+
+// WithSoftDeleteCache wires the SEC-006 revocation cache. Nil-safe; callers
+// (tests) that don't care about revocation pass nil and DeleteMe simply
+// skips the immediate-Add() call.
+func (h *Handler) WithSoftDeleteCache(c *auth.SoftDeleteCache) *Handler {
+	h.SoftDelete = c
 	return h
 }
 

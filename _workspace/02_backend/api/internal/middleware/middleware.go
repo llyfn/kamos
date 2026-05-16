@@ -140,8 +140,17 @@ func AccessLog(log *slog.Logger) func(http.Handler) http.Handler {
 }
 
 // Auth verifies the Bearer token using the given signer and injects an
-// AuthedUser into the request context.
-func Auth(s *auth.Signer) func(http.Handler) http.Handler {
+// AuthedUser into the request context. When softDelete is non-nil it
+// consults the soft-deleted-user set (SEC-006) and rejects tokens whose
+// subject is in the set with 401 ACCOUNT_DELETED — this revokes JWTs
+// for users who have hit DELETE /v1/users/me without waiting for the
+// access-token TTL to elapse.
+//
+// softDelete is the concrete *auth.SoftDeleteCache pointer (NOT an
+// interface) so a literal `nil` argument is unambiguously the "no
+// revocation list" path. Using an interface here would trigger the
+// classic typed-nil trap when callers pass `var s *SoftDeleteCache`.
+func Auth(s *auth.Signer, softDelete *auth.SoftDeleteCache) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
@@ -155,6 +164,10 @@ func Auth(s *auth.Signer) func(http.Handler) http.Handler {
 				apierror.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 				return
 			}
+			if softDelete != nil && softDelete.Contains(claims.UserID) {
+				apierror.WriteError(w, http.StatusUnauthorized, "ACCOUNT_DELETED", "account deleted")
+				return
+			}
 			user := &AuthedUser{ID: claims.UserID, Username: claims.Username}
 			ctx := context.WithValue(r.Context(), ctxKeyUser, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -164,16 +177,21 @@ func Auth(s *auth.Signer) func(http.Handler) http.Handler {
 
 // OptionalAuth attempts to parse a token, but does NOT 401 on failure. Used
 // for public endpoints (e.g. GET /v1/users/:username) that show different
-// content when the viewer is authed (e.g. follow state).
-func OptionalAuth(s *auth.Signer) func(http.Handler) http.Handler {
+// content when the viewer is authed (e.g. follow state). When softDelete
+// is non-nil, a soft-deleted user is treated as anonymous (no user
+// context injected) rather than getting a 401 — these are public
+// endpoints, so degrading to anonymous is the right semantic.
+func OptionalAuth(s *auth.Signer, softDelete *auth.SoftDeleteCache) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
 			if strings.HasPrefix(h, "Bearer ") {
 				if claims, err := s.Verify(strings.TrimPrefix(h, "Bearer ")); err == nil {
-					ctx := context.WithValue(r.Context(), ctxKeyUser,
-						&AuthedUser{ID: claims.UserID, Username: claims.Username})
-					r = r.WithContext(ctx)
+					if softDelete == nil || !softDelete.Contains(claims.UserID) {
+						ctx := context.WithValue(r.Context(), ctxKeyUser,
+							&AuthedUser{ID: claims.UserID, Username: claims.Username})
+						r = r.WithContext(ctx)
+					}
 				}
 			}
 			next.ServeHTTP(w, r)

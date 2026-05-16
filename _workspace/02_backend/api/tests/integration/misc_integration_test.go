@@ -387,11 +387,19 @@ func TestUpdateAndDeleteSelf(t *testing.T) {
 		t.Fatalf("delete: %d", code)
 	}
 
-	// After soft-delete, the token still verifies but the user lookup fails.
-	code, _ = doReq(t, srv, http.MethodGet, "/v1/users/me", tok, nil)
-	// 404 from the repo, surfaced as NOT_FOUND.
-	if code != http.StatusNotFound {
-		t.Errorf("post-delete get me: %d (want 404)", code)
+	// SEC-006: after soft-delete the JWT is in the revocation cache, so
+	// subsequent requests are rejected at the auth middleware with
+	// 401 ACCOUNT_DELETED — without waiting for the access-token TTL.
+	// (Pre-fix this returned 404 from the user-lookup miss; we now stop
+	// short of that lookup.)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/me", tok, nil)
+	if code != http.StatusUnauthorized {
+		t.Errorf("post-delete get me: %d (want 401)", code)
+	}
+	var e errBodyShape
+	_ = json.Unmarshal(raw, &e)
+	if e.Code != "ACCOUNT_DELETED" {
+		t.Errorf("post-delete code: %q (want ACCOUNT_DELETED)", e.Code)
 	}
 }
 
