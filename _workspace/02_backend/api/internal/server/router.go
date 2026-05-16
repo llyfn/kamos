@@ -123,7 +123,15 @@ func New(log *slog.Logger, signer *auth.Signer, h *handlers.Handler) http.Handle
 
 			// Venues — Phase 4 Foursquare-backed search proxy. 503
 			// VENUE_SEARCH_DISABLED when FOURSQUARE_API_KEY is unset.
-			r.Get("/venues/search", h.VenueSearch)
+			//
+			// SEC-004: a tight per-user limit on top of the global authed
+			// 60/120 limiter. 5 rps / burst 10 keeps a single account from
+			// exhausting the paid Foursquare budget with varying ?q= values.
+			if rateLimited {
+				r.With(middleware.RateLimitByUser(log, 5, 10)).Get("/venues/search", h.VenueSearch)
+			} else {
+				r.Get("/venues/search", h.VenueSearch)
+			}
 
 			// Social.
 			r.Post("/users/{username}/follow", h.Follow)

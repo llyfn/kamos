@@ -151,6 +151,38 @@ func TestLoadRejectsBadSMTPPort(t *testing.T) {
 	}
 }
 
+// SEC-004 production safety: RATE_LIMIT_DISABLED=1 must refuse to boot
+// when APP_ENV=production so a leaked test toggle can't silently disable
+// the auth-route brute-force backstop on a real deployment.
+func TestLoadRejectsRateLimitDisabledInProduction(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL":        "postgres://x/x",
+		"JWT_SECRET":          "secret",
+		"APP_ENV":             "production",
+		"RATE_LIMIT_DISABLED": "1",
+	})
+	if _, err := Load(); err == nil {
+		t.Fatalf("expected error when RATE_LIMIT_DISABLED=1 in production")
+	}
+}
+
+// In dev / test envs the flag is honored as documented.
+func TestLoadAllowsRateLimitDisabledOutsideProduction(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL":        "postgres://x/x",
+		"JWT_SECRET":          "secret",
+		"APP_ENV":             "test",
+		"RATE_LIMIT_DISABLED": "1",
+	})
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !c.RateLimitDisabled {
+		t.Errorf("RateLimitDisabled = false (want true)")
+	}
+}
+
 // LoadDotenv is a no-op when APP_ENV=production.
 func TestLoadDotenvProductionIsNoOp(t *testing.T) {
 	withEnv(t, map[string]string{"APP_ENV": "production"})
