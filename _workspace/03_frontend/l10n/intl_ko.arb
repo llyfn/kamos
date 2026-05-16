@@ -209,5 +209,17 @@
   "errorGeneric": "불러올 수 없습니다. 탭하여 다시 시도하세요.",
   "errorNetwork": "연결할 수 없습니다. 탭하여 다시 시도하세요.",
   "errorUnauthorized": "다시 로그인하세요.",
-  "loadingLabel": "불러오는 중"
+  "loadingLabel": "불러오는 중",
+
+  "submitBeverageRequestTitle": "음료 제안",
+  "submitBeverageRequestNameLabel": "이름",
+  "submitBeverageRequestBreweryLabel": "양조장",
+  "submitBeverageRequestCategoryLabel": "카테고리",
+  "submitBeverageRequestNotesLabel": "메모(선택)",
+  "submitBeverageRequestSubmitButton": "제출",
+  "submitBeverageRequestSuccessToast": "감사합니다 — 검토하겠습니다.",
+  "submitBeverageRequestErrorGeneric": "제출하지 못했습니다. 다시 시도하세요.",
+  "submitBeverageRequestNameRequired": "이름은 필수입니다.",
+  "submitBeverageRequestBreweryRequired": "양조장은 필수입니다.",
+  "searchSuggestMissingCta": "찾으시는 음료가 없나요? 제안해 주세요."
 }

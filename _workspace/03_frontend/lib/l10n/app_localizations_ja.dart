@@ -544,4 +544,37 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get loadingLabel => '読み込み中';
+
+  @override
+  String get submitBeverageRequestTitle => '飲料を提案';
+
+  @override
+  String get submitBeverageRequestNameLabel => '名称';
+
+  @override
+  String get submitBeverageRequestBreweryLabel => '蔵元';
+
+  @override
+  String get submitBeverageRequestCategoryLabel => 'カテゴリー';
+
+  @override
+  String get submitBeverageRequestNotesLabel => '備考（任意）';
+
+  @override
+  String get submitBeverageRequestSubmitButton => '送信';
+
+  @override
+  String get submitBeverageRequestSuccessToast => 'ご提案ありがとうございます。確認いたします。';
+
+  @override
+  String get submitBeverageRequestErrorGeneric => '送信できませんでした。再試行してください。';
+
+  @override
+  String get submitBeverageRequestNameRequired => '名称は必須です。';
+
+  @override
+  String get submitBeverageRequestBreweryRequired => '蔵元は必須です。';
+
+  @override
+  String get searchSuggestMissingCta => '見つからない場合は提案';
 }

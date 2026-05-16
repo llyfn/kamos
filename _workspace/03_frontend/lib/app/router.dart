@@ -15,6 +15,7 @@
 //   /users/:username               other user
 //   /beverages/:id                 beverage detail
 //   /breweries/:id                 brewery detail
+//   /beverage-requests/new         user-side "suggest a beverage" form
 //
 // Unauthenticated users are redirected to `/auth`; authenticated users on
 // `/auth` are redirected to `/`. The `/auth/verify-email` route is exempt
@@ -29,6 +30,7 @@ import '../core/models/beverage.dart';
 import '../features/auth/providers/auth_state.dart';
 import '../features/auth/screens/auth_screen.dart';
 import '../features/auth/screens/verify_email_screen.dart';
+import '../features/beverage_requests/screens/submit_beverage_request_screen.dart';
 import '../features/beverages/screens/beverage_detail_screen.dart';
 import '../features/breweries/screens/brewery_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
@@ -123,6 +125,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/breweries/:id',
         builder: (_, state) =>
             BreweryDetailScreen(breweryId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/beverage-requests/new',
+        builder: (_, _) => const SubmitBeverageRequestScreen(),
       ),
     ],
   );

@@ -193,6 +193,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               glyph: '—',
                               title: l.searchNoResultsTitle,
                               body: l.searchNoResultsBody,
+                              action: TextButton(
+                                onPressed: () => context
+                                    .push('/beverage-requests/new'),
+                                child: Text(l.searchSuggestMissingCta),
+                              ),
                             )
                           : NotificationListener<ScrollNotification>(
                               onNotification: (s) {

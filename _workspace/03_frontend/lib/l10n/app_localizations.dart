@@ -1137,6 +1137,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading'**
   String get loadingLabel;
+
+  /// No description provided for @submitBeverageRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a beverage'**
+  String get submitBeverageRequestTitle;
+
+  /// No description provided for @submitBeverageRequestNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get submitBeverageRequestNameLabel;
+
+  /// No description provided for @submitBeverageRequestBreweryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery'**
+  String get submitBeverageRequestBreweryLabel;
+
+  /// No description provided for @submitBeverageRequestCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get submitBeverageRequestCategoryLabel;
+
+  /// No description provided for @submitBeverageRequestNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes (optional)'**
+  String get submitBeverageRequestNotesLabel;
+
+  /// No description provided for @submitBeverageRequestSubmitButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submitBeverageRequestSubmitButton;
+
+  /// No description provided for @submitBeverageRequestSuccessToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks — we\'ll review your suggestion.'**
+  String get submitBeverageRequestSuccessToast;
+
+  /// No description provided for @submitBeverageRequestErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not submit. Try again.'**
+  String get submitBeverageRequestErrorGeneric;
+
+  /// No description provided for @submitBeverageRequestNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required.'**
+  String get submitBeverageRequestNameRequired;
+
+  /// No description provided for @submitBeverageRequestBreweryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery is required.'**
+  String get submitBeverageRequestBreweryRequired;
+
+  /// No description provided for @searchSuggestMissingCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t find it? Suggest it.'**
+  String get searchSuggestMissingCta;
 }
 
 class _AppLocalizationsDelegate

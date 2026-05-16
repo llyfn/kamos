@@ -209,5 +209,17 @@
   "errorGeneric": "Could not load. Tap to retry.",
   "errorNetwork": "No connection. Tap to retry.",
   "errorUnauthorized": "Please sign in again.",
-  "loadingLabel": "Loading"
+  "loadingLabel": "Loading",
+
+  "submitBeverageRequestTitle": "Suggest a beverage",
+  "submitBeverageRequestNameLabel": "Name",
+  "submitBeverageRequestBreweryLabel": "Brewery",
+  "submitBeverageRequestCategoryLabel": "Category",
+  "submitBeverageRequestNotesLabel": "Notes (optional)",
+  "submitBeverageRequestSubmitButton": "Submit",
+  "submitBeverageRequestSuccessToast": "Thanks — we'll review your suggestion.",
+  "submitBeverageRequestErrorGeneric": "Could not submit. Try again.",
+  "submitBeverageRequestNameRequired": "Name is required.",
+  "submitBeverageRequestBreweryRequired": "Brewery is required.",
+  "searchSuggestMissingCta": "Can't find it? Suggest it."
 }
