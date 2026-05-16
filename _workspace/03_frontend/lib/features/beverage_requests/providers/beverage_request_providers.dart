@@ -26,12 +26,6 @@ class SubmitBeverageRequestNotifier extends AsyncNotifier<void> {
       () => ref.read(beverageRequestRepositoryProvider).submit(req),
     );
   }
-
-  /// Reset to idle (used when the screen is disposed mid-error so a re-entry
-  /// starts clean).
-  void reset() {
-    state = const AsyncValue.data(null);
-  }
 }
 
 final submitBeverageRequestProvider =

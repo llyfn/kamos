@@ -538,12 +538,6 @@ abstract class AppLocalizations {
   /// **'or'**
   String get authOr;
 
-  /// No description provided for @authContinueGoogle.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue with Google'**
-  String get authContinueGoogle;
-
   /// No description provided for @authGoogleSignInButton.
   ///
   /// In en, this message translates to:

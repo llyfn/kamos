@@ -98,7 +98,6 @@
   "authBackToSignIn": "サインインに戻る",
   "authForgotPassword": "パスワードを忘れた",
   "authOr": "または",
-  "authContinueGoogle": "Googleで続行",
   "authGoogleSignInButton": "Googleで続行",
   "authGoogleDisabled": "Googleサインインは未設定",
   "authGoogleSignInFailed": "Googleサインインに失敗しました。もう一度お試しください。",

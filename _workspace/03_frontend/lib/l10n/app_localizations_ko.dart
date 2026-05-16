@@ -240,9 +240,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authOr => '또는';
 
   @override
-  String get authContinueGoogle => 'Google로 계속하기';
-
-  @override
   String get authGoogleSignInButton => 'Google로 계속하기';
 
   @override

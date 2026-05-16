@@ -243,9 +243,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authOr => 'or';
 
   @override
-  String get authContinueGoogle => 'Continue with Google';
-
-  @override
   String get authGoogleSignInButton => 'Continue with Google';
 
   @override
