@@ -79,6 +79,10 @@ func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "DeleteMe", err)
 		return
 	}
+	if _, err := h.Repos.RefreshTokens.RevokeAllForUser(r.Context(), uid); err != nil {
+		h.writeErr(w, "DeleteMe revoke refresh", err)
+		return
+	}
 	if h.SoftDelete != nil {
 		h.SoftDelete.Add(uid)
 	}

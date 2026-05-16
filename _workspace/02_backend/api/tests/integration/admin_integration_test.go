@@ -454,3 +454,81 @@ func TestAdmin_SuspendUserRevokesTokens(t *testing.T) {
 		t.Errorf("admin self-suspend: %d (want 403)", code)
 	}
 }
+
+// loginForRefresh logs in and returns the (access, refresh) token pair.
+// Inlined here (rather than added to helpers_test.go) because only the
+// refresh-revocation tests need the refresh side.
+func loginForRefresh(t *testing.T, srv *httptest.Server, email, password string) (string, string) {
+	t.Helper()
+	body := map[string]any{"email": email, "password": password}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/auth/login", "", body)
+	if code != http.StatusOK {
+		t.Fatalf("login: status=%d body=%s", code, raw)
+	}
+	var resp authResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		t.Fatalf("login decode: %v", err)
+	}
+	if resp.AccessToken == "" || resp.RefreshToken == "" {
+		t.Fatalf("login: missing tokens")
+	}
+	return resp.AccessToken, resp.RefreshToken
+}
+
+// TestAdmin_SuspendUserRevokesRefreshToken — admin suspends a user; the
+// user's refresh token can no longer be exchanged for a new access token.
+// Locks the contract that suspension revokes refresh tokens directly
+// rather than relying on `users.deleted_at IS NULL` filters downstream.
+func TestAdmin_SuspendUserRevokesRefreshToken(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	// Register the victim and obtain their refresh token via login.
+	_, victimID := mustRegister(t, srv, "rev_victim", "rv@example.com", "password-123")
+	_, victimRefresh := loginForRefresh(t, srv, "rv@example.com", "password-123")
+	// Refresh works pre-suspend.
+	code, _, _ := doRefresh(t, srv.URL, victimRefresh)
+	if code != http.StatusOK {
+		t.Fatalf("pre-suspend refresh: %d", code)
+	}
+	// Login again to get a fresh, unused refresh token (the previous one
+	// was rotated by the successful refresh above).
+	_, victimRefresh = loginForRefresh(t, srv, "rv@example.com", "password-123")
+
+	// Promote an admin and suspend the victim.
+	adminTok, adminID := mustRegister(t, srv, "rev_admin", "ra@example.com", "password-123")
+	promoteToAdmin(t, adminID)
+	code, raw := doReq(t, srv, http.MethodPost,
+		"/v1/admin/users/"+victimID+"/suspend", adminTok, nil)
+	if code != http.StatusNoContent {
+		t.Fatalf("suspend: %d body=%s", code, raw)
+	}
+
+	// Refresh now fails.
+	code, _, raw = doRefresh(t, srv.URL, victimRefresh)
+	if code != http.StatusUnauthorized {
+		t.Errorf("post-suspend refresh: %d body=%s (want 401)", code, raw)
+	}
+}
+
+// TestDeleteMeRevokesRefreshToken — self-soft-delete revokes refresh tokens
+// directly (same contract as admin suspension, different entry point).
+func TestDeleteMeRevokesRefreshToken(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, _ := mustRegister(t, srv, "dm_victim", "dm@example.com", "password-123")
+	_, refresh := loginForRefresh(t, srv, "dm@example.com", "password-123")
+
+	code, raw := doReq(t, srv, http.MethodDelete, "/v1/users/me", tok, nil)
+	if code != http.StatusNoContent {
+		t.Fatalf("delete me: %d body=%s", code, raw)
+	}
+
+	code, _, raw = doRefresh(t, srv.URL, refresh)
+	if code != http.StatusUnauthorized {
+		t.Errorf("post-delete refresh: %d body=%s (want 401)", code, raw)
+	}
+}
