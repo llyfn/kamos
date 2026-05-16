@@ -62,13 +62,16 @@ abstract class Collection with _$Collection {
 }
 
 /// Owner attribution for a public collection (Phase 6 — `GET /v1/collections/public`).
-/// Mirrors the server's slim user shape on the public-collections endpoint.
+/// Mirrors the server's slim `PublicCollectionOwner` shape — privacy-safe (never
+/// carries email). `display_name` is `required` on the wire; defaults to the
+/// empty string only as a defensive fallback against older server builds.
 @Freezed(fromJson: false, toJson: false)
 abstract class CollectionOwner with _$CollectionOwner {
   const factory CollectionOwner({
     required String id,
     required String username,
     required String displayUsername,
+    @Default('') String displayName,
     String? avatarUrl,
   }) = _CollectionOwner;
 
@@ -78,6 +81,7 @@ abstract class CollectionOwner with _$CollectionOwner {
         username: (json['username'] as String?) ?? '',
         displayUsername: (json['display_username'] as String?) ??
             (json['username'] as String? ?? ''),
+        displayName: (json['display_name'] as String?) ?? '',
         avatarUrl: json['avatar_url'] as String?,
       );
 }

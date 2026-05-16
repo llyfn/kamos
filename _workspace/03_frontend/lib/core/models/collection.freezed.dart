@@ -295,7 +295,7 @@ as String,
 /// @nodoc
 mixin _$CollectionOwner {
 
- String get id; String get username; String get displayUsername; String? get avatarUrl;
+ String get id; String get username; String get displayUsername; String get displayName; String? get avatarUrl;
 /// Create a copy of CollectionOwner
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -306,16 +306,16 @@ $CollectionOwnerCopyWith<CollectionOwner> get copyWith => _$CollectionOwnerCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CollectionOwner&&(identical(other.id, id) || other.id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.displayUsername, displayUsername) || other.displayUsername == displayUsername)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CollectionOwner&&(identical(other.id, id) || other.id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.displayUsername, displayUsername) || other.displayUsername == displayUsername)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,username,displayUsername,avatarUrl);
+int get hashCode => Object.hash(runtimeType,id,username,displayUsername,displayName,avatarUrl);
 
 @override
 String toString() {
-  return 'CollectionOwner(id: $id, username: $username, displayUsername: $displayUsername, avatarUrl: $avatarUrl)';
+  return 'CollectionOwner(id: $id, username: $username, displayUsername: $displayUsername, displayName: $displayName, avatarUrl: $avatarUrl)';
 }
 
 
@@ -326,7 +326,7 @@ abstract mixin class $CollectionOwnerCopyWith<$Res>  {
   factory $CollectionOwnerCopyWith(CollectionOwner value, $Res Function(CollectionOwner) _then) = _$CollectionOwnerCopyWithImpl;
 @useResult
 $Res call({
- String id, String username, String displayUsername, String? avatarUrl
+ String id, String username, String displayUsername, String displayName, String? avatarUrl
 });
 
 
@@ -343,11 +343,12 @@ class _$CollectionOwnerCopyWithImpl<$Res>
 
 /// Create a copy of CollectionOwner
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? username = null,Object? displayUsername = null,Object? avatarUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? username = null,Object? displayUsername = null,Object? displayName = null,Object? avatarUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String,displayUsername: null == displayUsername ? _self.displayUsername : displayUsername // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -434,10 +435,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String username,  String displayUsername,  String? avatarUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String username,  String displayUsername,  String displayName,  String? avatarUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CollectionOwner() when $default != null:
-return $default(_that.id,_that.username,_that.displayUsername,_that.avatarUrl);case _:
+return $default(_that.id,_that.username,_that.displayUsername,_that.displayName,_that.avatarUrl);case _:
   return orElse();
 
 }
@@ -455,10 +456,10 @@ return $default(_that.id,_that.username,_that.displayUsername,_that.avatarUrl);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String username,  String displayUsername,  String? avatarUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String username,  String displayUsername,  String displayName,  String? avatarUrl)  $default,) {final _that = this;
 switch (_that) {
 case _CollectionOwner():
-return $default(_that.id,_that.username,_that.displayUsername,_that.avatarUrl);case _:
+return $default(_that.id,_that.username,_that.displayUsername,_that.displayName,_that.avatarUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -475,10 +476,10 @@ return $default(_that.id,_that.username,_that.displayUsername,_that.avatarUrl);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String username,  String displayUsername,  String? avatarUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String username,  String displayUsername,  String displayName,  String? avatarUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _CollectionOwner() when $default != null:
-return $default(_that.id,_that.username,_that.displayUsername,_that.avatarUrl);case _:
+return $default(_that.id,_that.username,_that.displayUsername,_that.displayName,_that.avatarUrl);case _:
   return null;
 
 }
@@ -490,12 +491,13 @@ return $default(_that.id,_that.username,_that.displayUsername,_that.avatarUrl);c
 
 
 class _CollectionOwner implements CollectionOwner {
-  const _CollectionOwner({required this.id, required this.username, required this.displayUsername, this.avatarUrl});
+  const _CollectionOwner({required this.id, required this.username, required this.displayUsername, this.displayName = '', this.avatarUrl});
   
 
 @override final  String id;
 @override final  String username;
 @override final  String displayUsername;
+@override@JsonKey() final  String displayName;
 @override final  String? avatarUrl;
 
 /// Create a copy of CollectionOwner
@@ -508,16 +510,16 @@ _$CollectionOwnerCopyWith<_CollectionOwner> get copyWith => __$CollectionOwnerCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CollectionOwner&&(identical(other.id, id) || other.id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.displayUsername, displayUsername) || other.displayUsername == displayUsername)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CollectionOwner&&(identical(other.id, id) || other.id == id)&&(identical(other.username, username) || other.username == username)&&(identical(other.displayUsername, displayUsername) || other.displayUsername == displayUsername)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,username,displayUsername,avatarUrl);
+int get hashCode => Object.hash(runtimeType,id,username,displayUsername,displayName,avatarUrl);
 
 @override
 String toString() {
-  return 'CollectionOwner(id: $id, username: $username, displayUsername: $displayUsername, avatarUrl: $avatarUrl)';
+  return 'CollectionOwner(id: $id, username: $username, displayUsername: $displayUsername, displayName: $displayName, avatarUrl: $avatarUrl)';
 }
 
 
@@ -528,7 +530,7 @@ abstract mixin class _$CollectionOwnerCopyWith<$Res> implements $CollectionOwner
   factory _$CollectionOwnerCopyWith(_CollectionOwner value, $Res Function(_CollectionOwner) _then) = __$CollectionOwnerCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String username, String displayUsername, String? avatarUrl
+ String id, String username, String displayUsername, String displayName, String? avatarUrl
 });
 
 
@@ -545,11 +547,12 @@ class __$CollectionOwnerCopyWithImpl<$Res>
 
 /// Create a copy of CollectionOwner
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? username = null,Object? displayUsername = null,Object? avatarUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? username = null,Object? displayUsername = null,Object? displayName = null,Object? avatarUrl = freezed,}) {
   return _then(_CollectionOwner(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,username: null == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String,displayUsername: null == displayUsername ? _self.displayUsername : displayUsername // ignore: cast_nullable_to_non_nullable
+as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
 as String,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
