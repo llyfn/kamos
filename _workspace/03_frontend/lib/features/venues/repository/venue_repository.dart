@@ -13,11 +13,14 @@
 // through `CheckInRepository.create` as the `venue` field on the POST body.
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/models/venue.dart';
+import '../../../core/observability/sentry_observer.dart';
 import '../exceptions.dart';
 
 class VenueRepository {
@@ -44,7 +47,28 @@ class VenueRepository {
         },
       );
       final data = res.data;
-      if (data is! Map<String, dynamic>) return const [];
+      if (data is! Map<String, dynamic>) {
+        // 200 with an unexpected body shape — should never happen, but a
+        // server bug or upstream proxy mangling the response would land here.
+        // Don't swallow silently; route to Sentry so we can see it. The user
+        // still gets an empty result rather than a hard error.
+        final runtimeType = data.runtimeType.toString();
+        if (kSentryConfigured) {
+          Sentry.captureMessage(
+            'venues/search: unexpected response shape',
+            level: SentryLevel.warning,
+            withScope: (scope) {
+              scope.setContexts('response', {'runtimeType': runtimeType});
+            },
+          );
+        } else {
+          debugPrint(
+            'venues/search: unexpected response shape '
+            '(runtimeType=$runtimeType)',
+          );
+        }
+        return const [];
+      }
       final items = (data['items'] as List?) ?? const [];
       return items
           .map((e) => FoursquarePlace.fromJson(e as Map<String, dynamic>))

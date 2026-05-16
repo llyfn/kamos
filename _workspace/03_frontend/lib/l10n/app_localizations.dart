@@ -448,7 +448,7 @@ abstract class AppLocalizations {
   /// **'Slow down — try again in a moment.'**
   String get venuePickerRateLimited;
 
-  /// No description provided for @feedCardAtVenue.
+  /// Feed card venue footer. Word order varies — placeholder order in the format string may differ between locales; method signature is positional (name, locality).
   ///
   /// In en, this message translates to:
   /// **'at {name} · {locality}'**
