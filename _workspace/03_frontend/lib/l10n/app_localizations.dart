@@ -1048,6 +1048,12 @@ abstract class AppLocalizations {
   /// **'Could not load comments'**
   String get commentsLoadFailed;
 
+  /// No description provided for @feedCardCommentsCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} comments'**
+  String feedCardCommentsCountLabel(int count);
+
   /// No description provided for @inboxTitle.
   ///
   /// In en, this message translates to:

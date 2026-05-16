@@ -199,6 +199,8 @@
   "commentsTooLong": "댓글이 너무 깁니다 (최대 500자)",
   "commentsPostFailed": "게시하지 못했습니다. 다시 시도하세요.",
   "commentsLoadFailed": "댓글을 불러오지 못했습니다",
+  "feedCardCommentsCountLabel": "댓글 {count}개",
+  "@feedCardCommentsCountLabel": { "placeholders": { "count": { "type": "int" } } },
 
   "inboxTitle": "팔로우 요청",
   "inboxApprove": "수락",
