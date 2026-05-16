@@ -18,22 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/models/venue.dart';
-
-/// Thrown when the backend reports `code: VENUE_SEARCH_DISABLED`.
-class VenueSearchDisabledException implements Exception {
-  const VenueSearchDisabledException([this.message = 'Venue search disabled']);
-  final String message;
-  @override
-  String toString() => 'VenueSearchDisabledException: $message';
-}
-
-/// Thrown when the backend reports `code: VENUE_RATE_LIMITED`.
-class VenueRateLimitedException implements Exception {
-  const VenueRateLimitedException([this.message = 'Venue search rate-limited']);
-  final String message;
-  @override
-  String toString() => 'VenueRateLimitedException: $message';
-}
+import '../exceptions.dart';
 
 class VenueRepository {
   VenueRepository(this._dio);

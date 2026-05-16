@@ -13,9 +13,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../../../core/models/venue.dart';
 import '../../../l10n/app_localizations.dart';
+import '../exceptions.dart';
 import '../providers/venue_providers.dart';
-import '../repository/venue_repository.dart';
 
+/// Sheet renders at most this many; results past ~30 lose discoverability
+/// without a map view (Phase 4 has no map). The server still returns up
+/// to 20 (was 50 — see Phase 4 review SEC-007/SEC-004), so this UI cap
+/// only kicks in if the backend's limit is raised later.
 const _maxResultsOnScreen = 30;
 
 /// Opens the venue picker sheet. Returns the chosen place, or null if the
@@ -62,7 +66,6 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    final results = ref.watch(venueSearchProvider);
     final viewInsets = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
@@ -91,11 +94,19 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet> {
                 ),
               ),
               Expanded(
-                child: _Results(
-                  controller: scrollController,
-                  results: results,
-                  query: _controller.text,
-                  onPick: (place) => Navigator.of(context).pop(place),
+                // PERF-014: scope `venueSearchProvider` watch to this
+                // subtree so the parent (incl. TextField) does not rebuild
+                // on every notifier transition (loading → data/error).
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final results = ref.watch(venueSearchProvider);
+                    return _Results(
+                      controller: scrollController,
+                      results: results,
+                      query: _controller.text,
+                      onPick: (place) => Navigator.of(context).pop(place),
+                    );
+                  },
                 ),
               ),
             ],

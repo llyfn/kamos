@@ -57,6 +57,9 @@ class VenueSearchNotifier extends AsyncNotifier<List<FoursquarePlace>> {
   /// Push a new query. Debounced by [venueSearchDebounce]. Empty queries
   /// short-circuit to an empty list with no network call.
   void setQuery(VenueSearchQuery q) {
+    // PERF-013: skip identical re-emits (IME composition often fires the
+    // same text repeatedly). Cheap equality check before any work.
+    if (q == _query) return;
     _query = q;
     _debounce?.cancel();
     if (q.isEmpty) {
