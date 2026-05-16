@@ -112,6 +112,20 @@ class CommentsSection extends ConsumerWidget {
         );
       }
       return false;
+    } on CommentInvalidBodyException {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.commentsInvalidBody)),
+        );
+      }
+      return false;
+    } on CommentRateLimitedException {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.commentsRateLimited)),
+        );
+      }
+      return false;
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
