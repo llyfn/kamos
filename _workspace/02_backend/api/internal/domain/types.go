@@ -642,7 +642,8 @@ func (r *UpdateCheckinRequest) Validate() error {
 	return nil
 }
 
-// Checkin is the canonical check-in DTO returned by the API.
+// Checkin is the canonical check-in DTO returned by the API. Phase 6a
+// added CommentCount; FeedItem mirrors the field.
 type Checkin struct {
 	ID           string         `json:"id"`
 	User         CheckinUser    `json:"user"`
@@ -657,6 +658,7 @@ type Checkin struct {
 	Venue        *VenueRef      `json:"venue,omitempty"`
 	Toasts       int            `json:"toasts"`
 	YouToasted   bool           `json:"you_toasted"`
+	CommentCount int            `json:"comment_count"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 }
@@ -698,25 +700,77 @@ type CheckinSummary struct {
 	CreatedAt time.Time   `json:"created_at"`
 }
 
-// FeedItem matches HANDOFF's feedItem shape exactly.
+// FeedItem matches HANDOFF's feedItem shape exactly. Phase 6a added
+// comment_count via correlated subquery — see repository/feed.go.
 type FeedItem struct {
-	ID         string      `json:"id"`
-	User       CheckinUser `json:"user"`
-	Beverage   BeverageRef `json:"beverage"`
-	Rating     *float64    `json:"rating"`
-	Review     *string     `json:"review"`
-	Tags       []FlavorTag `json:"tags"`
-	Toasts     int         `json:"toasts"`
-	YouToasted bool        `json:"you_toasted"`
-	PhotoCount int         `json:"photo_count"`
-	Venue      *VenueRef   `json:"venue,omitempty"`
-	CreatedAt  time.Time   `json:"created_at"`
+	ID           string      `json:"id"`
+	User         CheckinUser `json:"user"`
+	Beverage     BeverageRef `json:"beverage"`
+	Rating       *float64    `json:"rating"`
+	Review       *string     `json:"review"`
+	Tags         []FlavorTag `json:"tags"`
+	Toasts       int         `json:"toasts"`
+	YouToasted   bool        `json:"you_toasted"`
+	PhotoCount   int         `json:"photo_count"`
+	CommentCount int         `json:"comment_count"`
+	Venue        *VenueRef   `json:"venue,omitempty"`
+	CreatedAt    time.Time   `json:"created_at"`
 }
 
 // ToastState is the response body for the toast toggle endpoint.
 type ToastState struct {
 	Toasts     int  `json:"toasts"`
 	YouToasted bool `json:"you_toasted"`
+}
+
+// ---------------------------------------------------------------------------
+// Comments (Phase 6a — flat, on check-ins)
+// ---------------------------------------------------------------------------
+
+// Comment is the wire shape returned by /v1/check-ins/{id}/comments and the
+// soft-delete endpoint. `User` embeds CheckinUser (a strict subset of
+// PublicUser — id, username, display_username, display_name, avatar_url)
+// so email + email_verified can never leak. The shape mirrors the existing
+// FeedItem.User shape so the Flutter client uses one renderer for both.
+type Comment struct {
+	ID        string      `json:"id"`
+	CheckInID string      `json:"check_in_id"`
+	User      CheckinUser `json:"user"`
+	Body      string      `json:"body"`
+	CreatedAt time.Time   `json:"created_at"`
+	// DeletedAt is exposed for completeness; List queries filter
+	// soft-deleted rows server-side so clients never see one here.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+}
+
+// CreateCommentRequest is the body for POST /v1/check-ins/{id}/comments.
+type CreateCommentRequest struct {
+	Body string `json:"body"`
+}
+
+// Validate enforces SPEC §6.7's "≤ 500 chars" cap plus a control-character
+// guard mirroring the venue-name pattern from migration 006 (defense in
+// depth on a shared user-content surface).
+func (r *CreateCommentRequest) Validate() error {
+	r.Body = strings.TrimSpace(r.Body)
+	if r.Body == "" {
+		return wrapValidation("body must be 1-500 characters")
+	}
+	runes := []rune(r.Body)
+	if len(runes) < 1 || len(runes) > 500 {
+		return wrapValidation("body must be 1-500 characters")
+	}
+	for _, ch := range runes {
+		if ch == 0 {
+			return wrapValidation("body contains NUL byte")
+		}
+		// Reject ASCII C0 control chars except tab (0x09) and LF (0x0a) —
+		// same rule as the DB CHECK in migration 009.
+		if ch < 0x20 && ch != '\t' && ch != '\n' {
+			return wrapValidation("body contains a control character")
+		}
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
