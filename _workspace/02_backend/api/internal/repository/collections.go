@@ -18,7 +18,7 @@ type CollectionRepo struct{ db *pgxpool.Pool }
 // List returns the user's live collections with entry counts.
 func (r *CollectionRepo) List(ctx context.Context, userID string) ([]domain.Collection, error) {
 	const q = `
-SELECT c.id, c.name, c.visibility::text, c.created_at, c.updated_at,
+SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
        COUNT(ce.beverage_id)::int AS entry_count
 FROM collections c
 LEFT JOIN collection_entries ce ON ce.collection_id = c.id
@@ -33,7 +33,7 @@ ORDER BY c.created_at ASC;`
 	var out []domain.Collection
 	for rows.Next() {
 		var c domain.Collection
-		if err := rows.Scan(&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
 			return nil, fmt.Errorf("CollectionRepo.List scan: %w", err)
 		}
 		out = append(out, c)
@@ -44,9 +44,9 @@ ORDER BY c.created_at ASC;`
 func (r *CollectionRepo) Create(ctx context.Context, userID, name string) (*domain.Collection, error) {
 	const q = `
 INSERT INTO collections (user_id, name) VALUES ($1, $2)
-RETURNING id, name, visibility::text, created_at, updated_at;`
+RETURNING id, user_id, name, visibility::text, created_at, updated_at;`
 	var c domain.Collection
-	if err := r.db.QueryRow(ctx, q, userID, name).Scan(&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt); err != nil {
+	if err := r.db.QueryRow(ctx, q, userID, name).Scan(&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt); err != nil {
 		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
 			return nil, apierror.ErrConflict
 		}
@@ -55,14 +55,25 @@ RETURNING id, name, visibility::text, created_at, updated_at;`
 	return &c, nil
 }
 
-func (r *CollectionRepo) Get(ctx context.Context, userID, id string) (*domain.Collection, error) {
+// Get returns a single live collection by id, regardless of owner. The
+// caller (handler) is responsible for the visibility decision: owners may
+// read any of their own rows; non-owners may only read rows where
+// `visibility = 'public'`. Returns ErrNotFound for soft-deleted or
+// non-existent rows.
+//
+// Phase 6a widened this function: it was previously owner-scoped at the
+// SQL level (WHERE c.user_id = $2), which caused a 404 on the
+// discover-tab → detail-screen route for non-owners on public
+// collections. Ownership-scoping moved up to the handler so the same
+// row can be served to its owner OR to anyone when public.
+func (r *CollectionRepo) Get(ctx context.Context, id string) (*domain.Collection, error) {
 	const q = `
-SELECT c.id, c.name, c.visibility::text, c.created_at, c.updated_at,
+SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
        (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id)
 FROM collections c
-WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL;`
+WHERE c.id = $1 AND c.deleted_at IS NULL;`
 	var c domain.Collection
-	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+	if err := r.db.QueryRow(ctx, q, id).Scan(&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
 		return nil, wrapNoRows("CollectionRepo.Get", err)
 	}
 	return &c, nil
@@ -83,7 +94,9 @@ type UpdateCollectionParams struct {
 // to.
 func (r *CollectionRepo) Update(ctx context.Context, userID, id string, p UpdateCollectionParams) (*domain.Collection, error) {
 	if p.Name == nil && p.Visibility == nil {
-		return r.Get(ctx, userID, id)
+		// No-op: still enforce ownership-scoped read here (Get is now
+		// owner-agnostic, so we use the owner-scoped GetOwned).
+		return r.GetOwned(ctx, userID, id)
 	}
 	// COALESCE keeps the existing value when the pointer is nil. The cast on
 	// $4 lets us pass either a 'private'|'public' literal or NULL — Postgres
@@ -93,16 +106,33 @@ UPDATE collections SET
   name       = COALESCE($3, name),
   visibility = COALESCE($4::collection_visibility, visibility)
 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
-RETURNING id, name, visibility::text, created_at, updated_at,
+RETURNING id, user_id, name, visibility::text, created_at, updated_at,
           (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = $1);`
 	var c domain.Collection
 	if err := r.db.QueryRow(ctx, q, id, userID, p.Name, p.Visibility).Scan(
-		&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount,
+		&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount,
 	); err != nil {
 		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
 			return nil, apierror.ErrConflict
 		}
 		return nil, wrapNoRows("CollectionRepo.Update", err)
+	}
+	return &c, nil
+}
+
+// GetOwned is the owner-scoped read used by paths that need the
+// "must-be-mine" invariant baked in at the SQL level (PATCH no-op
+// short-circuit, internal callers). New code should prefer Get + an
+// explicit handler-side visibility decision.
+func (r *CollectionRepo) GetOwned(ctx context.Context, userID, id string) (*domain.Collection, error) {
+	const q = `
+SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
+       (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id)
+FROM collections c
+WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL;`
+	var c domain.Collection
+	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+		return nil, wrapNoRows("CollectionRepo.GetOwned", err)
 	}
 	return &c, nil
 }
@@ -130,7 +160,7 @@ func (r *CollectionRepo) ListPublic(
 	}
 	const q = `
 SELECT
-  c.id, c.name, c.visibility::text, c.created_at, c.updated_at,
+  c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
   (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id) AS entry_count,
   u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM collections c
@@ -149,7 +179,7 @@ LIMIT $3;`
 	for rows.Next() {
 		var row domain.CollectionWithOwner
 		if err := rows.Scan(
-			&row.Collection.ID, &row.Collection.Name, &row.Collection.Visibility,
+			&row.Collection.ID, &row.Collection.OwnerID, &row.Collection.Name, &row.Collection.Visibility,
 			&row.Collection.CreatedAt, &row.Collection.UpdatedAt, &row.Collection.EntryCount,
 			&row.Owner.ID, &row.Owner.Username, &row.Owner.DisplayUsername,
 			&row.Owner.DisplayName, &row.Owner.AvatarURL,

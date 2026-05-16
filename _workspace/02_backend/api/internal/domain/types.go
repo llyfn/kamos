@@ -796,9 +796,14 @@ type FollowResult struct {
 // ---------------------------------------------------------------------------
 
 type Collection struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	EntryCount int       `json:"entry_count"`
+	ID string `json:"id"`
+	// OwnerID is the row's `user_id`. Exposed on the wire so clients can gate
+	// owner-only UI (e.g. the visibility toggle on the detail screen) without
+	// a second `GET /v1/users/me` round trip. Added in Phase 6a alongside
+	// public-collection discovery.
+	OwnerID    string `json:"owner_id"`
+	Name       string `json:"name"`
+	EntryCount int    `json:"entry_count"`
 	// Visibility ('private' | 'public') — Phase 6a. Empty string on legacy
 	// rows is treated by clients as 'private' (the Dart fromJson does the
 	// fallback); the server fills the column with 'private' by default.
