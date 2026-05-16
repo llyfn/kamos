@@ -211,6 +211,7 @@
   "errorUnauthorized": "Please sign in again.",
   "loadingLabel": "Loading",
 
+  "settingsSuggestBeverage": "Suggest a beverage",
   "submitBeverageRequestTitle": "Suggest a beverage",
   "submitBeverageRequestNameLabel": "Name",
   "submitBeverageRequestBreweryLabel": "Brewery",

@@ -211,6 +211,7 @@
   "errorUnauthorized": "다시 로그인하세요.",
   "loadingLabel": "불러오는 중",
 
+  "settingsSuggestBeverage": "음료 제안하기",
   "submitBeverageRequestTitle": "음료 제안",
   "submitBeverageRequestNameLabel": "이름",
   "submitBeverageRequestBreweryLabel": "양조장",

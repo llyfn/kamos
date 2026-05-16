@@ -543,6 +543,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get loadingLabel => '불러오는 중';
 
   @override
+  String get settingsSuggestBeverage => '음료 제안하기';
+
+  @override
   String get submitBeverageRequestTitle => '음료 제안';
 
   @override

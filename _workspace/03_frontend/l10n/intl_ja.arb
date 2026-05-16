@@ -211,6 +211,7 @@
   "errorUnauthorized": "もう一度サインインしてください。",
   "loadingLabel": "読み込み中",
 
+  "settingsSuggestBeverage": "飲料を提案",
   "submitBeverageRequestTitle": "飲料を提案",
   "submitBeverageRequestNameLabel": "名称",
   "submitBeverageRequestBreweryLabel": "蔵元",
