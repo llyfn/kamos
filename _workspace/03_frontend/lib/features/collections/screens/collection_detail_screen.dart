@@ -141,8 +141,20 @@ class CollectionDetailScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              _VisibilityToggle(collection: collection),
-              const SizedBox(height: 12),
+              // Phase 6 — the visibility toggle must only render for the
+              // collection's OWNER. Because the wire `Collection` schema does
+              // not yet expose `user_id` / `is_own`, we approximate ownership
+              // by checking whether this collection id appears in the
+              // signed-in user's own collections list (`collectionsProvider`).
+              // If the list hasn't loaded yet, has errored, or the id is
+              // absent (e.g., reached from the public-collections discover
+              // tab), the toggle is hidden. The server-side ownership check
+              // remains the source of truth and rejects a non-owner PATCH
+              // with 403.
+              if (_viewerOwnsCollection(ref, collection.id))
+                _VisibilityToggle(collection: collection),
+              if (_viewerOwnsCollection(ref, collection.id))
+                const SizedBox(height: 12),
               if (entries.items.isEmpty)
                 EmptyView(
                   glyph: '∅',
@@ -200,10 +212,27 @@ class CollectionDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Phase 6 — public/private toggle for an OWN collection. The current
-/// `/collections` tab only lists collections owned by the signed-in user, so
-/// reaching this screen implies ownership; the toggle is unconditionally
-/// rendered.
+/// Checks whether the signed-in user owns the collection at [collectionId].
+/// Membership in `collectionsProvider` (the user's own collections list) is
+/// the ownership signal. Returns `false` when the list is still loading or
+/// has errored — the visibility toggle is hidden in those states.
+///
+/// LIMITATION: `collectionsProvider` currently exposes only the first page of
+/// the user's collections (default page size 50). For users with more than 50
+/// collections this can produce a false negative on the viewer's own
+/// collection. The proper fix is for the backend to add `user_id` to the
+/// `Collection` schema on `GET /v1/collections/{id}` — coordinate with the
+/// backend-engineer to land that.
+bool _viewerOwnsCollection(WidgetRef ref, String collectionId) {
+  final mine = ref.watch(collectionsProvider).asData?.value;
+  if (mine == null) return false;
+  return mine.items.any((c) => c.id == collectionId);
+}
+
+/// Phase 6 — public/private toggle for an OWN collection. Rendered only when
+/// the surrounding screen has confirmed ownership via `_viewerOwnsCollection`.
+/// The server-side check on PATCH /v1/collections/{id} still enforces
+/// ownership and 403s any cross-user write; this is purely UX gating.
 class _VisibilityToggle extends ConsumerStatefulWidget {
   const _VisibilityToggle({required this.collection});
   final Collection collection;
@@ -259,6 +288,13 @@ class _VisibilityToggleState extends ConsumerState<_VisibilityToggle> {
     } catch (_) {
       if (mounted) {
         setState(() => _isPublic = previous);
+        // Defense-in-depth: if a non-owner somehow triggered the toggle
+        // (future bug, race, etc.), the repository call 403s — surface a
+        // localized toast rather than failing silently.
+        final l = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.collectionVisibilityChangeFailed)),
+        );
       }
     } finally {
       if (mounted) setState(() => _pending = false);

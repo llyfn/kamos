@@ -508,6 +508,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get commentsLoadEarlier => '이전 댓글 불러오기';
 
   @override
+  String get collectionVisibilityChangeFailed =>
+      '공개 설정을 변경할 수 없습니다. 이 컬렉션의 소유자가 아닐 수 있습니다.';
+
+  @override
   String feedCardCommentsCountLabel(int count) {
     return '댓글 $count개';
   }
