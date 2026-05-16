@@ -450,6 +450,15 @@ class AppLocalizationsKo extends AppLocalizations {
       '컬렉션과 모든 항목이 삭제됩니다. 제품 자체는 영향받지 않습니다.';
 
   @override
+  String get collectionVisibilityPublicTitle => '공개 컬렉션';
+
+  @override
+  String get collectionVisibilityPublicSubtitle => '이 컬렉션은 디스커버 탭에서 모두에게 표시됩니다';
+
+  @override
+  String get collectionVisibilityPrivateSubtitle => '이 컬렉션은 본인만 볼 수 있습니다';
+
+  @override
   String get inboxTitle => '팔로우 요청';
 
   @override

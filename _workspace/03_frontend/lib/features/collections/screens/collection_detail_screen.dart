@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
+import '../../../core/models/collection.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_label.dart';
@@ -140,6 +141,8 @@ class CollectionDetailScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 18),
+              _VisibilityToggle(collection: collection),
+              const SizedBox(height: 12),
               if (entries.items.isEmpty)
                 EmptyView(
                   glyph: '∅',
@@ -194,5 +197,71 @@ class CollectionDetailScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Phase 6 — public/private toggle for an OWN collection. The current
+/// `/collections` tab only lists collections owned by the signed-in user, so
+/// reaching this screen implies ownership; the toggle is unconditionally
+/// rendered.
+class _VisibilityToggle extends ConsumerStatefulWidget {
+  const _VisibilityToggle({required this.collection});
+  final Collection collection;
+
+  @override
+  ConsumerState<_VisibilityToggle> createState() => _VisibilityToggleState();
+}
+
+class _VisibilityToggleState extends ConsumerState<_VisibilityToggle> {
+  late bool _isPublic = widget.collection.visibility == CollectionVisibility.public;
+  bool _pending = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    return SwitchListTile.adaptive(
+      contentPadding: EdgeInsets.zero,
+      value: _isPublic,
+      onChanged: _pending ? null : _onChanged,
+      title: Text(
+        l.collectionVisibilityPublicTitle,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: t.fg1,
+        ),
+      ),
+      subtitle: Text(
+        _isPublic
+            ? l.collectionVisibilityPublicSubtitle
+            : l.collectionVisibilityPrivateSubtitle,
+        style: TextStyle(fontSize: 12, color: t.fg3),
+      ),
+    );
+  }
+
+  Future<void> _onChanged(bool value) async {
+    final next = value
+        ? CollectionVisibility.public
+        : CollectionVisibility.private;
+    final previous = _isPublic;
+    setState(() {
+      _isPublic = value;
+      _pending = true;
+    });
+    try {
+      await ref
+          .read(collectionRepositoryProvider)
+          .updateVisibility(widget.collection.id, next);
+      ref.invalidate(collectionDetailProvider(widget.collection.id));
+      ref.invalidate(collectionsProvider);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isPublic = previous);
+      }
+    } finally {
+      if (mounted) setState(() => _pending = false);
+    }
   }
 }

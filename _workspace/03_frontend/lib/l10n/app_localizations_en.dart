@@ -459,6 +459,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'This removes the collection and all of its entries. The beverages themselves are unaffected.';
 
   @override
+  String get collectionVisibilityPublicTitle => 'Public collection';
+
+  @override
+  String get collectionVisibilityPublicSubtitle =>
+      'Anyone can see this collection on the discover tab';
+
+  @override
+  String get collectionVisibilityPrivateSubtitle =>
+      'Only you can see this collection';
+
+  @override
   String get inboxTitle => 'Follow requests';
 
   @override
