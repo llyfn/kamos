@@ -128,6 +128,15 @@ func TestAuthedRoutesRequireBearer(t *testing.T) {
 		{http.MethodPost, "/v1/auth/resend-verification"},
 		{http.MethodPost, "/v1/auth/password-change"},
 		{http.MethodPost, "/v1/auth/email-change"},
+		// Phase 5a — admin routes. Auth fires first, so a missing token
+		// returns 401 UNAUTHORIZED before RequireRole hits the DB.
+		{http.MethodGet, "/v1/admin/beverage-requests"},
+		{http.MethodPost, "/v1/admin/beverage-requests/req-1/approve"},
+		{http.MethodPost, "/v1/admin/beverage-requests/req-1/reject"},
+		{http.MethodPost, "/v1/admin/check-ins/c-1/moderate"},
+		{http.MethodGet, "/v1/admin/users"},
+		{http.MethodPost, "/v1/admin/users/u-1/role"},
+		{http.MethodPost, "/v1/admin/users/u-1/suspend"},
 	}
 	for _, r := range authedRoutes {
 		r := r
