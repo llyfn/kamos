@@ -664,23 +664,26 @@ func isAcceptedFollower(ctx context.Context, db *pgxpool.Pool, viewerID, ownerID
 	return ok, nil
 }
 
-// AssertViewerCanSeeCheckin is the shared privacy gate for surfaces that
-// hang off a check-in (e.g. `GET /v1/check-ins/{id}/comments`). Returns
-// nil when the caller is allowed to see the check-in (matching the rule
-// applied inside Get); ErrNotFound otherwise.
+// AssertViewerCanSeeCheckin is the shared visibility gate for surfaces
+// that hang off a check-in (e.g. `GET /v1/check-ins/{id}/comments`).
+// Returns nil when the caller is allowed to see the check-in (matching
+// the rule applied inside Get); ErrNotFound otherwise.
 //
-// The rule (mirrors Get):
-//   - Row missing → ErrNotFound.
+// The rule (mirrors Get exactly):
+//   - Row missing, parent soft-deleted, or owner soft-deleted → ErrNotFound.
 //   - Owner of the check-in is private AND viewer is not the owner AND
 //     not an accepted follower → ErrNotFound (do not leak existence).
 //   - All other cases → nil.
 //
-// NOTE: this helper deliberately does NOT gate on `deleted_at` — that
-// covers a separate invariant tracked in its own fix.
+// The `ci.deleted_at IS NULL` filter is what gives a moderator's
+// soft-delete the same effect on the comment surface as it has on the
+// check-in detail surface — without this filter, the comments around
+// a hidden check-in would remain world-readable, defeating the
+// moderation action.
 func (r *CheckinRepo) AssertViewerCanSeeCheckin(ctx context.Context, checkInID, viewerID string) error {
 	const q = `SELECT user_id, privacy_mode FROM check_ins ci
 JOIN users u ON u.id = ci.user_id
-WHERE ci.id = $1 AND u.deleted_at IS NULL;`
+WHERE ci.id = $1 AND ci.deleted_at IS NULL AND u.deleted_at IS NULL;`
 	var ownerID, privacy string
 	if err := r.db.QueryRow(ctx, q, checkInID).Scan(&ownerID, &privacy); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

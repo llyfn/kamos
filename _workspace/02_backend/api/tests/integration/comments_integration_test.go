@@ -238,14 +238,18 @@ WHERE target_type = 'comment' AND target_id = $1;`,
 	}
 }
 
-// TestCommentsOnSoftDeletedCheckin_Cascade — soft-deleting the parent
-// check-in (via admin moderation) hides the comments. Our CASCADE is on
-// hard delete; the soft-delete path takes a different route via the
-// check_ins filter — but the comment list still works because the
-// check_in_id still resolves. The expected behavior is: the parent check-in
-// is gone (404 on GET), and the comment list endpoint returns 200 with
-// whatever comments existed (we deliberately don't gate by parent state on
-// the list endpoint — see handler comment). This test pins that contract.
+// TestCommentsOnSoftDeletedCheckin_Cascade — soft-delete of the parent
+// check-in cascades to the comments surface:
+//   - `GET /v1/check-ins/{id}/comments` now returns 404 once the parent
+//     is hidden (a moderator's soft-delete must hide the conversation,
+//     not just the check-in body).
+//   - The DB-level FK cascade on hard-delete is also verified at the
+//     end — comments are physically removed when the parent check-in
+//     row is dropped.
+//
+// Earlier versions of this test asserted that the list endpoint returned
+// 200 with the comments visible. That was a privacy bug, not a contract
+// — the assertions below pin the corrected behavior.
 func TestCommentsOnSoftDeletedCheckin_Cascade(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -271,19 +275,17 @@ func TestCommentsOnSoftDeletedCheckin_Cascade(t *testing.T) {
 		t.Fatalf("moderate: %d body=%s", code, raw)
 	}
 
-	// Comment list: comments still surface (parent soft-delete only hides
-	// the check-in via deleted_at; comment list does not re-check parent
-	// state — documented in the handler).
+	// Comment list cascades to 404 — comments around a hidden check-in
+	// must not leak.
 	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", "", nil)
-	if code != http.StatusOK {
-		t.Fatalf("list after parent soft-delete: %d body=%s", code, raw)
+	if code != http.StatusNotFound {
+		t.Errorf("anonymous comments on soft-deleted parent: %d body=%s (want 404)", code, raw)
 	}
-	var page struct {
-		Items []map[string]any `json:"items"`
-	}
-	_ = json.Unmarshal(raw, &page)
-	if len(page.Items) != 1 {
-		t.Errorf("comments after parent soft-delete: got %d (want 1)", len(page.Items))
+	// Same for the original author — once a moderator hides the check-in,
+	// the comment surface is hidden from everyone.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", authorTok, nil)
+	if code != http.StatusNotFound {
+		t.Errorf("author comments on soft-deleted parent: %d body=%s (want 404)", code, raw)
 	}
 
 	// HARD-delete the parent check-in. CASCADE should now wipe the
