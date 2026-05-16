@@ -554,4 +554,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loadingLabel => 'Loading';
+
+  @override
+  String get submitBeverageRequestTitle => 'Suggest a beverage';
+
+  @override
+  String get submitBeverageRequestNameLabel => 'Name';
+
+  @override
+  String get submitBeverageRequestBreweryLabel => 'Brewery';
+
+  @override
+  String get submitBeverageRequestCategoryLabel => 'Category';
+
+  @override
+  String get submitBeverageRequestNotesLabel => 'Notes (optional)';
+
+  @override
+  String get submitBeverageRequestSubmitButton => 'Submit';
+
+  @override
+  String get submitBeverageRequestSuccessToast =>
+      'Thanks — we\'ll review your suggestion.';
+
+  @override
+  String get submitBeverageRequestErrorGeneric =>
+      'Could not submit. Try again.';
+
+  @override
+  String get submitBeverageRequestNameRequired => 'Name is required.';
+
+  @override
+  String get submitBeverageRequestBreweryRequired => 'Brewery is required.';
+
+  @override
+  String get searchSuggestMissingCta => 'Can\'t find it? Suggest it.';
 }

@@ -1,0 +1,38 @@
+// KAMOS — BeverageRequestRepository (Phase 5 user-side).
+//
+// Wraps `POST /v1/beverage-requests`. The endpoint expects a freeform
+// `payload` object and returns `202 { id }` on success — the Flutter UI does
+// not use the returned id today (admin review picks the row up by user), so
+// `submit` returns void.
+//
+// Every non-2xx is normalised to `BeverageRequestSubmissionException`. The
+// auth interceptor (api_client.dart) handles 401 + refresh by itself before
+// the exception reaches us; we never see those as failure here.
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/api/api_client.dart';
+import '../../../core/models/beverage_request.dart';
+import '../exceptions.dart';
+
+class BeverageRequestRepository {
+  BeverageRequestRepository(this._dio);
+  final Dio _dio;
+
+  /// POST `/v1/beverage-requests` with the request body shaped by
+  /// [BeverageRequest.toJson]. Throws [BeverageRequestSubmissionException]
+  /// on any non-2xx response (server validation is minimal — only checks
+  /// the payload is non-empty — so 422 here is unusual).
+  Future<void> submit(BeverageRequest req) async {
+    try {
+      await _dio.post('/v1/beverage-requests', data: req.toJson());
+    } on DioException catch (e) {
+      throw BeverageRequestSubmissionException(e);
+    }
+  }
+}
+
+final beverageRequestRepositoryProvider = Provider<BeverageRequestRepository>(
+  (ref) => BeverageRequestRepository(ref.read(dioProvider)),
+);

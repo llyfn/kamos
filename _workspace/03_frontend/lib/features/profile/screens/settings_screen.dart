@@ -86,6 +86,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   }
                 },
               ),
+              ListTile(
+                title: Text(l.submitBeverageRequestTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/beverage-requests/new'),
+              ),
               _SectionTitle(l.settingsDangerZone),
               ListTile(
                 title: Text(

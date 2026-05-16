@@ -544,4 +544,37 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get loadingLabel => '불러오는 중';
+
+  @override
+  String get submitBeverageRequestTitle => '음료 제안';
+
+  @override
+  String get submitBeverageRequestNameLabel => '이름';
+
+  @override
+  String get submitBeverageRequestBreweryLabel => '양조장';
+
+  @override
+  String get submitBeverageRequestCategoryLabel => '카테고리';
+
+  @override
+  String get submitBeverageRequestNotesLabel => '메모(선택)';
+
+  @override
+  String get submitBeverageRequestSubmitButton => '제출';
+
+  @override
+  String get submitBeverageRequestSuccessToast => '감사합니다 — 검토하겠습니다.';
+
+  @override
+  String get submitBeverageRequestErrorGeneric => '제출하지 못했습니다. 다시 시도하세요.';
+
+  @override
+  String get submitBeverageRequestNameRequired => '이름은 필수입니다.';
+
+  @override
+  String get submitBeverageRequestBreweryRequired => '양조장은 필수입니다.';
+
+  @override
+  String get searchSuggestMissingCta => '찾으시는 음료가 없나요? 제안해 주세요.';
 }
