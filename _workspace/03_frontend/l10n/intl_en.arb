@@ -183,6 +183,23 @@
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
   "publicCollectionsDiscoverCta": "Discover public collections",
 
+  "commentsTitle": "Comments",
+  "commentsEmpty": "No comments yet",
+  "commentsComposerHint": "Add a comment…",
+  "commentsSubmit": "Post",
+  "commentsDelete": "Delete",
+  "commentsDeleteConfirm": "Delete this comment?",
+  "commentsCharCount": "{count} / {max}",
+  "@commentsCharCount": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "commentsTooLong": "Comment too long (max 500 chars)",
+  "commentsPostFailed": "Could not post. Try again.",
+  "commentsLoadFailed": "Could not load comments",
+
   "inboxTitle": "Follow requests",
   "inboxApprove": "Approve",
   "inboxDecline": "Decline",

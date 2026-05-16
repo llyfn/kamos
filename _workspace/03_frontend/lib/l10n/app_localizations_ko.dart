@@ -473,6 +473,38 @@ class AppLocalizationsKo extends AppLocalizations {
   String get publicCollectionsDiscoverCta => '공개 컬렉션 둘러보기';
 
   @override
+  String get commentsTitle => '댓글';
+
+  @override
+  String get commentsEmpty => '아직 댓글이 없습니다';
+
+  @override
+  String get commentsComposerHint => '댓글 추가…';
+
+  @override
+  String get commentsSubmit => '게시';
+
+  @override
+  String get commentsDelete => '삭제';
+
+  @override
+  String get commentsDeleteConfirm => '이 댓글을 삭제하시겠어요?';
+
+  @override
+  String commentsCharCount(int count, int max) {
+    return '$count / $max';
+  }
+
+  @override
+  String get commentsTooLong => '댓글이 너무 깁니다 (최대 500자)';
+
+  @override
+  String get commentsPostFailed => '게시하지 못했습니다. 다시 시도하세요.';
+
+  @override
+  String get commentsLoadFailed => '댓글을 불러오지 못했습니다';
+
+  @override
   String get inboxTitle => '팔로우 요청';
 
   @override
