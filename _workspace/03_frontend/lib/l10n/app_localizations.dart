@@ -946,6 +946,24 @@ abstract class AppLocalizations {
   /// **'This removes the collection and all of its entries. The beverages themselves are unaffected.'**
   String get collectionsConfirmDeleteBody;
 
+  /// No description provided for @collectionVisibilityPublicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Public collection'**
+  String get collectionVisibilityPublicTitle;
+
+  /// No description provided for @collectionVisibilityPublicSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone can see this collection on the discover tab'**
+  String get collectionVisibilityPublicSubtitle;
+
+  /// No description provided for @collectionVisibilityPrivateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Only you can see this collection'**
+  String get collectionVisibilityPrivateSubtitle;
+
   /// No description provided for @inboxTitle.
   ///
   /// In en, this message translates to:

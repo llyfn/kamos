@@ -450,6 +450,15 @@ class AppLocalizationsJa extends AppLocalizations {
       'コレクションとそのすべてのエントリが削除されます。銘柄自体には影響しません。';
 
   @override
+  String get collectionVisibilityPublicTitle => '公開コレクション';
+
+  @override
+  String get collectionVisibilityPublicSubtitle => 'このコレクションは発見タブで誰でも見られます';
+
+  @override
+  String get collectionVisibilityPrivateSubtitle => 'このコレクションはあなただけが見られます';
+
+  @override
   String get inboxTitle => 'フォローリクエスト';
 
   @override

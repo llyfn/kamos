@@ -29,6 +29,19 @@ class CollectionRepository {
     return Collection.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// Phase 6 — updates only the `visibility` field. The server accepts a
+  /// partial PATCH; sending `visibility` alone leaves `name` untouched.
+  Future<Collection> updateVisibility(
+    String id,
+    CollectionVisibility visibility,
+  ) async {
+    final res = await dio.patch(
+      '/v1/collections/$id',
+      data: {'visibility': visibility.toWire()},
+    );
+    return Collection.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<void> delete(String id) async {
     await dio.delete('/v1/collections/$id');
   }
