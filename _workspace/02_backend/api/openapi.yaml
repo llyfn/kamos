@@ -872,6 +872,30 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   # ----- COLLECTIONS -----
+  /v1/collections/public:
+    get:
+      tags: [collections]
+      operationId: listPublicCollections
+      security: []
+      description: |
+        Phase 6a. Public discovery feed of collections users have flipped to
+        visibility = 'public'. OptionalAuth: works with or without a Bearer
+        token (response shape is identical). Cursor pagination on
+        (created_at, id) DESC.
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of public collections with owner attribution
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PageOfCollectionWithOwner" }
+
   /v1/collections:
     get:
       tags: [collections]
@@ -933,23 +957,25 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [collections]
-      operationId: renameCollection
+      operationId: updateCollection
+      description: |
+        Update a collection's name and/or visibility. At least one field
+        must be present in the body. Sending `{}` is a 422. Phase 6a
+        renamed this from `renameCollection` and added the `visibility`
+        field.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name]
-              properties:
-                name: { type: string, minLength: 1, maxLength: 50 }
+            schema: { $ref: "#/components/schemas/UpdateCollectionRequest" }
       responses:
         "200":
-          description: renamed
+          description: updated
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Collection" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
     delete:
       tags: [collections]
       operationId: deleteCollection
@@ -1930,13 +1956,54 @@ components:
 
     Collection:
       type: object
-      required: [id, name, entry_count, created_at, updated_at]
+      required: [id, name, entry_count, visibility, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string, minLength: 1, maxLength: 50 }
         entry_count: { type: integer }
+        visibility:
+          type: string
+          enum: [private, public]
+          default: private
+          description: |
+            Phase 6a. New collections default to `private`. Toggle via
+            PATCH /v1/collections/{id} with `{"visibility":"public"}`.
+            Public collections appear in GET /v1/collections/public.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    PublicCollectionOwner:
+      type: object
+      description: |
+        Slim owner attribution embedded in each row of
+        GET /v1/collections/public. Privacy-safe — never carries email.
+      required: [id, username, display_username, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_username: { type: string }
+        display_name: { type: string }
+        avatar_url: { type: string, format: uri, nullable: true }
+
+    CollectionWithOwner:
+      allOf:
+        - $ref: "#/components/schemas/Collection"
+        - type: object
+          required: [owner]
+          properties:
+            owner: { $ref: "#/components/schemas/PublicCollectionOwner" }
+
+    UpdateCollectionRequest:
+      type: object
+      description: |
+        PATCH /v1/collections/{id}. Both fields are optional in isolation;
+        at least one must be present (sending {} is a 422). Phase 6a added
+        `visibility`.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        visibility:
+          type: string
+          enum: [private, public]
 
     CollectionEntry:
       type: object
@@ -2027,6 +2094,14 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/Collection" }
+    PageOfCollectionWithOwner:
+      allOf:
+        - $ref: "#/components/schemas/PageBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/CollectionWithOwner" }
     PageOfCollectionEntry:
       allOf:
         - $ref: "#/components/schemas/PageBase"

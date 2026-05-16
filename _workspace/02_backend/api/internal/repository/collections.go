@@ -18,7 +18,7 @@ type CollectionRepo struct{ db *pgxpool.Pool }
 // List returns the user's live collections with entry counts.
 func (r *CollectionRepo) List(ctx context.Context, userID string) ([]domain.Collection, error) {
 	const q = `
-SELECT c.id, c.name, c.created_at, c.updated_at,
+SELECT c.id, c.name, c.visibility::text, c.created_at, c.updated_at,
        COUNT(ce.beverage_id)::int AS entry_count
 FROM collections c
 LEFT JOIN collection_entries ce ON ce.collection_id = c.id
@@ -33,7 +33,7 @@ ORDER BY c.created_at ASC;`
 	var out []domain.Collection
 	for rows.Next() {
 		var c domain.Collection
-		if err := rows.Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
 			return nil, fmt.Errorf("CollectionRepo.List scan: %w", err)
 		}
 		out = append(out, c)
@@ -44,9 +44,9 @@ ORDER BY c.created_at ASC;`
 func (r *CollectionRepo) Create(ctx context.Context, userID, name string) (*domain.Collection, error) {
 	const q = `
 INSERT INTO collections (user_id, name) VALUES ($1, $2)
-RETURNING id, name, created_at, updated_at;`
+RETURNING id, name, visibility::text, created_at, updated_at;`
 	var c domain.Collection
-	if err := r.db.QueryRow(ctx, q, userID, name).Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt); err != nil {
+	if err := r.db.QueryRow(ctx, q, userID, name).Scan(&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt); err != nil {
 		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
 			return nil, apierror.ErrConflict
 		}
@@ -57,30 +57,108 @@ RETURNING id, name, created_at, updated_at;`
 
 func (r *CollectionRepo) Get(ctx context.Context, userID, id string) (*domain.Collection, error) {
 	const q = `
-SELECT c.id, c.name, c.created_at, c.updated_at,
+SELECT c.id, c.name, c.visibility::text, c.created_at, c.updated_at,
        (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id)
 FROM collections c
 WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL;`
 	var c domain.Collection
-	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
+	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount); err != nil {
 		return nil, wrapNoRows("CollectionRepo.Get", err)
 	}
 	return &c, nil
 }
 
-func (r *CollectionRepo) Rename(ctx context.Context, userID, id, name string) (*domain.Collection, error) {
+// UpdateCollectionParams carries the fields that PATCH /v1/collections/{id}
+// can mutate. Both pointers nil means no-op (the handler rejects that at
+// validate time).
+type UpdateCollectionParams struct {
+	Name       *string
+	Visibility *string
+}
+
+// Update applies a partial update (name and/or visibility) to a collection
+// the caller owns. Returns the refreshed row. ErrNotFound when the row
+// doesn't exist / isn't owned by userID. ErrConflict on the name-uniqueness
+// index. The entry_count is recomputed via subquery so callers don't have
+// to.
+func (r *CollectionRepo) Update(ctx context.Context, userID, id string, p UpdateCollectionParams) (*domain.Collection, error) {
+	if p.Name == nil && p.Visibility == nil {
+		return r.Get(ctx, userID, id)
+	}
+	// COALESCE keeps the existing value when the pointer is nil. The cast on
+	// $4 lets us pass either a 'private'|'public' literal or NULL — Postgres
+	// won't deduce the type otherwise.
 	const q = `
-UPDATE collections SET name = $3
+UPDATE collections SET
+  name       = COALESCE($3, name),
+  visibility = COALESCE($4::collection_visibility, visibility)
 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
-RETURNING id, name, created_at, updated_at;`
+RETURNING id, name, visibility::text, created_at, updated_at,
+          (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = $1);`
 	var c domain.Collection
-	if err := r.db.QueryRow(ctx, q, id, userID, name).Scan(&c.ID, &c.Name, &c.CreatedAt, &c.UpdatedAt); err != nil {
+	if err := r.db.QueryRow(ctx, q, id, userID, p.Name, p.Visibility).Scan(
+		&c.ID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount,
+	); err != nil {
 		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
 			return nil, apierror.ErrConflict
 		}
-		return nil, wrapNoRows("CollectionRepo.Rename", err)
+		return nil, wrapNoRows("CollectionRepo.Update", err)
 	}
 	return &c, nil
+}
+
+// Rename is retained as a backwards-compatible thin wrapper around Update so
+// the existing handler signatures keep working until the next refactor pass.
+// New code should call Update directly.
+func (r *CollectionRepo) Rename(ctx context.Context, userID, id, name string) (*domain.Collection, error) {
+	return r.Update(ctx, userID, id, UpdateCollectionParams{Name: &name})
+}
+
+// ListPublic pages through the discovery feed of public collections,
+// joining the owner row for attribution. Cursor on (created_at, id),
+// most-recent-first. Soft-deleted owners are filtered out — the owner
+// JOIN is INNER, so a soft-deleted owner's public collection vanishes
+// from discovery.
+func (r *CollectionRepo) ListPublic(
+	ctx context.Context,
+	cursorTs *time.Time,
+	cursorID *string,
+	limit int,
+) ([]domain.CollectionWithOwner, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	const q = `
+SELECT
+  c.id, c.name, c.visibility::text, c.created_at, c.updated_at,
+  (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id) AS entry_count,
+  u.id, u.username, u.display_username, u.display_name, u.avatar_url
+FROM collections c
+JOIN users u ON u.id = c.user_id AND u.deleted_at IS NULL
+WHERE c.visibility = 'public'
+  AND c.deleted_at IS NULL
+  AND ($1::timestamptz IS NULL OR (c.created_at, c.id::text) < ($1::timestamptz, $2::text))
+ORDER BY c.created_at DESC, c.id DESC
+LIMIT $3;`
+	rows, err := r.db.Query(ctx, q, cursorTs, cursorID, limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("CollectionRepo.ListPublic: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.CollectionWithOwner, 0, limit+1)
+	for rows.Next() {
+		var row domain.CollectionWithOwner
+		if err := rows.Scan(
+			&row.Collection.ID, &row.Collection.Name, &row.Collection.Visibility,
+			&row.Collection.CreatedAt, &row.Collection.UpdatedAt, &row.Collection.EntryCount,
+			&row.Owner.ID, &row.Owner.Username, &row.Owner.DisplayUsername,
+			&row.Owner.DisplayName, &row.Owner.AvatarURL,
+		); err != nil {
+			return nil, fmt.Errorf("CollectionRepo.ListPublic scan: %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
 }
 
 func (r *CollectionRepo) SoftDelete(ctx context.Context, userID, id string) error {

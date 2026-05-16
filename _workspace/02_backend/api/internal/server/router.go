@@ -107,6 +107,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Get("/users/{username}/followers", h.GetUserFollowers)
 			r.Get("/users/{username}/following", h.GetUserFollowing)
 			r.Get("/check-ins/{id}", h.GetCheckin)
+
+			// Phase 6a — public collections discovery feed. OptionalAuth
+			// because the response shape is identical for anon and authed
+			// viewers; we add the middleware so a future "personalized
+			// discovery" overlay can plug in without re-routing.
+			r.Get("/collections/public", h.ListPublicCollections)
 		})
 
 		// Authed surface. Per-user limit on top of the global IP limit
@@ -157,7 +163,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Get("/collections", h.ListCollections)
 			r.Post("/collections", h.CreateCollection)
 			r.Get("/collections/{id}", h.GetCollection)
-			r.Patch("/collections/{id}", h.RenameCollection)
+			r.Patch("/collections/{id}", h.UpdateCollection)
 			r.Delete("/collections/{id}", h.DeleteCollection)
 			r.Post("/collections/{id}/entries", h.AddCollectionEntry)
 			r.Patch("/collections/{id}/entries/{beverage_id}", h.UpdateCollectionEntry)
