@@ -26,6 +26,10 @@ extension CollectionVisibilityParse on CollectionVisibility {
 abstract class Collection with _$Collection {
   const factory Collection({
     required String id,
+    // Phase 6a — owner_id is required on the wire (`Collection` schema in
+    // openapi.yaml). Used to gate owner-only UI such as the visibility toggle
+    // without an extra `/v1/users/me` lookup or a membership approximation.
+    required String ownerId,
     required String name,
     @Default(0) int entryCount,
     @Default(CollectionVisibility.private) CollectionVisibility visibility,
@@ -33,15 +37,28 @@ abstract class Collection with _$Collection {
     @Default('') String updatedAt,
   }) = _Collection;
 
-  factory Collection.fromJson(Map<String, dynamic> json) => Collection(
-        id: (json['id'] as String?) ?? '',
-        name: (json['name'] as String?) ?? '',
-        entryCount: (json['entry_count'] as int?) ?? 0,
-        visibility:
-            CollectionVisibilityParse.fromWire(json['visibility'] as String?),
-        createdAt: (json['created_at'] as String?) ?? '',
-        updatedAt: (json['updated_at'] as String?) ?? '',
+  factory Collection.fromJson(Map<String, dynamic> json) {
+    // `owner_id` is `required` in the OpenAPI schema; treat a missing or
+    // empty value as a hard parse error rather than silently defaulting to
+    // the empty string. A blank id would otherwise compare unequal to every
+    // real user id and silently demote the owner to a non-owner view.
+    final ownerId = (json['owner_id'] as String?) ?? '';
+    if (ownerId.isEmpty) {
+      throw const FormatException(
+        'Collection.fromJson: missing or empty required field `owner_id`',
       );
+    }
+    return Collection(
+      id: (json['id'] as String?) ?? '',
+      ownerId: ownerId,
+      name: (json['name'] as String?) ?? '',
+      entryCount: (json['entry_count'] as int?) ?? 0,
+      visibility:
+          CollectionVisibilityParse.fromWire(json['visibility'] as String?),
+      createdAt: (json['created_at'] as String?) ?? '',
+      updatedAt: (json['updated_at'] as String?) ?? '',
+    );
+  }
 }
 
 /// Owner attribution for a public collection (Phase 6 — `GET /v1/collections/public`).

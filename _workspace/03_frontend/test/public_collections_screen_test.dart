@@ -28,6 +28,7 @@ class _StubRepo implements PublicCollectionsRepository {
             CollectionWithOwner(
               collection: Collection(
                 id: 'c1',
+                ownerId: 'u1',
                 name: 'Late autumn picks',
                 entryCount: 5,
                 visibility: CollectionVisibility.public,

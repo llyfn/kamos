@@ -52,6 +52,7 @@ void main() {
         'items': [
           {
             'id': 'c1',
+            'owner_id': 'u1',
             'name': 'Late autumn picks',
             'entry_count': 5,
             'visibility': 'public',
@@ -64,6 +65,7 @@ void main() {
           },
           {
             'id': 'c2',
+            'owner_id': 'u2',
             'name': 'Honjozo only',
             'entry_count': 12,
             'visibility': 'public',
@@ -114,6 +116,7 @@ void main() {
         'items': [
           {
             'id': 'c1',
+            'owner_id': 'u1',
             'name': 'A',
             'owner': {
               'id': 'u1',

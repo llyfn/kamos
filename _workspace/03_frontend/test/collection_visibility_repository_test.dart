@@ -53,6 +53,7 @@ void main() {
     test('missing visibility key → CollectionVisibility.private', () {
       final c = Collection.fromJson(const {
         'id': 'c1',
+        'owner_id': 'u1',
         'name': 'Inventory',
         'entry_count': 3,
       });
@@ -62,6 +63,7 @@ void main() {
     test('visibility: "public" → CollectionVisibility.public', () {
       final c = Collection.fromJson(const {
         'id': 'c1',
+        'owner_id': 'u1',
         'name': 'Faves',
         'visibility': 'public',
       });
@@ -71,6 +73,7 @@ void main() {
     test('unknown visibility string falls back to private', () {
       final c = Collection.fromJson(const {
         'id': 'c1',
+        'owner_id': 'u1',
         'name': 'Faves',
         'visibility': 'something-weird',
       });
@@ -82,6 +85,7 @@ void main() {
     test('toggling to public PATCHes {"visibility":"public"}', () async {
       final adapter = _Adapter(body: const {
         'id': 'c1',
+        'owner_id': 'u1',
         'name': 'Inventory',
         'visibility': 'public',
       });
@@ -100,6 +104,7 @@ void main() {
     test('toggling to private PATCHes {"visibility":"private"}', () async {
       final adapter = _Adapter(body: const {
         'id': 'c1',
+        'owner_id': 'u1',
         'name': 'Inventory',
         'visibility': 'private',
       });
