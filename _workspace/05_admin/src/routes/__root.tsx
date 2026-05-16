@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router';
+import { ToastProvider } from '@/components/toast';
 import { clearTokens, getAccessToken } from '@/lib/tokens';
 
 interface RouterContext {
@@ -13,6 +14,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootLayout() {
   const loggedIn = getAccessToken() !== null;
   return (
+    <ToastProvider>
     <div className="min-h-full flex flex-col">
       <header className="border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)]">
         <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between">
@@ -61,5 +63,6 @@ function RootLayout() {
         </div>
       </main>
     </div>
+    </ToastProvider>
   );
 }
