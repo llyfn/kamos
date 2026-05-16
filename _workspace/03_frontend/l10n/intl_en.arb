@@ -72,6 +72,7 @@
   "venuePickerRateLimited": "Slow down — try again in a moment.",
   "feedCardAtVenue": "at {name} · {locality}",
   "@feedCardAtVenue": {
+    "description": "Feed card venue footer. Word order varies — placeholder order in the format string may differ between locales; method signature is positional (name, locality).",
     "placeholders": {
       "name": { "type": "String" },
       "locality": { "type": "String" }
