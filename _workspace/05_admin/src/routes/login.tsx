@@ -1,24 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import { api } from '@/lib/api';
 import { setTokens } from '@/lib/tokens';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
 });
-
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
-
-interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
-  user: { id: string; username: string };
-}
-
-interface MeResponse {
-  id: string;
-  username: string;
-  role: 'user' | 'moderator' | 'admin';
-}
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -32,26 +19,20 @@ function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      const loginRes = await fetch(`${API_BASE}/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data: auth, error: loginError, response } = await api.POST('/v1/auth/login', {
+        body: { email, password },
       });
-      if (!loginRes.ok) {
-        setError(loginRes.status === 401 ? 'Invalid credentials' : 'Login failed');
+      if (loginError || !auth) {
+        setError(response.status === 401 ? 'Invalid credentials' : 'Login failed');
         return;
       }
-      const auth = (await loginRes.json()) as AuthResponse;
       setTokens(auth.access_token, auth.refresh_token);
 
-      const meRes = await fetch(`${API_BASE}/v1/users/me`, {
-        headers: { Authorization: `Bearer ${auth.access_token}` },
-      });
-      if (!meRes.ok) {
+      const { data: me, error: meError } = await api.GET('/v1/users/me');
+      if (meError || !me) {
         setError('Could not fetch profile');
         return;
       }
-      const me = (await meRes.json()) as MeResponse;
       if (me.role !== 'admin' && me.role !== 'moderator') {
         setError('Insufficient privileges — admin or moderator role required.');
         return;
