@@ -1036,6 +1036,18 @@ abstract class AppLocalizations {
   /// **'Comment too long (max 500 chars)'**
   String get commentsTooLong;
 
+  /// No description provided for @commentsInvalidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment contains invalid characters'**
+  String get commentsInvalidBody;
+
+  /// No description provided for @commentsRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re commenting too fast. Try again in a moment.'**
+  String get commentsRateLimited;
+
   /// No description provided for @commentsPostFailed.
   ///
   /// In en, this message translates to:

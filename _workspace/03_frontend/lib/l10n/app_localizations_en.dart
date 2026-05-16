@@ -510,6 +510,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commentsTooLong => 'Comment too long (max 500 chars)';
 
   @override
+  String get commentsInvalidBody => 'Comment contains invalid characters';
+
+  @override
+  String get commentsRateLimited =>
+      'You\'re commenting too fast. Try again in a moment.';
+
+  @override
   String get commentsPostFailed => 'Could not post. Try again.';
 
   @override

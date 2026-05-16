@@ -499,6 +499,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get commentsTooLong => '댓글이 너무 깁니다 (최대 500자)';
 
   @override
+  String get commentsInvalidBody => '댓글에 사용할 수 없는 문자가 포함되어 있습니다';
+
+  @override
+  String get commentsRateLimited => '댓글 작성이 너무 잦습니다. 잠시 후 다시 시도하세요.';
+
+  @override
   String get commentsPostFailed => '게시하지 못했습니다. 다시 시도하세요.';
 
   @override

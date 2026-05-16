@@ -44,6 +44,14 @@ class CommentRepository {
     );
   }
 
+  /// Rejects C0 control bytes except `\t` (0x09) and `\n` (0x0A); also rejects
+  /// DEL (0x7F). Mirrors the server-side filter (`openapi.yaml` `Comment.body`)
+  /// and the beverage-request feature's input formatter — clients catch this
+  /// locally so the UI can show `commentsInvalidBody` rather than the generic
+  /// failure toast.
+  static final RegExp _controlCharRegex =
+      RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]');
+
   Future<Comment> create({
     required String checkInId,
     required String body,
@@ -51,11 +59,21 @@ class CommentRepository {
     if (body.length > 500) {
       throw const CommentTooLongException();
     }
-    final res = await _dio.post(
-      '/v1/check-ins/$checkInId/comments',
-      data: {'body': body},
-    );
-    return Comment.fromJson(res.data as Map<String, dynamic>);
+    if (_controlCharRegex.hasMatch(body)) {
+      throw const CommentInvalidBodyException();
+    }
+    try {
+      final res = await _dio.post(
+        '/v1/check-ins/$checkInId/comments',
+        data: {'body': body},
+      );
+      return Comment.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 429) {
+        throw const CommentRateLimitedException();
+      }
+      rethrow;
+    }
   }
 
   Future<void> deleteOwn(String commentId) async {

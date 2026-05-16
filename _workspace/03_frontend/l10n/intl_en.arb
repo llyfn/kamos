@@ -197,6 +197,8 @@
     }
   },
   "commentsTooLong": "Comment too long (max 500 chars)",
+  "commentsInvalidBody": "Comment contains invalid characters",
+  "commentsRateLimited": "You're commenting too fast. Try again in a moment.",
   "commentsPostFailed": "Could not post. Try again.",
   "commentsLoadFailed": "Could not load comments",
   "commentsLoadEarlier": "Load earlier comments",

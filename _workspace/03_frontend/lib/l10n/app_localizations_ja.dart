@@ -499,6 +499,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commentsTooLong => 'コメントが長すぎます（最大500文字）';
 
   @override
+  String get commentsInvalidBody => 'コメントに使用できない文字が含まれています';
+
+  @override
+  String get commentsRateLimited => 'コメント投稿が頻繁すぎます。少し時間を置いてからもう一度お試しください。';
+
+  @override
   String get commentsPostFailed => '投稿できませんでした。再試行してください。';
 
   @override

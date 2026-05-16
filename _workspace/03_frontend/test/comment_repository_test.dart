@@ -142,6 +142,49 @@ void main() {
       );
       expect(adapter.calls, 0);
     });
+
+    test(
+        'body with a control character throws CommentInvalidBodyException '
+        'without a request', () async {
+      final adapter = _Adapter(status: 200, body: const {});
+      final repo = CommentRepository(_dio(adapter));
+
+      await expectLater(
+        repo.create(checkInId: 'ci42', body: 'hello\x00world'),
+        throwsA(isA<CommentInvalidBodyException>()),
+      );
+      expect(adapter.calls, 0);
+    });
+
+    test('allows tab and newline (only C0 controls outside \\t\\n are denied)',
+        () async {
+      final adapter = _Adapter(status: 201, body: const {
+        'id': 'cm-new',
+        'check_in_id': 'ci42',
+        'user': {'id': 'u1', 'username': 'mai'},
+        'body': 'line1\nline2\tend',
+        'created_at': '2026-05-02T00:00:00Z',
+      });
+      final repo = CommentRepository(_dio(adapter));
+
+      final c =
+          await repo.create(checkInId: 'ci42', body: 'line1\nline2\tend');
+      expect(c.id, 'cm-new');
+      expect(adapter.calls, 1);
+    });
+
+    test('429 response surfaces CommentRateLimitedException', () async {
+      final adapter = _Adapter(
+        status: 429,
+        body: const {'error': 'rate limited'},
+      );
+      final repo = CommentRepository(_dio(adapter));
+
+      await expectLater(
+        repo.create(checkInId: 'ci42', body: 'ok body'),
+        throwsA(isA<CommentRateLimitedException>()),
+      );
+    });
   });
 
   group('CommentRepository.deleteOwn', () {
