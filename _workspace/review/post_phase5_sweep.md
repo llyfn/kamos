@@ -6,7 +6,7 @@ Pattern captured at: `~/.claude/projects/-Users-eomtii-Desktop-kamos/memory/feed
 
 This is the first sweep. Future sweeps fire after each phase's final cross-layer QA returns PASS.
 
-## Commits applied (7 in this sweep)
+## Commits applied (9 in this sweep)
 
 | # | Commit | Layer | Closes |
 |---|---|---|---|
@@ -17,6 +17,8 @@ This is the first sweep. Future sweeps fire after each phase's final cross-layer
 | 5 | `8fe14bc` | flutter | Phase 4 STYLE-008 (`venue_repository.dart:62` Sentry hook on malformed 200) + Phase 4 STYLE-006 (`@feedCardAtVenue.description` metadata in all 3 ARBs) |
 | 6 | `795ece4` | flutter | Phase 5 MINOR #2 (dedicated `settingsSuggestBeverage` ARB key) + Phase 5 MINOR #3 (search empty-state CTA gating) + Phase 4 STYLE-003 (`_FakeRepo` venue-path test coverage) |
 | 7 | `db37cce` | admin | Phase 5 MINOR #4 (wire `RoleGuard` per-route on `/queue`, `/users`, `/checkins`; renders friendly "Insufficient privileges" panel on role mismatch) |
+| 8 | `f818b69` | backend | Residual — file rename `softdelete_cache.go` → `soft_delete_cache.go` (per snake_case convention; `git mv` preserves blame at 97/94/100% similarity) + AdminSuspendUser SQL rationale comment (demotes role to 'user' BEFORE soft-delete so un-suspend tooling can't auto-restore admin) |
+| 9 | `86e3e8b` | flutter | Residual — settings "Suggest a beverage" menu reachable when `meProvider` errors + `Me.role` field exposed as `UserRole` enum (`user / moderator / admin`) with `.fromWire/.toWire` mapper |
 
 ## Commits skipped (stale premise — agents correctly refused to invent work)
 
@@ -31,9 +33,9 @@ This is the first sweep. Future sweeps fire after each phase's final cross-layer
 |---|---|---|---|
 | Backend unit | 121 | **125** | +4 (sentry scrubber tests) |
 | Backend integration | 71 | **72** | +1 (silent-drop branches) |
-| Flutter | 45 | **46** | +1 (venue-path repo capture) |
+| Flutter | 45 | **56** | +11 (venue-path capture + Me.role × 3 + settings reachability + others from residual) |
 | Admin client (Vitest) | 5 | **8** | +3 (RoleGuard match/mismatch/loading) |
-| **Total** | 242 | **251** | **+9** |
+| **Total** | 242 | **261** | **+19** |
 
 All green: `go build ./...`, `go test ./...`, `flutter analyze`, `flutter test`, `tsc --noEmit`, `vite build`.
 
