@@ -1359,6 +1359,77 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/admin/comments:
+    get:
+      tags: [admin]
+      operationId: adminListComments
+      description: |
+        Phase 6a. Moderator/admin review queue for comments. `status` is
+        one of:
+          - `visible` (default) — returns all comments (both live and
+            soft-deleted; the row carries `deleted_at` for distinguishing).
+          - `deleted` — only soft-deleted rows. Most-recent moderation
+            metadata is joined from `moderation_log`.
+        Cursor pagination on (created_at, id) DESC.
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema: { type: string, enum: [visible, deleted], default: visible }
+        - in: query
+          name: cursor
+          required: false
+          schema: { type: string }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of comments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, has_more]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminComment" }
+                  next_cursor: { type: string, nullable: true }
+                  has_more: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/comments/{id}/moderate:
+    post:
+      tags: [admin]
+      operationId: adminModerateComment
+      description: |
+        Phase 6a. Soft-delete a comment regardless of ownership. Moderator
+        or admin role. Optional `notes` are recorded on the
+        moderation_log row and the structured access log.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes: { type: string, maxLength: 1000 }
+      responses:
+        "204":
+          description: moderated
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /v1/admin/users:
     get:
       tags: [admin]
@@ -2326,3 +2397,25 @@ components:
       required: [role]
       properties:
         role: { $ref: "#/components/schemas/UserRole" }
+
+    AdminComment:
+      type: object
+      description: |
+        Phase 6a. Comment row for the moderator review queue. Embeds the
+        same Comment shape returned by /v1/check-ins/{id}/comments and
+        adds the most-recent moderation_log metadata (notes /
+        moderated_by / moderated_at) when present.
+      allOf:
+        - $ref: "#/components/schemas/Comment"
+        - type: object
+          properties:
+            moderation_notes: { type: string, nullable: true }
+            moderated_by:
+              type: string
+              format: uuid
+              nullable: true
+              description: moderator user id; null when never moderated
+            moderated_at:
+              type: string
+              format: date-time
+              nullable: true
