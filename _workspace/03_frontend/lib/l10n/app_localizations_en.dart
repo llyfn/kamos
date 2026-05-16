@@ -516,6 +516,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commentsLoadFailed => 'Could not load comments';
 
   @override
+  String feedCardCommentsCountLabel(int count) {
+    return '$count comments';
+  }
+
+  @override
   String get inboxTitle => 'Follow requests';
 
   @override

@@ -199,6 +199,8 @@
   "commentsTooLong": "Comment too long (max 500 chars)",
   "commentsPostFailed": "Could not post. Try again.",
   "commentsLoadFailed": "Could not load comments",
+  "feedCardCommentsCountLabel": "{count} comments",
+  "@feedCardCommentsCountLabel": { "placeholders": { "count": { "type": "int" } } },
 
   "inboxTitle": "Follow requests",
   "inboxApprove": "Approve",

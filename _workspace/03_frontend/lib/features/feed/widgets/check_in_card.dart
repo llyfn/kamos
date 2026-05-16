@@ -199,6 +199,13 @@ class CheckInCard extends StatelessWidget {
                   active: item.youToasted,
                   onTap: onToast,
                 ),
+                const SizedBox(width: 8),
+                _CommentBadge(
+                  count: item.commentCount,
+                  semanticLabel:
+                      l.feedCardCommentsCountLabel(item.commentCount),
+                  onTap: () => context.push('/check-ins/${item.id}'),
+                ),
               ],
             ),
           ],
@@ -210,5 +217,57 @@ class CheckInCard extends StatelessWidget {
   String _truncated(String text, int max, String moreLabel) {
     if (text.length <= max) return text;
     return '${text.substring(0, max)}… $moreLabel';
+  }
+}
+
+/// Phase 6 — comment count badge mirroring the KanpaiButton silhouette.
+/// Renders the comment glyph + numeric count; tapping pushes to the check-in
+/// detail.
+class _CommentBadge extends StatelessWidget {
+  const _CommentBadge({
+    required this.count,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+
+  final int count;
+  final String semanticLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            border: Border.all(color: t.border2),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.mode_comment_outlined, size: 16, color: t.fg2),
+              const SizedBox(width: 6),
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: t.fg2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

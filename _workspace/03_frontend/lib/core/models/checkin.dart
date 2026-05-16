@@ -110,6 +110,9 @@ abstract class FeedItem with _$FeedItem {
     @Default(0) int toasts,
     @Default(false) bool youToasted,
     @Default(0) int photoCount,
+    // Phase 6 — server-aggregated comment count. Defaults to 0 so older
+    // servers (or omitted-key responses) remain wire-compatible.
+    @Default(0) int commentCount,
     @Default('') String createdAt,
   }) = _FeedItem;
 
@@ -132,6 +135,7 @@ abstract class FeedItem with _$FeedItem {
         toasts: (json['toasts'] as int?) ?? 0,
         youToasted: (json['you_toasted'] as bool?) ?? false,
         photoCount: (json['photo_count'] as int?) ?? 0,
+        commentCount: (json['comment_count'] as int?) ?? 0,
         createdAt: (json['created_at'] as String?) ?? '',
       );
 }

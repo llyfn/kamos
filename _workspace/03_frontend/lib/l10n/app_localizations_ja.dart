@@ -505,6 +505,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commentsLoadFailed => 'コメントを読み込めませんでした';
 
   @override
+  String feedCardCommentsCountLabel(int count) {
+    return '$count件のコメント';
+  }
+
+  @override
   String get inboxTitle => 'フォローリクエスト';
 
   @override
