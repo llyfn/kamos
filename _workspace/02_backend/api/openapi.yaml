@@ -1444,9 +1444,21 @@ components:
       allOf:
         - $ref: "#/components/schemas/User"
         - type: object
-          required: [stats]
+          required: [stats, role]
           properties:
             stats: { $ref: "#/components/schemas/UserStats" }
+            role:
+              # Phase 5a: surfaces RBAC state so the admin client can branch
+              # on privileges. Read fresh from users.role on every request.
+              $ref: "#/components/schemas/UserRole"
+            deleted_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: |
+                Soft-delete timestamp. Normally null; non-null only in the
+                rare window between admin suspension and SoftDeleteCache
+                refresh.
 
     PublicUser:
       type: object
