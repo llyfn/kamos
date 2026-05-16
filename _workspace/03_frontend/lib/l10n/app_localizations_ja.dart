@@ -508,6 +508,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commentsLoadEarlier => '以前のコメントを読み込む';
 
   @override
+  String get collectionVisibilityChangeFailed =>
+      '公開設定を変更できませんでした。このコレクションの所有者ではない可能性があります。';
+
+  @override
   String feedCardCommentsCountLabel(int count) {
     return '$count件のコメント';
   }

@@ -200,6 +200,7 @@
   "commentsPostFailed": "投稿できませんでした。再試行してください。",
   "commentsLoadFailed": "コメントを読み込めませんでした",
   "commentsLoadEarlier": "以前のコメントを読み込む",
+  "collectionVisibilityChangeFailed": "公開設定を変更できませんでした。このコレクションの所有者ではない可能性があります。",
   "feedCardCommentsCountLabel": "{count}件のコメント",
   "@feedCardCommentsCountLabel": { "placeholders": { "count": { "type": "int" } } },
 

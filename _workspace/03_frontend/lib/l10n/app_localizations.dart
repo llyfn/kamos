@@ -1054,6 +1054,12 @@ abstract class AppLocalizations {
   /// **'Load earlier comments'**
   String get commentsLoadEarlier;
 
+  /// No description provided for @collectionVisibilityChangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change visibility. You may not own this collection.'**
+  String get collectionVisibilityChangeFailed;
+
   /// No description provided for @feedCardCommentsCountLabel.
   ///
   /// In en, this message translates to:
