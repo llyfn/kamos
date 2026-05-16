@@ -423,6 +423,59 @@ export interface paths {
         patch: operations["updateCheckin"];
         trace?: never;
     };
+    "/v1/check-ins/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * @description Phase 6a. Flat list of comments on a check-in, most-recent-first.
+         *     OptionalAuth — works with or without a Bearer token. Cursor
+         *     pagination on (created_at, id) DESC; soft-deleted rows are
+         *     excluded.
+         */
+        get: operations["listComments"];
+        put?: never;
+        /**
+         * @description Phase 6a. Post a comment on a check-in. Rate-limited to 3 rps /
+         *     burst 6 per authed user on top of the global authed limit. Body is
+         *     1..500 chars; NUL byte and ASCII C0 control characters except tab
+         *     / newline are rejected with a 422.
+         */
+        post: operations["createComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Phase 6a. Soft-delete a comment. Allowed if the caller owns the
+         *     comment OR holds moderator/admin role. Moderator/admin path also
+         *     writes a moderation_log row with optional `notes` from the body.
+         */
+        delete: operations["deleteComment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/check-ins/{id}/photos": {
         parameters: {
             query?: never;
@@ -613,6 +666,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/collections/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Phase 6a. Public discovery feed of collections users have flipped to
+         *     visibility = 'public'. OptionalAuth: works with or without a Bearer
+         *     token (response shape is identical). Cursor pagination on
+         *     (created_at, id) DESC.
+         */
+        get: operations["listPublicCollections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/collections": {
         parameters: {
             query?: never;
@@ -641,13 +716,25 @@ export interface paths {
             };
             cookie?: never;
         };
+        /**
+         * @description Phase 6a. OptionalAuth: owner reads their own row (any
+         *     visibility); anyone (including anonymous viewers) reads a
+         *     `visibility=public` row. Private rows for non-owners collapse
+         *     to 404 — we do not leak existence.
+         */
         get: operations["getCollection"];
         put?: never;
         post?: never;
         delete: operations["deleteCollection"];
         options?: never;
         head?: never;
-        patch: operations["renameCollection"];
+        /**
+         * @description Update a collection's name and/or visibility. At least one field
+         *     must be present in the body. Sending `{}` is a 422. Phase 6a
+         *     renamed this from `renameCollection` and added the `visibility`
+         *     field.
+         */
+        patch: operations["updateCollection"];
         trace?: never;
     };
     "/v1/collections/{id}/entries": {
@@ -842,6 +929,52 @@ export interface paths {
          *     Optional notes are recorded in the structured access log.
          */
         post: operations["adminModerateCheckin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Phase 6a. Moderator/admin review queue for comments. `status` is
+         *     one of:
+         *       - `visible` (default) — returns all comments (both live and
+         *         soft-deleted; the row carries `deleted_at` for distinguishing).
+         *       - `deleted` — only soft-deleted rows. Most-recent moderation
+         *         metadata is joined from `moderation_log`.
+         *     Cursor pagination on (created_at, id) DESC.
+         */
+        get: operations["adminListComments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/comments/{id}/moderate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Phase 6a. Soft-delete a comment regardless of ownership. Moderator
+         *     or admin role. Optional `notes` are recorded on the
+         *     moderation_log row and the structured access log.
+         */
+        post: operations["adminModerateComment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1218,6 +1351,8 @@ export interface components {
             venue?: components["schemas"]["VenueRef"];
             toasts: number;
             you_toasted: boolean;
+            /** @default 0 */
+            comment_count: number;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1346,10 +1481,31 @@ export interface components {
             toasts: number;
             you_toasted: boolean;
             photo_count: number;
+            /** @default 0 */
+            comment_count: number;
             /** @description Absent when the check-in has no venue attached. */
             venue?: components["schemas"]["VenueRef"] | null;
             /** Format: date-time */
             created_at: string;
+        };
+        /**
+         * @description Phase 6a. Flat comment on a check-in. `user` embeds the slim
+         *     CheckinUser shape — email + email_verified are NEVER on the wire.
+         */
+        Comment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            check_in_id: string;
+            user: components["schemas"]["CheckinUser"];
+            body: string;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description Server-side-filtered on list; exposed for completeness.
+             */
+            deleted_at?: string | null;
         };
         FollowRequest: {
             /** Format: uuid */
@@ -1381,12 +1537,54 @@ export interface components {
         Collection: {
             /** Format: uuid */
             id: string;
+            /**
+             * Format: uuid
+             * @description Phase 6a. The user_id of the collection's owner. Exposed so
+             *     clients can gate owner-only UI (visibility toggle, edit
+             *     controls) without a separate /v1/users/me round trip and
+             *     without leaking the owner's email or other private fields.
+             */
+            owner_id: string;
             name: string;
             entry_count: number;
+            /**
+             * @description Phase 6a. New collections default to `private`. Toggle via
+             *     PATCH /v1/collections/{id} with `{"visibility":"public"}`.
+             *     Public collections appear in GET /v1/collections/public.
+             * @default private
+             * @enum {string}
+             */
+            visibility: "private" | "public";
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        /**
+         * @description Slim owner attribution embedded in each row of
+         *     GET /v1/collections/public. Privacy-safe — never carries email.
+         */
+        PublicCollectionOwner: {
+            /** Format: uuid */
+            id: string;
+            username: string;
+            display_username: string;
+            display_name: string;
+            /** Format: uri */
+            avatar_url?: string | null;
+        };
+        CollectionWithOwner: components["schemas"]["Collection"] & {
+            owner: components["schemas"]["PublicCollectionOwner"];
+        };
+        /**
+         * @description PATCH /v1/collections/{id}. Both fields are optional in isolation;
+         *     at least one must be present (sending {} is a 422). Phase 6a added
+         *     `visibility`.
+         */
+        UpdateCollectionRequest: {
+            name?: string;
+            /** @enum {string} */
+            visibility?: "private" | "public";
         };
         CollectionEntry: {
             beverage: components["schemas"]["BeverageRef"];
@@ -1420,6 +1618,9 @@ export interface components {
         PageOfFeedItem: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["FeedItem"][];
         };
+        PageOfComment: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["Comment"][];
+        };
         PageOfFollowRequest: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["FollowRequest"][];
         };
@@ -1428,6 +1629,9 @@ export interface components {
         };
         PageOfCollection: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["Collection"][];
+        };
+        PageOfCollectionWithOwner: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["CollectionWithOwner"][];
         };
         PageOfCollectionEntry: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["CollectionEntry"][];
@@ -1496,6 +1700,22 @@ export interface components {
         };
         AdminUserRoleUpdate: {
             role: components["schemas"]["UserRole"];
+        };
+        /**
+         * @description Phase 6a. Comment row for the moderator review queue. Embeds the
+         *     same Comment shape returned by /v1/check-ins/{id}/comments and
+         *     adds the most-recent moderation_log metadata (notes /
+         *     moderated_by / moderated_at) when present.
+         */
+        AdminComment: components["schemas"]["Comment"] & {
+            moderation_notes?: string | null;
+            /**
+             * Format: uuid
+             * @description moderator user id; null when never moderated
+             */
+            moderated_by?: string | null;
+            /** Format: date-time */
+            moderated_at?: string | null;
         };
     };
     responses: {
@@ -2223,6 +2443,91 @@ export interface operations {
             };
         };
     };
+    listComments: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of comments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfComment"];
+                };
+            };
+        };
+    };
+    createComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    body: string;
+                };
+            };
+        };
+        responses: {
+            /** @description created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    deleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description soft-deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     addCheckinPhoto: {
         parameters: {
             query?: never;
@@ -2552,6 +2857,29 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listPublicCollections: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of public collections with owner attribution */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfCollectionWithOwner"];
+                };
+            };
+        };
+    };
     listCollections: {
         parameters: {
             query?: never;
@@ -2653,7 +2981,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    renameCollection: {
+    updateCollection: {
         parameters: {
             query?: {
                 cursor?: string;
@@ -2667,13 +2995,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["UpdateCollectionRequest"];
             };
         };
         responses: {
-            /** @description renamed */
+            /** @description updated */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2683,6 +3009,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
         };
     };
     addCollectionEntry: {
@@ -2968,6 +3295,66 @@ export interface operations {
         };
     };
     adminModerateCheckin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description moderated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminListComments: {
+        parameters: {
+            query?: {
+                status?: "visible" | "deleted";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of comments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["AdminComment"][];
+                        next_cursor?: string | null;
+                        has_more: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminModerateComment: {
         parameters: {
             query?: never;
             header?: never;
