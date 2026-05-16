@@ -6,7 +6,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({ routesDirectory: 'src/routes', generatedRouteTree: 'src/routeTree.gen.ts' }),
+    TanStackRouterVite({
+      routesDirectory: 'src/routes',
+      generatedRouteTree: 'src/routeTree.gen.ts',
+      routeFileIgnorePattern: '\\.test\\.(t|j)sx?$',
+    }),
     react(),
     tailwindcss(),
   ],
