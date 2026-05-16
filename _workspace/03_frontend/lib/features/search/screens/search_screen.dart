@@ -193,11 +193,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               glyph: '—',
                               title: l.searchNoResultsTitle,
                               body: l.searchNoResultsBody,
-                              action: TextButton(
-                                onPressed: () => context
-                                    .push('/beverage-requests/new'),
-                                child: Text(l.searchSuggestMissingCta),
-                              ),
+                              // Only offer the "suggest a beverage" CTA when
+                              // the user has actually issued a search.
+                              // Cold-start (zero query + no filter) just shows
+                              // the empty copy — the catalog being empty is
+                              // not something the user can suggest their way
+                              // out of.
+                              action: (_q.text.isNotEmpty || _category != null)
+                                  ? TextButton(
+                                      onPressed: () => context
+                                          .push('/beverage-requests/new'),
+                                      child:
+                                          Text(l.searchSuggestMissingCta),
+                                    )
+                                  : null,
                             )
                           : NotificationListener<ScrollNotification>(
                               onNotification: (s) {

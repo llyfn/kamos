@@ -553,6 +553,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loadingLabel => 'Loading';
 
   @override
+  String get settingsSuggestBeverage => 'Suggest a beverage';
+
+  @override
   String get submitBeverageRequestTitle => 'Suggest a beverage';
 
   @override

@@ -543,6 +543,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get loadingLabel => '読み込み中';
 
   @override
+  String get settingsSuggestBeverage => '飲料を提案';
+
+  @override
   String get submitBeverageRequestTitle => '飲料を提案';
 
   @override

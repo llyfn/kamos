@@ -1132,6 +1132,12 @@ abstract class AppLocalizations {
   /// **'Loading'**
   String get loadingLabel;
 
+  /// No description provided for @settingsSuggestBeverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a beverage'**
+  String get settingsSuggestBeverage;
+
   /// No description provided for @submitBeverageRequestTitle.
   ///
   /// In en, this message translates to:

@@ -24,6 +24,7 @@ import 'package:kamos/core/models/category_label.dart';
 import 'package:kamos/core/models/checkin.dart';
 import 'package:kamos/core/models/flavor_tag.dart';
 import 'package:kamos/core/models/i18n_text.dart';
+import 'package:kamos/core/models/venue.dart';
 import 'package:kamos/features/check_in/providers/checkin_providers.dart';
 import 'package:kamos/features/check_in/repository/checkin_repository.dart';
 import 'package:kamos/features/check_in/screens/check_in_screen.dart';
@@ -48,6 +49,11 @@ class _FakeRepo extends CheckInRepository {
   final List<String> uploadCalls = [];
   final List<double> progressReports = [];
 
+  /// Captures the `venue` map passed to the most recent `create` call so
+  /// venue-path tests can assert against `foursquare_id` etc.
+  Map<String, dynamic>? lastVenue;
+  int createCalls = 0;
+
   @override
   Future<Checkin> create({
     required String beverageId,
@@ -60,6 +66,8 @@ class _FakeRepo extends CheckInRepository {
     String? servingStyle,
     Map<String, dynamic>? venue,
   }) async {
+    createCalls += 1;
+    lastVenue = venue;
     return const Checkin(
       id: 'chk-1',
       user: CheckinUser(
@@ -154,5 +162,53 @@ void main() {
     // Smoke: screen mounts, both seeded photo tiles render the camera icon
     // (idle state), plus two more empty slots = 4 total tiles.
     expect(find.byIcon(Icons.photo_camera_outlined), findsAtLeastNWidgets(2));
+  });
+
+  testWidgets(
+      'seeded venue is forwarded to repository.create as foursquare_id payload',
+      (tester) async {
+    // Drives the venue path without needing to open the bottom-sheet picker
+    // (which would require a `dioProvider` override + stubbed Foursquare
+    // adapter). The `initialVenue` test seam mirrors what the picker would
+    // call `setState(_venue = picked)` with.
+    final repo = _FakeRepo();
+    const seeded = FoursquarePlace(
+      foursquareId: 'fsq-x',
+      name: 'Bar X',
+      locality: 'Shibuya',
+      country: 'JP',
+    );
+
+    Checkin? captured;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          checkInRepositoryProvider.overrideWithValue(repo),
+          flavorTagsProvider.overrideWith((ref) async => const <FlavorTag>[]),
+        ],
+        child: _wrap(
+          CheckInScreen(
+            beverage: _beverage,
+            initialVenue: seeded,
+            onSubmitted: (c) => captured = c,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap the "Post" action button to fire `_submit`.
+    await tester.tap(find.text('Post'));
+    await tester.pumpAndSettle();
+
+    expect(repo.createCalls, 1);
+    expect(captured, isNotNull,
+        reason: 'onSubmitted should fire after a successful create');
+    expect(repo.lastVenue, isNotNull,
+        reason: 'create should receive a venue map when a venue is picked');
+    expect(repo.lastVenue!['foursquare_id'], 'fsq-x');
+    expect(repo.lastVenue!['name'], 'Bar X');
+    expect(repo.lastVenue!['locality'], 'Shibuya');
+    expect(repo.lastVenue!['country'], 'JP');
   });
 }
