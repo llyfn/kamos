@@ -26,6 +26,12 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin validate", err)
 		return
 	}
+	// Phase 4 — SEC-001: bound + sanitize venue strings before the upsert path
+	// to keep poisoned payloads out of the shared venues table.
+	if err := req.Venue.Validate(); err != nil {
+		h.writeErr(w, "CreateCheckin validate venue", err)
+		return
+	}
 	exists, err := h.Repos.Beverages.Exists(r.Context(), req.BeverageID)
 	if err != nil {
 		h.writeErr(w, "CreateCheckin exists", err)

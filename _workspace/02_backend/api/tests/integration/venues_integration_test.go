@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -111,8 +112,9 @@ func TestCreateCheckinWithFoursquareVenueUpserts(t *testing.T) {
 		t.Errorf("check-ins with venue_id = %d (want 1)", ciVenueLinked)
 	}
 
-	// Second check-in, same fsq id, slightly updated name to verify upsert
-	// updates the existing row (not insert a duplicate).
+	// Second check-in, same fsq id, different claimed name — must reuse the
+	// existing row (no duplicate insert) AND keep the original name
+	// (first-writer-wins per SEC-002).
 	body2 := map[string]any{
 		"beverage_id": bevID,
 		"venue": map[string]any{
@@ -136,8 +138,8 @@ func TestCreateCheckinWithFoursquareVenueUpserts(t *testing.T) {
 	if venue2["id"] != firstVenueID {
 		t.Errorf("upsert produced new id: first=%s second=%v", firstVenueID, venue2["id"])
 	}
-	if venue2["name"] != "Daikoku (renamed)" {
-		t.Errorf("venue name not updated: %v", venue2["name"])
+	if venue2["name"] != "Daikoku" {
+		t.Errorf("venue name overwritten: got %v (want Daikoku — first-writer-wins)", venue2["name"])
 	}
 
 	// Still exactly one row keyed by the fsq id.
@@ -187,6 +189,125 @@ RETURNING id;`).Scan(&venueID); err != nil {
 	}
 	if v["name"] != "PreExisting Bar" {
 		t.Errorf("venue.name: %v", v["name"])
+	}
+}
+
+// SEC-001: oversized venue.name (rune length > 200) is rejected with 422
+// VALIDATION before any DB write.
+func TestCheckinVenueValidation_RejectsOversizedName(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, _ := mustRegister(t, srv, "bigname", "bigname@example.com", "password11")
+	bevID := seedBeverage(t, "OversizedName")
+
+	bigName := strings.Repeat("a", 201)
+	body := map[string]any{
+		"beverage_id": bevID,
+		"venue": map[string]any{
+			"foursquare_id": "fsq-too-big",
+			"name":          bigName,
+		},
+	}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, body)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d body=%s", code, raw)
+	}
+	var e errBodyShape
+	if err := json.Unmarshal(raw, &e); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if e.Code != "VALIDATION" {
+		t.Errorf("code: %q (want VALIDATION)", e.Code)
+	}
+}
+
+// SEC-001: ASCII control char (< 0x20, not tab) in venue.name is rejected.
+func TestCheckinVenueValidation_RejectsControlChars(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, _ := mustRegister(t, srv, "ctrlchr", "ctrlchr@example.com", "password11")
+	bevID := seedBeverage(t, "CtrlChars")
+
+	body := map[string]any{
+		"beverage_id": bevID,
+		"venue": map[string]any{
+			"foursquare_id": "fsq-ctrl",
+			"name":          "Bad\x01Name",
+		},
+	}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, body)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d body=%s", code, raw)
+	}
+	var e errBodyShape
+	if err := json.Unmarshal(raw, &e); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if e.Code != "VALIDATION" {
+		t.Errorf("code: %q (want VALIDATION)", e.Code)
+	}
+}
+
+// SEC-002: second check-in with the same foursquare_id must NOT overwrite
+// the existing venue row's name/address/coords. First-writer-wins.
+func TestVenueUpsertIsFirstWriterWins(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok1, _ := mustRegister(t, srv, "first", "first@example.com", "password11")
+	tok2, _ := mustRegister(t, srv, "second", "second@example.com", "password11")
+	bevID := seedBeverage(t, "FirstWriter")
+
+	originalAddr := "1-1 Marunouchi"
+	body1 := map[string]any{
+		"beverage_id": bevID,
+		"venue": map[string]any{
+			"foursquare_id": "fsq-first-writer",
+			"name":          "Original",
+			"address":       originalAddr,
+			"country":       "JP",
+		},
+	}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok1, body1)
+	if code != http.StatusCreated {
+		t.Fatalf("first checkin: status=%d body=%s", code, raw)
+	}
+
+	body2 := map[string]any{
+		"beverage_id": bevID,
+		"venue": map[string]any{
+			"foursquare_id": "fsq-first-writer",
+			"name":          "Hijacked",
+			"address":       "Attacker Plaza",
+			"country":       "ZZ",
+		},
+	}
+	code, raw = doReq(t, srv, http.MethodPost, "/v1/check-ins", tok2, body2)
+	if code != http.StatusCreated {
+		t.Fatalf("second checkin: status=%d body=%s", code, raw)
+	}
+
+	// The shared venue row must still hold the original values.
+	p := getPool(t)
+	var dbName, dbAddr, dbCountry string
+	if err := p.QueryRow(context.Background(), `
+SELECT name, address, country FROM venues WHERE foursquare_id = $1;`,
+		"fsq-first-writer").Scan(&dbName, &dbAddr, &dbCountry); err != nil {
+		t.Fatalf("read venue row: %v", err)
+	}
+	if dbName != "Original" {
+		t.Errorf("venue.name = %q (want Original — second writer overwrote)", dbName)
+	}
+	if dbAddr != originalAddr {
+		t.Errorf("venue.address = %q (want %q)", dbAddr, originalAddr)
+	}
+	if dbCountry != "JP" {
+		t.Errorf("venue.country = %q (want JP)", dbCountry)
 	}
 }
 
