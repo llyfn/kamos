@@ -208,6 +208,11 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(modOrAdmin).Post("/check-ins/{id}/moderate", h.AdminModerateCheckin)
 			r.With(modOrAdmin).Get("/users", h.AdminListUsers)
 
+			// Phase 6a — comment moderation surface. Both endpoints
+			// (review list + per-row soft-delete) are moderator-or-admin.
+			r.With(modOrAdmin).Get("/comments", h.AdminListComments)
+			r.With(modOrAdmin).Post("/comments/{id}/moderate", h.AdminModerateComment)
+
 			// Admin-only endpoints — destructive or privilege-altering.
 			adminOnly := roleResolver.RequireRole(domain.RoleAdmin)
 			r.With(adminOnly).Post("/beverage-requests/{id}/approve", h.AdminApproveBeverageRequest)
