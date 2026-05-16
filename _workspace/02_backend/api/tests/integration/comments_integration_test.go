@@ -302,6 +302,123 @@ func TestCommentsOnSoftDeletedCheckin_Cascade(t *testing.T) {
 	}
 }
 
+// TestListComments_PrivateCheckin_404ForNonFollower — when the author of
+// the parent check-in is on privacy_mode='private', a non-follower hitting
+// `/v1/check-ins/{id}/comments` gets 404 (matches the existing behavior of
+// `/v1/check-ins/{id}`). Closes the comment-enumeration privacy leak.
+func TestListComments_PrivateCheckin_404ForNonFollower(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "Private Sake")
+	authorTok, authorID := mustRegister(t, srv, "priv_author", "pa@example.com", "password-123")
+	strangerTok, _ := mustRegister(t, srv, "priv_stranger", "ps@example.com", "password-123")
+
+	// Flip author to private.
+	if _, err := getPool(t).Exec(context.Background(),
+		`UPDATE users SET privacy_mode = 'private' WHERE id = $1;`, authorID); err != nil {
+		t.Fatalf("set private: %v", err)
+	}
+
+	ckID := createCheckin(t, srv, authorTok, bevID)
+	// Author comments on their own check-in.
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/comments", authorTok,
+		map[string]any{"body": "private musing"})
+	if code != http.StatusCreated {
+		t.Fatalf("seed comment: %d body=%s", code, raw)
+	}
+
+	// Stranger is not an accepted follower → 404.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", strangerTok, nil)
+	if code != http.StatusNotFound {
+		t.Errorf("non-follower GET private check-in comments: %d body=%s (want 404)", code, raw)
+	}
+
+	// Anonymous gets the same 404 — no leak via missing bearer.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", "", nil)
+	if code != http.StatusNotFound {
+		t.Errorf("anonymous GET private check-in comments: %d body=%s (want 404)", code, raw)
+	}
+}
+
+// TestListComments_PrivateCheckin_AllowedForFollower — an accepted
+// follower of a private user can read the comment thread on the user's
+// check-in.
+func TestListComments_PrivateCheckin_AllowedForFollower(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "Follower Sake")
+	authorTok, authorID := mustRegister(t, srv, "fol_author", "fa@example.com", "password-123")
+	followerTok, followerID := mustRegister(t, srv, "fol_follower", "ff@example.com", "password-123")
+
+	// Author private, follower is accepted.
+	if _, err := getPool(t).Exec(context.Background(),
+		`UPDATE users SET privacy_mode = 'private' WHERE id = $1;`, authorID); err != nil {
+		t.Fatalf("set private: %v", err)
+	}
+	if _, err := getPool(t).Exec(context.Background(), `
+INSERT INTO follows (follower_id, followed_id, status, accepted_at)
+VALUES ($1, $2, 'accepted', NOW());`, followerID, authorID); err != nil {
+		t.Fatalf("seed follow: %v", err)
+	}
+
+	ckID := createCheckin(t, srv, authorTok, bevID)
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/comments", authorTok,
+		map[string]any{"body": "for followers"})
+	if code != http.StatusCreated {
+		t.Fatalf("seed comment: %d body=%s", code, raw)
+	}
+
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", followerTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("follower GET private check-in comments: %d body=%s", code, raw)
+	}
+	var page struct {
+		Items []map[string]any `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 1 {
+		t.Errorf("follower expects 1 comment, got %d: %s", len(page.Items), raw)
+	}
+}
+
+// TestListComments_PrivateCheckin_AllowedForOwner — the check-in's own
+// author always reads their own comment thread, even while private and
+// even with no followers.
+func TestListComments_PrivateCheckin_AllowedForOwner(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "Owner Private Sake")
+	authorTok, authorID := mustRegister(t, srv, "own_author", "oa@example.com", "password-123")
+	if _, err := getPool(t).Exec(context.Background(),
+		`UPDATE users SET privacy_mode = 'private' WHERE id = $1;`, authorID); err != nil {
+		t.Fatalf("set private: %v", err)
+	}
+	ckID := createCheckin(t, srv, authorTok, bevID)
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/comments", authorTok,
+		map[string]any{"body": "for me"})
+	if code != http.StatusCreated {
+		t.Fatalf("seed comment: %d body=%s", code, raw)
+	}
+
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", authorTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("owner GET own private check-in comments: %d body=%s", code, raw)
+	}
+	var page struct {
+		Items []map[string]any `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 1 {
+		t.Errorf("owner expects 1 comment, got %d: %s", len(page.Items), raw)
+	}
+}
+
 // TestFeedItemHasCommentCount — feed-projection includes comment_count.
 func TestFeedItemHasCommentCount(t *testing.T) {
 	truncateAll(t)

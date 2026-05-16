@@ -19,21 +19,25 @@ import (
 
 // ListComments — GET /v1/check-ins/{id}/comments.
 //
-// Public read with OptionalAuth: viewer identity is not used to filter
-// rows (soft-deleted comments are server-side filtered regardless). Cursor
-// pagination on (created_at, id) DESC.
+// OptionalAuth. Cursor pagination on (created_at, id) DESC.
 //
-// We do NOT pre-check the parent check-in visibility here. The parent
-// privacy gate lives on the check-in itself; comment surfaces follow the
-// parent. If a private-account check-in is hit by a non-follower, the
-// caller is going through `/v1/check-ins/{id}/comments` directly without
-// first hitting `/v1/check-ins/{id}` — that's a foot-gun, but the data is
-// the SAME data the comment author already chose to attach to a public
-// surface. The MVP scope does not include hiding comment lists from
-// non-followers of private accounts; if Phase 7 surfaces a private-feed
-// regression here, we'll add the privacy join.
+// Phase 6a fix: this endpoint NOW enforces the SPEC §3 private-account
+// rule on the parent check-in. The check-in detail endpoint
+// (`GET /v1/check-ins/{id}`) returns 404 to a non-follower of a private
+// owner; the comment thread that hangs off the same check-in must do
+// the same. Without this gate, a non-follower with the check-in UUID
+// could enumerate the comment text — which often quotes the parent's
+// review — defeating the privacy invariant on the parent.
 func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 	checkInID := chi.URLParam(r, "id")
+
+	// Privacy gate. viewerID is "" for anonymous requests.
+	viewerID := commentsViewerID(r)
+	if err := h.Repos.Checkins.AssertViewerCanSeeCheckin(r.Context(), checkInID, viewerID); err != nil {
+		h.writeErr(w, "ListComments visibility", err)
+		return
+	}
+
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
@@ -148,16 +152,12 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// commentsViewerID is a small helper for the OptionalAuth comment list. The
-// viewer's id isn't used to filter rows but downstream extensions (e.g.
-// "you_replied") might want it.
+// commentsViewerID extracts the viewer's user id from an OptionalAuth
+// request, returning "" for anonymous callers. Used by the parent-privacy
+// gate on the comment list endpoint.
 func commentsViewerID(r *http.Request) string {
 	if u := middleware.UserFromContext(r.Context()); u != nil {
 		return u.ID
 	}
 	return ""
 }
-
-// silence unused-warnings: middleware import is only needed for the helper
-// above, which is reserved for future use.
-var _ = commentsViewerID

@@ -663,3 +663,39 @@ func isAcceptedFollower(ctx context.Context, db *pgxpool.Pool, viewerID, ownerID
 	}
 	return ok, nil
 }
+
+// AssertViewerCanSeeCheckin is the shared privacy gate for surfaces that
+// hang off a check-in (e.g. `GET /v1/check-ins/{id}/comments`). Returns
+// nil when the caller is allowed to see the check-in (matching the rule
+// applied inside Get); ErrNotFound otherwise.
+//
+// The rule (mirrors Get):
+//   - Row missing → ErrNotFound.
+//   - Owner of the check-in is private AND viewer is not the owner AND
+//     not an accepted follower → ErrNotFound (do not leak existence).
+//   - All other cases → nil.
+//
+// NOTE: this helper deliberately does NOT gate on `deleted_at` — that
+// covers a separate invariant tracked in its own fix.
+func (r *CheckinRepo) AssertViewerCanSeeCheckin(ctx context.Context, checkInID, viewerID string) error {
+	const q = `SELECT user_id, privacy_mode FROM check_ins ci
+JOIN users u ON u.id = ci.user_id
+WHERE ci.id = $1 AND u.deleted_at IS NULL;`
+	var ownerID, privacy string
+	if err := r.db.QueryRow(ctx, q, checkInID).Scan(&ownerID, &privacy); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierror.ErrNotFound
+		}
+		return fmt.Errorf("AssertViewerCanSeeCheckin: %w", err)
+	}
+	if privacy == "private" && viewerID != ownerID {
+		ok, err := isAcceptedFollower(ctx, r.db, viewerID, ownerID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return apierror.ErrNotFound
+		}
+	}
+	return nil
+}
