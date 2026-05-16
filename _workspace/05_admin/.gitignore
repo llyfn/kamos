@@ -2,8 +2,6 @@ node_modules
 dist
 .env.local
 .env.*.local
-src/types/api.d.ts
-src/routeTree.gen.ts
 *.tsbuildinfo
 .vite
 coverage
