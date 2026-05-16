@@ -6,9 +6,10 @@
 //   POST   /v1/check-ins/{id}/comments    authed
 //   DELETE /v1/comments/{id}              authed; own or admin
 //
-// The list endpoint is NOT cursor-paginated in the OpenAPI delta — the server
-// returns the full visible list in chronological order (oldest first). If
-// that changes, this method will need to grow a cursor parameter.
+// The list endpoint is cursor-paginated (`PageOfComment`) and ordered
+// most-recent-first server-side (`ORDER BY created_at DESC, id DESC`). The
+// `list` method threads an optional `cursor` and returns the full `Page<T>`
+// envelope so callers can paginate older comments downward.
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,21 +17,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/models/comment.dart';
+import '../../../core/models/page.dart' as models;
 import '../exceptions.dart';
 
 class CommentRepository {
   CommentRepository(this._dio);
   final Dio _dio;
 
-  Future<List<Comment>> list(String checkInId) async {
-    final res = await _dio.get('/v1/check-ins/$checkInId/comments');
+  Future<models.Page<Comment>> list(
+    String checkInId, {
+    String? cursor,
+  }) async {
+    final res = await _dio.get(
+      '/v1/check-ins/$checkInId/comments',
+      queryParameters: {
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      },
+    );
     final data = res.data;
-    final items = data is Map<String, dynamic>
-        ? (data['items'] as List?) ?? const []
-        : (data as List?) ?? const [];
-    return items
-        .map((e) => Comment.fromJson(e as Map<String, dynamic>))
-        .toList(growable: false);
+    if (data is! Map<String, dynamic>) {
+      return const models.Page<Comment>(items: [], hasMore: false);
+    }
+    return models.Page<Comment>.fromJson(
+      data,
+      (e) => Comment.fromJson(e as Map<String, dynamic>),
+    );
   }
 
   Future<Comment> create({

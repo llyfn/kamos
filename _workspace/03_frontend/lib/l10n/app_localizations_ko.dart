@@ -505,6 +505,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get commentsLoadFailed => '댓글을 불러오지 못했습니다';
 
   @override
+  String get commentsLoadEarlier => '이전 댓글 불러오기';
+
+  @override
   String feedCardCommentsCountLabel(int count) {
     return '댓글 $count개';
   }

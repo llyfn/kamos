@@ -1048,6 +1048,12 @@ abstract class AppLocalizations {
   /// **'Could not load comments'**
   String get commentsLoadFailed;
 
+  /// No description provided for @commentsLoadEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Load earlier comments'**
+  String get commentsLoadEarlier;
+
   /// No description provided for @feedCardCommentsCountLabel.
   ///
   /// In en, this message translates to:

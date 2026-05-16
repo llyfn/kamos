@@ -3,6 +3,10 @@
 // Composite: section header + list (or empty/error/loading state) + composer.
 // Designed to be embedded inside a check-in detail screen. Handles the
 // optimistic-post and optimistic-delete error paths by surfacing a SnackBar.
+//
+// Server-side ordering is DESC (newest first). The list is rendered head-first
+// (newest at top), and when there are more older comments to fetch a "load
+// earlier comments" affordance appears at the BOTTOM of the list.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,8 +51,8 @@ class CommentsSection extends ConsumerWidget {
             onRetry: () =>
                 ref.read(commentsProvider(checkInId).notifier).refresh(),
           ),
-          data: (comments) {
-            if (comments.isEmpty) {
+          data: (s) {
+            if (s.items.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: EmptyView(title: l.commentsEmpty),
@@ -56,10 +60,29 @@ class CommentsSection extends ConsumerWidget {
             }
             return Column(
               children: [
-                for (final c in comments)
+                for (final c in s.items)
                   CommentTile(
                     comment: c,
                     onDelete: (id) => _delete(context, ref, l, id),
+                  ),
+                if (s.hasMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: TextButton(
+                      onPressed: s.isLoadingMore
+                          ? null
+                          : () => ref
+                              .read(commentsProvider(checkInId).notifier)
+                              .loadMore(),
+                      child: s.isLoadingMore
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(l.commentsLoadEarlier),
+                    ),
                   ),
               ],
             );
