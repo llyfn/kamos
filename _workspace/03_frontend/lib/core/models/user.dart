@@ -9,6 +9,27 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'user.freezed.dart';
 
+/// RBAC role from migration 007. Mirrors `UserRole` in `openapi.yaml`.
+/// Surfaced on `/v1/users/me`; future admin-aware affordances branch on it.
+enum UserRole { user, moderator, admin }
+
+extension UserRoleParse on UserRole {
+  /// Maps a server-wire string to the enum. Unknown / missing values fall
+  /// back to `UserRole.user` so older servers (or absent role keys) stay
+  /// backward compatible.
+  static UserRole fromWire(String? s) => switch (s) {
+        'admin' => UserRole.admin,
+        'moderator' => UserRole.moderator,
+        _ => UserRole.user,
+      };
+
+  String toWire() => switch (this) {
+        UserRole.admin => 'admin',
+        UserRole.moderator => 'moderator',
+        UserRole.user => 'user',
+      };
+}
+
 @Freezed(fromJson: false, toJson: false)
 abstract class UserStats with _$UserStats {
   const factory UserStats({
@@ -64,6 +85,12 @@ abstract class Me with _$Me {
   const factory Me({
     required User user,
     required UserStats stats,
+    // `role` is `required` in the OpenAPI `Me` schema (Phase 5a). The Flutter
+    // client itself is not the admin surface — that ships as a separate React
+    // web app — but exposing the field future-proofs in-app affordances such
+    // as "you have admin rights; open the admin console" links. Defaults to
+    // `UserRole.user` if the key is missing so older servers keep working.
+    @Default(UserRole.user) UserRole role,
   }) = _Me;
 
   factory Me.fromJson(Map<String, dynamic> json) => Me(
@@ -71,6 +98,7 @@ abstract class Me with _$Me {
         stats: UserStats.fromJson(
           (json['stats'] as Map<String, dynamic>?) ?? const {},
         ),
+        role: UserRoleParse.fromWire(json['role'] as String?),
       );
 }
 
