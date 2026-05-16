@@ -173,6 +173,14 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		h.writeErr(w, "AdminApproveBeverageRequest", err)
 		return
 	}
+	// Phase 7 — a new beverage just landed under this brewery. The brewery's
+	// detail response shape doesn't actually change (the LRU caches the
+	// brewery row only, not the inline beverages page), so this is
+	// belt-and-braces: if the response ever embeds beverage_count or a
+	// preview, the cache stays consistent.
+	if h.Caches != nil && body.BreweryID != "" {
+		h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
+	}
 	apierror.WriteJSON(w, http.StatusOK, map[string]string{
 		"request_id":  requestID,
 		"beverage_id": bevID,
