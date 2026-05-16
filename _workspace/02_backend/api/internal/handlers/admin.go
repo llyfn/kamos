@@ -348,6 +348,10 @@ func (h *Handler) AdminSuspendUser(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminSuspendUser", err)
 		return
 	}
+	if _, err := h.Repos.RefreshTokens.RevokeAllForUser(r.Context(), userID); err != nil {
+		h.writeErr(w, "AdminSuspendUser revoke refresh", err)
+		return
+	}
 	if h.SoftDelete != nil {
 		h.SoftDelete.Add(userID)
 	}
