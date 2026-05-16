@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kamos/core/models/collection.dart';
 import 'package:kamos/features/discover/repository/public_collections_repository.dart';
 
 class _Adapter implements HttpClientAdapter {
@@ -60,6 +61,7 @@ void main() {
               'id': 'u1',
               'username': 'mai',
               'display_username': 'Mai',
+              'display_name': 'Mai Tanaka',
               'avatar_url': null,
             },
           },
@@ -73,6 +75,7 @@ void main() {
               'id': 'u2',
               'username': 'jiro',
               'display_username': 'Jiro',
+              'display_name': 'Jiro Sato',
             },
           },
         ],
@@ -88,7 +91,9 @@ void main() {
       expect(page.items.first.collection.name, 'Late autumn picks');
       expect(page.items.first.owner.username, 'mai');
       expect(page.items.first.owner.displayUsername, 'Mai');
+      expect(page.items.first.owner.displayName, 'Mai Tanaka');
       expect(page.items[1].owner.displayUsername, 'Jiro');
+      expect(page.items[1].owner.displayName, 'Jiro Sato');
       expect(page.nextCursor, 'c2');
       expect(page.hasMore, isTrue);
 
@@ -109,6 +114,21 @@ void main() {
       await repo.list(cursor: 'abc');
 
       expect(adapter.lastRequest!.queryParameters['cursor'], 'abc');
+    });
+
+    test('CollectionOwner.fromJson round-trips display_name', () {
+      final owner = CollectionOwner.fromJson(const {
+        'id': 'u7',
+        'username': 'kazu',
+        'display_username': 'Kazu',
+        'display_name': 'Kazuki Mori',
+        'avatar_url': null,
+      });
+      expect(owner.id, 'u7');
+      expect(owner.username, 'kazu');
+      expect(owner.displayUsername, 'Kazu');
+      expect(owner.displayName, 'Kazuki Mori');
+      expect(owner.avatarUrl, isNull);
     });
 
     test('owner falls back to username when display_username missing', () async {

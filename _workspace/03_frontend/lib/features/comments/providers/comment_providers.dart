@@ -4,7 +4,12 @@
 // check-in id. The state is `CommentsState` (items + cursor + has-more +
 // load-more flag). The server returns comments in DESC order (newest first),
 // so:
-//   * `post` prepends the new comment to the head of the list (newest at top).
+//   * `post` awaits the server's 201, then PREPENDS the persisted row to the
+//     head of the list (newest at top). This is pessimistic — the user sees the
+//     composer's spinner while the request is in flight and only sees the new
+//     comment after the server confirms it. No tentative row is rendered.
+//   * `deleteOwn` is optimistic — the row is removed locally before the request
+//     and re-inserted at its original index if the server rejects it.
 //   * `loadMore` appends older comments to the tail using the keyset cursor.
 // On post or delete failure the state is restored and the exception is
 // rethrown so callers can surface a toast.
@@ -92,10 +97,12 @@ class CommentsNotifier extends AsyncNotifier<CommentsState> {
     }
   }
 
-  /// Posts a comment. Server returns 201 with the persisted row. On success
-  /// the comment is PREPENDED to the local list (head = newest) to match the
-  /// server's DESC ordering. On failure the state is unchanged and the
-  /// exception is rethrown so the UI can surface a toast.
+  /// Posts a comment pessimistically — awaits the server's 201 with the
+  /// persisted row, then PREPENDS that row to the local list (head = newest)
+  /// to match the server's DESC ordering. The UI shows the composer spinner
+  /// for the duration of the request; no tentative row is rendered. On
+  /// failure the state is unchanged and the exception is rethrown so the UI
+  /// can surface a toast.
   Future<Comment> post(String body) async {
     final repo = ref.read(commentRepositoryProvider);
     final current = state.asData?.value ?? const CommentsState();
