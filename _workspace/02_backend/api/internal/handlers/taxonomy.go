@@ -16,24 +16,29 @@ import (
 // "locale-narrowed taxonomy" pivot drop in without a wire change. TTL +
 // size live in cache.NewCaches.
 //
+// Phase 7a MAJOR-1: misses are coalesced via singleflight (GetOrLoad).
+//
 // Status: scaffold-for-Phase5 (admin needs server-validated taxonomy to
 // populate dropdowns). Endpoint is intentionally pre-wired; Flutter uses
 // the local `kCategoryStrings` constant in MVP.
 func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 	key := localeKey(r)
-	if h.Caches != nil {
-		if rows, ok := h.Caches.Categories.Get(key); ok {
-			apierror.WriteJSON(w, http.StatusOK, rows)
+	loader := func() ([]domain.CategoryLabel, error) {
+		return h.Repos.Taxonomy.Categories(r.Context())
+	}
+	if h.Caches == nil {
+		rows, err := loader()
+		if err != nil {
+			h.writeErr(w, "Categories", err)
 			return
 		}
+		apierror.WriteJSON(w, http.StatusOK, rows)
+		return
 	}
-	rows, err := h.Repos.Taxonomy.Categories(r.Context())
+	rows, err := h.Caches.Categories.GetOrLoad(key, loader)
 	if err != nil {
 		h.writeErr(w, "Categories", err)
 		return
-	}
-	if h.Caches != nil {
-		h.Caches.Categories.Set(key, rows)
 	}
 	apierror.WriteJSON(w, http.StatusOK, rows)
 }
@@ -42,19 +47,22 @@ func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 // rationale; same shape, same TTL bucket.
 func (h *Handler) FlavorTags(w http.ResponseWriter, r *http.Request) {
 	key := localeKey(r)
-	if h.Caches != nil {
-		if rows, ok := h.Caches.FlavorTags.Get(key); ok {
-			apierror.WriteJSON(w, http.StatusOK, rows)
+	loader := func() ([]domain.FlavorTag, error) {
+		return h.Repos.Taxonomy.FlavorTags(r.Context())
+	}
+	if h.Caches == nil {
+		rows, err := loader()
+		if err != nil {
+			h.writeErr(w, "FlavorTags", err)
 			return
 		}
+		apierror.WriteJSON(w, http.StatusOK, rows)
+		return
 	}
-	rows, err := h.Repos.Taxonomy.FlavorTags(r.Context())
+	rows, err := h.Caches.FlavorTags.GetOrLoad(key, loader)
 	if err != nil {
 		h.writeErr(w, "FlavorTags", err)
 		return
-	}
-	if h.Caches != nil {
-		h.Caches.FlavorTags.Set(key, rows)
 	}
 	apierror.WriteJSON(w, http.StatusOK, rows)
 }

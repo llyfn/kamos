@@ -62,50 +62,61 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 
 // GetBeverage — GET /v1/beverages/{id}. Includes aggregated flavor + recent.
 //
-// Phase 7: in-process LRU cache keyed on <id>:<locale>. The cached value
-// is *domain.BeverageDetail — see cache.NewCaches for size/TTL. The
-// response varies per viewer ONLY in scaffolded fields that aren't on
-// BeverageDetail today (no you_toasted on this endpoint), so we serve
-// the cached pointer directly. If a future commit adds a viewer-relative
-// field to BeverageDetail, that handler MUST deep-copy before mutating —
-// the cache hands out the same pointer to every concurrent request.
+// Phase 7: in-process LRU cache keyed on <id>:<locale>. Phase 7a MAJOR-4
+// fix: the cached value is now `domain.BeverageDetail` (a value, not a
+// pointer), so Get returns a struct copy and a future per-viewer overlay
+// can mutate the result without leaking across requests. The copy cost
+// is ~1 KB per call — invisible compared to the saved DB trio (Detail
+// + AggregatedFlavor + RecentCheckins).
 //
-// Write-path invalidation (commit 4) busts <id>:* on every check-in
+// Phase 7a MAJOR-1 fix: misses are coalesced via singleflight (see
+// LRU.GetOrLoad). On a hot key during a campaign spike, only one
+// loader runs while concurrent callers share its result.
+//
+// Write-path invalidation busts <id>:* on every check-in
 // create/update/delete so avg_rating + check_in_count stay fresh.
 func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cacheKey := id + ":" + localeKey(r)
-	if h.Caches != nil {
-		if cached, ok := h.Caches.BeverageDetail.Get(cacheKey); ok {
-			apierror.WriteJSON(w, http.StatusOK, cached)
+
+	loader := func() (domain.BeverageDetail, error) {
+		bv, err := h.Repos.Beverages.Detail(r.Context(), id)
+		if err != nil {
+			return domain.BeverageDetail{}, err
+		}
+		flavor, err := h.Repos.Beverages.AggregatedFlavor(r.Context(), id)
+		if err != nil {
+			return domain.BeverageDetail{}, err
+		}
+		recent, err := h.Repos.Beverages.RecentCheckins(r.Context(), id, nil, nil, 10)
+		if err != nil {
+			return domain.BeverageDetail{}, err
+		}
+		out := domain.BeverageDetail{
+			Beverage:         *bv,
+			AggregatedFlavor: flavor,
+			RecentCheckins:   recent,
+		}
+		if len(recent) > 10 {
+			out.RecentCheckins = recent[:10]
+		}
+		return out, nil
+	}
+
+	if h.Caches == nil {
+		// Test / no-cache wiring — fall through to the loader directly.
+		out, err := loader()
+		if err != nil {
+			h.writeErr(w, "GetBeverage", err)
 			return
 		}
-	}
-	bv, err := h.Repos.Beverages.Detail(r.Context(), id)
-	if err != nil {
-		h.writeErr(w, "GetBeverage detail", err)
+		apierror.WriteJSON(w, http.StatusOK, out)
 		return
 	}
-	flavor, err := h.Repos.Beverages.AggregatedFlavor(r.Context(), id)
+	out, err := h.Caches.BeverageDetail.GetOrLoad(cacheKey, loader)
 	if err != nil {
-		h.writeErr(w, "GetBeverage flavor", err)
+		h.writeErr(w, "GetBeverage", err)
 		return
-	}
-	recent, err := h.Repos.Beverages.RecentCheckins(r.Context(), id, nil, nil, 10)
-	if err != nil {
-		h.writeErr(w, "GetBeverage recent", err)
-		return
-	}
-	out := domain.BeverageDetail{
-		Beverage:         *bv,
-		AggregatedFlavor: flavor,
-		RecentCheckins:   recent,
-	}
-	if len(recent) > 10 {
-		out.RecentCheckins = recent[:10]
-	}
-	if h.Caches != nil {
-		h.Caches.BeverageDetail.Set(cacheKey, &out)
 	}
 	apierror.WriteJSON(w, http.StatusOK, out)
 }
@@ -174,28 +185,40 @@ func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
 // (<2ms p95 per Phase 1 metrics) and the brewery row is the expensive
 // part (it carries the i18n description + beverage_count aggregate).
 //
+// Phase 7a MAJOR-4: BreweryDetail is now a value cache; Get returns a
+// struct copy. Phase 7a MAJOR-1: misses are coalesced via singleflight.
+//
 // ETag still hashes the combined response, so byte-identical repeat
 // requests still short-circuit at the middleware layer.
 func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cacheKey := id + ":" + localeKey(r)
-	var br *domain.Brewery
-	if h.Caches != nil {
-		if cached, ok := h.Caches.BreweryDetail.Get(cacheKey); ok {
-			br = cached
-		}
-	}
-	if br == nil {
+
+	loader := func() (domain.Brewery, error) {
 		fetched, err := h.Repos.Breweries.Detail(r.Context(), id)
+		if err != nil {
+			return domain.Brewery{}, err
+		}
+		return *fetched, nil
+	}
+
+	var br domain.Brewery
+	if h.Caches == nil {
+		got, err := loader()
 		if err != nil {
 			h.writeErr(w, "GetBrewery", err)
 			return
 		}
-		br = fetched
-		if h.Caches != nil {
-			h.Caches.BreweryDetail.Set(cacheKey, br)
+		br = got
+	} else {
+		got, err := h.Caches.BreweryDetail.GetOrLoad(cacheKey, loader)
+		if err != nil {
+			h.writeErr(w, "GetBrewery", err)
+			return
 		}
+		br = got
 	}
+
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
@@ -216,7 +239,7 @@ func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 		Beverages cursor.Page[domain.Beverage] `json:"beverages"`
 	}
 	apierror.WriteJSON(w, http.StatusOK, out{
-		Brewery:   *br,
+		Brewery:   br,
 		Beverages: cursor.Page[domain.Beverage]{Items: items, NextCursor: next, HasMore: hasMore},
 	})
 }
