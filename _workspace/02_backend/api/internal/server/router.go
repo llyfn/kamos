@@ -9,6 +9,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/handlers"
 	"github.com/kamos/api/internal/middleware"
+	"github.com/kamos/api/internal/observability"
 
 	"log/slog"
 )
@@ -66,6 +67,13 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	}
 	r.Get("/health", healthHandler)
 	r.Get("/healthz", healthHandler)
+
+	// Phase 7 — Prometheus scrape endpoint. The bundle of counters
+	// includes cache_requests_total{cache,outcome} fed by the cache
+	// package's hit/miss observers. Mount unauthenticated: production
+	// scrapers run on the same internal network; if external scrapers
+	// arrive later, add an auth or network-policy gate then.
+	r.Handle("/metrics", observability.PromHandler())
 
 	r.Route("/v1", func(r chi.Router) {
 

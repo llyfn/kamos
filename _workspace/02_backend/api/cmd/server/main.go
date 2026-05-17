@@ -154,9 +154,11 @@ func main() {
 	}
 
 	// Phase 7 — in-process LRU bundle for taxonomy/beverage/brewery hot
-	// rows. Default sizing + TTLs live in cache.NewCaches; commit 5 wires
-	// the Prometheus observers onto each named cache.
+	// rows. Default sizing + TTLs live in cache.NewCaches. Each named
+	// cache emits hit/miss into the Prometheus cache_requests_total
+	// counter via the observer hooks — see observability.RecordCacheHit.
 	caches := cache.NewCaches()
+	caches.SetObservers(observability.RecordCacheHit, observability.RecordCacheMiss)
 
 	h := handlers.New(cfg, log, repos, signer, google).
 		WithStorage(store).
