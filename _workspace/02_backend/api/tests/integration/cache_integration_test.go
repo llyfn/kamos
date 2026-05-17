@@ -9,9 +9,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
@@ -277,6 +279,109 @@ func TestAdminModerateCheckinInvalidatesBeverageDetailCache(t *testing.T) {
 	missesAfter := func() int64 { _, m := caches.BeverageDetail.Stats(); return m }()
 	if missesAfter <= missesBefore {
 		t.Fatalf("expected another BeverageDetail miss after moderation; misses %d → %d", missesBefore, missesAfter)
+	}
+}
+
+// TestCacheControlPresentOnAllGetRoutes — Phase 7a BLOCKER-2 contract.
+// Every GET route under /v1 must declare freshness explicitly: either via
+// a CacheControl(...) wrapper (the 5 documented cacheable routes) OR via
+// the group-level NoStore default. The assertion is: GET each registered
+// route, regardless of status code, the response carries a Cache-Control
+// header value that is either NoStore-shape OR a max-age=... directive.
+//
+// Route params (`{id}`, `{username}`, `{beverage_id}`) are substituted with
+// a fixed UUID-shaped placeholder. Most routes return 404/401/422 with
+// that input — but the Cache-Control header is set by the middleware
+// BEFORE the handler runs, so the assertion holds across all status codes.
+func TestCacheControlPresentOnAllGetRoutes(t *testing.T) {
+	truncateAll(t)
+	srv, _ := newServerWithCache(t)
+	defer srv.Close()
+
+	// Mount the same router shape into a chi.Routes-typed handle so we can
+	// chi.Walk over it. newServerWithCache returns the http.Handler via
+	// httptest; we rebuild a parallel router for walking only.
+	p := getPool(t)
+	cfg := &config.Config{
+		AppBaseURL:        "http://localhost",
+		JWTSecret:         "integration-secret-please-replace-aaaaaaaaaaaa",
+		JWTTTL:            time.Hour,
+		RefreshTTL:        30 * 24 * time.Hour,
+		Env:               "test",
+		RateLimitDisabled: true,
+	}
+	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repos := repository.New(p)
+	google := auth.NewGoogleVerifier("")
+	softDelete := auth.NewSoftDeleteCache(p, 30*time.Second, cfg.JWTTTL+time.Hour)
+	caches := cache.NewCaches()
+	h := handlers.New(cfg, log, repos, signer, google).
+		WithSoftDeleteCache(softDelete).
+		WithCaches(caches)
+	mux := server.New(log, signer, softDelete, h).(chi.Router)
+
+	// Collect every GET pattern under /v1.
+	var routes []string
+	if err := chi.Walk(mux, func(method, route string, handler http.Handler, mws ...func(http.Handler) http.Handler) error {
+		if method != http.MethodGet {
+			return nil
+		}
+		if !strings.HasPrefix(route, "/v1/") {
+			return nil
+		}
+		routes = append(routes, route)
+		return nil
+	}); err != nil {
+		t.Fatalf("chi.Walk: %v", err)
+	}
+	if len(routes) == 0 {
+		t.Fatal("chi.Walk returned no /v1 GET routes")
+	}
+
+	// Substitute path params with a UUID-shaped placeholder. The middleware
+	// runs regardless of whether the handler returns 200/404/401, so any
+	// reachable status is fine for asserting the header.
+	const placeholder = "00000000-0000-0000-0000-000000000000"
+	// Accept any of these as an explicit freshness declaration. `no-store`
+	// is the strongest, `max-age=` is the standard public-cache form, and
+	// `must-revalidate` is the per-viewer profile route's directive
+	// (Cache-Control: private, must-revalidate — see /v1/users/{username}).
+	hasFreshness := func(v string) bool {
+		v = strings.ToLower(v)
+		return strings.Contains(v, "no-store") ||
+			strings.Contains(v, "max-age=") ||
+			strings.Contains(v, "must-revalidate")
+	}
+	for _, pattern := range routes {
+		path := pattern
+		// Replace {anything} segments with the placeholder. We rely on the
+		// fact that chi route patterns only use `{...}` for params.
+		for strings.Contains(path, "{") {
+			lo := strings.Index(path, "{")
+			hi := strings.Index(path, "}")
+			if hi < lo {
+				break
+			}
+			path = path[:lo] + placeholder + path[hi+1:]
+		}
+		req, _ := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Errorf("%s: request error: %v", pattern, err)
+			continue
+		}
+		cc := resp.Header.Get("Cache-Control")
+		resp.Body.Close()
+		if cc == "" {
+			t.Errorf("%s (resolved %s): missing Cache-Control header (status=%d)",
+				pattern, path, resp.StatusCode)
+			continue
+		}
+		if !hasFreshness(cc) {
+			t.Errorf("%s: Cache-Control %q lacks freshness directive (need no-store or max-age=...)",
+				pattern, cc)
+		}
 	}
 }
 

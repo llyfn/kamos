@@ -156,6 +156,48 @@ func TestETagSkipsOn4xx(t *testing.T) {
 	}
 }
 
+func TestNoStoreSetsHeader(t *testing.T) {
+	h := NoStore(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+	got := resp.Header.Get("Cache-Control")
+	if got != "no-store, no-cache, must-revalidate, max-age=0" {
+		t.Fatalf("Cache-Control: unexpected value %q", got)
+	}
+}
+
+// TestNoStoreThenCacheControlOverrides asserts the chain order: when both
+// NoStore and CacheControl wrap the same handler with NoStore outermost
+// (the router's per-group default) and CacheControl innermost (the
+// per-route opt-in), the inner CacheControl wins because both set the
+// header BEFORE calling next.ServeHTTP.
+func TestNoStoreThenCacheControlOverrides(t *testing.T) {
+	override := "public, max-age=300, stale-while-revalidate=86400"
+	h := NoStore(CacheControl(override)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
+	})))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+	if got := resp.Header.Get("Cache-Control"); got != override {
+		t.Fatalf("Cache-Control: want %q got %q", override, got)
+	}
+}
+
 // Smoke-check the combination — Cache-Control sits on a 304 too.
 func TestCacheControlSurvives304(t *testing.T) {
 	value := "public, max-age=60"

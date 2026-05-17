@@ -26,6 +26,22 @@ import (
 // Stricter per-group limits (auth brute-force / per-user fairness) layer
 // inside their respective r.Route / r.Group blocks below.
 //
+// Caching contract (Phase 7a BLOCKER-2):
+//
+//   - middleware.ETag is mounted GLOBALLY (line ~50). Every 2xx GET response
+//     gets a strong ETag for free.
+//   - To prevent a heuristic-caching intermediary from treating an ETagged
+//     200 as eligible to share across viewers, every GET under /v1 ALSO
+//     gets a freshness declaration: EITHER CacheControl(...) (the 5
+//     documented public-cacheable routes) OR NoStore (everything else,
+//     including authed feed/list/profile/check-in/comments/admin pages
+//     and any auth surface that might land as a GET in the future).
+//   - NoStore is applied at the /v1 route-group level; CacheControl
+//     wrappers on the 5 cacheable routes run INSIDE NoStore and override
+//     the header, since both set Cache-Control before calling next.
+//   - New GET routes that omit both will be flagged by
+//     TestCacheControlPresentOnAllGetRoutes in the integration suite.
+//
 // softDelete may be nil — in that case the auth middleware skips the SEC-006
 // revocation check. main.go always passes a real cache; tests pass nil when
 // they don't care about revocation semantics.
@@ -76,6 +92,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	r.Handle("/metrics", observability.PromHandler())
 
 	r.Route("/v1", func(r chi.Router) {
+		// Phase 7a BLOCKER-2 — default-deny for downstream caching. Every
+		// route under /v1 starts with `Cache-Control: no-store, ...`;
+		// the 5 documented cacheable routes override this with their own
+		// CacheControl(...) wrapper, which runs INSIDE this middleware and
+		// sets the header last. See package doc above.
+		r.Use(middleware.NoStore)
 
 		// Auth — all public. Stricter per-IP cap to mitigate
 		// brute-force / enumeration against /v1/auth/* (5 rps, burst 10).

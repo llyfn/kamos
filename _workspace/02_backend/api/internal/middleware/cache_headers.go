@@ -24,3 +24,32 @@ func CacheControl(value string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// noStoreValue is the canonical "do not cache, anywhere, at any tier"
+// header. The four directives are belt-and-braces against legacy clients
+// and intermediaries:
+//
+//   - no-store          → MUST NOT store any part of this response.
+//   - no-cache          → MUST revalidate with the origin before serving.
+//   - must-revalidate   → stale responses MUST NOT be served.
+//   - max-age=0         → immediately stale even if some tier ignores no-store.
+//
+// Together this is the strongest "do not cache" signal HTTP can carry.
+const noStoreValue = "no-store, no-cache, must-revalidate, max-age=0"
+
+// NoStore tags the response as never-cacheable. Phase 7a BLOCKER-2 fix —
+// ETag is mounted globally for the "every GET gets it for free" property,
+// but every route that isn't intentionally cacheable must declare
+// `no-store` so heuristic-caching intermediaries don't treat an ETagged
+// 200 as eligible to share across viewers (RFC 7234 §4.2.2).
+//
+// Pairs with CacheControl: every GET on the authed surface gets either a
+// CacheControl(...) wrapper (the 5 documented public-cacheable routes) OR
+// a NoStore wrapper (everything else). The TestCacheControlPresentOnAll
+// GetRoutes integration test fail-closes the contract.
+func NoStore(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", noStoreValue)
+		next.ServeHTTP(w, r)
+	})
+}
