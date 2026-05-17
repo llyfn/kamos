@@ -4,6 +4,7 @@
 // `SharedPreferences` for either token is a SPEC-level violation; this file
 // is the only place tokens are read or written.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -28,14 +29,47 @@ class SecureStorageService {
 
   final FlutterSecureStorage _storage;
 
+  /// Last-known access token, refreshed on every read/write. The HTTP cache
+  /// `keyBuilder` is synchronous (see `api_client.dart`); it cannot await the
+  /// platform-channel call in `_storage.read`. This in-memory snapshot lets
+  /// the keyBuilder fold the current user's id into the cache key without
+  /// blocking. It is NOT a substitute for the encrypted store — every read
+  /// of the truth goes through `readToken()`; this field only mirrors what
+  /// the truth most-recently returned.
+  static String? _accessTokenSnapshot;
+
+  /// Synchronous best-effort accessor for the currently-active access token.
+  /// Returns `null` if no token has been observed in this process or after a
+  /// `clearToken`/`clearAll`. Used by the cache `keyBuilder` to derive a
+  /// per-user discriminator; never use it as the source of truth for auth.
+  static String? currentAccessToken() => _accessTokenSnapshot;
+
+  /// Test-only seam: overrides the synchronous token snapshot without going
+  /// through the platform-channel-backed `FlutterSecureStorage`. Allows widget
+  /// and unit tests to assert `keyBuilder` behavior per token without spinning
+  /// up the secure-storage stub.
+  @visibleForTesting
+  static void setAccessTokenSnapshotForTest(String? token) {
+    _accessTokenSnapshot = token;
+  }
+
   // --- Access token ---------------------------------------------------------
 
-  Future<String?> readToken() => _storage.read(key: _kJwtKey);
+  Future<String?> readToken() async {
+    final t = await _storage.read(key: _kJwtKey);
+    _accessTokenSnapshot = t;
+    return t;
+  }
 
-  Future<void> writeToken(String token) =>
-      _storage.write(key: _kJwtKey, value: token);
+  Future<void> writeToken(String token) async {
+    await _storage.write(key: _kJwtKey, value: token);
+    _accessTokenSnapshot = token;
+  }
 
-  Future<void> clearToken() => _storage.delete(key: _kJwtKey);
+  Future<void> clearToken() async {
+    await _storage.delete(key: _kJwtKey);
+    _accessTokenSnapshot = null;
+  }
 
   // --- Refresh token (Phase 2) ---------------------------------------------
 
@@ -53,6 +87,7 @@ class SecureStorageService {
   Future<void> clearAll() async {
     await _storage.delete(key: _kJwtKey);
     await _storage.delete(key: _kRefreshKey);
+    _accessTokenSnapshot = null;
   }
 }
 
