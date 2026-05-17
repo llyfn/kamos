@@ -10,6 +10,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../repository/auth_repository.dart';
 
@@ -63,18 +64,28 @@ class AuthStateNotifier extends Notifier<AuthState> {
   /// revoke the refresh token, then wipes both tokens from secure storage.
   /// Server failures are swallowed (handled inside `AuthRepository.logout`)
   /// so logout is never blocked by a network outage.
+  ///
+  /// `dioProvider` is invalidated after the tokens are cleared so the
+  /// in-memory `MemCacheStore` held in its closure is destroyed along with
+  /// the singleton. The next provider read rebuilds a fresh Dio + fresh
+  /// cache; the previous user's cached responses are unreachable even if
+  /// the next user goes offline before their first authed fetch.
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
     final refresh = await storage.readRefreshToken();
     await ref.read(authRepositoryProvider).logout(refreshToken: refresh);
     await storage.clearAll();
+    ref.invalidate(dioProvider);
     state = const AuthState(isAuthenticated: false, isLoading: false);
   }
 
   /// Called by the Dio interceptor when refresh exchange has failed. Tokens
-  /// have already been cleared by the interceptor at this point.
+  /// have already been cleared by the interceptor at this point. Invalidating
+  /// `dioProvider` here too closes the cross-user offline-read hole described
+  /// on [logout]: a hard 401 wipes the cache the same way a clean logout does.
   void onUnauthorized() {
     if (state.isAuthenticated) {
+      ref.invalidate(dioProvider);
       state = const AuthState(isAuthenticated: false, isLoading: false);
     }
   }

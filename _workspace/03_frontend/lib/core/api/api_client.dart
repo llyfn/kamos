@@ -18,6 +18,7 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/jwt_claims.dart';
 import '../models/auth.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/providers/auth_state.dart';
@@ -58,8 +59,55 @@ import 'auth_interceptor.dart';
 /// `allowPostMethod: false` keeps the contract explicit even though POST is
 /// not cached by default in v4: mutating verbs never see the cache.
 ///
+/// Privacy: the cache key includes the JWT `sub` claim (see [cacheKeyBuilder]
+/// below) so two users sharing a device cannot see each other's cached
+/// responses, even offline. As a belt-and-suspenders measure, `dioProvider`
+/// is invalidated on logout and on a hard 401, which destroys the in-memory
+/// `MemCacheStore` along with the Dio singleton.
+///
 /// To force a single request to bypass the cache (e.g. a "pull to refresh"),
 /// pass `Options(extra: kBypassCache)` from `cache_extras.dart`.
+
+/// Cache key that folds the current user's JWT `sub` claim into the URL.
+///
+/// `dio_cache_interceptor`'s default builder UUID-v5-hashes the URL only,
+/// which means two users on the same device share a cache namespace. That is
+/// safe on the wire (the server's body-derived ETag + `must-revalidate`
+/// directive forces a fresh fetch on viewer change) but unsafe offline,
+/// because `hitCacheOnNetworkFailure: true` serves the previous viewer's
+/// cached body without revalidation.
+///
+/// This builder prepends `<sub>|` (or `anon|` when no token is active) to the
+/// URL string before invoking the underlying hash, namespacing User A's and
+/// User B's entries from birth. The result is a stable, opaque string —
+/// shape matches what `CacheOptions.defaultCacheKeyBuilder` returns, so the
+/// downstream `CacheStore` API is unaffected.
+///
+/// Signature verification is intentionally NOT performed here — every
+/// authenticated request is verified server-side; the client only needs a
+/// stable per-user discriminator. A tampered token would simply map to a
+/// different namespace, never to another user's data.
+String cacheKeyBuilder({
+  required Uri url,
+  Map<String, String>? headers,
+  Object? body,
+}) {
+  final token = SecureStorageService.currentAccessToken();
+  final uid = decodeUserIdFromJwt(token) ?? 'anon';
+  // The default builder accepts a Uri, but we want to fold a non-URL
+  // discriminator in. Hash via the same SHA-1-based pathway by stuffing the
+  // discriminator into the URL fragment, which is a legal Uri component and
+  // is included in `toString()`.
+  final namespaced = url.replace(
+    fragment: '${url.fragment.isEmpty ? '' : '${url.fragment};'}kamos-uid=$uid',
+  );
+  return CacheOptions.defaultCacheKeyBuilder(
+    url: namespaced,
+    headers: headers,
+    body: body,
+  );
+}
+
 CacheOptions _buildCacheOptions() {
   return CacheOptions(
     // In-memory store, 5 MB cap (LRU eviction). Phase 7 sticks to in-memory
@@ -71,7 +119,7 @@ CacheOptions _buildCacheOptions() {
     hitCacheOnNetworkFailure: true,
     maxStale: const Duration(days: 7),
     priority: CachePriority.normal,
-    keyBuilder: CacheOptions.defaultCacheKeyBuilder,
+    keyBuilder: cacheKeyBuilder,
     allowPostMethod: false,
   );
 }
