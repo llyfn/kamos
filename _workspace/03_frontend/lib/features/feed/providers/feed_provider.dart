@@ -50,10 +50,12 @@ class FeedNotifier extends Notifier<FeedState> {
     return const FeedState(isLoading: true);
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool forceRefresh = false}) async {
     state = const FeedState(isLoading: true);
     try {
-      final page = await ref.read(feedRepositoryProvider).getFeed();
+      final page = await ref
+          .read(feedRepositoryProvider)
+          .getFeed(forceRefresh: forceRefresh);
       state = FeedState(
         items: page.items,
         nextCursor: page.nextCursor,
