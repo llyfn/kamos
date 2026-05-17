@@ -28,21 +28,25 @@ import 'auth_interceptor.dart';
 
 /// HTTP cache contract for the authed Dio singleton (Phase 7).
 ///
-/// Cached on the client (server emits `Cache-Control: max-age=...` + `ETag`):
-///   * `GET /v1/categories`
-///   * `GET /v1/flavor-tags`
-///   * `GET /v1/beverages/{id}`
-///   * `GET /v1/breweries/{id}`
-///   * `GET /v1/users/{username}`
+/// Cached on the client (via `dio_cache_interceptor`):
 ///
-/// Never cached (server emits `Cache-Control: no-store` or `private`, or the
-/// request is a mutation):
-///   * Everything under `/v1/auth/*`
-///   * Any `POST` / `PATCH` / `DELETE` (dio_cache_interceptor v4 excludes
-///     non-GET by default — `allowPostMethod: false` keeps that contract
-///     explicit)
-///   * The feed (`GET /v1/feed`) and any other endpoint that mutates as the
-///     viewer changes
+/// EVERY authenticated GET response is eligible for caching when the
+/// server returns a `Cache-Control` directive AND an `ETag`. The server
+/// currently mounts `ETag` globally on all GET routes (see
+/// `_workspace/02_backend/api/internal/server/router.go`).
+///
+/// Concrete cached routes today (per server `Cache-Control` max-age):
+///   - GET /v1/categories                    (max-age=3600, public)
+///   - GET /v1/flavor-tags                   (max-age=3600, public)
+///   - GET /v1/beverages/{id}                (max-age=300, public)
+///   - GET /v1/breweries/{id}                (max-age=600, public)
+///   - GET /v1/users/{username}              (private, must-revalidate)
+///
+/// All other authenticated GETs get only the ETag round-trip — they
+/// always revalidate against the server (no offline cache hit) because
+/// the server emits `Cache-Control: no-cache` or omits the directive.
+///
+/// Never cached: all `/v1/auth/*`, all POST/PATCH/DELETE.
 ///
 /// Policy is `CachePolicy.request` — return the cached value if it is still
 /// fresh per the server's `Cache-Control: max-age` directive, otherwise
@@ -59,11 +63,9 @@ import 'auth_interceptor.dart';
 /// `allowPostMethod: false` keeps the contract explicit even though POST is
 /// not cached by default in v4: mutating verbs never see the cache.
 ///
-/// Privacy: the cache key includes the JWT `sub` claim (see [cacheKeyBuilder]
-/// below) so two users sharing a device cannot see each other's cached
-/// responses, even offline. As a belt-and-suspenders measure, `dioProvider`
-/// is invalidated on logout and on a hard 401, which destroys the in-memory
-/// `MemCacheStore` along with the Dio singleton.
+/// Privacy: the cache key includes the JWT `sub` claim (see keyBuilder
+/// in [_buildCacheOptions]) so two users sharing a device cannot see
+/// each other's cached responses, even offline.
 ///
 /// To force a single request to bypass the cache (e.g. a "pull to refresh"),
 /// pass `Options(extra: kBypassCache)` from `cache_extras.dart`.
