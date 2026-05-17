@@ -40,13 +40,31 @@ type Caches struct {
 	BreweryDetail  *LRU[string, domain.Brewery]
 }
 
+// Phase 7a MINOR-3 fix: sizing tuples lifted to named constants so future
+// tuning (e.g. after working-set telemetry from /metrics) happens in one
+// place instead of being scattered across NewCaches + any test that
+// asserts on capacity.
+const (
+	categoriesCacheSize = 4
+	categoriesCacheTTL  = time.Hour
+
+	flavorTagsCacheSize = 4
+	flavorTagsCacheTTL  = time.Hour
+
+	beverageDetailCacheSize = 1000
+	beverageDetailCacheTTL  = 5 * time.Minute
+
+	breweryDetailCacheSize = 500
+	breweryDetailCacheTTL  = 10 * time.Minute
+)
+
 // NewCaches constructs the bundle with the Phase 7 sizing.
 func NewCaches() *Caches {
 	return &Caches{
-		Categories:     NewLRU[string, []domain.CategoryLabel]("categories", 4, time.Hour),
-		FlavorTags:     NewLRU[string, []domain.FlavorTag]("flavor_tags", 4, time.Hour),
-		BeverageDetail: NewLRU[string, domain.BeverageDetail]("beverage_detail", 1000, 5*time.Minute),
-		BreweryDetail:  NewLRU[string, domain.Brewery]("brewery_detail", 500, 10*time.Minute),
+		Categories:     NewLRU[string, []domain.CategoryLabel]("categories", categoriesCacheSize, categoriesCacheTTL),
+		FlavorTags:     NewLRU[string, []domain.FlavorTag]("flavor_tags", flavorTagsCacheSize, flavorTagsCacheTTL),
+		BeverageDetail: NewLRU[string, domain.BeverageDetail]("beverage_detail", beverageDetailCacheSize, beverageDetailCacheTTL),
+		BreweryDetail:  NewLRU[string, domain.Brewery]("brewery_detail", breweryDetailCacheSize, breweryDetailCacheTTL),
 	}
 }
 
