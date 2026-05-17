@@ -200,6 +200,86 @@ func TestBeverageDetailCacheInvalidatesOnDelete(t *testing.T) {
 	}
 }
 
+// TestAdminModerateCheckinInvalidatesBeverageDetailCache — Phase 7a BLOCKER-1
+// regression. A moderator soft-deletes a check-in via the admin surface; the
+// public beverage page must reflect the action immediately (avg_rating and
+// check_in_count recomputed by the trigger, cache busted by the handler).
+func TestAdminModerateCheckinInvalidatesBeverageDetailCache(t *testing.T) {
+	truncateAll(t)
+	srv, caches := newServerWithCache(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "ModerationCache")
+	userTok, _ := mustRegister(t, srv, "mod_target", "mt@example.com", "password11")
+
+	// Create a check-in with a known rating so the aggregate is observable.
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins", userTok, map[string]any{
+		"beverage_id": bevID,
+		"rating":      4.0,
+	})
+	if code != http.StatusCreated {
+		t.Fatalf("create check-in: %d body=%s", code, raw)
+	}
+	var ci map[string]any
+	_ = json.Unmarshal(raw, &ci)
+	checkinID, _ := ci["id"].(string)
+	if checkinID == "" {
+		t.Fatalf("missing check-in id: %s", raw)
+	}
+
+	// Prime the cache — avg_rating=4.0, check_in_count=1.
+	code, body := doReq(t, srv, http.MethodGet, "/v1/beverages/"+bevID, "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("prime GET status=%d body=%s", code, body)
+	}
+	var primed map[string]any
+	_ = json.Unmarshal(body, &primed)
+	primedCount, _ := primed["check_in_count"].(float64)
+	if primedCount != 1 {
+		t.Fatalf("primed check_in_count=%v want 1", primed["check_in_count"])
+	}
+
+	// Confirm a warm read hits the LRU.
+	code, _ = doReq(t, srv, http.MethodGet, "/v1/beverages/"+bevID, "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("warm GET status=%d", code)
+	}
+	hits, _ := caches.BeverageDetail.Stats()
+	if hits < 1 {
+		t.Fatalf("expected at least 1 BeverageDetail hit after warm GET; got %d", hits)
+	}
+
+	// Promote an admin and moderate the check-in.
+	adminTok, adminID := mustRegister(t, srv, "moderator_x", "modx@example.com", "password11")
+	promoteToAdmin(t, adminID)
+	code, raw = doReq(t, srv, http.MethodPost,
+		"/v1/admin/check-ins/"+checkinID+"/moderate", adminTok, map[string]any{
+			"notes": "test rule violation",
+		})
+	if code != http.StatusNoContent {
+		t.Fatalf("moderate: %d body=%s", code, raw)
+	}
+
+	// Next public GET must be a MISS — the cache was busted — and must reflect
+	// the trigger-recomputed aggregates (the only check-in is gone, so
+	// check_in_count drops to 0).
+	missesBefore := func() int64 { _, m := caches.BeverageDetail.Stats(); return m }()
+	code, body = doReq(t, srv, http.MethodGet, "/v1/beverages/"+bevID, "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("post-moderate GET status=%d body=%s", code, body)
+	}
+	var after map[string]any
+	_ = json.Unmarshal(body, &after)
+	afterCount, _ := after["check_in_count"].(float64)
+	if afterCount != 0 {
+		t.Fatalf("post-moderate check_in_count=%v want 0 (cache likely served stale)", after["check_in_count"])
+	}
+	missesAfter := func() int64 { _, m := caches.BeverageDetail.Stats(); return m }()
+	if missesAfter <= missesBefore {
+		t.Fatalf("expected another BeverageDetail miss after moderation; misses %d → %d", missesBefore, missesAfter)
+	}
+}
+
 // TestCategoriesETagShortCircuits — first GET captures the ETag, second GET
 // with If-None-Match returns 304 + an empty body.
 func TestCategoriesETagShortCircuits(t *testing.T) {
