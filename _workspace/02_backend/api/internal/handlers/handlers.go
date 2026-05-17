@@ -167,9 +167,12 @@ func (h *Handler) authedID(w http.ResponseWriter, r *http.Request) (string, bool
 
 // localeKey extracts a short cache-key axis from the request's Accept-Language
 // header. We only care about the first 2 chars of the primary tag — "en-US"
-// and "en-GB" collapse to "en" — because KAMOS only ships en/ja/ko. An
-// empty header collapses to the literal "any" so the bundle's 4-entry LRU
-// stays bounded regardless of how many language variants clients send.
+// and "en-GB" collapse to "en" — because KAMOS only ships en/ja/ko.
+//
+// Phase 7a MINOR-2 fix: unsupported locales (e.g. "zh") map to "en" so the
+// cache-key axis stays bounded to {en, ja, ko, any} regardless of what
+// misbehaving clients send. "any" is reserved for the empty-header case so
+// callers that pre-resolved to EN still hit a distinct LRU slot.
 func localeKey(r *http.Request) string {
 	h := r.Header.Get("Accept-Language")
 	if h == "" {
@@ -181,11 +184,21 @@ func localeKey(r *http.Request) string {
 		primary = primary[:i]
 	}
 	primary = strings.TrimSpace(primary)
-	if len(primary) >= 2 {
-		return strings.ToLower(primary[:2])
-	}
 	if primary == "" {
 		return "any"
 	}
-	return strings.ToLower(primary)
+	if len(primary) >= 2 {
+		primary = strings.ToLower(primary[:2])
+	} else {
+		primary = strings.ToLower(primary)
+	}
+	switch primary {
+	case "en", "ja", "ko":
+		return primary
+	default:
+		// Map unsupported locales to the EN fallback bucket — I18nText.Resolve
+		// already returns EN for these, so collapsing the cache key avoids
+		// redundant entries.
+		return "en"
+	}
 }
