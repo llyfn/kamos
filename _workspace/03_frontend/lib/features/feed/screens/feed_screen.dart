@@ -59,7 +59,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(feedProvider.notifier).refresh(),
+      onRefresh: () =>
+          ref.read(feedProvider.notifier).refresh(forceRefresh: true),
       child: ListView(
         controller: _scroll,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
