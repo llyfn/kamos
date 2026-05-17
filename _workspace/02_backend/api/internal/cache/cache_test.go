@@ -1,7 +1,9 @@
 package cache
 
 import (
+	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -93,6 +95,95 @@ func TestLRUConcurrentReadWrite(t *testing.T) {
 	h, m := c.Stats()
 	if h+m == 0 {
 		t.Fatalf("expected at least some Get calls; got stats=(%d,%d)", h, m)
+	}
+}
+
+// TestLRUGetOrLoadCoalescesConcurrentMisses — Phase 7a MAJOR-1 regression.
+// Fires N concurrent GetOrLoad calls on the same missing key with a slow
+// loader and asserts the loader runs exactly once. Without singleflight,
+// every concurrent caller would issue its own loader call (the
+// thundering-herd problem on hot-key TTL expiry).
+func TestLRUGetOrLoadCoalescesConcurrentMisses(t *testing.T) {
+	c := NewLRU[string, int]("sf-test", 16, time.Minute)
+	var loaderCalls atomic.Int64
+	loader := func() (int, error) {
+		loaderCalls.Add(1)
+		// Hold the loader open long enough that the other goroutines
+		// definitely contend on the same key.
+		time.Sleep(50 * time.Millisecond)
+		return 42, nil
+	}
+
+	const goroutines = 16
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	results := make([]int, goroutines)
+	errs := make([]error, goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			v, err := c.GetOrLoad("hot-key", loader)
+			results[idx] = v
+			errs[idx] = err
+		}(i)
+	}
+	wg.Wait()
+
+	if got := loaderCalls.Load(); got != 1 {
+		t.Fatalf("loader ran %d times; want 1 (singleflight failed to coalesce)", got)
+	}
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("goroutine %d returned error: %v", i, err)
+		}
+		if results[i] != 42 {
+			t.Fatalf("goroutine %d returned %d; want 42", i, results[i])
+		}
+	}
+	// Cache is populated.
+	v, ok := c.Get("hot-key")
+	if !ok || v != 42 {
+		t.Fatalf("post-load Get: got (%d, %v); want (42, true)", v, ok)
+	}
+}
+
+// TestLRUGetOrLoadPropagatesError — when the loader fails the error is
+// returned to the caller and nothing is cached.
+func TestLRUGetOrLoadPropagatesError(t *testing.T) {
+	c := NewLRU[string, int]("sf-err", 4, time.Minute)
+	sentinel := errors.New("loader boom")
+	v, err := c.GetOrLoad("k", func() (int, error) {
+		return 0, sentinel
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("err: want sentinel; got %v", err)
+	}
+	if v != 0 {
+		t.Fatalf("v: want zero on error; got %d", v)
+	}
+	if _, ok := c.Get("k"); ok {
+		t.Fatalf("failed loads must not populate the cache")
+	}
+}
+
+// TestLRUGetOrLoadHitFastPath — a populated cache returns the cached
+// value without invoking the loader.
+func TestLRUGetOrLoadHitFastPath(t *testing.T) {
+	c := NewLRU[string, int]("sf-hit", 4, time.Minute)
+	c.Set("k", 7)
+	var calls atomic.Int64
+	v, err := c.GetOrLoad("k", func() (int, error) {
+		calls.Add(1)
+		return 99, nil
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if v != 7 {
+		t.Fatalf("v: want 7; got %d", v)
+	}
+	if calls.Load() != 0 {
+		t.Fatalf("loader ran on a hit (calls=%d)", calls.Load())
 	}
 }
 

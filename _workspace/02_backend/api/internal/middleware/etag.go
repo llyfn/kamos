@@ -22,6 +22,19 @@ import (
 // public profile) the response is a few KB at most; the extra alloc is
 // invisible compared to the saved DB round-trip on a 304.
 //
+// Order-of-magnitude estimate (Phase 7a MAJOR-2): SHA-256 on a modern
+// x86 CPU runs at ~500 MB/s, so the hash cost scales linearly with body
+// size: 10 KB → ~20 µs, 100 KB → ~200 µs, 1 MB → ~2 ms, 5 MB → ~10 ms.
+// Buffer alloc adds one bytes.Buffer per request on top.
+//
+// Size cap (Phase 7a MAJOR-2): bodies larger than etagMaxBufBytes
+// (256 KB) bypass ETag computation entirely and flush as-is. This
+// protects against a future regression that accidentally returns a
+// huge response (e.g., misconfigured pagination yielding 1000 items
+// instead of 20, or a future endpoint that embeds a base64 photo).
+// Memory: at 1000 rps with mean 10 KB body, peak in-flight buffer
+// allocation is ~10 MB, well within GC reach.
+//
 // Order in the middleware chain: ETag MUST run OUTSIDE (i.e., wrap) the
 // inner handler, but it should run INSIDE CacheControl so the Cache-Control
 // header is already on the response when we flush the 200 OR the 304.
@@ -30,8 +43,18 @@ import (
 //   - We only hash 2xx responses. Errors (4xx/5xx) pass through unmodified.
 //   - We skip the hash when the response body is empty (no Content-Length
 //     advantage to a 304 over a 204).
+//   - We skip the hash when the body exceeds etagMaxBufBytes.
 //   - Streaming handlers won't benefit — they'd be buffered whole. None of
 //     the cacheable KAMOS endpoints stream, so this is fine.
+//
+// ETag value is truncated SHA-256 (first 8 bytes / 16 hex chars). 64 bits
+// of entropy gives a ~2^32 birthday-collision domain, which at our scale
+// is fine: collisions across routes are inert because ETag is scoped to
+// one URI's response, and within one route the collision probability
+// over the cache's lifetime is negligible. Deliberate trade for shorter
+// headers — MINOR-1 carry-over.
+const etagMaxBufBytes = 256 * 1024
+
 func ETag(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Only GET / HEAD are worth ETagging — write requests don't have
@@ -60,6 +83,14 @@ func ETag(next http.Handler) http.Handler {
 			w.WriteHeader(buf.status)
 			return
 		}
+		// Phase 7a MAJOR-2: size cap. Bodies larger than etagMaxBufBytes
+		// bypass the hash to avoid quietly bloating CPU + memory on a
+		// future regression. The body still flushes normally.
+		if buf.body.Len() > etagMaxBufBytes {
+			w.WriteHeader(buf.status)
+			_, _ = w.Write(buf.body.Bytes())
+			return
+		}
 
 		// Compute strong validator over the JSON bytes.
 		sum := sha256.Sum256(buf.body.Bytes())
@@ -81,27 +112,29 @@ func ETag(next http.Handler) http.Handler {
 
 // etagBuffer captures the response so we can hash it before flush.
 // It implements http.ResponseWriter by intercepting Write + WriteHeader.
+//
+// Phase 7a MAJOR-3: the previous `wroteHeader bool` field was set in
+// WriteHeader/Write but never read outside this type — the outer flush
+// logic decides what to emit from `status` (defaults to 200) and
+// `body.Len()` alone. Removing the dead field also removes the
+// idempotency guard on WriteHeader; stdlib already documents
+// "superfluous WriteHeader" as a developer error, so a handler that
+// calls WriteHeader twice now sees the second call take effect (matching
+// net/http when headers have not yet been flushed to the wire).
 type etagBuffer struct {
 	http.ResponseWriter
-	body         *bytes.Buffer
-	status       int
-	wroteHeader  bool
+	body   *bytes.Buffer
+	status int
 }
 
 func (e *etagBuffer) WriteHeader(code int) {
-	if e.wroteHeader {
-		return
-	}
 	e.status = code
-	e.wroteHeader = true
 	// Do NOT call e.ResponseWriter.WriteHeader yet — we may need to write
 	// 304 instead. The outer ETag handler flushes once it knows.
 }
 
 func (e *etagBuffer) Write(b []byte) (int, error) {
-	if !e.wroteHeader {
-		// Mimic net/http: an unflushed Write implies 200.
-		e.WriteHeader(http.StatusOK)
-	}
+	// status defaults to http.StatusOK in the constructor, so an
+	// unflushed Write already maps to 200 without an extra branch.
 	return e.body.Write(b)
 }

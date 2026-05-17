@@ -27,11 +27,17 @@ import (
 //   - BreweryDetail: smaller catalog (~hundreds). Size 500, TTL 10m —
 //     check-in counts roll up here too but a brewery's aggregate moves
 //     slower than a single beverage's.
+//
+// Phase 7a MAJOR-4 fix: BeverageDetail and BreweryDetail store VALUE
+// types (not pointers). Go semantics guarantee Get returns a struct
+// copy, which prevents a future per-viewer overlay from leaking
+// mutations across viewers. The copy cost is ~1 KB per Get/Set —
+// negligible compared to the saved DB round-trip.
 type Caches struct {
 	Categories     *LRU[string, []domain.CategoryLabel]
 	FlavorTags     *LRU[string, []domain.FlavorTag]
-	BeverageDetail *LRU[string, *domain.BeverageDetail]
-	BreweryDetail  *LRU[string, *domain.Brewery]
+	BeverageDetail *LRU[string, domain.BeverageDetail]
+	BreweryDetail  *LRU[string, domain.Brewery]
 }
 
 // NewCaches constructs the bundle with the Phase 7 sizing.
@@ -39,8 +45,8 @@ func NewCaches() *Caches {
 	return &Caches{
 		Categories:     NewLRU[string, []domain.CategoryLabel]("categories", 4, time.Hour),
 		FlavorTags:     NewLRU[string, []domain.FlavorTag]("flavor_tags", 4, time.Hour),
-		BeverageDetail: NewLRU[string, *domain.BeverageDetail]("beverage_detail", 1000, 5*time.Minute),
-		BreweryDetail:  NewLRU[string, *domain.Brewery]("brewery_detail", 500, 10*time.Minute),
+		BeverageDetail: NewLRU[string, domain.BeverageDetail]("beverage_detail", 1000, 5*time.Minute),
+		BreweryDetail:  NewLRU[string, domain.Brewery]("brewery_detail", 500, 10*time.Minute),
 	}
 }
 
