@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "codegen": "openapi-typescript ../02_backend/api/openapi.yaml -o src/types/api.d.ts",
+    "codegen": "openapi-typescript ../backend/openapi.yaml -o src/types/api.d.ts",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

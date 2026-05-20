@@ -4,13 +4,13 @@ Single bridging document for `db-architect`, `backend-engineer`, and `flutter-en
 
 ## Canonical sources
 - **SPEC of record** — `SPEC.md` (product spec)
-- **Brief** — `_workspace/00_brief.md` (sections 4, 6, 8 are load-bearing)
-- **Design tokens** — `_workspace/01_design/colors_and_type.css` (single source of truth for hex / sp / dp / ms / radii / shadows / motion)
-- **Brand + voice + visual rules** — `_workspace/01_design/README.md`
-- **Screens (runnable)** — `_workspace/01_design/ui_kits/mobile/index.html` + `components/*.jsx`
-- **Primitive previews** — `_workspace/01_design/preview/*.html`
+- **Brief** — `docs/history/00_brief.md` (sections 4, 6, 8 are load-bearing)
+- **Design tokens** — `design/colors_and_type.css` (single source of truth for hex / sp / dp / ms / radii / shadows / motion)
+- **Brand + voice + visual rules** — `design/README.md`
+- **Screens (runnable)** — `design/ui_kits/mobile/index.html` + `components/*.jsx`
+- **Primitive previews** — `design/preview/*.html`
 
-The API contract (`_workspace/02_backend/api/openapi.yaml`) is owned by `backend-engineer`. This document does not define it — it lists the data shapes each screen needs so the contract can be written from SPEC.md plus this index.
+The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This document does not define it — it lists the data shapes each screen needs so the contract can be written from SPEC.md plus this index.
 
 ## Screen → file map
 

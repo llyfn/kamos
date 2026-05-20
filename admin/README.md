@@ -17,7 +17,7 @@ with the user app and gates every route on `users.role in {moderator,admin}`.
 
 ```sh
 npm install          # or: bun install
-npm run codegen      # regenerate src/types/api.d.ts from ../02_backend/api/openapi.yaml
+npm run codegen      # regenerate src/types/api.d.ts from ../backend/openapi.yaml
 npm run dev          # http://localhost:5174
 npm run build        # tsc + vite build
 npm run test
@@ -28,7 +28,5 @@ The kamos-api server is expected on `http://localhost:8080` (override with
 
 ## Path rule
 
-This is the admin codebase under the workspace path. It is intentionally
-separate from `_workspace/03_frontend/` (Flutter mobile) and from the backend.
-Per `.claude/CLAUDE.md`, if `admin/` is later promoted to the repo root, write
-production code there and stop writing here.
+This is the admin codebase at the repo root. It is intentionally separate
+from `frontend/` (Flutter mobile) and from `backend/` (Go API).

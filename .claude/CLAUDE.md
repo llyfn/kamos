@@ -23,23 +23,21 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 
 ## Repository layout
 
-The project follows a workspace-based pipeline used by the agent harness, then graduates to a real source tree:
+The project uses a standard top-level layout:
 
 ```
-_workspace/                  # agent intermediate artifacts (per-phase outputs)
-  00_brief.md
-  01_design/                 # designer outputs
-  02_backend/db/             # db-architect outputs (migrations, query patterns)
-  02_backend/api/            # backend-engineer outputs (Go source, openapi.yaml)
-  03_frontend/               # flutter-engineer outputs (Flutter project)
-  04_qa/                     # qa-inspector incremental + final reports
-  review/                    # code-review skill outputs
-backend/                     # the real Go project (promoted from _workspace once stable)
-frontend/                    # the real Flutter project
-migrations/                  # the real migration files (mirrors _workspace/02_backend/db/migrations/)
+backend/                     # Go REST API (chi + pgx/v5)
+frontend/                    # Flutter mobile app
+admin/                       # React/Vite admin web client
+migrations/                  # PostgreSQL migration SQL (append-only)
+design/                      # Design system: tokens, brand doc, UI kit, previews
+docs/                        # Long-form documentation
+  db/                        #   schema.md, indexes.md, query_patterns.md
+  history/                   #   00_brief.md + archived per-phase QA + review reports
+scripts/                     # Operational scripts (smoke.sh, e2e/)
+docker-compose.yml           # Postgres + API for local dev
+Makefile                     # One-line dev tasks
 ```
-
-**Path rule:** if `backend/` or `frontend/` already exists at the repo root, write production code there. Otherwise write to `_workspace/02_backend/api/` or `_workspace/03_frontend/`. Never write the same file in both places.
 
 ## How this project uses agents and skills
 

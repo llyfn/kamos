@@ -19,7 +19,7 @@ Min platforms: iOS 13+, Android API 26+ (set in `ios/Runner/Info.plist` and `and
 ## Setup
 
 ```bash
-cd _workspace/03_frontend
+cd frontend
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs   # freezed
 flutter gen-l10n                                            # ARB → AppLocalizations
@@ -90,9 +90,9 @@ grep -rn 'SharedPreferences' lib/ | grep -i token   # must be empty (SPEC §6.9 
 
 ## Project structure
 
-Feature-first layout under `lib/features/`. Shared widgets in `lib/shared/widgets/`. Core API + storage + i18n in `lib/core/`. The router is `lib/app/router.dart`; theme tokens are `lib/app/theme.dart` (mirroring `_workspace/01_design/colors_and_type.css`).
+Feature-first layout under `lib/features/`. Shared widgets in `lib/shared/widgets/`. Core API + storage + i18n in `lib/core/`. The router is `lib/app/router.dart`; theme tokens are `lib/app/theme.dart` (mirroring `design/colors_and_type.css`).
 
-## Design substitutions (per `_workspace/01_design/HANDOFF.md`)
+## Design substitutions (per `design/HANDOFF.md`)
 
 - **Display font** — Shippori Mincho is the design recommendation. The app declares `fontFamily: 'ShipporiMincho'` but does not bundle the typeface; the OS falls back through Hiragino → Yu Mincho → Songti SC → Noto Serif JP. Drop the TTF files into `assets/fonts/` and register them in `pubspec.yaml` to lock the look.
 - **Icon set** — design recommended Phosphor; the Flutter app uses Material Symbols (`Icons.*`) until product confirms. Switch to `phosphor_flutter` by importing the package and replacing icon glyphs site-by-site.

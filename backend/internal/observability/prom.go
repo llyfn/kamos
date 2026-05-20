@@ -18,7 +18,7 @@ import (
 //
 // Total cardinality: 4 × 2 = 8 series. Well within Prom's comfort zone.
 //
-// Grafana usage (see _workspace/04_qa/qa_phase7_grafana_panel.json):
+// Grafana usage (see docs/history/qa/qa_phase7_grafana_panel.json):
 //
 //	hit rate by cache =
 //	  sum by (cache) (rate(cache_requests_total{outcome="hit"}[5m]))

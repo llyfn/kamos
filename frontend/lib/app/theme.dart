@@ -1,6 +1,6 @@
 // KAMOS — Theme + token extension.
 //
-// Mirrors `_workspace/01_design/colors_and_type.css` verbatim. Widgets read
+// Mirrors `design/colors_and_type.css` verbatim. Widgets read
 // tokens by name from `KamosTokens` and `Theme.of(context)`; no hex / px
 // literals in widget code anywhere else in the app.
 

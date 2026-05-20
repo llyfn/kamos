@@ -1,8 +1,8 @@
-.PHONY: help up down db-up db-down db-migrate db-reset api-run api-run-local api-test api-test-unit api-test-int api-build flutter-run flutter-test flutter-analyze check clean
+.PHONY: help up down db-up db-down db-migrate db-reset api-run api-run-local api-test api-test-unit api-test-int api-build flutter-run flutter-test flutter-analyze check smoke clean
 
-API_DIR     := _workspace/02_backend/api
-DB_DIR      := _workspace/02_backend/db
-FRONTEND    := _workspace/03_frontend
+API_DIR         := backend
+MIGRATIONS_DIR  := migrations
+FRONTEND        := frontend
 PSQL_URL    ?= postgres://kamos:kamos@localhost:5432/kamos?sslmode=disable
 
 help:
@@ -24,6 +24,7 @@ help:
 	@echo "  make flutter-test    flutter test"
 	@echo "  make flutter-analyze flutter analyze"
 	@echo "  make check           Build + unit-test backend, integration if INTEGRATION_DATABASE_URL set, then analyze + test frontend"
+	@echo "  make smoke           Run scripts/smoke.sh end-to-end"
 
 up:
 	docker compose up -d --build
@@ -39,7 +40,7 @@ db-down:
 
 db-migrate:
 	@echo "Applying migrations to $(PSQL_URL)"
-	@for f in $(DB_DIR)/migrations/*.sql; do \
+	@for f in $(MIGRATIONS_DIR)/*.sql; do \
 		echo "→ $$f"; \
 		psql "$(PSQL_URL)" -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
 	done
@@ -105,6 +106,9 @@ check: api-build api-test
 	fi
 	$(MAKE) flutter-analyze flutter-test
 	@echo "All checks passed."
+
+smoke:
+	./scripts/smoke.sh
 
 clean:
 	cd $(API_DIR) && go clean ./...

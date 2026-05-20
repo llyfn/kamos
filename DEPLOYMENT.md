@@ -16,18 +16,20 @@ Local-development and staging deployment notes for the KAMOS MVP. Production har
 ## 2. Repository layout (deploy-relevant)
 
 ```
-_workspace/02_backend/api/    Go REST API
-_workspace/02_backend/db/     Schema + migrations (SQL)
-_workspace/03_frontend/       Flutter app
+backend/                      Go REST API
+migrations/                   Schema + migrations (SQL)
+frontend/                     Flutter app
+admin/                        React admin web client
+design/                       Design system (tokens, kit)
+docs/                         Long-form docs (db/, history/, runbooks)
+scripts/                      Operational scripts (smoke, e2e)
 docker-compose.yml            Postgres + API for local dev
 Makefile                      One-line dev tasks
 ```
 
-> `backend/` and `frontend/` at the repo root are empty placeholders. Production paths during the MVP build are under `_workspace/`. Promotion happens with the first real deploy.
-
 ## 3. Environment variables
 
-Copy `_workspace/02_backend/api/.env.example` to `.env` at the repo root (or wherever your runner reads it). Required keys:
+Copy `backend/.env.example` to `.env` at the repo root (or wherever your runner reads it). Required keys:
 
 | Key | Purpose | Required |
 |---|---|---|
@@ -83,7 +85,7 @@ make up
 make db-migrate         # applies 001_initial.sql + 002_seed_taxonomy.sql
 
 # 3. flutter app — runs against http://localhost:8080
-cd _workspace/03_frontend
+cd frontend
 flutter pub get
 flutter run --dart-define=KAMOS_API_BASE_URL=http://localhost:8080
 ```
@@ -103,7 +105,7 @@ For Android emulator, replace `localhost` with `10.0.2.2`. For iOS simulator, `l
 
 ## 5. Database
 
-Migrations are plain SQL files in `_workspace/02_backend/db/migrations/`, applied in lexicographic order:
+Migrations are plain SQL files in `migrations/`, applied in lexicographic order:
 
 ```
 001_initial.sql                              schema (13 tables, CHECKs, triggers, indexes)
@@ -149,7 +151,7 @@ Health check: `GET /healthz` → `200`.
 ## 7. Flutter app
 
 ```sh
-cd _workspace/03_frontend
+cd frontend
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs    # if regenerating freezed/json_serializable
 flutter analyze
@@ -170,7 +172,7 @@ Android notes:
 Phase 2 shipped end-to-end Google sign-in wiring (`google_sign_in ^7.2.0` on Flutter, `internal/auth/google.go` on the API). It is gated behind a Flutter `--dart-define` flag so debug builds without platform config remain runnable.
 
 1. Create OAuth 2.0 credentials in Google Cloud Console — one Web/Server, one iOS, one Android client ID (see cookbook §C1 in the roadmap).
-2. Drop the iOS client ID into `ios/Runner/Info.plist` and the Android client ID into `android/app/build.gradle.kts` per `google_sign_in` docs. Reference: `_workspace/03_frontend/README_flutter.md`.
+2. Drop the iOS client ID into `ios/Runner/Info.plist` and the Android client ID into `android/app/build.gradle.kts` per `google_sign_in` docs. Reference: `frontend/README_flutter.md`.
 3. Set `GOOGLE_CLIENT_ID` on the API to the **Web/Server** client ID — this is the audience the server verifies ID tokens against.
 4. Run the app with `--dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true` to surface the Google button.
 
@@ -189,7 +191,7 @@ Phase 0–7 of the post-MVP roadmap shipped end-to-end. Every external-vendor in
 | Venue tag (Foursquare Places API) | 4 | `FOURSQUARE_API_KEY` | `GET /v1/venues/search` → `503 VENUE_SEARCH_DISABLED`. Check-in `venue.foursquare_id` upsert works without the key. Cookbook §C5. |
 | Admin web client hosting (Cloudflare Pages) | 5 | Pages project + `VITE_API_BASE_URL` | Admin client compiles locally; deployment uses any static host. Cookbook §C6. |
 
-The QA punch lists per phase live at `_workspace/04_qa/qa_report_phase{0..7}*.md` (per-layer + final). The historical MVP report is `_workspace/04_qa/qa_report_final.md`.
+The QA punch lists per phase live at `docs/history/qa/qa_report_phase{0..7}*.md` (per-layer + final). The historical MVP report is `docs/history/qa/qa_report_final.md`.
 
 ## 10. Verification — full integration smoke
 
@@ -249,7 +251,7 @@ Shipped end-to-end (implementation present in the repo):
 - [x] Photo storage presigned-URL handler *(`internal/storage/r2.go` + `POST /v1/uploads/photo-presign`; Phase 3, gated on `R2_*` env)*
 - [x] Outbound mail with HTML/text templates per locale *(`internal/email/`; Phase 3, gated on `RESEND_API_KEY`)*
 - [x] Optional venue tagging via Foursquare *(`internal/foursquare/`; Phase 4, gated on `FOURSQUARE_API_KEY`)*
-- [x] Admin web client + RBAC *(React 19 / Vite 6 at `_workspace/05_admin/`; `RequireRole` middleware; Phase 5, hosting gated on Cloudflare Pages project)*
+- [x] Admin web client + RBAC *(React 19 / Vite 6 at `admin/`; `RequireRole` middleware; Phase 5, hosting gated on Cloudflare Pages project)*
 - [x] Public collections + flat comments + admin moderation *(Phase 6)*
 - [x] HTTP `Cache-Control` + strong ETag + LRU + singleflight on read-heavy routes; `cache_requests_total` Prom metric + Grafana panel JSON *(Phase 7)*
 

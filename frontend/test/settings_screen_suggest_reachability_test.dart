@@ -2,7 +2,7 @@
 // `meProvider` is in `AsyncError` (Phase 5a residual sweep).
 //
 // QA report:
-//   _workspace/04_qa/qa_report_phase5a_flutter.md:72
+//   docs/history/qa/qa_report_phase5a_flutter.md:72
 //   "Suggest-beverage menu unreachable when meProvider errors."
 //
 // This test pins the fix: even when the profile fetch fails, the suggest

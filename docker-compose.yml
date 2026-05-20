@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - kamos_pgdata:/var/lib/postgresql/data
-      - ./_workspace/02_backend/db/migrations:/docker-entrypoint-initdb.d:ro
+      - ./migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kamos -d kamos"]
       interval: 5s
@@ -20,7 +20,7 @@ services:
 
   api:
     build:
-      context: ./_workspace/02_backend/api
+      context: ./backend
       dockerfile: Dockerfile
     container_name: kamos-api
     restart: unless-stopped
