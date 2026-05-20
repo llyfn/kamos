@@ -1,4 +1,4 @@
-.PHONY: help up down db-up db-down db-migrate db-reset api-run api-run-local api-test api-test-unit api-test-int api-build flutter-run flutter-test flutter-analyze check smoke clean
+.PHONY: help up down db-up db-down db-migrate db-reset api-run api-run-local worker-run worker-run-local api-test api-test-unit api-test-int api-build worker-build flutter-run flutter-test flutter-analyze check smoke clean
 
 API_DIR         := backend
 MIGRATIONS_DIR  := migrations
@@ -16,10 +16,13 @@ help:
 	@echo "  make db-reset        Drop + recreate kamos database (DESTRUCTIVE)"
 	@echo "  make api-run         Run Go API locally (requires running postgres)"
 	@echo "  make api-run-local   Run Go API locally with local.env sourced"
+	@echo "  make worker-run      Run Go worker (scheduler) locally"
+	@echo "  make worker-run-local Run Go worker locally with local.env sourced"
 	@echo "  make api-test        go test ./... (unit, no integration)"
 	@echo "  make api-test-unit   alias for api-test"
 	@echo "  make api-test-int    go test -tags=integration (real Postgres 18)"
-	@echo "  make api-build       go build ./..."
+	@echo "  make api-build       go build ./... (server + worker)"
+	@echo "  make worker-build    go build ./cmd/worker only"
 	@echo "  make flutter-run     flutter run (mobile app)"
 	@echo "  make flutter-test    flutter test"
 	@echo "  make flutter-analyze flutter analyze"
@@ -62,6 +65,16 @@ api-run-local:
 	@set -a; [ -f local.env ] && . ./local.env; set +a; \
 	cd $(API_DIR) && go run ./cmd/server
 
+# Run the worker (scheduler-only process). Same env shape as the API; the
+# worker only needs DATABASE_URL + optional observability + R2 creds for
+# photo_orphan_cleanup. Single replica by convention.
+worker-run:
+	cd $(API_DIR) && go run ./cmd/worker
+
+worker-run-local:
+	@set -a; [ -f local.env ] && . ./local.env; set +a; \
+	cd $(API_DIR) && go run ./cmd/worker
+
 api-test:
 	cd $(API_DIR) && go test ./...
 
@@ -84,6 +97,9 @@ api-test-int:
 
 api-build:
 	cd $(API_DIR) && go build ./...
+
+worker-build:
+	cd $(API_DIR) && go build -o /dev/null ./cmd/worker
 
 flutter-run:
 	cd $(FRONTEND) && flutter run

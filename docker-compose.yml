@@ -22,6 +22,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: kamos/backend:dev
     container_name: kamos-api
     restart: unless-stopped
     depends_on:
@@ -40,8 +41,34 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
+      CACHE_BACKEND: ${CACHE_BACKEND:-in_process}
+      CACHE_REDIS_URL: ${CACHE_REDIS_URL:-}
     ports:
       - "8080:8080"
+    command: ["/usr/local/bin/server"]
+
+  # Stage 4 — background-job runner. Reuses the same image as `api`; only
+  # the command differs. Stays at a single replica; the scheduler also
+  # guards every tick with pg_try_advisory_lock so a misconfigured deploy
+  # that scaled this service would still fail safe.
+  worker:
+    image: kamos/backend:dev
+    container_name: kamos-worker
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: dev
+      APP_BASE_URL: http://localhost:8080
+      DATABASE_URL: postgres://kamos:kamos@postgres:5432/kamos?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-please-at-least-32-bytes-long-aaaa}
+      WORKER_METRICS_PORT: "9091"
+    command: ["/usr/local/bin/worker"]
+    deploy:
+      replicas: 1
 
 volumes:
   kamos_pgdata:
