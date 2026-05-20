@@ -52,7 +52,7 @@ All design output lives under `_workspace/01_design/`. Match this layout exactly
 _workspace/01_design/
   README.md                       brand + index + open questions
   colors_and_type.css             tokens; the only place hex / sp / dp / ms live
-  assets/                         logos (logo.png, logo_mono.png, logo_white.png, logo_mark.png, logo_original.png)
+  assets/                         logos (logo.png, logo_mono.png, logo_white.png, logo_mark.png)
   preview/                        one HTML per primitive / preview surface
   ui_kits/mobile/
     README.md                     component map
