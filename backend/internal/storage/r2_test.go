@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/domain"
 )
 
 // Disabled.PresignPut returns the ErrStorageDisabled sentinel so handlers
@@ -14,7 +14,7 @@ import (
 func TestDisabledPresignPutReturnsSentinel(t *testing.T) {
 	var s Storage = Disabled{}
 	_, err := s.PresignPut(context.Background(), "k", "image/jpeg", 1, time.Minute)
-	if !errors.Is(err, apierror.ErrStorageDisabled) {
+	if !errors.Is(err, domain.ErrStorageDisabled) {
 		t.Fatalf("err: %v", err)
 	}
 }

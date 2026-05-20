@@ -183,8 +183,8 @@ func newWithBase(t *testing.T, apiKey, base string) *Client {
 	c.http = &http.Client{
 		Timeout: httpTimeout,
 		Transport: rewriteTransport{
-			base:   base,
-			inner:  http.DefaultTransport,
+			base:  base,
+			inner: http.DefaultTransport,
 		},
 	}
 	return c

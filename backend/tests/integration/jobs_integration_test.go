@@ -111,9 +111,9 @@ VALUES ($1, $2, NOW() + $3::interval);`, userID, hash, expiresOffset.String()); 
 			t.Fatalf("seed token %q: %v", token, err)
 		}
 	}
-	insert("fresh", 24*time.Hour)             // future expiry → keep
-	insert("grace", -3*24*time.Hour)          // expired 3d ago → keep
-	insert("oldold", -10*24*time.Hour)        // expired 10d ago → delete
+	insert("fresh", 24*time.Hour)      // future expiry → keep
+	insert("grace", -3*24*time.Hour)   // expired 3d ago → keep
+	insert("oldold", -10*24*time.Hour) // expired 10d ago → delete
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	if err := jobs.JobEmailVerificationCleanup(log)(ctx, p); err != nil {

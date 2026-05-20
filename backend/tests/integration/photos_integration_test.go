@@ -16,14 +16,14 @@ import (
 // We're running with the default test harness (no R2_* envs set), so the
 // server boots with storage.Disabled. Two contracts:
 //
-//   1. POST /v1/uploads/photo-presign → 503 STORAGE_DISABLED. This is the
-//      machine-readable signal to the mobile client that the deployment
-//      does not have R2 wired up.
-//   2. POST /v1/check-ins/{id}/photos with an upload_id whose row we
-//      planted directly via SQL still attaches successfully — the photo_url
-//      column ends up empty because Storage.PublicURL is "" on Disabled.
-//      We document this as the "no R2 configured" contract. Once R2 is
-//      wired, this test will be updated to assert the real CDN URL.
+//  1. POST /v1/uploads/photo-presign → 503 STORAGE_DISABLED. This is the
+//     machine-readable signal to the mobile client that the deployment
+//     does not have R2 wired up.
+//  2. POST /v1/check-ins/{id}/photos with an upload_id whose row we
+//     planted directly via SQL still attaches successfully — the photo_url
+//     column ends up empty because Storage.PublicURL is "" on Disabled.
+//     We document this as the "no R2 configured" contract. Once R2 is
+//     wired, this test will be updated to assert the real CDN URL.
 func TestPhotoPresignReturns503WhenStorageDisabled(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)

@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -48,7 +48,7 @@ RETURNING id, user_id, name, visibility::text, created_at, updated_at;`
 	var c domain.Collection
 	if err := r.db.QueryRow(ctx, q, userID, name).Scan(&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt); err != nil {
 		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
-			return nil, apierror.ErrConflict
+			return nil, domain.ErrConflict
 		}
 		return nil, fmt.Errorf("CollectionRepo.Create: %w", err)
 	}
@@ -113,7 +113,7 @@ RETURNING id, user_id, name, visibility::text, created_at, updated_at,
 		&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount,
 	); err != nil {
 		if strings.Contains(err.Error(), "idx_collections_user_name_live") {
-			return nil, apierror.ErrConflict
+			return nil, domain.ErrConflict
 		}
 		return nil, wrapNoRows("CollectionRepo.Update", err)
 	}
@@ -199,7 +199,7 @@ RETURNING id;`
 	var got string
 	if err := r.db.QueryRow(ctx, q, id, userID).Scan(&got); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("CollectionRepo.SoftDelete: %w", err)
 	}
@@ -231,14 +231,14 @@ LIMIT $5;`
 	for rows.Next() {
 		var e domain.CollectionEntry
 		var (
-			bevID         string
-			bevName       []byte
-			bevSlug       string
-			bevLabel      *string
-			catName       []byte
-			brwID         string
-			brwName       []byte
-			brwRegion     *string
+			bevID     string
+			bevName   []byte
+			bevSlug   string
+			bevLabel  *string
+			catName   []byte
+			brwID     string
+			brwName   []byte
+			brwRegion *string
 		)
 		if err := rows.Scan(&bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName, &brwRegion); err != nil {
 			return nil, fmt.Errorf("CollectionRepo.Entries scan: %w", err)
@@ -271,7 +271,7 @@ RETURNING collection_id;`
 	var got string
 	if err := r.db.QueryRow(ctx, q, collectionID, beverageID, note, userID).Scan(&got); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("CollectionRepo.AddEntry: %w", err)
 	}
@@ -289,7 +289,7 @@ WHERE ce.collection_id = $1 AND ce.beverage_id = $2
 		return fmt.Errorf("CollectionRepo.UpdateEntry: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -306,7 +306,7 @@ WHERE ce.collection_id = c.id
 		return fmt.Errorf("CollectionRepo.RemoveEntry: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }

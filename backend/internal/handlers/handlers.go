@@ -13,13 +13,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/cursor"
+	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/foursquare"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/service"
@@ -153,7 +154,7 @@ func decodeJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return errors.Join(apierror.ErrBadRequest, err)
+		return errors.Join(domain.ErrBadRequest, err)
 	}
 	return nil
 }
@@ -161,16 +162,16 @@ func decodeJSON(r *http.Request, v any) error {
 // writeErr maps an error to an HTTP response using the canonical body shape
 // and the handler's logger for any internal-error stack.
 func (h *Handler) writeErr(w http.ResponseWriter, op string, err error) {
-	if errors.Is(err, apierror.ErrValidation) {
+	if errors.Is(err, domain.ErrValidation) {
 		// Extract message after the sentinel prefix.
 		msg := err.Error()
 		if i := strings.Index(msg, ": "); i >= 0 {
 			msg = msg[i+2:]
 		}
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", msg)
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", msg)
 		return
 	}
-	apierror.WriteFrom(w, h.Log, op, err)
+	httperr.WriteFrom(w, h.Log, op, err)
 }
 
 // parseLimit reads ?limit=N within [1, max]; default `def`.
@@ -208,7 +209,7 @@ var _ = context.Background
 func (h *Handler) authedID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	u := middleware.UserFromContext(r.Context())
 	if u == nil {
-		apierror.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		httperr.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return "", false
 	}
 	return u.ID, true

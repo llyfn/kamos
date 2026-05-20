@@ -7,11 +7,11 @@ import (
 )
 
 // TestNewRefreshSecret_FormatAndHash verifies:
-//   1. The raw secret decodes from base64-rawurl into exactly 32 bytes,
-//      i.e., the encoded form is the canonical 43-char URL-safe string.
-//   2. The returned hash has length sha256.Size (32 bytes).
-//   3. The hash bytes do NOT contain the raw secret as a substring — i.e.,
-//      the secret is properly digested, not just appended/copied.
+//  1. The raw secret decodes from base64-rawurl into exactly 32 bytes,
+//     i.e., the encoded form is the canonical 43-char URL-safe string.
+//  2. The returned hash has length sha256.Size (32 bytes).
+//  3. The hash bytes do NOT contain the raw secret as a substring — i.e.,
+//     the secret is properly digested, not just appended/copied.
 func TestNewRefreshSecret_FormatAndHash(t *testing.T) {
 	raw, hash, err := NewRefreshSecret()
 	if err != nil {

@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -55,7 +56,7 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 		score := int64(b.CheckInCount)
 		return cursor.Cursor{Score: &score, ID: b.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.Beverage]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Beverage]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -110,7 +111,7 @@ func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "GetBeverage", err)
 			return
 		}
-		apierror.WriteJSON(w, http.StatusOK, out)
+		httperr.WriteJSON(w, http.StatusOK, out)
 		return
 	}
 	out, err := h.Caches.BeverageDetail.GetOrLoad(cacheKey, loader)
@@ -118,7 +119,7 @@ func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "GetBeverage", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, out)
+	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
 // GetBeverageCheckins — GET /v1/beverages/{id}/check-ins. Cursor-paginated.
@@ -144,7 +145,7 @@ func (h *Handler) GetBeverageCheckins(w http.ResponseWriter, r *http.Request) {
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(c domain.CheckinSummary) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: c.CreatedAt, ID: c.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.CheckinSummary]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.CheckinSummary]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -171,7 +172,7 @@ func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(b domain.Brewery) cursor.Cursor {
 		return cursor.Cursor{ID: b.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.Brewery]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Brewery]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -238,7 +239,7 @@ func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 		domain.Brewery
 		Beverages cursor.Page[domain.Beverage] `json:"beverages"`
 	}
-	apierror.WriteJSON(w, http.StatusOK, out{
+	httperr.WriteJSON(w, http.StatusOK, out{
 		Brewery:   br,
 		Beverages: cursor.Page[domain.Beverage]{Items: items, NextCursor: next, HasMore: hasMore},
 	})

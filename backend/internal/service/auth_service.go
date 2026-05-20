@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/config"
 	"github.com/kamos/api/internal/domain"
@@ -151,14 +150,14 @@ func (s *AuthService) Register(ctx context.Context, req domain.RegisterRequest, 
 		return nil, fmt.Errorf("Register username: %w", err)
 	}
 	if state == "live" || state == "held" {
-		return nil, apierror.ErrUsernameHeld
+		return nil, domain.ErrUsernameHeld
 	}
 	taken, err := s.users.EmailExists(ctx, req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("Register email: %w", err)
 	}
 	if taken {
-		return nil, apierror.ErrEmailTaken
+		return nil, domain.ErrEmailTaken
 	}
 	hashed, err := auth.HashPassword(req.Password)
 	if err != nil {
@@ -200,18 +199,18 @@ func (s *AuthService) Register(ctx context.Context, req domain.RegisterRequest, 
 func (s *AuthService) Login(ctx context.Context, req domain.LoginRequest) (*AuthResult, error) {
 	row, err := s.users.FindByEmail(ctx, req.Email)
 	if err != nil {
-		if errors.Is(err, apierror.ErrNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			auth.VerifyDummyPassword(req.Password)
-			return nil, apierror.ErrInvalidCredential
+			return nil, domain.ErrInvalidCredential
 		}
 		return nil, fmt.Errorf("Login find: %w", err)
 	}
 	if row.PasswordHash == nil {
 		auth.VerifyDummyPassword(req.Password)
-		return nil, apierror.ErrInvalidCredential
+		return nil, domain.ErrInvalidCredential
 	}
 	if err := auth.VerifyPassword(*row.PasswordHash, req.Password); err != nil {
-		return nil, apierror.ErrInvalidCredential
+		return nil, domain.ErrInvalidCredential
 	}
 	access, refresh, err := s.IssueAuthPair(ctx, &row.User)
 	if err != nil {
@@ -248,15 +247,15 @@ func (s *AuthService) RotateRefresh(ctx context.Context, raw string) (*AuthResul
 				"revoked_count", n,
 			)
 		}
-		return nil, apierror.ErrInvalidCredential // handler maps → 401 TOKEN_INVALID
+		return nil, domain.ErrInvalidCredential // handler maps → 401 TOKEN_INVALID
 	}
 	if time.Now().After(row.ExpiresAt) {
-		return nil, apierror.ErrTokenExpired
+		return nil, domain.ErrTokenExpired
 	}
 	user, err := s.users.FindByID(ctx, row.UserID)
 	if err != nil {
-		if errors.Is(err, apierror.ErrNotFound) {
-			return nil, apierror.ErrInvalidCredential
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, domain.ErrInvalidCredential
 		}
 		return nil, fmt.Errorf("RotateRefresh find user: %w", err)
 	}
@@ -269,8 +268,8 @@ func (s *AuthService) RotateRefresh(ctx context.Context, raw string) (*AuthResul
 		return nil, fmt.Errorf("RotateRefresh secret: %w", err)
 	}
 	if _, err := s.tokens.RotateAtomic(ctx, row.ID, user.ID, newHash, row.FamilyID, s.refreshTTL()); err != nil {
-		if errors.Is(err, apierror.ErrRefreshTokenRaceLost) {
-			return nil, apierror.ErrInvalidCredential
+		if errors.Is(err, domain.ErrRefreshTokenRaceLost) {
+			return nil, domain.ErrInvalidCredential
 		}
 		return nil, fmt.Errorf("RotateRefresh rotate: %w", err)
 	}
@@ -290,7 +289,7 @@ func (s *AuthService) RotateRefresh(ctx context.Context, raw string) (*AuthResul
 // rather than re-verified here so the handler keeps ownership of the verifier.
 func (s *AuthService) GoogleLogin(ctx context.Context, req domain.GoogleLoginRequest, payload *auth.GooglePayload) (*AuthResult, error) {
 	existing, err := s.users.FindByGoogleSub(ctx, payload.Sub)
-	if err != nil && !errors.Is(err, apierror.ErrNotFound) {
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, fmt.Errorf("GoogleLogin lookup: %w", err)
 	}
 	if existing != nil {
@@ -334,7 +333,7 @@ func (s *AuthService) googleLoginCreatePath(ctx context.Context, req domain.Goog
 		return nil, fmt.Errorf("googleLoginCreate avail: %w", err)
 	}
 	if state == "live" || state == "held" {
-		return nil, apierror.ErrUsernameHeld
+		return nil, domain.ErrUsernameHeld
 	}
 	if payload.Email != "" {
 		taken, err := s.users.EmailExists(ctx, payload.Email)
@@ -342,7 +341,7 @@ func (s *AuthService) googleLoginCreatePath(ctx context.Context, req domain.Goog
 			return nil, fmt.Errorf("googleLoginCreate email: %w", err)
 		}
 		if taken {
-			return nil, apierror.ErrEmailTaken
+			return nil, domain.ErrEmailTaken
 		}
 	}
 	locale := "en"
@@ -459,7 +458,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, current, next 
 		return err
 	}
 	if err := auth.VerifyPassword(currentHash, current); err != nil {
-		return apierror.ErrInvalidCredential
+		return domain.ErrInvalidCredential
 	}
 	newHash, err := auth.HashPassword(next)
 	if err != nil {
@@ -476,7 +475,7 @@ func (s *AuthService) ChangeEmail(ctx context.Context, userID, newEmail string, 
 		return err
 	}
 	if taken {
-		return apierror.ErrEmailTaken
+		return domain.ErrEmailTaken
 	}
 	if err := s.users.UpdateEmail(ctx, userID, newEmail); err != nil {
 		return err
@@ -504,7 +503,7 @@ func (s *AuthService) Logout(ctx context.Context, userID, raw string) error {
 		hash := auth.HashRefreshToken(raw)
 		row, err := s.tokens.LookupByHash(ctx, hash)
 		if err != nil {
-			if errors.Is(err, apierror.ErrNotFound) {
+			if errors.Is(err, domain.ErrNotFound) {
 				return nil // best-effort
 			}
 			return err

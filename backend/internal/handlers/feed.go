@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // Feed — GET /v1/feed. 20 items per page, reverse-chronological, follows
@@ -30,7 +30,7 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(it domain.FeedItem) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: it.CreatedAt, ID: it.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.FeedItem]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.FeedItem]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }

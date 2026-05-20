@@ -1,9 +1,10 @@
 // Phase 6a — flat comments on check-ins.
 //
 // Routes (router.go does the mounting):
-//   GET    /v1/check-ins/{id}/comments  — OptionalAuth, cursor-paginated
-//   POST   /v1/check-ins/{id}/comments  — authed; tight per-user rate limit
-//   DELETE /v1/comments/{id}            — authed; own-comment OR admin/moderator
+//
+//	GET    /v1/check-ins/{id}/comments  — OptionalAuth, cursor-paginated
+//	POST   /v1/check-ins/{id}/comments  — authed; tight per-user rate limit
+//	DELETE /v1/comments/{id}            — authed; own-comment OR admin/moderator
 package handlers
 
 import (
@@ -11,9 +12,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
 )
 
@@ -53,7 +55,7 @@ func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(row domain.Comment) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: row.CreatedAt, ID: row.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.Comment]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Comment]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -81,7 +83,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateComment", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusCreated, out)
+	httperr.WriteJSON(w, http.StatusCreated, out)
 }
 
 // DeleteComment — DELETE /v1/comments/{id}.
@@ -112,7 +114,7 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if role != domain.RoleAdmin && role != domain.RoleModerator {
-			apierror.WriteError(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
+			httperr.WriteError(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
 			return
 		}
 		isAdminPath = true
@@ -133,8 +135,8 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	if err := h.Repos.Comments.SoftDelete(r.Context(), commentID, uid, isAdminPath, notesPtr); err != nil {
 		// Soft-deletes might race with a second admin click — treat ErrNotFound
 		// as success (idempotent), matching the toast / collection patterns.
-		if errors.Is(err, apierror.ErrNotFound) {
-			apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
+		if errors.Is(err, domain.ErrNotFound) {
+			httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
 			return
 		}
 		h.writeErr(w, "DeleteComment", err)

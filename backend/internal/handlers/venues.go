@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/foursquare"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // venueSearchLimit caps the result page exposed to the client. Lowered from
@@ -46,12 +46,12 @@ func (h *Handler) VenueSearch(w http.ResponseWriter, r *http.Request) {
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"q is required")
 		return
 	}
 	if utf8.RuneCountInString(q) > venueQueryMaxRunes {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"q too long (max 100 chars)")
 		return
 	}
@@ -65,20 +65,20 @@ func (h *Handler) VenueSearch(w http.ResponseWriter, r *http.Request) {
 	latStr := strings.TrimSpace(r.URL.Query().Get("lat"))
 	lngStr := strings.TrimSpace(r.URL.Query().Get("lng"))
 	if (latStr == "") != (lngStr == "") {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"lat and lng must be provided together")
 		return
 	}
 	if latStr != "" {
 		lat, err := strconv.ParseFloat(latStr, 64)
 		if err != nil || lat < -90 || lat > 90 {
-			apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+			httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 				"lat must be a number in [-90, 90]")
 			return
 		}
 		lng, err := strconv.ParseFloat(lngStr, 64)
 		if err != nil || lng < -180 || lng > 180 {
-			apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+			httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 				"lng must be a number in [-180, 180]")
 			return
 		}
@@ -90,13 +90,13 @@ func (h *Handler) VenueSearch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, foursquare.ErrDisabled):
-			apierror.WriteError(w, http.StatusServiceUnavailable,
+			httperr.WriteError(w, http.StatusServiceUnavailable,
 				"VENUE_SEARCH_DISABLED",
 				"venue search not configured on this server")
 		case errors.Is(err, foursquare.ErrRateLimited):
 			// Mirror the global rate-limit middleware's Retry-After signal.
 			w.Header().Set("Retry-After", "1")
-			apierror.WriteError(w, http.StatusServiceUnavailable,
+			httperr.WriteError(w, http.StatusServiceUnavailable,
 				"VENUE_RATE_LIMITED",
 				"venue search is rate limited; retry shortly")
 		default:
@@ -107,7 +107,7 @@ func (h *Handler) VenueSearch(w http.ResponseWriter, r *http.Request) {
 	if places == nil {
 		places = []foursquare.Place{}
 	}
-	apierror.WriteJSON(w, http.StatusOK, venueSearchResponse{Items: places})
+	httperr.WriteJSON(w, http.StatusOK, venueSearchResponse{Items: places})
 }
 
 // resolveLocale picks the locale for the Foursquare Accept-Language header,

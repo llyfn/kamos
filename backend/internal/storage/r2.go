@@ -25,10 +25,10 @@ import (
 
 // R2 is the production Storage backend.
 type R2 struct {
-	bucket         string
-	publicBaseURL  string
-	client         *s3.Client
-	presigner      *s3.PresignClient
+	bucket        string
+	publicBaseURL string
+	client        *s3.Client
+	presigner     *s3.PresignClient
 }
 
 // NewR2 constructs the backend. Returns an error if `endpoint` is not a valid

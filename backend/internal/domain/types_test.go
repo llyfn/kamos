@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/kamos/api/internal/apierror"
 )
 
 func TestRegisterRequestValidate(t *testing.T) {
@@ -72,7 +70,7 @@ func TestRegisterRequestValidate(t *testing.T) {
 			if err == nil {
 				t.Fatalf("want error containing %q, got nil", tt.wantErr)
 			}
-			if !errors.Is(err, apierror.ErrValidation) {
+			if !errors.Is(err, ErrValidation) {
 				t.Errorf("error should wrap ErrValidation, got %v", err)
 			}
 			if !strings.Contains(err.Error(), tt.wantErr) {
@@ -281,7 +279,7 @@ func TestUpdateCheckinRejectsBeverageChange(t *testing.T) {
 	if err == nil {
 		t.Fatalf("want error on beverage_id change")
 	}
-	if !errors.Is(err, apierror.ErrValidation) {
+	if !errors.Is(err, ErrValidation) {
 		t.Errorf("want ErrValidation, got %v", err)
 	}
 }

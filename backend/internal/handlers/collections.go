@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 )
@@ -35,11 +36,10 @@ func (h *Handler) ListPublicCollections(w http.ResponseWriter, r *http.Request) 
 	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(row domain.CollectionWithOwner) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: row.Collection.CreatedAt, ID: row.Collection.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.CollectionWithOwner]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.CollectionWithOwner]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }
-
 
 // ListCollections — GET /v1/collections.
 func (h *Handler) ListCollections(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +54,7 @@ func (h *Handler) ListCollections(w http.ResponseWriter, r *http.Request) {
 	}
 	// Collections list is bounded (default 2 + N user-created); we still wrap
 	// in the canonical Page shape so the client uses one code path.
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.Collection]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Collection]{
 		Items: rows, HasMore: false,
 	})
 }
@@ -79,7 +79,7 @@ func (h *Handler) CreateCollection(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCollection", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusCreated, c)
+	httperr.WriteJSON(w, http.StatusCreated, c)
 }
 
 // GetCollection — GET /v1/collections/{id}.
@@ -113,7 +113,7 @@ func (h *Handler) GetCollection(w http.ResponseWriter, r *http.Request) {
 	// public row. Private-to-non-owner collapses to 404 (do not leak).
 	isOwner := viewerID != "" && c.OwnerID == viewerID
 	if !isOwner && c.Visibility != "public" {
-		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
+		httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *Handler) GetCollection(w http.ResponseWriter, r *http.Request) {
 		domain.Collection
 		Entries cursor.Page[domain.CollectionEntry] `json:"entries"`
 	}{Collection: *c, Entries: cursor.Page[domain.CollectionEntry]{Items: items, NextCursor: next, HasMore: hasMore}}
-	apierror.WriteJSON(w, http.StatusOK, out)
+	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
 // UpdateCollection — PATCH /v1/collections/{id}.
@@ -171,7 +171,7 @@ func (h *Handler) UpdateCollection(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UpdateCollection", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, c)
+	httperr.WriteJSON(w, http.StatusOK, c)
 }
 
 // DeleteCollection — DELETE /v1/collections/{id}.
@@ -210,7 +210,7 @@ func (h *Handler) AddCollectionEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !exists {
-		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "beverage not found")
+		httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "beverage not found")
 		return
 	}
 	if err := h.Repos.Collections.AddEntry(r.Context(), uid, id, req.BeverageID, req.Note); err != nil {

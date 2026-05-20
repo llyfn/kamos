@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
+	"github.com/kamos/api/internal/domain"
 )
 
 // RefreshTokenRepo persists rotating refresh tokens. The raw secret is never
@@ -97,7 +98,7 @@ RETURNING id;`
 // revoked" (compromise signal), and "expired".
 //
 // On miss the underlying pgx error is wrapped via wrapNoRows so the caller
-// can `errors.Is(err, apierror.ErrNotFound)`.
+// can `errors.Is(err, domain.ErrNotFound)`.
 func (r *RefreshTokenRepo) LookupByHash(ctx context.Context, hash []byte) (*RefreshTokenRow, error) {
 	const q = `
 SELECT id, user_id, parent_id, family_id, issued_at, expires_at, revoked_at
@@ -143,7 +144,7 @@ WHERE family_id = $1 AND revoked_at IS NULL;`
 //
 //  1. UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $predecessor
 //     AND revoked_at IS NULL RETURNING id. If RowsAffected = 0, return
-//     apierror.ErrRefreshTokenRaceLost — another concurrent rotation already
+//     domain.ErrRefreshTokenRaceLost — another concurrent rotation already
 //     burned this predecessor.
 //  2. INSERT the successor in the same family, parent_id = predecessor.id.
 //
@@ -177,7 +178,7 @@ RETURNING id;`
 	if err := tx.QueryRow(ctx, revoke, predecessorID).Scan(&revokedID); err != nil {
 		// pgx returns ErrNoRows when RETURNING produced zero rows — which is
 		// exactly the lost-race signal.
-		return "", apierror.ErrRefreshTokenRaceLost
+		return "", domain.ErrRefreshTokenRaceLost
 	}
 
 	const ins = `

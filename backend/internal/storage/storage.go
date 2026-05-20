@@ -2,7 +2,7 @@
 //
 // Two implementations:
 //   - R2: Cloudflare R2 (S3-compatible) via aws-sdk-go-v2 + PresignClient.
-//   - Disabled: a no-op that refuses with apierror.ErrStorageDisabled. Used
+//   - Disabled: a no-op that refuses with domain.ErrStorageDisabled. Used
 //     when the operator has not set the R2_* env vars yet. Selecting this
 //     keeps the API process bootable without any third-party credentials.
 //
@@ -14,7 +14,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/domain"
 )
 
 // PresignedPut is the result of issuing a presigned PUT URL.
@@ -44,7 +44,7 @@ type Disabled struct{}
 
 // PresignPut on Disabled always refuses; handlers map this to 503.
 func (Disabled) PresignPut(ctx context.Context, blobKey, contentType string, byteSize int64, ttl time.Duration) (*PresignedPut, error) {
-	return nil, apierror.ErrStorageDisabled
+	return nil, domain.ErrStorageDisabled
 }
 
 // PublicURL on Disabled returns empty. The check-in photos endpoint will

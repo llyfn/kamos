@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/handlers"

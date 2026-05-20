@@ -3,9 +3,11 @@
 //
 // SEC-005 / Stage 0: cursors are HMAC-SHA256-signed using a process-wide
 // key set via SetSigningKey at startup. The wire format is
-//   base64(json) || "." || base64(hmac_sha256(json, key))
+//
+//	base64(json) || "." || base64(hmac_sha256(json, key))
+//
 // Decode verifies the MAC in constant time and rejects tampered or
-// unsigned cursors with apierror.ErrBadRequest. The key is required —
+// unsigned cursors with domain.ErrBadRequest. The key is required —
 // Encode panics if used before SetSigningKey, which would have surfaced
 // the bug at startup in any handler test path that exercises a list.
 package cursor
@@ -20,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/domain"
 )
 
 // Cursor is the opaque payload encoded into a base64 token.
@@ -77,7 +79,8 @@ func sign(payload []byte, key []byte) []byte {
 
 // Encode produces a URL-safe base64 of the JSON representation followed by
 // an HMAC-SHA256 tag computed under the configured signing key. Format:
-//   base64url(json) || "." || base64url(mac)
+//
+//	base64url(json) || "." || base64url(mac)
 //
 // Panics if SetSigningKey has not been called — that's a startup wiring
 // bug and silently emitting unsigned cursors would defeat the protection.
@@ -95,7 +98,7 @@ func Encode(c Cursor) string {
 // Decode parses an opaque cursor string back into a Cursor. Empty input is
 // treated as "no cursor" and returns the zero value without error. Any
 // mismatch (missing tag, bad base64, MAC mismatch, malformed JSON) is
-// reported as apierror.ErrBadRequest.
+// reported as domain.ErrBadRequest.
 func Decode(s string) (Cursor, error) {
 	var c Cursor
 	if s == "" {
@@ -106,7 +109,7 @@ func Decode(s string) (Cursor, error) {
 		// No key set at decode time — treat the same as a tamper / unsigned
 		// cursor rather than crash. Mirrors Encode's contract that signing
 		// is mandatory.
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 
 	// Tampered or unsigned cursors miss the "." separator entirely; reject
@@ -120,24 +123,24 @@ func Decode(s string) (Cursor, error) {
 		}
 	}
 	if dotIdx < 1 || dotIdx == len(s)-1 {
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 	payloadB64 := s[:dotIdx]
 	macB64 := s[dotIdx+1:]
 
 	payload, err := base64.RawURLEncoding.DecodeString(payloadB64)
 	if err != nil {
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 	gotMac, err := base64.RawURLEncoding.DecodeString(macB64)
 	if err != nil {
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 
 	wantMac := sign(payload, key)
 	// hmac.Equal is constant-time; bytes.Equal would be a timing side channel.
 	if !hmac.Equal(gotMac, wantMac) {
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 	// Defensive: assert the payload re-marshals to the same bytes after
 	// JSON parse — guards against a clever attacker submitting a payload
@@ -145,12 +148,12 @@ func Decode(s string) (Cursor, error) {
 	// (NOT possible with a fixed shape + Go's strict decoder, but the
 	// belt-and-braces re-marshal is cheap).
 	if err := json.Unmarshal(payload, &c); err != nil {
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 	if want, _ := json.Marshal(c); !bytes.Equal(want, payload) {
 		// Mismatch most likely means the attacker re-ordered keys or
 		// injected extra fields. Reject.
-		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+		return c, errors.Join(domain.ErrBadRequest, errors.New("invalid cursor"))
 	}
 	return c, nil
 }

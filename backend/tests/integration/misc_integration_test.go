@@ -155,9 +155,11 @@ func TestSearchRequiresQuery(t *testing.T) {
 //
 // Setup: 3 beverages + 3 breweries whose names all contain the token
 // "Saketown" — FTS will surface all 6. With limit=2 we expect:
-//   page 1 → 2 beverages, has_more=true
-//   page 2 → 1 beverage + 1 brewery (rollover), has_more=true
-//   page 3 → 2 breweries, has_more=false (last 2 of 3)
+//
+//	page 1 → 2 beverages, has_more=true
+//	page 2 → 1 beverage + 1 brewery (rollover), has_more=true
+//	page 3 → 2 breweries, has_more=false (last 2 of 3)
+//
 // Every item must appear exactly once across the three pages.
 func TestSearchTypelessCursor(t *testing.T) {
 	truncateAll(t)
@@ -188,9 +190,9 @@ func TestSearchTypelessCursor(t *testing.T) {
 
 	type page struct {
 		Items []struct {
-			Type     string                 `json:"type"`
-			Beverage map[string]any         `json:"beverage,omitempty"`
-			Brewery  map[string]any         `json:"brewery,omitempty"`
+			Type     string         `json:"type"`
+			Beverage map[string]any `json:"beverage,omitempty"`
+			Brewery  map[string]any `json:"brewery,omitempty"`
 		} `json:"items"`
 		NextCursor string `json:"next_cursor"`
 		HasMore    bool   `json:"has_more"`
@@ -212,9 +214,9 @@ func TestSearchTypelessCursor(t *testing.T) {
 	// Track which item ids we've already returned. Every item must be unique.
 	seen := map[string]bool{}
 	itemID := func(it struct {
-		Type     string                 `json:"type"`
-		Beverage map[string]any         `json:"beverage,omitempty"`
-		Brewery  map[string]any         `json:"brewery,omitempty"`
+		Type     string         `json:"type"`
+		Beverage map[string]any `json:"beverage,omitempty"`
+		Brewery  map[string]any `json:"brewery,omitempty"`
 	}) string {
 		switch it.Type {
 		case "beverage":

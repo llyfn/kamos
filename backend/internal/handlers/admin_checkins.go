@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
+	"github.com/kamos/api/internal/httperr"
 )
 
 // AdminModerateCheckin — POST /v1/admin/check-ins/{id}/moderate
@@ -26,7 +27,7 @@ func (h *Handler) AdminModerateCheckin(w http.ResponseWriter, r *http.Request) {
 	}
 	checkinID := chi.URLParam(r, "id")
 	if checkinID == "" {
-		apierror.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing check-in id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing check-in id")
 		return
 	}
 	// Body is optional; we accept and log it but don't fail on parse error.

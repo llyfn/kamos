@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
+	"github.com/kamos/api/internal/httperr"
 )
 
 type ctxKey int
@@ -51,7 +51,7 @@ func UserIDFromContext(ctx context.Context) string {
 func MustUser(w http.ResponseWriter, r *http.Request) *AuthedUser {
 	u := UserFromContext(r.Context())
 	if u == nil {
-		apierror.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		httperr.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return nil
 	}
 	return u
@@ -91,7 +91,7 @@ func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 						"method", r.Method,
 						"request_id", RequestIDFromContext(r.Context()),
 					)
-					apierror.WriteError(w, http.StatusInternalServerError, "INTERNAL", "internal error")
+					httperr.WriteError(w, http.StatusInternalServerError, "INTERNAL", "internal error")
 				}
 			}()
 			next.ServeHTTP(w, r)
@@ -155,17 +155,17 @@ func Auth(s *auth.Signer, softDelete *auth.SoftDeleteCache) func(http.Handler) h
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
 			if !strings.HasPrefix(h, "Bearer ") {
-				apierror.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+				httperr.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 				return
 			}
 			token := strings.TrimPrefix(h, "Bearer ")
 			claims, err := s.Verify(token)
 			if err != nil {
-				apierror.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+				httperr.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 				return
 			}
 			if softDelete != nil && softDelete.Contains(claims.UserID) {
-				apierror.WriteError(w, http.StatusUnauthorized, "ACCOUNT_DELETED", "account deleted")
+				httperr.WriteError(w, http.StatusUnauthorized, "ACCOUNT_DELETED", "account deleted")
 				return
 			}
 			user := &AuthedUser{ID: claims.UserID, Username: claims.Username}
@@ -177,7 +177,7 @@ func Auth(s *auth.Signer, softDelete *auth.SoftDeleteCache) func(http.Handler) h
 
 // MaxBytes wraps r.Body with http.MaxBytesReader(w, r.Body, n). Anything
 // larger than `n` bytes will surface as a read error when the handler
-// json-decodes, causing apierror.WriteFrom to return 400 BAD_REQUEST.
+// json-decodes, causing httperr.WriteFrom to return 400 BAD_REQUEST.
 // The MaxBytesReader also writes the Connection: close hint so the
 // abusive client doesn't pipeline more giant requests on the same TCP
 // session.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
+
 	"github.com/kamos/api/internal/config"
 )
 

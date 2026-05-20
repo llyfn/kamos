@@ -17,6 +17,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
@@ -27,11 +28,11 @@ import (
 // Bundle is the aggregate of every service. Handlers hold *Bundle; main.go
 // constructs it once via New(...).
 type Bundle struct {
-	Auth     *AuthService
-	Checkin  *CheckinService
-	Comment  *CommentService
-	Social   *SocialService
-	Admin    *AdminService
+	Auth    *AuthService
+	Checkin *CheckinService
+	Comment *CommentService
+	Social  *SocialService
+	Admin   *AdminService
 }
 
 // Deps is the wiring shape main.go passes to New. Each field is a primitive

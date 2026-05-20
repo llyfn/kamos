@@ -8,7 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
+	"github.com/kamos/api/internal/domain"
 )
 
 // PhotoUploadRepo backs the photo_uploads table from migration 004.
@@ -69,7 +70,7 @@ WHERE id = $1;`
 		&p.CheckInID, &p.CreatedAt, &p.AttachedAt, &p.OrphanedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apierror.ErrNotFound
+			return nil, domain.ErrNotFound
 		}
 		return nil, fmt.Errorf("PhotoUploadRepo.FindByID: %w", err)
 	}
@@ -89,7 +90,7 @@ WHERE id = $1 AND status IN ('pending', 'uploaded');`
 		return fmt.Errorf("PhotoUploadRepo.MarkAttached: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrConflict
+		return domain.ErrConflict
 	}
 	return nil
 }

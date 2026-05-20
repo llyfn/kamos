@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -70,7 +70,7 @@ RETURNING id, created_at;`
 
 	for i, url := range p.PhotoURLs {
 		if i >= 4 {
-			return "", time.Time{}, apierror.ErrPhotoCapExceeded
+			return "", time.Time{}, domain.ErrPhotoCapExceeded
 		}
 		const insPh = `INSERT INTO check_in_photos (check_in_id, photo_url, sort_order) VALUES ($1, $2, $3);`
 		if _, err := tx.Exec(ctx, insPh, id, url, i); err != nil {
@@ -139,7 +139,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 			return nil, err
 		}
 		if !ok {
-			return nil, apierror.ErrNotFound
+			return nil, domain.ErrNotFound
 		}
 	}
 	return &c, nil
@@ -234,13 +234,13 @@ func (r *CheckinRepo) Update(ctx context.Context, p UpdateCheckinParams) error {
 		`SELECT user_id FROM check_ins WHERE id = $1 AND deleted_at IS NULL FOR UPDATE;`,
 		p.ID).Scan(&owner)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	if err != nil {
 		return fmt.Errorf("CheckinRepo.Update lock: %w", err)
 	}
 	if owner != p.UserID {
-		return apierror.ErrForbidden
+		return domain.ErrForbidden
 	}
 
 	const q = `
@@ -307,9 +307,9 @@ RETURNING id;`
 				`SELECT EXISTS(SELECT 1 FROM check_ins WHERE id = $1 AND deleted_at IS NULL);`, id,
 			).Scan(&ownedByOther)
 			if ownedByOther {
-				return apierror.ErrForbidden
+				return domain.ErrForbidden
 			}
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("CheckinRepo.SoftDelete: %w", err)
 	}
@@ -330,13 +330,13 @@ func (r *CheckinRepo) AddPhoto(ctx context.Context, checkinID, userID, photoURL 
 		`SELECT user_id FROM check_ins WHERE id = $1 AND deleted_at IS NULL FOR UPDATE;`,
 		checkinID).Scan(&owner)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.PhotoRef{}, apierror.ErrNotFound
+		return domain.PhotoRef{}, domain.ErrNotFound
 	}
 	if err != nil {
 		return domain.PhotoRef{}, fmt.Errorf("AddPhoto lock: %w", err)
 	}
 	if owner != userID {
-		return domain.PhotoRef{}, apierror.ErrForbidden
+		return domain.PhotoRef{}, domain.ErrForbidden
 	}
 
 	var existing int
@@ -345,7 +345,7 @@ func (r *CheckinRepo) AddPhoto(ctx context.Context, checkinID, userID, photoURL 
 		return domain.PhotoRef{}, fmt.Errorf("AddPhoto count: %w", err)
 	}
 	if existing >= 4 {
-		return domain.PhotoRef{}, apierror.ErrPhotoCapExceeded
+		return domain.PhotoRef{}, domain.ErrPhotoCapExceeded
 	}
 
 	var sortOrder int
@@ -436,7 +436,7 @@ LIMIT 1;`
 	var one int
 	if err := r.db.QueryRow(ctx, q, checkinID, viewerID).Scan(&one); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("checkVisibility: %w", err)
 	}
@@ -646,7 +646,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL AND u.deleted_at IS NULL;`
 	var ownerID, privacy string
 	if err := r.db.QueryRow(ctx, q, checkInID).Scan(&ownerID, &privacy); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("AssertViewerCanSeeCheckin: %w", err)
 	}
@@ -656,7 +656,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL AND u.deleted_at IS NULL;`
 			return err
 		}
 		if !ok {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 	}
 	return nil

@@ -263,10 +263,10 @@ func (c *Client) fetchOnce(ctx context.Context, opts SearchOptions) ([]Place, er
 				} `json:"main"`
 			} `json:"geocodes"`
 			Location struct {
-				Address    string `json:"address"`
-				Country    string `json:"country"`
-				Region     string `json:"region"`
-				Locality   string `json:"locality"`
+				Address          string `json:"address"`
+				Country          string `json:"country"`
+				Region           string `json:"region"`
+				Locality         string `json:"locality"`
 				FormattedAddress string `json:"formatted_address"`
 			} `json:"location"`
 		} `json:"results"`

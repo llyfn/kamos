@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -28,7 +29,7 @@ func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	roleFilter := r.URL.Query().Get("role")
 	if roleFilter != "" && !domain.UserRole(roleFilter).Valid() {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"role must be one of: user, moderator, admin")
 		return
 	}
@@ -47,7 +48,7 @@ func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(u repository.AdminUserRow) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: u.CreatedAt, ID: u.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.AdminUserRow]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.AdminUserRow]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -60,13 +61,13 @@ func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := chi.URLParam(r, "id")
 	if userID == "" {
-		apierror.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing user id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing user id")
 		return
 	}
 	if userID == uid {
 		// Prevent self-demotion lockout in production. An admin can be
 		// demoted only by another admin.
-		apierror.WriteError(w, http.StatusForbidden, "FORBIDDEN",
+		httperr.WriteError(w, http.StatusForbidden, "FORBIDDEN",
 			"cannot change your own role")
 		return
 	}
@@ -89,7 +90,7 @@ func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		"moderator_id", uid,
 		"new_role", body.Role,
 	)
-	apierror.WriteJSON(w, http.StatusOK, map[string]string{
+	httperr.WriteJSON(w, http.StatusOK, map[string]string{
 		"user_id": userID,
 		"role":    body.Role,
 	})
@@ -106,11 +107,11 @@ func (h *Handler) AdminSuspendUser(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := chi.URLParam(r, "id")
 	if userID == "" {
-		apierror.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing user id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing user id")
 		return
 	}
 	if userID == uid {
-		apierror.WriteError(w, http.StatusForbidden, "FORBIDDEN",
+		httperr.WriteError(w, http.StatusForbidden, "FORBIDDEN",
 			"cannot suspend yourself")
 		return
 	}

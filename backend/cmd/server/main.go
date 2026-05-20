@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"

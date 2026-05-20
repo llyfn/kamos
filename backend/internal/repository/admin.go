@@ -19,7 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -66,16 +66,16 @@ VALUES
 
 // BeverageRequestRow is the admin-list shape for beverage_addition_requests.
 type BeverageRequestRow struct {
-	ID         string     `json:"id"`
-	UserID     *string    `json:"user_id"`
-	Username   *string    `json:"username,omitempty"`
-	Payload    []byte     `json:"-"`
+	ID         string         `json:"id"`
+	UserID     *string        `json:"user_id"`
+	Username   *string        `json:"username,omitempty"`
+	Payload    []byte         `json:"-"`
 	PayloadRaw map[string]any `json:"payload"`
-	Status     string     `json:"status"`
-	ReviewedBy *string    `json:"reviewed_by,omitempty"`
-	ReviewedAt *time.Time `json:"reviewed_at,omitempty"`
-	Notes      *string    `json:"notes,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	Status     string         `json:"status"`
+	ReviewedBy *string        `json:"reviewed_by,omitempty"`
+	ReviewedAt *time.Time     `json:"reviewed_at,omitempty"`
+	Notes      *string        `json:"notes,omitempty"`
+	CreatedAt  time.Time      `json:"created_at"`
 }
 
 // ListBeverageRequestsParams supports cursor pagination on (created_at, id).
@@ -159,12 +159,12 @@ func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverag
 	const lockReq = `SELECT status FROM beverage_addition_requests WHERE id = $1 FOR UPDATE;`
 	if err := tx.QueryRow(ctx, lockReq, p.RequestID).Scan(&status); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apierror.ErrNotFound
+			return "", domain.ErrNotFound
 		}
 		return "", fmt.Errorf("ApproveBeverageRequest lock: %w", err)
 	}
 	if status != "pending" {
-		return "", fmt.Errorf("ApproveBeverageRequest: %w (status=%s)", apierror.ErrConflict, status)
+		return "", fmt.Errorf("ApproveBeverageRequest: %w (status=%s)", domain.ErrConflict, status)
 	}
 
 	// Resolve category slug from the category id — beverages CHECK
@@ -173,7 +173,7 @@ func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverag
 		`SELECT slug FROM beverage_categories WHERE id = $1;`,
 		p.CategoryID).Scan(&categorySlug); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", fmt.Errorf("ApproveBeverageRequest: %w (category)", apierror.ErrValidation)
+			return "", fmt.Errorf("ApproveBeverageRequest: %w (category)", domain.ErrValidation)
 		}
 		return "", fmt.Errorf("ApproveBeverageRequest category lookup: %w", err)
 	}
@@ -264,11 +264,11 @@ RETURNING id;`
 				`SELECT status FROM beverage_addition_requests WHERE id = $1;`,
 				requestID).Scan(&status); err2 != nil {
 				if errors.Is(err2, pgx.ErrNoRows) {
-					return apierror.ErrNotFound
+					return domain.ErrNotFound
 				}
 				return fmt.Errorf("RejectBeverageRequest status probe: %w", err2)
 			}
-			return fmt.Errorf("RejectBeverageRequest: %w (status=%s)", apierror.ErrConflict, status)
+			return fmt.Errorf("RejectBeverageRequest: %w (status=%s)", domain.ErrConflict, status)
 		}
 		return fmt.Errorf("RejectBeverageRequest: %w", err)
 	}
@@ -312,7 +312,7 @@ RETURNING id;`
 	var got string
 	if err := tx.QueryRow(ctx, q, checkinID).Scan(&got); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("ModerateCheckin: %w", err)
 	}
@@ -352,11 +352,11 @@ type AdminUserRow struct {
 // ListUsersParams supports cursor pagination on (created_at, id) plus
 // filters for role and "include soft-deleted".
 type ListUsersParams struct {
-	RoleFilter      string
-	IncludeDeleted  bool
-	CursorTs        *time.Time
-	CursorID        *string
-	Limit           int
+	RoleFilter     string
+	IncludeDeleted bool
+	CursorTs       *time.Time
+	CursorID       *string
+	Limit          int
 }
 
 // ListUsers pages through users; soft-deleted users are excluded by
@@ -396,7 +396,7 @@ LIMIT $5;`
 // {"old_role","new_role"} so the audit UI can show before/after.
 func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID string, role domain.UserRole) error {
 	if !role.Valid() {
-		return fmt.Errorf("UpdateUserRole: %w (role=%s)", apierror.ErrValidation, role)
+		return fmt.Errorf("UpdateUserRole: %w (role=%s)", domain.ErrValidation, role)
 	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -411,7 +411,7 @@ func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID stri
 		userID,
 	).Scan(&oldRole); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("UpdateUserRole lookup: %w", err)
 	}
@@ -422,7 +422,7 @@ func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID stri
 		return fmt.Errorf("UpdateUserRole: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	if err := insertModerationLog(ctx, tx,
@@ -468,7 +468,7 @@ RETURNING username_release_at;`
 	var releaseAt time.Time
 	if err := tx.QueryRow(ctx, q, userID).Scan(&releaseAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("SuspendUser: %w", err)
 	}
@@ -495,7 +495,7 @@ func (r *UserRepo) GetUserRole(ctx context.Context, userID string) (domain.UserR
 	var s string
 	if err := r.db.QueryRow(ctx, q, userID).Scan(&s); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apierror.ErrNotFound
+			return "", domain.ErrNotFound
 		}
 		return "", fmt.Errorf("GetUserRole: %w", err)
 	}

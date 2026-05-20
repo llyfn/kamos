@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
