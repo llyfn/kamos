@@ -122,96 +122,19 @@ JOIN beverage_categories cat ON cat.id = b.category_id
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 
-	row := r.db.QueryRow(ctx, q, id, viewerID)
-	var (
-		c             domain.Checkin
-		priceAmount   *float64
-		priceCcy      *string
-		priceUnit     *string
-		bevName       []byte
-		bevCatSlug    string
-		bevLabel      *string
-		catNameJSON   []byte
-		brwName       []byte
-		brwRegion     *string
-		brwID         string
-		userPrivacy   string
-		userIDVal     string
-		bevIDVal      string
-		venueID       *string
-		venueName     *string
-		venueLocality *string
-		venueCountry  *string
-		toasts        int64
-		youToasted    bool
-		commentCnt    int64
-	)
-	err := row.Scan(
-		&c.ID, &userIDVal, &bevIDVal,
-		&c.Rating, &c.Review,
-		&priceAmount, &priceCcy, &priceUnit,
-		&c.PurchaseType, &c.ServingStyle,
-		&c.CreatedAt, &c.UpdatedAt,
-		&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
-		&bevName, &bevCatSlug, &bevLabel,
-		&catNameJSON,
-		&brwID, &brwName, &brwRegion,
-		&venueID, &venueName, &venueLocality, &venueCountry,
-		&toasts, &youToasted, &commentCnt,
-	)
+	c, userPrivacy, err := scanCheckinRow(r.db.QueryRow(ctx, q, id, viewerID))
 	if err != nil {
 		return nil, wrapNoRows("CheckinRepo.Get", err)
 	}
-	c.CommentCount = int(commentCnt)
-	if venueID != nil && venueName != nil {
-		c.Venue = &domain.VenueRef{
-			ID:       *venueID,
-			Name:     *venueName,
-			Locality: venueLocality,
-			Country:  venueCountry,
-		}
-	}
-	c.User.ID = userIDVal
-	c.Toasts = int(toasts)
-	c.YouToasted = youToasted
-
-	bn, _ := domain.I18nFromJSON(bevName)
-	cn, _ := domain.I18nFromJSON(catNameJSON)
-	rn, _ := domain.I18nFromJSON(brwName)
-	c.Beverage = domain.BeverageRef{
-		ID:            bevIDVal,
-		Name:          bn,
-		Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Region: brwRegion},
-		Category:      domain.CategoryLabel{Slug: bevCatSlug, LabelI18n: cn},
-		LabelImageURL: bevLabel,
-	}
-	if priceAmount != nil && priceCcy != nil && priceUnit != nil {
-		c.Price = &domain.Price{Amount: *priceAmount, Currency: *priceCcy, Mode: *priceUnit}
-	}
-
-	// Hydrate photos + tags via batched fetches.
-	photos, err := r.PhotosFor(ctx, []string{id})
-	if err != nil {
+	out := []domain.Checkin{c}
+	if err := r.hydrateCheckinTagsAndPhotos(ctx, out, []string{c.ID}); err != nil {
 		return nil, err
 	}
-	c.Photos = photos[id]
-
-	tags, err := r.TagsFor(ctx, []string{id})
-	if err != nil {
-		return nil, err
-	}
-	c.Tags = tags[id]
-	if c.Tags == nil {
-		c.Tags = []domain.FlavorTag{}
-	}
-	if c.Photos == nil {
-		c.Photos = []domain.PhotoRef{}
-	}
-
+	c = out[0]
 	// Privacy: if the owner is private and the viewer is not the owner and
 	// not an accepted follower, return NotFound (we do not leak existence).
-	if userPrivacy == "private" && viewerID != userIDVal {
-		ok, err := isAcceptedFollower(ctx, r.db, viewerID, userIDVal)
+	if userPrivacy == "private" && viewerID != c.User.ID {
+		ok, err := isAcceptedFollower(ctx, r.db, viewerID, c.User.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -523,6 +446,11 @@ LIMIT 1;`
 // UserCheckins returns a paginated list of check-ins for a user, applying
 // the same privacy gate as the feed. `viewerID` may be empty for unauthed
 // reads (only public profiles will return rows).
+//
+// Stage 3 (STYLE-035 / STYLE-040) refactor: the body uses the shared
+// scanCheckinRow + hydrateCheckinTagsAndPhotos helpers below so the same
+// column order is honored across UserCheckins / Get / any future check-in
+// listing path.
 func (r *CheckinRepo) UserCheckins(ctx context.Context, viewerID, targetID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Checkin, error) {
 	const q = `
 SELECT
@@ -567,61 +495,9 @@ LIMIT $5;`
 	out := make([]domain.Checkin, 0, limit+1)
 	ids := make([]string, 0, limit+1)
 	for rows.Next() {
-		var c domain.Checkin
-		var (
-			priceAmount               *float64
-			priceCcy, priceUnit       *string
-			bevName, catName          []byte
-			brwName                   []byte
-			bevSlug                   string
-			bevLabel, brwRegion       *string
-			brwID, userIDVal, bevID   string
-			venueID, venueName        *string
-			venueLocality, venueCtry  *string
-			toastCnt                  int64
-			youToast                  bool
-			userPrivacy               string
-			commentCnt                int64
-		)
-		if err := rows.Scan(
-			&c.ID, &userIDVal, &bevID,
-			&c.Rating, &c.Review,
-			&priceAmount, &priceCcy, &priceUnit,
-			&c.PurchaseType, &c.ServingStyle,
-			&c.CreatedAt, &c.UpdatedAt,
-			&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
-			&bevName, &bevSlug, &bevLabel,
-			&catName,
-			&brwID, &brwName, &brwRegion,
-			&venueID, &venueName, &venueLocality, &venueCtry,
-			&toastCnt, &youToast, &commentCnt,
-		); err != nil {
+		c, _, err := scanCheckinRow(rows)
+		if err != nil {
 			return nil, fmt.Errorf("UserCheckins scan: %w", err)
-		}
-		c.User.ID = userIDVal
-		c.Toasts = int(toastCnt)
-		c.YouToasted = youToast
-		c.CommentCount = int(commentCnt)
-		n, _ := domain.I18nFromJSON(bevName)
-		cn, _ := domain.I18nFromJSON(catName)
-		brn, _ := domain.I18nFromJSON(brwName)
-		c.Beverage = domain.BeverageRef{
-			ID:            bevID,
-			Name:          n,
-			Brewery:       domain.BreweryRef{ID: brwID, Name: brn, Region: brwRegion},
-			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
-			LabelImageURL: bevLabel,
-		}
-		if priceAmount != nil && priceCcy != nil && priceUnit != nil {
-			c.Price = &domain.Price{Amount: *priceAmount, Currency: *priceCcy, Mode: *priceUnit}
-		}
-		if venueID != nil && venueName != nil {
-			c.Venue = &domain.VenueRef{
-				ID:       *venueID,
-				Name:     *venueName,
-				Locality: venueLocality,
-				Country:  venueCtry,
-			}
 		}
 		out = append(out, c)
 		ids = append(ids, c.ID)
@@ -629,14 +505,97 @@ LIMIT $5;`
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	// Hydrate photos + tags in batches.
+	if err := r.hydrateCheckinTagsAndPhotos(ctx, out, ids); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// rowScanner is the slice of pgx.Row / pgx.Rows the canonical scan helper
+// needs. Both satisfy this with the same Scan(args ...any) signature, so
+// the helper works for both QueryRow-style and Query-style call sites.
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanCheckinRow reads one row of the canonical check-in projection (the
+// 31-column shape shared by Get / UserCheckins / future listings) into a
+// hydrated domain.Checkin. The second return is the row's owner-privacy
+// mode, used by callers that gate on private-account visibility.
+//
+// Photos + tags are NOT loaded here — that's a batch fetch the caller
+// handles via hydrateCheckinTagsAndPhotos after the rows.Next() loop ends.
+func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
+	var c domain.Checkin
+	var (
+		priceAmount              *float64
+		priceCcy, priceUnit      *string
+		bevName, catName         []byte
+		brwName                  []byte
+		bevSlug                  string
+		bevLabel, brwRegion      *string
+		brwID, userIDVal, bevID  string
+		venueID, venueName       *string
+		venueLocality, venueCtry *string
+		toastCnt                 int64
+		youToast                 bool
+		userPrivacy              string
+		commentCnt               int64
+	)
+	if err := rows.Scan(
+		&c.ID, &userIDVal, &bevID,
+		&c.Rating, &c.Review,
+		&priceAmount, &priceCcy, &priceUnit,
+		&c.PurchaseType, &c.ServingStyle,
+		&c.CreatedAt, &c.UpdatedAt,
+		&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
+		&bevName, &bevSlug, &bevLabel,
+		&catName,
+		&brwID, &brwName, &brwRegion,
+		&venueID, &venueName, &venueLocality, &venueCtry,
+		&toastCnt, &youToast, &commentCnt,
+	); err != nil {
+		return domain.Checkin{}, "", err
+	}
+	c.User.ID = userIDVal
+	c.Toasts = int(toastCnt)
+	c.YouToasted = youToast
+	c.CommentCount = int(commentCnt)
+	bn, _ := domain.I18nFromJSON(bevName)
+	cn, _ := domain.I18nFromJSON(catName)
+	rn, _ := domain.I18nFromJSON(brwName)
+	c.Beverage = domain.BeverageRef{
+		ID:            bevID,
+		Name:          bn,
+		Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Region: brwRegion},
+		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
+		LabelImageURL: bevLabel,
+	}
+	if priceAmount != nil && priceCcy != nil && priceUnit != nil {
+		c.Price = &domain.Price{Amount: *priceAmount, Currency: *priceCcy, Mode: *priceUnit}
+	}
+	if venueID != nil && venueName != nil {
+		c.Venue = &domain.VenueRef{
+			ID:       *venueID,
+			Name:     *venueName,
+			Locality: venueLocality,
+			Country:  venueCtry,
+		}
+	}
+	return c, userPrivacy, nil
+}
+
+// hydrateCheckinTagsAndPhotos populates the Tags + Photos slices on each
+// item of `out` using one batch fetch of TagsFor + one of PhotosFor. Empty
+// slices (not nil) are written so JSON responses are stable.
+func (r *CheckinRepo) hydrateCheckinTagsAndPhotos(ctx context.Context, out []domain.Checkin, ids []string) error {
 	photos, err := r.PhotosFor(ctx, ids)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	tags, err := r.TagsFor(ctx, ids)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for i := range out {
 		out[i].Photos = photos[out[i].ID]
@@ -648,7 +607,7 @@ LIMIT $5;`
 			out[i].Tags = []domain.FlavorTag{}
 		}
 	}
-	return out, nil
+	return nil
 }
 
 // isAcceptedFollower is a shared helper used by the privacy gate.

@@ -171,7 +171,8 @@ func main() {
 		WithMailer(mailer).
 		WithFoursquare(fsq).
 		WithSoftDeleteCache(softDelete).
-		WithCaches(caches)
+		WithCaches(caches).
+		EnsureServices()
 	mux := server.New(log, signer, softDelete, h)
 
 	// Background-job scheduler — four maintenance jobs registered before

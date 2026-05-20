@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +13,11 @@ import (
 )
 
 // CreateCheckin — POST /v1/check-ins.
+//
+// Stage 3 (architectural refactor): the body's orchestration (beverage-
+// existence gate, venue resolve, multi-row insert, cache invalidate,
+// counter bump) now lives in CheckinService.Create. The handler does
+// decode → validate → call → respond.
 func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -32,6 +38,16 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin validate venue", err)
 		return
 	}
+	if h.Services != nil && h.Services.Checkin != nil {
+		out, err := h.Services.Checkin.Create(r.Context(), uid, req)
+		if err != nil {
+			h.writeErr(w, "CreateCheckin", err)
+			return
+		}
+		apierror.WriteJSON(w, http.StatusCreated, out)
+		return
+	}
+	// Legacy fallback (tests that don't construct services): pre-Stage-3 path.
 	exists, err := h.Repos.Beverages.Exists(r.Context(), req.BeverageID)
 	if err != nil {
 		h.writeErr(w, "CreateCheckin exists", err)
@@ -41,17 +57,11 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "beverage not found")
 		return
 	}
-
-	// Phase 4 — optional venue tag. Three accepted shapes (see domain doc):
-	//   { id }                                  → look up; 404 if missing.
-	//   { foursquare_id, name, ... }            → upsert by fsq id.
-	//   anything else (incl. empty {})          → silent drop.
 	venueID, err := h.resolveCheckinVenue(r, req.Venue)
 	if err != nil {
 		h.writeErr(w, "CreateCheckin venue", err)
 		return
 	}
-
 	p := repository.CreateCheckinParams{
 		UserID:       uid,
 		BeverageID:   req.BeverageID,
@@ -81,11 +91,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin reload", err)
 		return
 	}
-	// Phase 7 — bust the BeverageDetail cache for every locale of this
-	// beverage: the trigger has already updated avg_rating and
-	// check_in_count, so the cached pointer is now stale.
 	h.invalidateBeverageDetail(req.BeverageID)
-	// Business metric for the OTel meter. No-op when OTel is disabled.
 	observability.IncCheckinsCreated(r.Context())
 	apierror.WriteJSON(w, http.StatusCreated, out)
 }
@@ -123,8 +129,21 @@ func (h *Handler) GetCheckin(w http.ResponseWriter, r *http.Request) {
 
 // UpdateCheckin — PATCH /v1/check-ins/{id}.
 //
-// Status: scaffold-for-Phase5 (admin edit surface). Endpoint is intentionally
-// pre-wired; no Flutter caller in MVP.
+// Stage 3 (ARCH-014) cleanup: the previous implementation decoded the body
+// twice — first into a `map[string]json.RawMessage`, then re-marshalled and
+// re-decoded into the typed request struct — only to detect "field present
+// and null" for the clear-rating / clear-review / clear-price semantics.
+//
+// The new implementation does a single decode using the dedicated
+// `updateCheckinPatch` shape that uses `json.RawMessage` for the three
+// fields where null-vs-absent matters. The `beverage_id` poison-pill is
+// rejected by `domain.UpdateCheckinRequest.Validate` after the patch is
+// projected onto the typed request — saving the JSON-encode round trip.
+//
+// Wire contract: unchanged (still SPEC §4.4 — `beverage_id` not allowed,
+// null on rating/review/price means "clear").
+//
+// Status: scaffold-for-Phase5 (admin edit surface).
 func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -132,42 +151,30 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 
-	// Decode into a raw map first so we can distinguish "field absent" from
-	// "field present and null" for the clear-out semantics.
-	var raw map[string]json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+	var patch updateCheckinPatch
+	if err := decodeJSON(r, &patch); err != nil {
 		h.writeErr(w, "UpdateCheckin decode", err)
 		return
 	}
-	if _, found := raw["beverage_id"]; found {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
-			"beverage_id cannot be changed after a check-in is created")
-		return
-	}
-	// Re-decode the same raw map into the typed struct. Unknown fields would
-	// have already been caught above (none are accepted on this endpoint),
-	// so strict-decode is unnecessary on the second pass — every json tag
-	// on UpdateCheckinRequest (including the `clear_*` flags) is known.
-	var req domain.UpdateCheckinRequest
-	rawBytes, _ := json.Marshal(raw)
-	if err := json.Unmarshal(rawBytes, &req); err != nil {
-		h.writeErr(w, "UpdateCheckin decode typed", err)
+	req, err := patch.toRequest()
+	if err != nil {
+		h.writeErr(w, "UpdateCheckin patch", err)
 		return
 	}
 	if err := req.Validate(); err != nil {
 		h.writeErr(w, "UpdateCheckin validate", err)
 		return
 	}
-	// Detect clear semantics: null in JSON means clear.
-	if v, ok := raw["rating"]; ok && string(v) == "null" {
-		req.ClearRating = true
+	if h.Services != nil && h.Services.Checkin != nil {
+		out, err := h.Services.Checkin.Update(r.Context(), uid, id, req)
+		if err != nil {
+			h.writeErr(w, "UpdateCheckin", err)
+			return
+		}
+		apierror.WriteJSON(w, http.StatusOK, out)
+		return
 	}
-	if v, ok := raw["review"]; ok && string(v) == "null" {
-		req.ClearReview = true
-	}
-	if v, ok := raw["price"]; ok && string(v) == "null" {
-		req.ClearPrice = true
-	}
+	// Legacy fallback (tests that don't construct services).
 	up := repository.UpdateCheckinParams{
 		ID:           id,
 		UserID:       uid,
@@ -197,26 +204,95 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UpdateCheckin reload", err)
 		return
 	}
-	// Phase 7 — invalidate even when only non-rating fields changed: the
-	// detail response includes review/tags surfaced via recent_check_ins.
 	h.invalidateBeverageDetail(out.Beverage.ID)
 	apierror.WriteJSON(w, http.StatusOK, out)
 }
 
+// updateCheckinPatch is the single-decode wire shape for UpdateCheckin.
+// json.RawMessage on the three null-detectable fields lets the handler
+// distinguish "field absent" from "field present and null" without a
+// double-decode (ARCH-014 fix).
+//
+// `beverage_id` is captured here purely so `decodeJSON`'s DisallowUnknownFields
+// doesn't reject the legacy poison-pill payload with 400 — the poison check
+// itself runs inside toRequest() so the response is the canonical 422.
+type updateCheckinPatch struct {
+	BeverageID   *string         `json:"beverage_id,omitempty"`
+	Rating       json.RawMessage `json:"rating,omitempty"`
+	Review       json.RawMessage `json:"review,omitempty"`
+	Tags         *[]string       `json:"tags,omitempty"`
+	Price        json.RawMessage `json:"price,omitempty"`
+	PurchaseType *string         `json:"purchase_type,omitempty"`
+	ServingStyle *string         `json:"serving_style,omitempty"`
+}
+
+// toRequest projects the patch onto domain.UpdateCheckinRequest, including
+// the null-as-clear semantics for rating/review/price.
+func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
+	req := domain.UpdateCheckinRequest{
+		BeverageID:   p.BeverageID,
+		Tags:         p.Tags,
+		PurchaseType: p.PurchaseType,
+		ServingStyle: p.ServingStyle,
+	}
+	// rating: null → clear; value → set; absent → no change.
+	if len(p.Rating) > 0 {
+		if string(p.Rating) == "null" {
+			req.ClearRating = true
+		} else {
+			var v float64
+			if err := json.Unmarshal(p.Rating, &v); err != nil {
+				return req, errors.Join(apierror.ErrBadRequest, err)
+			}
+			req.Rating = &v
+		}
+	}
+	if len(p.Review) > 0 {
+		if string(p.Review) == "null" {
+			req.ClearReview = true
+		} else {
+			var v string
+			if err := json.Unmarshal(p.Review, &v); err != nil {
+				return req, errors.Join(apierror.ErrBadRequest, err)
+			}
+			req.Review = &v
+		}
+	}
+	if len(p.Price) > 0 {
+		if string(p.Price) == "null" {
+			req.ClearPrice = true
+		} else {
+			var v domain.Price
+			if err := json.Unmarshal(p.Price, &v); err != nil {
+				return req, errors.Join(apierror.ErrBadRequest, err)
+			}
+			req.Price = &v
+		}
+	}
+	return req, nil
+}
+
 // DeleteCheckin — DELETE /v1/check-ins/{id}.
 //
-// Status: scaffold-for-Phase5 (admin moderation). Endpoint is intentionally
-// pre-wired; no Flutter caller in MVP.
+// Stage 3: the (fetch beverage_id → soft-delete → invalidate cache) dance
+// is now owned by CheckinService.Delete.
+//
+// Status: scaffold-for-Phase5 (admin moderation).
 func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	// Phase 7 — fetch the beverage_id before soft-deleting so we know which
-	// LRU entry to bust. If the Get fails we still attempt the delete; the
-	// cache TTL ceiling (5m) bounds the staleness window. Get + SoftDelete
-	// is two PK lookups in the same request — cheap.
+	if h.Services != nil && h.Services.Checkin != nil {
+		if err := h.Services.Checkin.Delete(r.Context(), uid, id); err != nil {
+			h.writeErr(w, "DeleteCheckin", err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	// Legacy fallback (tests that don't construct services).
 	var bevID string
 	if cached, err := h.Repos.Checkins.Get(r.Context(), id, uid); err == nil {
 		bevID = cached.Beverage.ID

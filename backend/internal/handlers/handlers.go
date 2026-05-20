@@ -22,10 +22,22 @@ import (
 	"github.com/kamos/api/internal/foursquare"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/service"
 	"github.com/kamos/api/internal/storage"
 )
 
 // Handler is the bundle every route handler shares.
+//
+// Stage 3 (architectural refactor): the orchestration logic for the write
+// paths is being lifted into `internal/service.Bundle`. Handlers still hold
+// the legacy direct-repo fields below (`Repos`, `Signer`, `Mailer`, etc.)
+// for the read-path code that hasn't been service-ified yet, but every
+// multi-write flow flows through `h.Services.<X>.<Method>(ctx, …)`.
+//
+// The plan is to retire the legacy direct-repo fields once every endpoint
+// has been migrated; that's why `Services` is the only field added in
+// Stage 3 — the old fields remain for binary compatibility with the test
+// suite during the migration window.
 type Handler struct {
 	Cfg        *config.Config
 	Log        *slog.Logger
@@ -45,6 +57,10 @@ type Handler struct {
 	// that don't care about caching pass nil and the path falls through to
 	// the DB on every call.
 	Caches *cache.Caches
+	// Services hosts the orchestration layer (Stage 3 refactor). Nil-safe:
+	// handlers that pre-date the migration fall back to the legacy
+	// direct-repo path when Services is nil.
+	Services *service.Bundle
 }
 
 // New creates the bundle. Storage/Mailer/Foursquare default to disabled
@@ -93,6 +109,39 @@ func (h *Handler) WithSoftDeleteCache(c *auth.SoftDeleteCache) *Handler {
 // fresh one for isolation.
 func (h *Handler) WithCaches(c *cache.Caches) *Handler {
 	h.Caches = c
+	return h
+}
+
+// WithServices wires the orchestration bundle (Stage 3 refactor). Nil-safe
+// at runtime; tests that haven't been migrated continue to work because the
+// handlers fall back to the legacy direct-repo path when Services is nil.
+func (h *Handler) WithServices(s *service.Bundle) *Handler {
+	h.Services = s
+	return h
+}
+
+// buildServices is the package-internal helper that constructs the service
+// bundle from the handler's existing dependencies. main.go uses this so the
+// wiring stays in one place; tests can opt-in by calling h.WithServices.
+func (h *Handler) buildServices() *service.Bundle {
+	return service.New(service.Deps{
+		Cfg:        h.Cfg,
+		Log:        h.Log,
+		Repos:      h.Repos,
+		Signer:     h.Signer,
+		Mailer:     h.Mailer,
+		Caches:     h.Caches,
+		SoftDelete: h.SoftDelete,
+	})
+}
+
+// EnsureServices wires Services when it is currently nil. Idempotent.
+// Called by main.go after every other With* setter has been applied so
+// the bundle picks up Mailer / Caches / SoftDelete.
+func (h *Handler) EnsureServices() *Handler {
+	if h.Services == nil {
+		h.Services = h.buildServices()
+	}
 	return h
 }
 
