@@ -19,12 +19,16 @@ type catRow struct {
 	nameJSON []byte
 }
 
-// List returns a page of beverages. Cursor uses (check_in_count, id) for the
-// MVP "popularity" sort. Empty `category` and `q` are wildcards.
+// List returns a page of beverages. Cursor uses
+// (check_in_count, created_at, id) for the popularity sort — the
+// triple keeps the keyset stable even when check_in_count mutates
+// under an active cursor (PERF-003). Empty `category` and `q` are
+// wildcards.
 type BeverageListParams struct {
 	Q            *string
 	CategorySlug *string
 	CursorCount  *int64
+	CursorTs     *time.Time
 	CursorID     *string
 	Limit        int
 }
@@ -144,8 +148,10 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 	return out, nil
 }
 
-// List uses the popularity cursor (check_in_count, id). Set Q to filter by
-// full-text match. q (lexeme) and category_slug are optional.
+// List uses the popularity cursor (check_in_count, created_at, id).
+// Set Q to filter by full-text match. q (lexeme) and category_slug
+// are optional. The triple keyset is backed by
+// idx_beverages_popularity_keyset (migration 012).
 func (r *BeverageRepo) List(ctx context.Context, p BeverageListParams) ([]domain.Beverage, error) {
 	if p.Limit <= 0 {
 		p.Limit = 20
@@ -159,10 +165,12 @@ WHERE TRUE
          coalesce(b.name_i18n->>'ko','')
        ) @@ plainto_tsquery('simple', $1))
   AND ($2::text IS NULL OR b.category_slug = $2)
-  AND ($3::bigint IS NULL OR (b.check_in_count, b.id::text) < ($3::bigint, $4::text))
-ORDER BY b.check_in_count DESC, b.id DESC
-LIMIT $5;`
-	rows, err := r.db.Query(ctx, q, p.Q, p.CategorySlug, p.CursorCount, p.CursorID, p.Limit+1)
+  AND ($3::bigint IS NULL OR
+       (b.check_in_count, b.created_at, b.id) <
+       ($3::bigint, $4::timestamptz, $5::uuid))
+ORDER BY b.check_in_count DESC, b.created_at DESC, b.id DESC
+LIMIT $6;`
+	rows, err := r.db.Query(ctx, q, p.Q, p.CategorySlug, p.CursorCount, p.CursorTs, p.CursorID, p.Limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("BeverageRepo.List: %w", err)
 	}
@@ -248,7 +256,7 @@ FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 WHERE ci.beverage_id = $1
   AND ci.deleted_at IS NULL
-  AND ($2::timestamptz IS NULL OR (ci.created_at, ci.id::text) < ($2::timestamptz, $3::text))
+  AND ($2::timestamptz IS NULL OR (ci.created_at, ci.id) < ($2::timestamptz, $3::uuid))
 ORDER BY ci.created_at DESC, ci.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, beverageID, cursorTs, cursorID, limit+1)
@@ -310,13 +318,15 @@ func (r *BeverageRepo) SubmitAdditionRequest(ctx context.Context, userID *string
 
 type BreweryRepo struct{ db *pgxpool.Pool }
 
-func (r *BreweryRepo) List(ctx context.Context, q *string, cursor *string, limit int) ([]domain.Brewery, error) {
+func (r *BreweryRepo) List(ctx context.Context, q *string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Brewery, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	// Stage 5 (PERF-015): beverage_count comes from the denormalized
 	// column on breweries (migration 011) instead of a correlated
-	// subquery per row.
+	// subquery per row. The ordering switches from id-only (which is
+	// pseudo-random for v7 UUIDs) to (created_at DESC, id DESC) so
+	// the list paginates in a meaningful order.
 	const sql = `
 SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
        b.beverage_count
@@ -327,10 +337,10 @@ WHERE ($1::text IS NULL OR
          coalesce(b.name_i18n->>'ja','') || ' ' ||
          coalesce(b.name_i18n->>'ko','')
        ) @@ plainto_tsquery('simple', $1))
-  AND ($2::text IS NULL OR b.id::text < $2::text)
-ORDER BY b.id DESC
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, sql, q, cursor, limit+1)
+  AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
+ORDER BY b.created_at DESC, b.id DESC
+LIMIT $4;`
+	rows, err := r.db.Query(ctx, sql, q, cursorTs, cursorID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("BreweryRepo.List: %w", err)
 	}
@@ -351,17 +361,19 @@ FROM breweries b WHERE b.id = $1;`
 	return out, nil
 }
 
-// Beverages lists beverages by brewery, cursor-paginated on (id) for simplicity.
-func (r *BreweryRepo) Beverages(ctx context.Context, breweryID string, cursor *string, limit int) ([]domain.Beverage, error) {
+// Beverages lists beverages by brewery, cursor-paginated on
+// (created_at, id) so a brewery detail page shows newest first
+// instead of the v7-UUID-pseudo-random id order.
+func (r *BreweryRepo) Beverages(ctx context.Context, breweryID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Beverage, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	q := beverageSelect + `
 WHERE b.brewery_id = $1
-  AND ($2::text IS NULL OR b.id::text < $2::text)
-ORDER BY b.id DESC
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q, breweryID, cursor, limit+1)
+  AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
+ORDER BY b.created_at DESC, b.id DESC
+LIMIT $4;`
+	rows, err := r.db.Query(ctx, q, breweryID, cursorTs, cursorID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("BreweryRepo.Beverages: %w", err)
 	}

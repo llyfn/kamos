@@ -100,7 +100,7 @@ SELECT bar.id, bar.user_id, u.display_username,
 FROM beverage_addition_requests bar
 LEFT JOIN users u ON u.id = bar.user_id
 WHERE ($1::text = '' OR bar.status = $1)
-  AND ($2::timestamptz IS NULL OR (bar.created_at, bar.id::text) < ($2::timestamptz, $3::text))
+  AND ($2::timestamptz IS NULL OR (bar.created_at, bar.id) < ($2::timestamptz, $3::uuid))
 ORDER BY bar.created_at DESC, bar.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, p.StatusFilter, p.CursorTs, p.CursorID, p.Limit+1)
@@ -371,7 +371,7 @@ SELECT id, username, display_username, email, email_verified,
 FROM users
 WHERE ($1::boolean OR deleted_at IS NULL)
   AND ($2::text = '' OR role::text = $2)
-  AND ($3::timestamptz IS NULL OR (created_at, id::text) < ($3::timestamptz, $4::text))
+  AND ($3::timestamptz IS NULL OR (created_at, id) < ($3::timestamptz, $4::uuid))
 ORDER BY created_at DESC, id DESC
 LIMIT $5;`
 	rows, err := r.db.Query(ctx, q, p.IncludeDeleted, p.RoleFilter, p.CursorTs, p.CursorID, p.Limit+1)

@@ -32,11 +32,19 @@ import (
 // /v1/search to disambiguate which sub-stream the cursor is mid-page in
 // (`beverage` while draining beverages, `brewery` once the cursor has
 // crossed into breweries).
+//
+// Stage 5 (PERF-003): popularity cursors carry a triple
+// (CheckInCount, CreatedAt, ID) so the keyset stays stable across the
+// mutating check_in_count column. `CheckInCount` is encoded under the
+// short `k` key (the byte budget on a base64 cursor is tight); legacy
+// cursors without `k` still decode — handlers that need the full
+// triple fall back to a single-key keyset.
 type Cursor struct {
-	CreatedAt time.Time `json:"c,omitempty"`
-	ID        string    `json:"i,omitempty"`
-	Score     *int64    `json:"s,omitempty"`
-	Type      string    `json:"t,omitempty"`
+	CreatedAt    time.Time `json:"c,omitempty"`
+	ID           string    `json:"i,omitempty"`
+	Score        *int64    `json:"s,omitempty"`
+	CheckInCount *int64    `json:"k,omitempty"`
+	Type         string    `json:"t,omitempty"`
 }
 
 var (

@@ -55,7 +55,7 @@ JOIN beverage_categories cat ON cat.id = b.category_id
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.deleted_at IS NULL
   AND ci.user_id <> $1
-  AND ($2::timestamptz IS NULL OR (ci.created_at, ci.id::text) < ($2::timestamptz, $3::text))
+  AND ($2::timestamptz IS NULL OR (ci.created_at, ci.id) < ($2::timestamptz, $3::uuid))
 ORDER BY ci.created_at DESC, ci.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, viewerID, cursorTs, cursorID, limit+1)

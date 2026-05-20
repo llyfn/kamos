@@ -482,7 +482,7 @@ WHERE ci.user_id = $1
       WHERE f.follower_id = NULLIF($2,'')::uuid AND f.followed_id = u.id AND f.status = 'accepted'
     )
   )
-  AND ($3::timestamptz IS NULL OR (ci.created_at, ci.id::text) < ($3::timestamptz, $4::text))
+  AND ($3::timestamptz IS NULL OR (ci.created_at, ci.id) < ($3::timestamptz, $4::uuid))
 ORDER BY ci.created_at DESC, ci.id DESC
 LIMIT $5;`
 	rows, err := r.db.Query(ctx, q, targetID, viewerID, cursorTs, cursorID, limit+1)

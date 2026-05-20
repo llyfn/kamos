@@ -200,11 +200,12 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 		return
 	}
 	ts := optTimestamp(c)
+	cid := optString(c.ID)
 	var rows []repository.SocialUser
 	if followers {
-		rows, err = h.Repos.Social.Followers(r.Context(), user.ID, ts, limit)
+		rows, err = h.Repos.Social.Followers(r.Context(), user.ID, ts, cid, limit)
 	} else {
-		rows, err = h.Repos.Social.Following(r.Context(), user.ID, ts, limit)
+		rows, err = h.Repos.Social.Following(r.Context(), user.ID, ts, cid, limit)
 	}
 	if err != nil {
 		h.writeErr(w, "listSocial query", err)

@@ -62,7 +62,8 @@ func (h *Handler) FollowRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ts := optTimestamp(c)
-	rows, err := h.Repos.Social.Inbox(r.Context(), uid, ts, limit)
+	cid := optString(c.ID)
+	rows, err := h.Repos.Social.Inbox(r.Context(), uid, ts, cid, limit)
 	if err != nil {
 		h.writeErr(w, "FollowRequests", err)
 		return
