@@ -26,3 +26,7 @@ local.env
 
 ### Claude Code runtime ###
 .claude/scheduled_tasks.lock
+
+### Node (root tooling only — commitlint + lefthook) ###
+/node_modules/
+/package-lock.json

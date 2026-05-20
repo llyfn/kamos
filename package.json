@@ -1,0 +1,14 @@
+{
+  "name": "kamos-repo",
+  "private": true,
+  "description": "KAMOS monorepo root — hosts only the commit-hook tooling. Real source lives in backend/, frontend/, admin/.",
+  "scripts": {
+    "commitlint": "commitlint --config .github/commitlint.config.cjs --edit",
+    "prepare": "lefthook install || true"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "lefthook": "^1.7.22"
+  }
+}

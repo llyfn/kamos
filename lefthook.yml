@@ -1,0 +1,8 @@
+# Lefthook config — local git hooks for the KAMOS monorepo.
+# Run `npm install` at the repo root once, then `npx lefthook install`.
+# Hooks here are best-effort: missing tools no-op rather than blocking commits.
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- commitlint --config .github/commitlint.config.cjs --edit {1}

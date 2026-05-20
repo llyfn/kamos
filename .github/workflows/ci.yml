@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel in-progress runs for the same ref when a new push lands.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+      admin: ${{ steps.filter.outputs.admin }}
+      ci: ${{ steps.filter.outputs.ci }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.golangci.yml'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+            migrations:
+              - 'migrations/**'
+              - '.sqlfluffrc'
+              - '.github/workflows/ci.yml'
+            admin:
+              - 'admin/**'
+              - '.github/workflows/ci.yml'
+            ci:
+              - '.github/workflows/ci.yml'
+
+  backend-go:
+    name: Backend (Go)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - name: go mod download
+        run: go mod download
+      - name: go build
+        run: go build ./...
+      - name: go vet (advisory until Stage 8)
+        run: go vet ./... || true
+      - name: golangci-lint (advisory)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.12.2
+          working-directory: backend
+          args: --config ../.golangci.yml --issues-exit-code=0
+      - name: go test
+        run: go test ./... -short
+
+  frontend-flutter:
+    name: Frontend (Flutter)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter analyze (advisory)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: flutter test
+        run: flutter test
+
+  sql-lint:
+    name: SQL Lint (advisory)
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install sqlfluff
+        run: pip install sqlfluff==4.2.1
+      - name: sqlfluff lint
+        run: sqlfluff lint migrations/ --config .sqlfluffrc
+
+  admin-build:
+    name: Admin (React/TS)
+    needs: changes
+    if: needs.changes.outputs.admin == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: admin/package-lock.json
+      - name: npm ci
+        run: npm ci
+      - name: biome check (advisory)
+        run: npx biome check src/ || true
+      - name: npm run build
+        run: npm run build
+
+  integration-smoke:
+    name: Integration smoke (advisory, main only)
+    needs: [backend-go]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: kamos
+          POSTGRES_PASSWORD: kamos
+          POSTGRES_DB: kamos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kamos"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+          cache-dependency-path: backend/go.sum
+      - name: Apply migrations
+        env:
+          PSQL_URL: postgres://kamos:kamos@localhost:5432/kamos?sslmode=disable
+        run: make db-migrate
+      - name: Run smoke script
+        run: |
+          if [ -x scripts/smoke.sh ]; then
+            scripts/smoke.sh
+          else
+            echo "No smoke script available, skipping."
+          fi
