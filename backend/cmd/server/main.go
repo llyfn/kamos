@@ -20,7 +20,6 @@ import (
 	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/foursquare"
 	"github.com/kamos/api/internal/handlers"
-	"github.com/kamos/api/internal/jobs"
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/server"
@@ -176,17 +175,11 @@ func main() {
 		EnsureServices()
 	mux := server.New(log, signer, softDelete, h)
 
-	// Background-job scheduler — four maintenance jobs registered before
-	// the HTTP server starts. The scheduler owns its own context derived
-	// from a long-lived parent so jobs survive request churn but cleanly
-	// stop on shutdown.
-	sched := jobs.NewScheduler(context.Background(), log, pool)
-	sched.Register("username_hold_cleanup", time.Hour, jobs.JobUsernameHoldCleanup(log))
-	sched.Register("email_verification_cleanup", 6*time.Hour, jobs.JobEmailVerificationCleanup(log))
-	sched.Register("avg_rating_sweep", 24*time.Hour, jobs.JobAvgRatingSweep(log))
-	sched.Register("photo_orphan_cleanup", time.Hour, jobs.JobPhotoOrphanCleanup(log, store))
-	sched.Start()
-	defer sched.Stop()
+	// Stage 4 — the in-process scheduler used to register four maintenance
+	// jobs here. It now lives in cmd/worker so the API process is fully
+	// stateless and horizontally scalable. The worker is a single replica;
+	// jobs are additionally guarded by pg_try_advisory_lock as a
+	// belt-and-suspenders safety net against a misconfigured deploy.
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

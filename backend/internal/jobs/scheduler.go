@@ -1,15 +1,26 @@
-// Package jobs runs in-process background maintenance tasks: username-hold
-// release, email-verification cleanup, and the rating-aggregate self-heal.
-// In-process (not a separate binary) per the post-MVP roadmap.
+// Package jobs runs background maintenance tasks: username-hold release,
+// email-verification cleanup, photo-orphan cleanup, and the rating-aggregate
+// self-heal. Owned by cmd/worker as of Stage 4 — the API server no longer
+// registers any jobs.
+//
+// Each tick is wrapped in pg_try_advisory_lock keyed on the job name. This
+// is a belt-and-suspenders guard: the worker is a single replica by
+// configuration, but if a misconfigured deploy ever runs N workers (or
+// re-registers jobs on the API), only one of them will fire any given tick.
+// The lock is bound to a dedicated connection acquired from the pool, so
+// it auto-releases when the connection returns to the pool — even if the
+// job body panics before the explicit Unlock.
 package jobs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -82,6 +93,11 @@ func (s *Scheduler) run(j Job) {
 // invoke runs one iteration with a context that inherits from the
 // scheduler's; ticks must not deadlock if a single iteration hangs forever,
 // so we give the job a generous-but-bounded budget of 5 minutes.
+//
+// Stage 4 — the tick body is gated by pg_try_advisory_lock("kamos:job:<name>").
+// When the lock is held by another worker the tick logs at DEBUG and skips;
+// when the DB is missing (nil pool, tests), we skip the lock and run as
+// before so unit tests keep their old shape.
 func (s *Scheduler) invoke(j Job) {
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -90,6 +106,37 @@ func (s *Scheduler) invoke(j Job) {
 	}()
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Minute)
 	defer cancel()
+
+	if s.db == nil {
+		if err := j.Fn(ctx, s.db); err != nil {
+			s.log.Warn("job_error", "name", j.Name, "err", err)
+		}
+		return
+	}
+
+	key := "kamos:job:" + j.Name
+	acq, err := s.db.Acquire(ctx)
+	if err != nil {
+		s.log.Warn("job_acquire_conn", "name", j.Name, "err", err)
+		return
+	}
+	defer acq.Release()
+
+	ok, err := tryAdvisoryLock(ctx, acq.Conn(), key)
+	if err != nil {
+		s.log.Warn("job_advisory_lock", "name", j.Name, "err", err)
+		return
+	}
+	if !ok {
+		s.log.Debug("job_lock_held", "name", j.Name)
+		return
+	}
+	defer func() {
+		if err := releaseAdvisoryLock(ctx, acq.Conn(), key); err != nil {
+			s.log.Warn("job_advisory_unlock", "name", j.Name, "err", err)
+		}
+	}()
+
 	if err := j.Fn(ctx, s.db); err != nil {
 		s.log.Warn("job_error", "name", j.Name, "err", err)
 	}
@@ -100,4 +147,37 @@ func (s *Scheduler) invoke(j Job) {
 func (s *Scheduler) Stop() {
 	s.cancel()
 	s.wg.Wait()
+}
+
+// queryRower is the slice of *pgx.Conn we need for the advisory-lock
+// helpers. Declared as an interface so tests can substitute a fake; the
+// real *pgx.Conn satisfies it natively.
+type queryRower interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// tryAdvisoryLock attempts SELECT pg_try_advisory_lock(hashtext($1)).
+// Returns (true, nil) on grant, (false, nil) when held elsewhere, and an
+// error only on DB failure.
+func tryAdvisoryLock(ctx context.Context, conn queryRower, key string) (bool, error) {
+	var got bool
+	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock(hashtext($1))`, key).Scan(&got); err != nil {
+		return false, fmt.Errorf("tryAdvisoryLock: %w", err)
+	}
+	return got, nil
+}
+
+// releaseAdvisoryLock releases the lock taken by tryAdvisoryLock. Idempotent
+// at the scheduler level: when the context is already canceled (Postgres
+// will release the lock on session close anyway) we treat the call as a
+// no-op.
+func releaseAdvisoryLock(ctx context.Context, conn queryRower, key string) error {
+	var released bool
+	if err := conn.QueryRow(ctx, `SELECT pg_advisory_unlock(hashtext($1))`, key).Scan(&released); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil
+		}
+		return fmt.Errorf("releaseAdvisoryLock: %w", err)
+	}
+	return nil
 }
