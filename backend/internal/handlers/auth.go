@@ -71,10 +71,10 @@ func (h *Handler) issueAuthPair(r *http.Request, user *domain.User) (string, str
 }
 
 // Register implements POST /v1/auth/register.
-//   1. Validate the body (username regex, password ≥ 8, etc.)
-//   2. Check the username + email aren't held
-//   3. Insert user + Inventory/Wishlist collections in a tx
-//   4. Issue a verification token (24h) and a JWT
+//
+// Stage 3: the orchestration (availability + email-uniqueness + insert +
+// default-collections + verify-token + verify-mail + auth-pair issue) lives
+// in AuthService.Register.
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req domain.RegisterRequest
 	if err := decodeJSON(r, &req); err != nil {
@@ -85,7 +85,23 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Register validate", err)
 		return
 	}
-
+	if h.Services != nil && h.Services.Auth != nil {
+		res, err := h.Services.Auth.Register(r.Context(), req, randomToken)
+		if err != nil {
+			h.writeErr(w, "Register", err)
+			return
+		}
+		apierror.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
+			User:             res.User,
+			AccessToken:      res.AccessToken,
+			RefreshToken:     res.RefreshToken,
+			TokenType:        "Bearer",
+			ExpiresIn:        int64(h.Cfg.JWTTTL.Seconds()),
+			RefreshExpiresIn: res.RefreshExpiresIn,
+		})
+		return
+	}
+	// Legacy fallback (tests that don't construct services).
 	ctx := r.Context()
 	state, _, err := h.Repos.Users.CheckUsernameAvailability(ctx, req.Username)
 	if err != nil {
@@ -105,7 +121,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
 		return
 	}
-
 	hashed, err := auth.HashPassword(req.Password)
 	if err != nil {
 		h.writeErr(w, "Register hash", err)
@@ -124,17 +139,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Register insert", err)
 		return
 	}
-
-	// Verification token (24h). The link format is
-	//   `${APP_BASE_URL}/verify?token=...`.
-	// Phase 3: real outbound mail via configured Mailer (Resend if env set;
-	// LogMailer otherwise so dev workflow stays intact).
 	token, _ := randomToken(32)
 	if err := h.Repos.Users.CreateVerificationToken(ctx, user.ID, token); err != nil {
 		h.Log.Error("CreateVerificationToken", "err", err)
 	}
 	h.sendVerificationEmail(r, user, token)
-
 	access, refresh, err := h.issueAuthPair(r, user)
 	if err != nil {
 		h.writeErr(w, "Register issue", err)
