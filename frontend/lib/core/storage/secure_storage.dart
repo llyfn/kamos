@@ -42,11 +42,33 @@ class SecureStorageService {
   /// the truth most-recently returned.
   static String? _accessTokenSnapshot;
 
+  /// Stage 5 (PERF-018): memoized decoded `sub` claim for
+  /// `_accessTokenSnapshot`. The cache keyBuilder fires on every request
+  /// — base64-decoding the JWT payload + parsing the JSON was ~30 µs per
+  /// hit before the memo. We invalidate by storing the token that
+  /// produced the cached sub; if the token changes the keyBuilder
+  /// recomputes once and re-fills the memo.
+  static String? _subSnapshot;
+  static String? _subSnapshotForToken;
+
   /// Synchronous best-effort accessor for the currently-active access token.
   /// Returns `null` if no token has been observed in this process or after a
   /// `clearToken`/`clearAll`. Used by the cache `keyBuilder` to derive a
   /// per-user discriminator; never use it as the source of truth for auth.
   static String? currentAccessToken() => _accessTokenSnapshot;
+
+  /// Returns the memoized JWT `sub` claim for `currentAccessToken()`. If
+  /// the active token has changed since the last call, invokes `decode`
+  /// once to re-fill the memo. The decode closure is injected so this
+  /// stays decoupled from jwt_claims.dart's exact import path.
+  static String? currentSubMemoized(String? Function(String?) decode) {
+    final token = _accessTokenSnapshot;
+    if (token != _subSnapshotForToken) {
+      _subSnapshot = decode(token);
+      _subSnapshotForToken = token;
+    }
+    return _subSnapshot;
+  }
 
   /// Test-only seam: overrides the synchronous token snapshot without going
   /// through the platform-channel-backed `FlutterSecureStorage`. Allows widget
@@ -55,6 +77,8 @@ class SecureStorageService {
   @visibleForTesting
   static void setAccessTokenSnapshotForTest(String? token) {
     _accessTokenSnapshot = token;
+    _subSnapshot = null;
+    _subSnapshotForToken = null;
   }
 
   // --- Access token ---------------------------------------------------------
@@ -73,6 +97,8 @@ class SecureStorageService {
   Future<void> clearToken() async {
     await _storage.delete(key: _kJwtKey);
     _accessTokenSnapshot = null;
+    _subSnapshot = null;
+    _subSnapshotForToken = null;
   }
 
   // --- Refresh token (Phase 2) ---------------------------------------------
@@ -92,6 +118,8 @@ class SecureStorageService {
     await _storage.delete(key: _kJwtKey);
     await _storage.delete(key: _kRefreshKey);
     _accessTokenSnapshot = null;
+    _subSnapshot = null;
+    _subSnapshotForToken = null;
   }
 }
 

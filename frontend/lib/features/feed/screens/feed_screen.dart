@@ -17,21 +17,32 @@ class FeedScreen extends ConsumerStatefulWidget {
   ConsumerState<FeedScreen> createState() => _FeedScreenState();
 }
 
+// Stage 5 (PERF-032 / STYLE-027): the prefetch heuristic is "trigger
+// loadMore when the viewport is within 1.5 screens of the end". The
+// 280px-per-item magic constant is gone — viewport-derived threshold
+// is correct at any item height and any screen size.
+const double _kFeedPrefetchViewports = 1.5;
+
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final _scroll = ScrollController();
+  double _viewportHeight = 600.0;
 
   @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_onScroll);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Memoize the viewport height once per dependency change; reading
+    // MediaQuery.sizeOf inside the scroll callback would rebuild the
+    // chain on every notification.
+    _viewportHeight = MediaQuery.sizeOf(context).height;
   }
 
-  void _onScroll() {
-    // Trigger when ~3 items from the end (assume ~280px per item).
-    if (_scroll.position.pixels >=
-        _scroll.position.maxScrollExtent - 3 * 280) {
+  bool _onScrollEnd(ScrollEndNotification n) {
+    final pos = n.metrics;
+    final remaining = pos.maxScrollExtent - pos.pixels;
+    if (remaining <= _viewportHeight * _kFeedPrefetchViewports) {
       ref.read(feedProvider.notifier).loadMore();
     }
+    return false;
   }
 
   @override
@@ -61,8 +72,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     return RefreshIndicator(
       onRefresh: () =>
           ref.read(feedProvider.notifier).refresh(forceRefresh: true),
-      child: ListView(
-        controller: _scroll,
+      child: NotificationListener<ScrollEndNotification>(
+        onNotification: _onScrollEnd,
+        child: ListView(
+          controller: _scroll,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           Padding(
@@ -131,6 +144,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               ),
           ],
         ],
+        ),
       ),
     );
   }

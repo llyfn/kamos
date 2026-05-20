@@ -935,7 +935,9 @@ $VenueRefCopyWith<$Res>? get venue {
 /// @nodoc
 mixin _$FeedItem {
 
- String get id; CheckinUser get user; BeverageRef get beverage; double? get rating; String? get review; List<FlavorTag> get tags; VenueRef? get venue; int get toasts; bool get youToasted; int get photoCount;// Phase 6 — server-aggregated comment count. Defaults to 0 so older
+ String get id; CheckinUser get user; BeverageRef get beverage; double? get rating; String? get review; List<FlavorTag> get tags;// Stage 5: the server now hydrates photos[] directly on the feed.
+// The card uses photos.length for the count (no separate field).
+ List<PhotoRef> get photos; VenueRef? get venue; int get toasts; bool get youToasted;// Phase 6 — server-aggregated comment count. Defaults to 0 so older
 // servers (or omitted-key responses) remain wire-compatible.
  int get commentCount; String get createdAt;
 /// Create a copy of FeedItem
@@ -948,16 +950,16 @@ $FeedItemCopyWith<FeedItem> get copyWith => _$FeedItemCopyWithImpl<FeedItem>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedItem&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.beverage, beverage) || other.beverage == beverage)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.venue, venue) || other.venue == venue)&&(identical(other.toasts, toasts) || other.toasts == toasts)&&(identical(other.youToasted, youToasted) || other.youToasted == youToasted)&&(identical(other.photoCount, photoCount) || other.photoCount == photoCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedItem&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.beverage, beverage) || other.beverage == beverage)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other.tags, tags)&&const DeepCollectionEquality().equals(other.photos, photos)&&(identical(other.venue, venue) || other.venue == venue)&&(identical(other.toasts, toasts) || other.toasts == toasts)&&(identical(other.youToasted, youToasted) || other.youToasted == youToasted)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,user,beverage,rating,review,const DeepCollectionEquality().hash(tags),venue,toasts,youToasted,photoCount,commentCount,createdAt);
+int get hashCode => Object.hash(runtimeType,id,user,beverage,rating,review,const DeepCollectionEquality().hash(tags),const DeepCollectionEquality().hash(photos),venue,toasts,youToasted,commentCount,createdAt);
 
 @override
 String toString() {
-  return 'FeedItem(id: $id, user: $user, beverage: $beverage, rating: $rating, review: $review, tags: $tags, venue: $venue, toasts: $toasts, youToasted: $youToasted, photoCount: $photoCount, commentCount: $commentCount, createdAt: $createdAt)';
+  return 'FeedItem(id: $id, user: $user, beverage: $beverage, rating: $rating, review: $review, tags: $tags, photos: $photos, venue: $venue, toasts: $toasts, youToasted: $youToasted, commentCount: $commentCount, createdAt: $createdAt)';
 }
 
 
@@ -968,7 +970,7 @@ abstract mixin class $FeedItemCopyWith<$Res>  {
   factory $FeedItemCopyWith(FeedItem value, $Res Function(FeedItem) _then) = _$FeedItemCopyWithImpl;
 @useResult
 $Res call({
- String id, CheckinUser user, BeverageRef beverage, double? rating, String? review, List<FlavorTag> tags, VenueRef? venue, int toasts, bool youToasted, int photoCount, int commentCount, String createdAt
+ String id, CheckinUser user, BeverageRef beverage, double? rating, String? review, List<FlavorTag> tags, List<PhotoRef> photos, VenueRef? venue, int toasts, bool youToasted, int commentCount, String createdAt
 });
 
 
@@ -985,7 +987,7 @@ class _$FeedItemCopyWithImpl<$Res>
 
 /// Create a copy of FeedItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? user = null,Object? beverage = null,Object? rating = freezed,Object? review = freezed,Object? tags = null,Object? venue = freezed,Object? toasts = null,Object? youToasted = null,Object? photoCount = null,Object? commentCount = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? user = null,Object? beverage = null,Object? rating = freezed,Object? review = freezed,Object? tags = null,Object? photos = null,Object? venue = freezed,Object? toasts = null,Object? youToasted = null,Object? commentCount = null,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
@@ -993,11 +995,11 @@ as CheckinUser,beverage: null == beverage ? _self.beverage : beverage // ignore:
 as BeverageRef,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
 as double?,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
 as String?,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
-as List<FlavorTag>,venue: freezed == venue ? _self.venue : venue // ignore: cast_nullable_to_non_nullable
+as List<FlavorTag>,photos: null == photos ? _self.photos : photos // ignore: cast_nullable_to_non_nullable
+as List<PhotoRef>,venue: freezed == venue ? _self.venue : venue // ignore: cast_nullable_to_non_nullable
 as VenueRef?,toasts: null == toasts ? _self.toasts : toasts // ignore: cast_nullable_to_non_nullable
 as int,youToasted: null == youToasted ? _self.youToasted : youToasted // ignore: cast_nullable_to_non_nullable
-as bool,photoCount: null == photoCount ? _self.photoCount : photoCount // ignore: cast_nullable_to_non_nullable
-as int,commentCount: null == commentCount ? _self.commentCount : commentCount // ignore: cast_nullable_to_non_nullable
+as bool,commentCount: null == commentCount ? _self.commentCount : commentCount // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -1114,10 +1116,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  BeverageRef beverage,  double? rating,  String? review,  List<FlavorTag> tags,  VenueRef? venue,  int toasts,  bool youToasted,  int photoCount,  int commentCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  BeverageRef beverage,  double? rating,  String? review,  List<FlavorTag> tags,  List<PhotoRef> photos,  VenueRef? venue,  int toasts,  bool youToasted,  int commentCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _FeedItem() when $default != null:
-return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_that.tags,_that.venue,_that.toasts,_that.youToasted,_that.photoCount,_that.commentCount,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_that.tags,_that.photos,_that.venue,_that.toasts,_that.youToasted,_that.commentCount,_that.createdAt);case _:
   return orElse();
 
 }
@@ -1135,10 +1137,10 @@ return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  BeverageRef beverage,  double? rating,  String? review,  List<FlavorTag> tags,  VenueRef? venue,  int toasts,  bool youToasted,  int photoCount,  int commentCount,  String createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  BeverageRef beverage,  double? rating,  String? review,  List<FlavorTag> tags,  List<PhotoRef> photos,  VenueRef? venue,  int toasts,  bool youToasted,  int commentCount,  String createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _FeedItem():
-return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_that.tags,_that.venue,_that.toasts,_that.youToasted,_that.photoCount,_that.commentCount,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_that.tags,_that.photos,_that.venue,_that.toasts,_that.youToasted,_that.commentCount,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1155,10 +1157,10 @@ return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CheckinUser user,  BeverageRef beverage,  double? rating,  String? review,  List<FlavorTag> tags,  VenueRef? venue,  int toasts,  bool youToasted,  int photoCount,  int commentCount,  String createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CheckinUser user,  BeverageRef beverage,  double? rating,  String? review,  List<FlavorTag> tags,  List<PhotoRef> photos,  VenueRef? venue,  int toasts,  bool youToasted,  int commentCount,  String createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _FeedItem() when $default != null:
-return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_that.tags,_that.venue,_that.toasts,_that.youToasted,_that.photoCount,_that.commentCount,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_that.tags,_that.photos,_that.venue,_that.toasts,_that.youToasted,_that.commentCount,_that.createdAt);case _:
   return null;
 
 }
@@ -1169,8 +1171,8 @@ return $default(_that.id,_that.user,_that.beverage,_that.rating,_that.review,_th
 /// @nodoc
 
 
-class _FeedItem implements FeedItem {
-  const _FeedItem({required this.id, required this.user, required this.beverage, this.rating, this.review, final  List<FlavorTag> tags = const <FlavorTag>[], this.venue, this.toasts = 0, this.youToasted = false, this.photoCount = 0, this.commentCount = 0, this.createdAt = ''}): _tags = tags;
+class _FeedItem extends FeedItem {
+  const _FeedItem({required this.id, required this.user, required this.beverage, this.rating, this.review, final  List<FlavorTag> tags = const <FlavorTag>[], final  List<PhotoRef> photos = const <PhotoRef>[], this.venue, this.toasts = 0, this.youToasted = false, this.commentCount = 0, this.createdAt = ''}): _tags = tags,_photos = photos,super._();
   
 
 @override final  String id;
@@ -1185,10 +1187,20 @@ class _FeedItem implements FeedItem {
   return EqualUnmodifiableListView(_tags);
 }
 
+// Stage 5: the server now hydrates photos[] directly on the feed.
+// The card uses photos.length for the count (no separate field).
+ final  List<PhotoRef> _photos;
+// Stage 5: the server now hydrates photos[] directly on the feed.
+// The card uses photos.length for the count (no separate field).
+@override@JsonKey() List<PhotoRef> get photos {
+  if (_photos is EqualUnmodifiableListView) return _photos;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_photos);
+}
+
 @override final  VenueRef? venue;
 @override@JsonKey() final  int toasts;
 @override@JsonKey() final  bool youToasted;
-@override@JsonKey() final  int photoCount;
 // Phase 6 — server-aggregated comment count. Defaults to 0 so older
 // servers (or omitted-key responses) remain wire-compatible.
 @override@JsonKey() final  int commentCount;
@@ -1204,16 +1216,16 @@ _$FeedItemCopyWith<_FeedItem> get copyWith => __$FeedItemCopyWithImpl<_FeedItem>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeedItem&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.beverage, beverage) || other.beverage == beverage)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.venue, venue) || other.venue == venue)&&(identical(other.toasts, toasts) || other.toasts == toasts)&&(identical(other.youToasted, youToasted) || other.youToasted == youToasted)&&(identical(other.photoCount, photoCount) || other.photoCount == photoCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeedItem&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.beverage, beverage) || other.beverage == beverage)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other._tags, _tags)&&const DeepCollectionEquality().equals(other._photos, _photos)&&(identical(other.venue, venue) || other.venue == venue)&&(identical(other.toasts, toasts) || other.toasts == toasts)&&(identical(other.youToasted, youToasted) || other.youToasted == youToasted)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,user,beverage,rating,review,const DeepCollectionEquality().hash(_tags),venue,toasts,youToasted,photoCount,commentCount,createdAt);
+int get hashCode => Object.hash(runtimeType,id,user,beverage,rating,review,const DeepCollectionEquality().hash(_tags),const DeepCollectionEquality().hash(_photos),venue,toasts,youToasted,commentCount,createdAt);
 
 @override
 String toString() {
-  return 'FeedItem(id: $id, user: $user, beverage: $beverage, rating: $rating, review: $review, tags: $tags, venue: $venue, toasts: $toasts, youToasted: $youToasted, photoCount: $photoCount, commentCount: $commentCount, createdAt: $createdAt)';
+  return 'FeedItem(id: $id, user: $user, beverage: $beverage, rating: $rating, review: $review, tags: $tags, photos: $photos, venue: $venue, toasts: $toasts, youToasted: $youToasted, commentCount: $commentCount, createdAt: $createdAt)';
 }
 
 
@@ -1224,7 +1236,7 @@ abstract mixin class _$FeedItemCopyWith<$Res> implements $FeedItemCopyWith<$Res>
   factory _$FeedItemCopyWith(_FeedItem value, $Res Function(_FeedItem) _then) = __$FeedItemCopyWithImpl;
 @override @useResult
 $Res call({
- String id, CheckinUser user, BeverageRef beverage, double? rating, String? review, List<FlavorTag> tags, VenueRef? venue, int toasts, bool youToasted, int photoCount, int commentCount, String createdAt
+ String id, CheckinUser user, BeverageRef beverage, double? rating, String? review, List<FlavorTag> tags, List<PhotoRef> photos, VenueRef? venue, int toasts, bool youToasted, int commentCount, String createdAt
 });
 
 
@@ -1241,7 +1253,7 @@ class __$FeedItemCopyWithImpl<$Res>
 
 /// Create a copy of FeedItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? user = null,Object? beverage = null,Object? rating = freezed,Object? review = freezed,Object? tags = null,Object? venue = freezed,Object? toasts = null,Object? youToasted = null,Object? photoCount = null,Object? commentCount = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? user = null,Object? beverage = null,Object? rating = freezed,Object? review = freezed,Object? tags = null,Object? photos = null,Object? venue = freezed,Object? toasts = null,Object? youToasted = null,Object? commentCount = null,Object? createdAt = null,}) {
   return _then(_FeedItem(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
@@ -1249,11 +1261,11 @@ as CheckinUser,beverage: null == beverage ? _self.beverage : beverage // ignore:
 as BeverageRef,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
 as double?,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
 as String?,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
-as List<FlavorTag>,venue: freezed == venue ? _self.venue : venue // ignore: cast_nullable_to_non_nullable
+as List<FlavorTag>,photos: null == photos ? _self._photos : photos // ignore: cast_nullable_to_non_nullable
+as List<PhotoRef>,venue: freezed == venue ? _self.venue : venue // ignore: cast_nullable_to_non_nullable
 as VenueRef?,toasts: null == toasts ? _self.toasts : toasts // ignore: cast_nullable_to_non_nullable
 as int,youToasted: null == youToasted ? _self.youToasted : youToasted // ignore: cast_nullable_to_non_nullable
-as bool,photoCount: null == photoCount ? _self.photoCount : photoCount // ignore: cast_nullable_to_non_nullable
-as int,commentCount: null == commentCount ? _self.commentCount : commentCount // ignore: cast_nullable_to_non_nullable
+as bool,commentCount: null == commentCount ? _self.commentCount : commentCount // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));

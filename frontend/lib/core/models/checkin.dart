@@ -99,6 +99,7 @@ abstract class Checkin with _$Checkin {
 
 @Freezed(fromJson: false, toJson: false)
 abstract class FeedItem with _$FeedItem {
+  const FeedItem._();
   const factory FeedItem({
     required String id,
     required CheckinUser user,
@@ -106,15 +107,21 @@ abstract class FeedItem with _$FeedItem {
     double? rating,
     String? review,
     @Default(<FlavorTag>[]) List<FlavorTag> tags,
+    // Stage 5: the server now hydrates photos[] directly on the feed.
+    // The card uses photos.length for the count (no separate field).
+    @Default(<PhotoRef>[]) List<PhotoRef> photos,
     VenueRef? venue,
     @Default(0) int toasts,
     @Default(false) bool youToasted,
-    @Default(0) int photoCount,
     // Phase 6 — server-aggregated comment count. Defaults to 0 so older
     // servers (or omitted-key responses) remain wire-compatible.
     @Default(0) int commentCount,
     @Default('') String createdAt,
   }) = _FeedItem;
+
+  /// Backwards-compatible accessor for callers that still read
+  /// `photoCount`; reads from the hydrated photos slice.
+  int get photoCount => photos.length;
 
   factory FeedItem.fromJson(Map<String, dynamic> json) => FeedItem(
         id: (json['id'] as String?) ?? '',
@@ -129,12 +136,14 @@ abstract class FeedItem with _$FeedItem {
         tags: ((json['tags'] as List?) ?? const [])
             .map((e) => FlavorTag.fromJson(e as Map<String, dynamic>))
             .toList(),
+        photos: ((json['photos'] as List?) ?? const [])
+            .map((e) => PhotoRef.fromJson(e as Map<String, dynamic>))
+            .toList(),
         venue: json['venue'] is Map<String, dynamic>
             ? VenueRef.fromJson(json['venue'] as Map<String, dynamic>)
             : null,
         toasts: (json['toasts'] as int?) ?? 0,
         youToasted: (json['you_toasted'] as bool?) ?? false,
-        photoCount: (json['photo_count'] as int?) ?? 0,
         commentCount: (json['comment_count'] as int?) ?? 0,
         createdAt: (json['created_at'] as String?) ?? '',
       );
