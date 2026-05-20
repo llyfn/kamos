@@ -5,7 +5,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strings"
 )
+
+// containsNoStore is a tiny RFC 7234 §5.2.1.5 token check on a
+// Cache-Control header value. We split on commas (and ignore
+// whitespace) and look for an exact "no-store" token rather than a
+// substring match — "no-store-test" would otherwise false-match.
+func containsNoStore(cc string) bool {
+	for _, part := range strings.Split(cc, ",") {
+		if strings.EqualFold(strings.TrimSpace(part), "no-store") {
+			return true
+		}
+	}
+	return false
+}
 
 // ETag buffers the response body, computes a SHA-256 hash, sets a strong
 // ETag header, and short-circuits with 304 Not Modified when the request
@@ -87,6 +101,17 @@ func ETag(next http.Handler) http.Handler {
 		// bypass the hash to avoid quietly bloating CPU + memory on a
 		// future regression. The body still flushes normally.
 		if buf.body.Len() > etagMaxBufBytes {
+			w.WriteHeader(buf.status)
+			_, _ = w.Write(buf.body.Bytes())
+			return
+		}
+		// Stage 5 (PERF-019): skip the hash entirely on responses the
+		// inner handler has already marked Cache-Control: no-store.
+		// A no-store response is never re-read from cache, so a 304
+		// roundtrip-save is impossible by construction. The SHA-256
+		// + ETag header would be pure waste; bypassing matches the
+		// short-circuit semantics of the empty-body and oversize paths.
+		if cc := w.Header().Get("Cache-Control"); cc != "" && containsNoStore(cc) {
 			w.WriteHeader(buf.status)
 			_, _ = w.Write(buf.body.Bytes())
 			return
