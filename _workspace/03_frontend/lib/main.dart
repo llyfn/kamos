@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'app/app.dart';
+import 'core/observability/breadcrumb_scrubber.dart';
 import 'core/observability/sentry_observer.dart';
 
 // Compile-time configuration. The DSN gate (`kSentryConfigured`) lives in
@@ -54,19 +55,16 @@ void main() {
         options.tracesSampleRate = 0.0;
         // Privacy: never auto-attach screenshots.
         options.attachScreenshot = false;
-        // Redact Authorization headers from HTTP breadcrumbs so the JWT never
-        // leaves the device (SPEC §6.9). The Sentry HTTP integration places
-        // request headers under `data['request']['headers']` or
-        // `data['headers']`; both are checked defensively.
+        // Redact secrets (Authorization headers, refresh/id tokens, password,
+        // secret keys, URL query tokens) from HTTP breadcrumbs so they never
+        // leave the device (SPEC §6.9 / SEC-020). The actual walk lives in
+        // `breadcrumb_scrubber.dart` so it can be unit-tested without spinning
+        // up Sentry.
         options.beforeBreadcrumb = (breadcrumb, hint) {
           if (breadcrumb == null) return null;
           final data = breadcrumb.data;
           if (data == null) return breadcrumb;
-          _redactAuthorization(data);
-          final request = data['request'];
-          if (request is Map) {
-            _redactAuthorization(request.cast<String, dynamic>());
-          }
+          scrubBreadcrumbData(data);
           return breadcrumb;
         };
       },
@@ -81,26 +79,4 @@ void main() {
       Sentry.captureException(error, stackTrace: stack);
     },
   );
-}
-
-/// Walks a breadcrumb data map and replaces any case-insensitive
-/// `Authorization` header with `[redacted]` in place. Sentry's HTTP
-/// integration may nest headers under `headers` or include the URL with query
-/// auth tokens; we redact both.
-void _redactAuthorization(Map<String, dynamic> data) {
-  final headers = data['headers'];
-  if (headers is Map) {
-    for (final key in headers.keys.toList()) {
-      if (key is String && key.toLowerCase() == 'authorization') {
-        headers[key] = '[redacted]';
-      }
-    }
-  }
-  // Some integrations stash the raw header list as a string under
-  // `headers_raw` or similar; scrub the obvious case.
-  final rawHeaders = data['headers_raw'];
-  if (rawHeaders is String &&
-      rawHeaders.toLowerCase().contains('authorization')) {
-    data['headers_raw'] = '[redacted]';
-  }
 }

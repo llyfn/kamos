@@ -22,8 +22,12 @@ class SecureStorageService {
             const FlutterSecureStorage(
               // Android: EncryptedSharedPreferences was deprecated in v10; the
               // plugin now migrates to custom ciphers automatically.
+              // `first_unlock_this_device` keeps the token out of iCloud
+              // Keychain backups, so a restored device cannot resurrect a
+              // refresh token from a previous OS install. Refresh tokens are
+              // long-lived; the `_this_device` variant is the SPEC §6.9 stance.
               iOptions: IOSOptions(
-                accessibility: KeychainAccessibility.first_unlock,
+                accessibility: KeychainAccessibility.first_unlock_this_device,
               ),
             );
 
