@@ -1,4 +1,4 @@
-package apierror
+package httperr
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/kamos/api/internal/domain"
 )
 
 // decodeBody decodes an error response into an APIError.
@@ -63,22 +65,22 @@ func TestWriteFromSentinels(t *testing.T) {
 		wantStatus int
 		wantCode   string
 	}{
-		{"unauthorized", ErrUnauthorized, http.StatusUnauthorized, "UNAUTHORIZED"},
-		{"forbidden", ErrForbidden, http.StatusForbidden, "FORBIDDEN"},
-		{"not_found", ErrNotFound, http.StatusNotFound, "NOT_FOUND"},
-		{"beverage_not_found", ErrBeverageNotFound, http.StatusNotFound, "NOT_FOUND"},
-		{"checkin_not_found", ErrCheckinNotFound, http.StatusNotFound, "NOT_FOUND"},
-		{"conflict", ErrConflict, http.StatusConflict, "CONFLICT"},
-		{"username_held", ErrUsernameHeld, http.StatusConflict, "USERNAME_HELD"},
-		{"email_taken", ErrEmailTaken, http.StatusConflict, "EMAIL_TAKEN"},
-		{"validation", ErrValidation, http.StatusUnprocessableEntity, "VALIDATION"},
-		{"photo_cap", ErrPhotoCapExceeded, http.StatusUnprocessableEntity, "PHOTO_CAP_EXCEEDED"},
-		{"collection_full", ErrCollectionFull, http.StatusUnprocessableEntity, "COLLECTION_FULL"},
-		{"follow_self", ErrFollowSelf, http.StatusUnprocessableEntity, "FOLLOW_SELF"},
-		{"bad_request", ErrBadRequest, http.StatusBadRequest, "BAD_REQUEST"},
-		{"invalid_credential", ErrInvalidCredential, http.StatusUnauthorized, "INVALID_CREDENTIAL"},
-		{"token_expired", ErrTokenExpired, http.StatusGone, "TOKEN_EXPIRED"},
-		{"rate_limited", ErrRateLimited, http.StatusTooManyRequests, "RATE_LIMITED"},
+		{"unauthorized", domain.ErrUnauthorized, http.StatusUnauthorized, "UNAUTHORIZED"},
+		{"forbidden", domain.ErrForbidden, http.StatusForbidden, "FORBIDDEN"},
+		{"not_found", domain.ErrNotFound, http.StatusNotFound, "NOT_FOUND"},
+		{"beverage_not_found", domain.ErrBeverageNotFound, http.StatusNotFound, "NOT_FOUND"},
+		{"checkin_not_found", domain.ErrCheckinNotFound, http.StatusNotFound, "NOT_FOUND"},
+		{"conflict", domain.ErrConflict, http.StatusConflict, "CONFLICT"},
+		{"username_held", domain.ErrUsernameHeld, http.StatusConflict, "USERNAME_HELD"},
+		{"email_taken", domain.ErrEmailTaken, http.StatusConflict, "EMAIL_TAKEN"},
+		{"validation", domain.ErrValidation, http.StatusUnprocessableEntity, "VALIDATION"},
+		{"photo_cap", domain.ErrPhotoCapExceeded, http.StatusUnprocessableEntity, "PHOTO_CAP_EXCEEDED"},
+		{"collection_full", domain.ErrCollectionFull, http.StatusUnprocessableEntity, "COLLECTION_FULL"},
+		{"follow_self", domain.ErrFollowSelf, http.StatusUnprocessableEntity, "FOLLOW_SELF"},
+		{"bad_request", domain.ErrBadRequest, http.StatusBadRequest, "BAD_REQUEST"},
+		{"invalid_credential", domain.ErrInvalidCredential, http.StatusUnauthorized, "INVALID_CREDENTIAL"},
+		{"token_expired", domain.ErrTokenExpired, http.StatusGone, "TOKEN_EXPIRED"},
+		{"rate_limited", domain.ErrRateLimited, http.StatusTooManyRequests, "RATE_LIMITED"},
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for _, tc := range cases {
@@ -104,7 +106,7 @@ func TestWriteFromSentinels(t *testing.T) {
 func TestWriteFromWrappedSentinel(t *testing.T) {
 	rr := httptest.NewRecorder()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	WriteFrom(rr, log, "op", fmt.Errorf("Foo.Bar: %w", ErrNotFound))
+	WriteFrom(rr, log, "op", fmt.Errorf("Foo.Bar: %w", domain.ErrNotFound))
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("status: %d", rr.Code)
 	}
@@ -138,5 +140,44 @@ func TestWriteFromUnknownGenericFiveHundred(t *testing.T) {
 func TestCodeOfDefault(t *testing.T) {
 	if c := codeOf(errors.New("random")); c != "ERROR" {
 		t.Errorf("codeOf default: %q", c)
+	}
+}
+
+// New helpers introduced in Stage 3: cover each of the four convenience
+// shortcuts.
+func TestWriteHelpersShape(t *testing.T) {
+	cases := []struct {
+		name string
+		fn   func(http.ResponseWriter)
+		want APIError
+		code int
+	}{
+		{"unauthorized", WriteUnauthorized, APIError{Error: "unauthorized", Code: "UNAUTHORIZED"}, http.StatusUnauthorized},
+		{"forbidden", WriteForbidden, APIError{Error: "forbidden", Code: "FORBIDDEN"}, http.StatusForbidden},
+		{"not_found", WriteNotFound, APIError{Error: "not found", Code: "NOT_FOUND"}, http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			tc.fn(rr)
+			if rr.Code != tc.code {
+				t.Errorf("status: got %d want %d", rr.Code, tc.code)
+			}
+			got := decodeBody(t, rr.Body)
+			if got != tc.want {
+				t.Errorf("body: got %+v want %+v", got, tc.want)
+			}
+		})
+	}
+	// WriteValidation has a parameter.
+	rr := httptest.NewRecorder()
+	WriteValidation(rr, "bad field")
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Errorf("validation status: %d", rr.Code)
+	}
+	got := decodeBody(t, rr.Body)
+	if got.Code != "VALIDATION" || got.Error != "bad field" {
+		t.Errorf("validation body: %+v", got)
 	}
 }

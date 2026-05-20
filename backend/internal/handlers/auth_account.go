@@ -3,9 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // VerifyEmail consumes a verification token.
@@ -28,7 +28,7 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "VerifyEmail mark", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, map[string]bool{"verified": true})
+	httperr.WriteJSON(w, http.StatusOK, map[string]bool{"verified": true})
 }
 
 // ResendVerification issues a fresh 24h token (authed).
@@ -49,7 +49,7 @@ func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 	} else {
 		h.sendVerificationEmail(r, user, token)
 	}
-	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"sent": true})
+	httperr.WriteJSON(w, http.StatusAccepted, map[string]bool{"sent": true})
 }
 
 // PasswordChange implements POST /v1/auth/password-change.
@@ -73,7 +73,7 @@ func (h *Handler) PasswordChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := auth.VerifyPassword(currentHash, req.CurrentPassword); err != nil {
-		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "current password is incorrect")
+		httperr.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "current password is incorrect")
 		return
 	}
 	newHash, err := auth.HashPassword(req.NewPassword)
@@ -109,7 +109,7 @@ func (h *Handler) EmailChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if taken {
-		apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
+		httperr.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
 		return
 	}
 	if err := h.Repos.Users.UpdateEmail(r.Context(), uid, req.NewEmail); err != nil {
@@ -128,5 +128,5 @@ func (h *Handler) EmailChange(w http.ResponseWriter, r *http.Request) {
 	} else {
 		h.sendVerificationEmail(r, user, token)
 	}
-	apierror.WriteJSON(w, http.StatusAccepted, map[string]bool{"re_verification_sent": true})
+	httperr.WriteJSON(w, http.StatusAccepted, map[string]bool{"re_verification_sent": true})
 }

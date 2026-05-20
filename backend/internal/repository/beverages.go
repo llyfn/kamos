@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -14,18 +15,18 @@ type BeverageRepo struct{ db *pgxpool.Pool }
 
 // catRow is the join-target shape for category lookups (slug + i18n label).
 type catRow struct {
-	slug      string
-	nameJSON  []byte
+	slug     string
+	nameJSON []byte
 }
 
 // List returns a page of beverages. Cursor uses (check_in_count, id) for the
 // MVP "popularity" sort. Empty `category` and `q` are wildcards.
 type BeverageListParams struct {
-	Q             *string
-	CategorySlug  *string
-	CursorCount   *int64
-	CursorID      *string
-	Limit         int
+	Q            *string
+	CategorySlug *string
+	CursorCount  *int64
+	CursorID     *string
+	Limit        int
 }
 
 type beverageRow struct {
@@ -434,4 +435,3 @@ func scanBreweriesWithCount(rows pgx.Rows) ([]domain.Brewery, error) {
 	}
 	return out, rows.Err()
 }
-

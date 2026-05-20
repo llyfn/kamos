@@ -228,7 +228,7 @@ func TestRegisterMalformedJSON(t *testing.T) {
 		bytes.NewReader([]byte(`not-json`)))
 	req.Header.Set("Content-Type", "application/json")
 	srv.ServeHTTP(rr, req)
-	// decodeJSON wraps in apierror.ErrBadRequest; writeErr does not treat
+	// decodeJSON wraps in domain.ErrBadRequest; writeErr does not treat
 	// it as VALIDATION — so it maps to 400.
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status: %d body=%s", rr.Code, rr.Body.String())
@@ -380,4 +380,3 @@ func TestUnknownRoute(t *testing.T) {
 		t.Errorf("status: %d", rr.Code)
 	}
 }
-

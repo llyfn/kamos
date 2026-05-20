@@ -14,7 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -40,7 +40,7 @@ func (r *CommentRepo) Create(ctx context.Context, checkInID, userID, body string
 		return nil, fmt.Errorf("CommentRepo.Create check parent: %w", err)
 	}
 	if !alive {
-		return nil, apierror.ErrNotFound
+		return nil, domain.ErrNotFound
 	}
 
 	const ins = `
@@ -142,13 +142,13 @@ WHERE c.id = $1;`
 		&row.User.DisplayName, &row.User.AvatarURL,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apierror.ErrNotFound
+			return nil, domain.ErrNotFound
 		}
 		return nil, fmt.Errorf("CommentRepo.Get: %w", err)
 	}
 	if deletedAt != nil {
 		// Already soft-deleted — treat as not found.
-		return nil, apierror.ErrNotFound
+		return nil, domain.ErrNotFound
 	}
 	row.DeletedAt = deletedAt
 	return &row, nil
@@ -184,7 +184,7 @@ RETURNING id;`
 	var got string
 	if err := tx.QueryRow(ctx, q, commentID).Scan(&got); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrNotFound
+			return domain.ErrNotFound
 		}
 		return fmt.Errorf("CommentRepo.SoftDelete: %w", err)
 	}

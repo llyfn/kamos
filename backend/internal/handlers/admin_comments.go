@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -31,7 +32,7 @@ func (h *Handler) AdminListComments(w http.ResponseWriter, r *http.Request) {
 	case "deleted":
 		onlyDeleted = true
 	default:
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"status must be one of: visible, deleted")
 		return
 	}
@@ -44,7 +45,7 @@ func (h *Handler) AdminListComments(w http.ResponseWriter, r *http.Request) {
 	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(row repository.AdminCommentRow) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: row.CreatedAt, ID: row.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.AdminCommentRow]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.AdminCommentRow]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -63,7 +64,7 @@ func (h *Handler) AdminModerateComment(w http.ResponseWriter, r *http.Request) {
 	}
 	commentID := chi.URLParam(r, "id")
 	if commentID == "" {
-		apierror.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing comment id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing comment id")
 		return
 	}
 	var body struct {

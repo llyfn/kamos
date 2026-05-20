@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
@@ -70,7 +69,7 @@ func (s *CheckinService) Create(ctx context.Context, userID string, req domain.C
 		return nil, fmt.Errorf("CheckinService.Create exists: %w", err)
 	}
 	if !exists {
-		return nil, apierror.ErrBeverageNotFound
+		return nil, domain.ErrBeverageNotFound
 	}
 	venueID, err := s.resolveVenue(ctx, req.Venue)
 	if err != nil {

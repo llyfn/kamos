@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kamos/api/internal/apierror"
+
+	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // presignPutTTL is the lifetime baked into the signature returned by
@@ -66,7 +68,7 @@ func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if pending >= presignOutstandingCap {
-		apierror.WriteError(w, http.StatusTooManyRequests, "PRESIGN_OUTSTANDING_LIMIT",
+		httperr.WriteError(w, http.StatusTooManyRequests, "PRESIGN_OUTSTANDING_LIMIT",
 			"too many pending photo uploads; finish attaching or wait")
 		return
 	}
@@ -77,12 +79,12 @@ func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 	}
 	ext := extensionForContentType(req.ContentType)
 	if ext == "" {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"content_type must be image/jpeg, image/png, or image/webp")
 		return
 	}
 	if req.ByteSize <= 0 || req.ByteSize > maxPhotoBytes {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"byte_size must be in (0, 10485760]")
 		return
 	}
@@ -99,8 +101,8 @@ func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 
 	pp, err := h.Storage.PresignPut(r.Context(), blobKey, req.ContentType, req.ByteSize, presignPutTTL)
 	if err != nil {
-		if errors.Is(err, apierror.ErrStorageDisabled) {
-			apierror.WriteError(w, http.StatusServiceUnavailable, "STORAGE_DISABLED",
+		if errors.Is(err, domain.ErrStorageDisabled) {
+			httperr.WriteError(w, http.StatusServiceUnavailable, "STORAGE_DISABLED",
 				"photo uploads not configured on this server")
 			return
 		}
@@ -108,7 +110,7 @@ func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apierror.WriteJSON(w, http.StatusOK, photoPresignResponse{
+	httperr.WriteJSON(w, http.StatusOK, photoPresignResponse{
 		UploadID:  uploadID,
 		UploadURL: pp.URL,
 		Headers:   pp.Headers,

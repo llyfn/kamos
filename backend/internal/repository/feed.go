@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -62,22 +63,22 @@ LIMIT $4;`
 	ids := make([]string, 0, limit+1)
 	for rows.Next() {
 		var (
-			it           domain.FeedItem
-			bevName      []byte
-			bevSlug      string
-			bevLabel     *string
-			catName      []byte
-			brwName      []byte
-			brwID        string
-			brwRegion    *string
-			toastCnt     int64
-			photoCnt     int64
-			commentCnt   int64
-			youToast     bool
-			userIDVal    string
-			beverageID   string
-			venueID      *string
-			venueName    *string
+			it            domain.FeedItem
+			bevName       []byte
+			bevSlug       string
+			bevLabel      *string
+			catName       []byte
+			brwName       []byte
+			brwID         string
+			brwRegion     *string
+			toastCnt      int64
+			photoCnt      int64
+			commentCnt    int64
+			youToast      bool
+			userIDVal     string
+			beverageID    string
+			venueID       *string
+			venueName     *string
 			venueLocality *string
 			venueCountry  *string
 		)

@@ -15,7 +15,8 @@ import (
 
 // promoteToAdmin is the test-only escape hatch — admin promotion happens
 // out of band in production. Equivalent to running:
-//   UPDATE users SET role = 'admin' WHERE id = $1;
+//
+//	UPDATE users SET role = 'admin' WHERE id = $1;
 func promoteToAdmin(t *testing.T, userID string) {
 	t.Helper()
 	if _, err := getPool(t).Exec(context.Background(),

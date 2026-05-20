@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
 )
@@ -55,7 +55,7 @@ func (r *UserRepo) EmailExists(ctx context.Context, email string) (bool, error) 
 
 // CreateUserParams carries the registration inputs.
 type CreateUserParams struct {
-	DisplayUsername string  // case preserved; lowercase = username
+	DisplayUsername string // case preserved; lowercase = username
 	Email           string
 	EmailVerified   bool
 	PasswordHash    *string
@@ -123,11 +123,11 @@ RETURNING id, username, display_username, email, email_verified,
 		msg := err.Error()
 		switch {
 		case strings.Contains(msg, "idx_users_username_live"):
-			return nil, apierror.ErrUsernameHeld
+			return nil, domain.ErrUsernameHeld
 		case strings.Contains(msg, "idx_users_email_live"):
-			return nil, apierror.ErrEmailTaken
+			return nil, domain.ErrEmailTaken
 		case strings.Contains(msg, "idx_users_google_sub_live"):
-			return nil, apierror.ErrConflict
+			return nil, domain.ErrConflict
 		}
 		return nil, fmt.Errorf("insertUserTx: %w", err)
 	}
@@ -269,7 +269,7 @@ func (r *UserRepo) LoadPasswordHash(ctx context.Context, id string) (string, err
 		return "", wrapNoRows("UserRepo.LoadPasswordHash", err)
 	}
 	if h == nil {
-		return "", apierror.ErrNotFound
+		return "", domain.ErrNotFound
 	}
 	return *h, nil
 }
@@ -306,8 +306,8 @@ RETURNING id, username, display_username, email, email_verified,
 	// We use the "explicit bool flag" pattern for nullable fields so the
 	// client can clear a value (PATCH bio = null) without overwriting on omit.
 	var (
-		bioSet, bio        = false, (*string)(nil)
-		avSet, av          = false, (*string)(nil)
+		bioSet, bio = false, (*string)(nil)
+		avSet, av   = false, (*string)(nil)
 	)
 	if p.Bio != nil {
 		bioSet = true
@@ -354,7 +354,7 @@ WHERE id = $1 AND deleted_at IS NULL;`
 		return fmt.Errorf("UserRepo.SoftDelete: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -367,7 +367,7 @@ func (r *UserRepo) UpdatePasswordHash(ctx context.Context, id, hash string) erro
 		return fmt.Errorf("UserRepo.UpdatePasswordHash: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -379,12 +379,12 @@ func (r *UserRepo) UpdateEmail(ctx context.Context, id, email string) error {
 	if err != nil {
 		// Catch email-uniqueness conflicts.
 		if strings.Contains(err.Error(), "idx_users_email_live") {
-			return apierror.ErrEmailTaken
+			return domain.ErrEmailTaken
 		}
 		return fmt.Errorf("UserRepo.UpdateEmail: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -409,7 +409,7 @@ RETURNING id;`
 	var rowID string
 	if err := tx.QueryRow(ctx, claim, hash, userID).Scan(&rowID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return apierror.ErrTokenExpired
+			return domain.ErrTokenExpired
 		}
 		return fmt.Errorf("MarkEmailVerified: claim: %w", err)
 	}
@@ -449,7 +449,7 @@ LIMIT 1;`
 	var id string
 	if err := r.db.QueryRow(ctx, q, hash).Scan(&id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apierror.ErrTokenExpired
+			return "", domain.ErrTokenExpired
 		}
 		return "", fmt.Errorf("FindUserByVerificationToken: %w", err)
 	}

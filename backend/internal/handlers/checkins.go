@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
 )
@@ -44,7 +45,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "CreateCheckin", err)
 			return
 		}
-		apierror.WriteJSON(w, http.StatusCreated, out)
+		httperr.WriteJSON(w, http.StatusCreated, out)
 		return
 	}
 	// Legacy fallback (tests that don't construct services): pre-Stage-3 path.
@@ -54,7 +55,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !exists {
-		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "beverage not found")
+		httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "beverage not found")
 		return
 	}
 	venueID, err := h.resolveCheckinVenue(r, req.Venue)
@@ -93,7 +94,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 	}
 	h.invalidateBeverageDetail(req.BeverageID)
 	observability.IncCheckinsCreated(r.Context())
-	apierror.WriteJSON(w, http.StatusCreated, out)
+	httperr.WriteJSON(w, http.StatusCreated, out)
 }
 
 // invalidateBeverageDetail busts every locale-suffixed entry for the
@@ -124,7 +125,7 @@ func (h *Handler) GetCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "GetCheckin", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, c)
+	httperr.WriteJSON(w, http.StatusOK, c)
 }
 
 // UpdateCheckin — PATCH /v1/check-ins/{id}.
@@ -171,7 +172,7 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "UpdateCheckin", err)
 			return
 		}
-		apierror.WriteJSON(w, http.StatusOK, out)
+		httperr.WriteJSON(w, http.StatusOK, out)
 		return
 	}
 	// Legacy fallback (tests that don't construct services).
@@ -205,7 +206,7 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.invalidateBeverageDetail(out.Beverage.ID)
-	apierror.WriteJSON(w, http.StatusOK, out)
+	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
 // updateCheckinPatch is the single-decode wire shape for UpdateCheckin.
@@ -242,7 +243,7 @@ func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
 		} else {
 			var v float64
 			if err := json.Unmarshal(p.Rating, &v); err != nil {
-				return req, errors.Join(apierror.ErrBadRequest, err)
+				return req, errors.Join(domain.ErrBadRequest, err)
 			}
 			req.Rating = &v
 		}
@@ -253,7 +254,7 @@ func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
 		} else {
 			var v string
 			if err := json.Unmarshal(p.Review, &v); err != nil {
-				return req, errors.Join(apierror.ErrBadRequest, err)
+				return req, errors.Join(domain.ErrBadRequest, err)
 			}
 			req.Review = &v
 		}
@@ -264,7 +265,7 @@ func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
 		} else {
 			var v domain.Price
 			if err := json.Unmarshal(p.Price, &v); err != nil {
-				return req, errors.Join(apierror.ErrBadRequest, err)
+				return req, errors.Join(domain.ErrBadRequest, err)
 			}
 			req.Price = &v
 		}
@@ -308,11 +309,11 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 // Phase 3 — the MVP scaffold accepted `{ url }` (any URL the client claimed
 // to have stored somewhere). That contract is replaced by a 3-step flow:
 //
-//   1. POST /v1/uploads/photo-presign   → server returns a presigned PUT URL.
-//   2. Client PUTs the bytes to R2 with the supplied Content-Type header.
-//   3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
-//      server promotes the photo_uploads row to 'attached', looks up the
-//      public URL for the blob_key, and inserts into check_in_photos.
+//  1. POST /v1/uploads/photo-presign   → server returns a presigned PUT URL.
+//  2. Client PUTs the bytes to R2 with the supplied Content-Type header.
+//  3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
+//     server promotes the photo_uploads row to 'attached', looks up the
+//     public URL for the blob_key, and inserts into check_in_photos.
 //
 // We do NOT verify the client's PUT against R2 in Phase 3 — the orphan
 // cleanup job sweeps anything that never reaches 'attached'. A future
@@ -340,7 +341,7 @@ func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.UploadID == "" {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", "upload_id is required")
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", "upload_id is required")
 		return
 	}
 
@@ -351,12 +352,12 @@ func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 	// Ownership match — never let a user attach someone else's blob.
 	if upload.UserID != uid {
-		apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "upload not found")
+		httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "upload not found")
 		return
 	}
 	// Already-attached / orphaned rows can't be reused.
 	if upload.Status == "attached" || upload.Status == "orphaned" {
-		apierror.WriteError(w, http.StatusConflict, "UPLOAD_NOT_COMPLETED",
+		httperr.WriteError(w, http.StatusConflict, "UPLOAD_NOT_COMPLETED",
 			"upload already attached or orphaned")
 		return
 	}
@@ -375,7 +376,7 @@ func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 		h.Log.Warn("UploadCheckinPhoto mark attached", "err", err,
 			"upload_id", upload.ID, "check_in_id", id)
 	}
-	apierror.WriteJSON(w, http.StatusCreated, photo)
+	httperr.WriteJSON(w, http.StatusCreated, photo)
 }
 
 // ToggleToast — POST /v1/check-ins/{id}/toast.
@@ -391,7 +392,7 @@ func (h *Handler) ToggleToast(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "ToggleToast", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, state)
+	httperr.WriteJSON(w, http.StatusOK, state)
 }
 
 // authedIDOrEmpty returns the authed user id or empty when missing.

@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -28,7 +29,7 @@ func (h *Handler) AdminListBeverageRequests(w http.ResponseWriter, r *http.Reque
 	switch statusFilter {
 	case "", "pending", "approved", "rejected":
 	default:
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
 			"status must be one of: pending, approved, rejected")
 		return
 	}
@@ -45,7 +46,7 @@ func (h *Handler) AdminListBeverageRequests(w http.ResponseWriter, r *http.Reque
 	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(b repository.BeverageRequestRow) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: b.CreatedAt, ID: b.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.BeverageRequestRow]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.BeverageRequestRow]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -58,7 +59,7 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 	}
 	requestID := chi.URLParam(r, "id")
 	if requestID == "" {
-		apierror.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing request id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing request id")
 		return
 	}
 	var body AdminApproveBeverageRequest
@@ -96,7 +97,7 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 	if h.Caches != nil && body.BreweryID != "" {
 		h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
 	}
-	apierror.WriteJSON(w, http.StatusOK, map[string]string{
+	httperr.WriteJSON(w, http.StatusOK, map[string]string{
 		"request_id":  requestID,
 		"beverage_id": bevID,
 	})
@@ -110,7 +111,7 @@ func (h *Handler) AdminRejectBeverageRequest(w http.ResponseWriter, r *http.Requ
 	}
 	requestID := chi.URLParam(r, "id")
 	if requestID == "" {
-		apierror.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing request id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing request id")
 		return
 	}
 	var body AdminRejectRequest
@@ -126,7 +127,7 @@ func (h *Handler) AdminRejectBeverageRequest(w http.ResponseWriter, r *http.Requ
 		h.writeErr(w, "AdminRejectBeverageRequest", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, map[string]string{
+	httperr.WriteJSON(w, http.StatusOK, map[string]string{
 		"request_id": requestID,
 		"status":     "rejected",
 		"notes":      body.Notes,

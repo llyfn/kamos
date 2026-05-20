@@ -243,8 +243,8 @@ func TestLoadDotenvLoadsLocalEnv(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(cwd) })
 
 	withEnv(t, map[string]string{
-		"APP_ENV":         "test",
-		"KAMOS_TEST_KEY":  "",
+		"APP_ENV":        "test",
+		"KAMOS_TEST_KEY": "",
 	})
 	LoadDotenv()
 	if got := os.Getenv("KAMOS_TEST_KEY"); got != "from-dotenv" {

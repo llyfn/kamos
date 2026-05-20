@@ -51,10 +51,11 @@ func readAll(t *testing.T, r interface{ Read(p []byte) (int, error) }) []byte {
 }
 
 // TestRefreshRoundTrip — happy path:
-//   register → access + refresh issued
-//   exchange refresh → new access + refresh
-//   re-use the OLD refresh → 401, family revoked, WARN log emitted, the
-//   second-generation refresh ALSO no longer works (family burned).
+//
+//	register → access + refresh issued
+//	exchange refresh → new access + refresh
+//	re-use the OLD refresh → 401, family revoked, WARN log emitted, the
+//	second-generation refresh ALSO no longer works (family burned).
 func TestRefreshRoundTrip(t *testing.T) {
 	truncateAll(t)
 	var logs bytes.Buffer
@@ -354,12 +355,12 @@ func TestRefreshTokenRotationRace(t *testing.T) {
 // TestVerificationTokenLookupByHash — SEC-004. The verify-email flow must
 // claim the row by token_hash; the DB must not retain the plaintext.
 // We verify by:
-//   1. Registering a user (which creates a verification token row).
-//   2. Asserting the row has a non-null token_hash and that the table
-//      schema no longer carries a `token` column at all (migration 010
-//      dropped it).
-//   3. Posting a tampered token through /v1/auth/verify-email and
-//      asserting 410 TOKEN_EXPIRED — proof that lookup is by hash.
+//  1. Registering a user (which creates a verification token row).
+//  2. Asserting the row has a non-null token_hash and that the table
+//     schema no longer carries a `token` column at all (migration 010
+//     dropped it).
+//  3. Posting a tampered token through /v1/auth/verify-email and
+//     asserting 410 TOKEN_EXPIRED — proof that lookup is by hash.
 func TestVerificationTokenLookupByHash(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -402,7 +403,7 @@ SELECT EXISTS(
 	}
 
 	// A made-up token must be rejected with 410 TOKEN_EXPIRED (which is
-	// how apierror.ErrTokenExpired maps).
+	// how domain.ErrTokenExpired maps).
 	code, raw = doReq(t, srv, http.MethodPost, "/v1/auth/verify-email", "",
 		map[string]string{"token": "definitely-not-the-real-token"})
 	if code != http.StatusGone {

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -31,7 +31,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "Register", err)
 			return
 		}
-		apierror.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
+		httperr.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
 			User:             res.User,
 			AccessToken:      res.AccessToken,
 			RefreshToken:     res.RefreshToken,
@@ -49,7 +49,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if state == "live" || state == "held" {
-		apierror.WriteError(w, http.StatusConflict, "USERNAME_HELD", "username is not available")
+		httperr.WriteError(w, http.StatusConflict, "USERNAME_HELD", "username is not available")
 		return
 	}
 	taken, err := h.Repos.Users.EmailExists(ctx, req.Email)
@@ -58,7 +58,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if taken {
-		apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
+		httperr.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "email is already registered")
 		return
 	}
 	hashed, err := auth.HashPassword(req.Password)
@@ -89,7 +89,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Register issue", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
+	httperr.WriteJSON(w, http.StatusCreated, domain.AuthResponse{
 		User:             *user,
 		AccessToken:      access,
 		RefreshToken:     refresh,
@@ -113,12 +113,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	row, err := h.Repos.Users.FindByEmail(r.Context(), req.Email)
 	if err != nil {
-		if errors.Is(err, apierror.ErrNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			// SEC-018: equalize wall-clock time vs the "wrong password"
 			// branch by running an equivalent bcrypt compare against a
 			// precomputed dummy hash. Result is discarded.
 			auth.VerifyDummyPassword(req.Password)
-			apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
+			httperr.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 			return
 		}
 		h.writeErr(w, "Login find", err)
@@ -128,11 +128,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		// Google-only account — also run the dummy compare so a probe
 		// can't distinguish "no local password" from "wrong password".
 		auth.VerifyDummyPassword(req.Password)
-		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
+		httperr.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 		return
 	}
 	if err := auth.VerifyPassword(*row.PasswordHash, req.Password); err != nil {
-		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
+		httperr.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 		return
 	}
 	access, refresh, err := h.issueAuthPair(r, &row.User)
@@ -140,7 +140,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Login issue", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
+	httperr.WriteJSON(w, http.StatusOK, domain.AuthResponse{
 		User:             row.User,
 		AccessToken:      access,
 		RefreshToken:     refresh,
@@ -171,12 +171,12 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	payload, err := h.Google.Verify(ctx, req.IDToken)
 	if err != nil {
 		h.Log.Warn("GoogleLogin verify failed", "err", err)
-		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid id token")
+		httperr.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid id token")
 		return
 	}
 
 	existing, err := h.Repos.Users.FindByGoogleSub(ctx, payload.Sub)
-	if err != nil && !errors.Is(err, apierror.ErrNotFound) {
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		h.writeErr(w, "GoogleLogin lookup", err)
 		return
 	}
@@ -206,7 +206,7 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		// Sanitize candidate username.
 		cand := sanitizeUsernameCandidate(uname)
 		if cand == "" {
-			apierror.WriteError(w, http.StatusUnprocessableEntity, "USERNAME_REQUIRED", "please choose a username")
+			httperr.WriteError(w, http.StatusUnprocessableEntity, "USERNAME_REQUIRED", "please choose a username")
 			return
 		}
 		state, _, err := h.Repos.Users.CheckUsernameAvailability(ctx, cand)
@@ -215,7 +215,7 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if state == "live" || state == "held" {
-			apierror.WriteError(w, http.StatusConflict, "USERNAME_HELD", "username is not available; please pick another")
+			httperr.WriteError(w, http.StatusConflict, "USERNAME_HELD", "username is not available; please pick another")
 			return
 		}
 		if payload.Email != "" {
@@ -225,7 +225,7 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if taken {
-				apierror.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "this email is linked to another account")
+				httperr.WriteError(w, http.StatusConflict, "EMAIL_TAKEN", "this email is linked to another account")
 				return
 			}
 		}
@@ -277,7 +277,7 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "GoogleLogin issue", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
+	httperr.WriteJSON(w, http.StatusOK, domain.AuthResponse{
 		User:             *user,
 		AccessToken:      access,
 		RefreshToken:     refresh,

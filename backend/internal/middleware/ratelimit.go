@@ -9,8 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
 	"golang.org/x/time/rate"
+
+	"github.com/kamos/api/internal/httperr"
 )
 
 // idleEvictAfter controls how long an idle limiter stays in the map.
@@ -105,7 +106,7 @@ func RateLimitByIP(log *slog.Logger, rps float64, burst int) func(http.Handler) 
 						"method", r.Method,
 					)
 				}
-				apierror.WriteError(w, http.StatusTooManyRequests, "RATE_LIMITED", "rate_limited")
+				httperr.WriteError(w, http.StatusTooManyRequests, "RATE_LIMITED", "rate_limited")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -135,7 +136,7 @@ func RateLimitByUser(log *slog.Logger, rps float64, burst int) func(http.Handler
 						"method", r.Method,
 					)
 				}
-				apierror.WriteError(w, http.StatusTooManyRequests, "RATE_LIMITED", "rate_limited")
+				httperr.WriteError(w, http.StatusTooManyRequests, "RATE_LIMITED", "rate_limited")
 				return
 			}
 			next.ServeHTTP(w, r)

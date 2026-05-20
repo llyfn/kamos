@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/repository"
 )
@@ -120,5 +119,5 @@ func (s *AdminService) ListUsers(ctx context.Context, p repository.ListUsersPara
 
 var (
 	_ = errors.Is
-	_ = apierror.ErrNotFound
+	_ = domain.ErrNotFound
 )

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // RefreshToken implements POST /v1/auth/refresh.
@@ -43,8 +43,8 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	hash := auth.HashRefreshToken(req.RefreshToken)
 	row, err := h.Repos.RefreshTokens.LookupByHash(ctx, hash)
 	if err != nil {
-		if errors.Is(err, apierror.ErrNotFound) {
-			apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+		if errors.Is(err, domain.ErrNotFound) {
+			httperr.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
 			return
 		}
 		h.writeErr(w, "RefreshToken lookup", err)
@@ -64,20 +64,20 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 			"family_id", row.FamilyID,
 			"revoked_count", n,
 		)
-		apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+		httperr.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
 		return
 	}
 
 	if time.Now().After(row.ExpiresAt) {
-		apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_EXPIRED", "refresh token expired")
+		httperr.WriteError(w, http.StatusUnauthorized, "TOKEN_EXPIRED", "refresh token expired")
 		return
 	}
 
 	// Owner must still be alive.
 	user, err := h.Repos.Users.FindByID(ctx, row.UserID)
 	if err != nil {
-		if errors.Is(err, apierror.ErrNotFound) {
-			apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+		if errors.Is(err, domain.ErrNotFound) {
+			httperr.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
 			return
 		}
 		h.writeErr(w, "RefreshToken find user", err)
@@ -104,15 +104,15 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.Repos.RefreshTokens.RotateAtomic(
 		ctx, row.ID, user.ID, newHash, row.FamilyID, h.refreshTTL(),
 	); err != nil {
-		if errors.Is(err, apierror.ErrRefreshTokenRaceLost) {
-			apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+		if errors.Is(err, domain.ErrRefreshTokenRaceLost) {
+			httperr.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
 			return
 		}
 		h.writeErr(w, "RefreshToken rotate", err)
 		return
 	}
 
-	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{
+	httperr.WriteJSON(w, http.StatusOK, domain.AuthResponse{
 		User:             *user,
 		AccessToken:      access,
 		RefreshToken:     raw,
@@ -154,7 +154,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		hash := auth.HashRefreshToken(req.RefreshToken)
 		row, err := h.Repos.RefreshTokens.LookupByHash(ctx, hash)
 		if err != nil {
-			if !errors.Is(err, apierror.ErrNotFound) {
+			if !errors.Is(err, domain.ErrNotFound) {
 				h.writeErr(w, "Logout lookup", err)
 				return
 			}

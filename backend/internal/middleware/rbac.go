@@ -26,8 +26,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // RoleResolver wraps the user-role lookup. One per server.
@@ -48,7 +49,7 @@ func (rr *RoleResolver) roleOf(ctx context.Context, userID string) (domain.UserR
 	var s string
 	if err := rr.db.QueryRow(ctx, q, userID).Scan(&s); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apierror.ErrNotFound
+			return "", domain.ErrNotFound
 		}
 		return "", fmt.Errorf("RoleResolver.roleOf: %w", err)
 	}
@@ -73,25 +74,25 @@ func (rr *RoleResolver) RequireRole(allowed ...domain.UserRole) func(http.Handle
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if rr == nil || rr.db == nil {
-				apierror.WriteError(w, http.StatusInternalServerError, "INTERNAL",
+				httperr.WriteError(w, http.StatusInternalServerError, "INTERNAL",
 					"role resolver not configured")
 				return
 			}
 			uid := UserIDFromContext(r.Context())
 			if uid == "" {
-				apierror.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+				httperr.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 				return
 			}
 			role, err := rr.roleOf(r.Context(), uid)
 			if err != nil {
-				if errors.Is(err, apierror.ErrNotFound) {
+				if errors.Is(err, domain.ErrNotFound) {
 					// User was deleted between Auth check and role lookup;
 					// treat the same as a revoked token.
-					apierror.WriteError(w, http.StatusUnauthorized, "ACCOUNT_DELETED",
+					httperr.WriteError(w, http.StatusUnauthorized, "ACCOUNT_DELETED",
 						"account deleted")
 					return
 				}
-				apierror.WriteError(w, http.StatusInternalServerError, "INTERNAL",
+				httperr.WriteError(w, http.StatusInternalServerError, "INTERNAL",
 					"role lookup failed")
 				return
 			}
@@ -101,7 +102,7 @@ func (rr *RoleResolver) RequireRole(allowed ...domain.UserRole) func(http.Handle
 					return
 				}
 			}
-			apierror.WriteError(w, http.StatusForbidden, "ROLE_REQUIRED",
+			httperr.WriteError(w, http.StatusForbidden, "ROLE_REQUIRED",
 				"insufficient role")
 		})
 	}

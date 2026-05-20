@@ -9,7 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
+	"github.com/kamos/api/internal/domain"
 )
 
 // Repos bundles the per-domain repositories. Handlers take a *Repos so they
@@ -53,14 +54,14 @@ func New(db *pgxpool.Pool) *Repos {
 	}
 }
 
-// wrapNoRows maps pgx.ErrNoRows to apierror.ErrNotFound. Anything else is
+// wrapNoRows maps pgx.ErrNoRows to domain.ErrNotFound. Anything else is
 // wrapped with the op name for traceability.
 func wrapNoRows(op string, err error) error {
 	if err == nil {
 		return nil
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return fmt.Errorf("%s: %w", op, err)
 }

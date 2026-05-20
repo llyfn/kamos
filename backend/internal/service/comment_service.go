@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/repository"
 )
@@ -79,7 +78,7 @@ func (s *CommentService) Delete(ctx context.Context, commentID, viewerID string,
 			return false, err
 		}
 		if role != domain.RoleAdmin && role != domain.RoleModerator {
-			return false, apierror.ErrForbidden
+			return false, domain.ErrForbidden
 		}
 		isAdminPath = true
 	}

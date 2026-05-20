@@ -17,7 +17,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -85,7 +84,7 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 
 // wrapV mirrors domain.wrapValidation, kept local so admin.go can validate
 // without exporting the domain helper. The handler.writeErr path picks up
-// the apierror.ErrValidation sentinel via errors.Is.
+// the domain.ErrValidation sentinel via errors.Is.
 func wrapV(msg string) error {
-	return errors.Join(apierror.ErrValidation, errors.New(msg))
+	return errors.Join(domain.ErrValidation, errors.New(msg))
 }

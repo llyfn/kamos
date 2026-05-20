@@ -6,7 +6,8 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/observability"
 
 	"go.opentelemetry.io/otel"
@@ -84,7 +85,7 @@ func RecoverWithSentry(log *slog.Logger) func(http.Handler) http.Handler {
 						"method", r.Method,
 						"request_id", RequestIDFromContext(r.Context()),
 					)
-					apierror.WriteError(w, http.StatusInternalServerError, "INTERNAL", "internal error")
+					httperr.WriteError(w, http.StatusInternalServerError, "INTERNAL", "internal error")
 				}
 			}()
 			next.ServeHTTP(w, r)

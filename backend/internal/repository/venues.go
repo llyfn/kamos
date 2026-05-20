@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -80,7 +80,7 @@ WHERE id = $1;`
 		&v.Country, &v.Prefecture, &v.Locality, &v.CreatedAt, &v.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, apierror.ErrNotFound
+		return nil, domain.ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("VenueRepo.GetByID: %w", err)

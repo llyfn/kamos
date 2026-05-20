@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // Follow — POST /v1/users/{username}/follow.
@@ -26,7 +27,7 @@ func (h *Handler) Follow(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Follow", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, domain.FollowResult{Status: status})
+	httperr.WriteJSON(w, http.StatusOK, domain.FollowResult{Status: status})
 }
 
 // Unfollow — DELETE /v1/users/{username}/follow.
@@ -69,7 +70,7 @@ func (h *Handler) FollowRequests(w http.ResponseWriter, r *http.Request) {
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(f domain.FollowRequest) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: f.CreatedAt, ID: f.UserID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.FollowRequest]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.FollowRequest]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -87,7 +88,7 @@ func (h *Handler) ApproveFollowRequest(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "ApproveFollowRequest", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, domain.FollowResult{Status: "accepted"})
+	httperr.WriteJSON(w, http.StatusOK, domain.FollowResult{Status: "accepted"})
 }
 
 // DeclineFollowRequest — POST /v1/follow-requests/{id}/decline.

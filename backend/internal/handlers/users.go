@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
 )
@@ -33,7 +34,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "GetMe stats", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, domain.Me{
+	httperr.WriteJSON(w, http.StatusOK, domain.Me{
 		User:      me.User,
 		Stats:     stats,
 		Role:      me.Role,
@@ -61,7 +62,7 @@ func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UpdateMe update", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, user)
+	httperr.WriteJSON(w, http.StatusOK, user)
 }
 
 // DeleteMe — DELETE /v1/users/me. Soft-delete + 30-day username hold.
@@ -128,7 +129,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 			out.Restricted = true
 		}
 	}
-	apierror.WriteJSON(w, http.StatusOK, out)
+	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
 // GetUserCheckins — GET /v1/users/{username}/check-ins.
@@ -154,8 +155,8 @@ func (h *Handler) GetUserCheckins(w http.ResponseWriter, r *http.Request) {
 	ts, id := optTimestamp(c), optString(c.ID)
 	items, err := h.Repos.Checkins.UserCheckins(r.Context(), viewerID, user.ID, ts, id, limit)
 	if err != nil {
-		if errors.Is(err, apierror.ErrNotFound) {
-			apierror.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
+		if errors.Is(err, domain.ErrNotFound) {
+			httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
 			return
 		}
 		h.writeErr(w, "GetUserCheckins", err)
@@ -164,7 +165,7 @@ func (h *Handler) GetUserCheckins(w http.ResponseWriter, r *http.Request) {
 	rows, next, hasMore := cursor.SliceAndCursor(items, limit, func(c domain.Checkin) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: c.CreatedAt, ID: c.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[domain.Checkin]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Checkin]{
 		Items: rows, NextCursor: next, HasMore: hasMore,
 	})
 }
@@ -212,7 +213,7 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 	page, next, hasMore := cursor.SliceAndCursor(rows, limit, func(s repository.SocialUser) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: s.FollowedAt, ID: s.ID}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.SocialUser]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.SocialUser]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }

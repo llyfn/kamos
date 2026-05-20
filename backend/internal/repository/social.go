@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kamos/api/internal/apierror"
+
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -19,7 +19,7 @@ type SocialRepo struct{ db *pgxpool.Pool }
 // exists, the existing status is returned (idempotent).
 func (r *SocialRepo) Follow(ctx context.Context, follower, followed string) (string, error) {
 	if follower == followed {
-		return "", apierror.ErrFollowSelf
+		return "", domain.ErrFollowSelf
 	}
 
 	// Determine target privacy.
@@ -28,7 +28,7 @@ func (r *SocialRepo) Follow(ctx context.Context, follower, followed string) (str
 		`SELECT privacy_mode FROM users WHERE id = $1 AND deleted_at IS NULL;`, followed,
 	).Scan(&privacy)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", apierror.ErrNotFound
+		return "", domain.ErrNotFound
 	}
 	if err != nil {
 		return "", fmt.Errorf("Follow lookup: %w", err)
@@ -124,7 +124,7 @@ WHERE follower_id = $1 AND followed_id = $2 AND status = 'pending';`
 		return fmt.Errorf("Approve: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -137,18 +137,18 @@ func (r *SocialRepo) Decline(ctx context.Context, followedID, followerID string)
 		return fmt.Errorf("Decline: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
-		return apierror.ErrNotFound
+		return domain.ErrNotFound
 	}
 	return nil
 }
 
 // Followers / Following — cursor on created_at of the follow row.
 type SocialUser struct {
-	ID              string  `json:"id"`
-	Username        string  `json:"username"`
-	DisplayUsername string  `json:"display_username"`
-	DisplayName     string  `json:"display_name"`
-	AvatarURL       *string `json:"avatar_url"`
+	ID              string    `json:"id"`
+	Username        string    `json:"username"`
+	DisplayUsername string    `json:"display_username"`
+	DisplayName     string    `json:"display_name"`
+	AvatarURL       *string   `json:"avatar_url"`
 	FollowedAt      time.Time `json:"followed_at"`
 }
 

@@ -7,15 +7,15 @@
 //
 //   - types_user.go        — User, PublicUser, Me, RegisterRequest, UpdateMeRequest, UserStats
 //   - types_auth.go        — LoginRequest, GoogleLoginRequest, VerifyEmail, PasswordChange,
-//                            EmailChange, AuthResponse, RefreshToken, LogoutRequest
+//     EmailChange, AuthResponse, RefreshToken, LogoutRequest
 //   - types_beverage.go    — Brewery, BreweryRef, Beverage, BeverageDetail, BeverageRef,
-//                            CategoryLabel, FlavorAggregate, FlavorTag
+//     CategoryLabel, FlavorAggregate, FlavorTag
 //   - types_checkin.go     — Price, Create/Update CheckinRequest, Checkin, CheckinUser,
-//                            PhotoRef, CheckinSummary, FeedItem, ToastState, ValidRating
+//     PhotoRef, CheckinSummary, FeedItem, ToastState, ValidRating
 //   - types_venue.go       — CheckinVenue + venue validation helpers, Venue, VenueRef
 //   - types_comment.go     — Comment, CreateCommentRequest
 //   - types_collection.go  — Collection, CollectionWithOwner, CollectionEntry,
-//                            CollectionDetail, requests
+//     CollectionDetail, requests
 //   - types_social.go      — FollowRequest, FollowResult
 //   - types_admin.go       — UserRole
 //   - types_request.go     — BeverageRequest (user-submitted feedback)
@@ -26,11 +26,8 @@
 package domain
 
 import (
-	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/kamos/api/internal/apierror"
 )
 
 // SanitizeText enforces a shared charset rule on free-form user-supplied
@@ -83,9 +80,9 @@ func SanitizeText(field, s string, allowNewline bool, maxLen int) (string, error
 }
 
 // wrapValidation joins the sentinel with a human message so handlers can
-// errors.Is(err, apierror.ErrValidation) and read the original message.
+// errors.Is(err, domain.ErrValidation) and read the original message.
 func wrapValidation(msg string) error {
-	return fmt.Errorf("%w: %s", apierror.ErrValidation, msg)
+	return fmt.Errorf("%w: %s", ErrValidation, msg)
 }
 
 // ErrMsg extracts the human message from a validation error wrapped with
@@ -103,8 +100,3 @@ func ErrMsg(err error) string {
 	}
 	return s
 }
-
-// Sentinel guard so importers can use `errors.Is(err, domain.ErrValidation)`.
-var (
-	_ = errors.New // silence unused import on some builds
-)

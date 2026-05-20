@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/httperr"
 )
 
 // Categories — GET /v1/categories.
@@ -32,7 +32,7 @@ func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "Categories", err)
 			return
 		}
-		apierror.WriteJSON(w, http.StatusOK, rows)
+		httperr.WriteJSON(w, http.StatusOK, rows)
 		return
 	}
 	rows, err := h.Caches.Categories.GetOrLoad(key, loader)
@@ -40,7 +40,7 @@ func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Categories", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, rows)
+	httperr.WriteJSON(w, http.StatusOK, rows)
 }
 
 // FlavorTags — GET /v1/flavor-tags. See Categories for the cache key
@@ -56,7 +56,7 @@ func (h *Handler) FlavorTags(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "FlavorTags", err)
 			return
 		}
-		apierror.WriteJSON(w, http.StatusOK, rows)
+		httperr.WriteJSON(w, http.StatusOK, rows)
 		return
 	}
 	rows, err := h.Caches.FlavorTags.GetOrLoad(key, loader)
@@ -64,7 +64,7 @@ func (h *Handler) FlavorTags(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "FlavorTags", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusOK, rows)
+	httperr.WriteJSON(w, http.StatusOK, rows)
 }
 
 // SubmitBeverageRequest — POST /v1/beverage-requests.
@@ -92,5 +92,5 @@ func (h *Handler) SubmitBeverageRequest(w http.ResponseWriter, r *http.Request) 
 		h.writeErr(w, "SubmitBeverageRequest", err)
 		return
 	}
-	apierror.WriteJSON(w, http.StatusAccepted, map[string]string{"id": id})
+	httperr.WriteJSON(w, http.StatusAccepted, map[string]string{"id": id})
 }

@@ -74,10 +74,10 @@ type Config struct {
 	// Observability — all optional. Empty values mean the feature is OFF
 	// at startup; the SDK is never initialized in that case (no warnings,
 	// no degraded behavior). See observability/otel.go + observability/sentry.go.
-	Version       string // APP_VERSION; default "dev"
-	OTLPEndpoint  string // OTEL_EXPORTER_OTLP_ENDPOINT; empty disables OTel
-	OTLPHeaders   string // OTEL_EXPORTER_OTLP_HEADERS as "k1=v1,k2=v2"
-	SentryDSN     string // SENTRY_DSN; empty disables Sentry
+	Version      string // APP_VERSION; default "dev"
+	OTLPEndpoint string // OTEL_EXPORTER_OTLP_ENDPOINT; empty disables OTel
+	OTLPHeaders  string // OTEL_EXPORTER_OTLP_HEADERS as "k1=v1,k2=v2"
+	SentryDSN    string // SENTRY_DSN; empty disables Sentry
 
 	// Rate-limit knob. Defaults are documented in DEPLOYMENT.md §3.
 	// Set RATE_LIMIT_DISABLED=1 in integration tests / local stress runs
@@ -88,11 +88,11 @@ type Config struct {
 	// Phase 3 — blob storage (Cloudflare R2 / any S3-compatible). Empty
 	// values mean the photo-upload feature is OFF; the presign endpoint
 	// returns 503 STORAGE_DISABLED. See DEPLOYMENT.md §3.
-	R2EndpointURL    string
-	R2AccessKeyID    string
+	R2EndpointURL     string
+	R2AccessKeyID     string
 	R2SecretAccessKey string
-	R2Bucket         string
-	R2PublicBaseURL  string
+	R2Bucket          string
+	R2PublicBaseURL   string
 
 	// Phase 3 — outbound mail via Resend. Empty values mean the mailer
 	// logs the verification link instead of sending an email (dev default).
@@ -125,19 +125,19 @@ type Config struct {
 // edge).
 func Load() (*Config, error) {
 	c := &Config{
-		Port:           getenv("PORT", "8080"),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		JWTSecret:      os.Getenv("JWT_SECRET"),
-		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
-		SMTPHost:       os.Getenv("SMTP_HOST"),
-		SMTPUser:       os.Getenv("SMTP_USER"),
-		SMTPPass:       os.Getenv("SMTP_PASS"),
-		AppBaseURL:     getenv("APP_BASE_URL", "http://localhost:3000"),
-		Env:            getenv("APP_ENV", "dev"),
-		Version:        getenv("APP_VERSION", "dev"),
-		OTLPEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-		OTLPHeaders:    os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
-		SentryDSN:      os.Getenv("SENTRY_DSN"),
+		Port:              getenv("PORT", "8080"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		JWTSecret:         os.Getenv("JWT_SECRET"),
+		GoogleClientID:    os.Getenv("GOOGLE_CLIENT_ID"),
+		SMTPHost:          os.Getenv("SMTP_HOST"),
+		SMTPUser:          os.Getenv("SMTP_USER"),
+		SMTPPass:          os.Getenv("SMTP_PASS"),
+		AppBaseURL:        getenv("APP_BASE_URL", "http://localhost:3000"),
+		Env:               getenv("APP_ENV", "dev"),
+		Version:           getenv("APP_VERSION", "dev"),
+		OTLPEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		OTLPHeaders:       os.Getenv("OTEL_EXPORTER_OTLP_HEADERS"),
+		SentryDSN:         os.Getenv("SENTRY_DSN"),
 		RateLimitDisabled: os.Getenv("RATE_LIMIT_DISABLED") == "1",
 		R2EndpointURL:     os.Getenv("R2_ENDPOINT_URL"),
 		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),

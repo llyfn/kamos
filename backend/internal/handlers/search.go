@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/kamos/api/internal/apierror"
 	"github.com/kamos/api/internal/cursor"
+	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
 
@@ -16,6 +16,7 @@ import (
 //   - empty / no cursor → start at beverages
 //   - `t=beverage`      → continue beverages with id < cursor.ID
 //   - `t=brewery`       → continue breweries with id < cursor.ID
+//
 // When the beverage sub-stream is exhausted on a typeless query, the page
 // rolls over to breweries and the next cursor carries `t=brewery`.
 //
@@ -24,7 +25,7 @@ import (
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
-		apierror.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", "q is required")
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION", "q is required")
 		return
 	}
 	typ := r.URL.Query().Get("type")
@@ -87,7 +88,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.SearchResult]{
+		httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.SearchResult]{
 			Items: items, NextCursor: next, HasMore: hasMore,
 		})
 		return
@@ -102,7 +103,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	items, next, hasMore := cursor.SliceAndCursor(results, limit, func(s repository.SearchResult) cursor.Cursor {
 		return cursor.Cursor{ID: s.Brewery.ID, Type: "brewery"}
 	})
-	apierror.WriteJSON(w, http.StatusOK, cursor.Page[repository.SearchResult]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.SearchResult]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
