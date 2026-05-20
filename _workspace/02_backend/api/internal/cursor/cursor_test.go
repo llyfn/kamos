@@ -1,11 +1,22 @@
 package cursor
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 )
+
+// testKey is the HMAC signing key used by every test in this file. Installed
+// once by TestMain so all unit tests run against a known key without each
+// test re-wiring it.
+var testKey = []byte("cursor-unit-test-key-aaaaaaaaaaaaaaa")
+
+func TestMain(m *testing.M) {
+	SetSigningKey(testKey)
+	m.Run()
+}
 
 func TestEncodeDecodeRoundtrip(t *testing.T) {
 	c := Cursor{CreatedAt: time.Date(2026, 5, 11, 12, 30, 0, 0, time.UTC), ID: "abc"}
@@ -22,6 +33,64 @@ func TestEncodeDecodeRoundtrip(t *testing.T) {
 	}
 	if got.ID != c.ID {
 		t.Errorf("ID: got %q want %q", got.ID, c.ID)
+	}
+}
+
+// SEC-005: encoded cursors must contain the MAC separator.
+func TestCursorRoundTripIsSigned(t *testing.T) {
+	c := Cursor{ID: "abc"}
+	s := Encode(c)
+	if !strings.Contains(s, ".") {
+		t.Fatalf("Encode(%+v) = %q — expected '.' separator between payload + MAC", c, s)
+	}
+	got, err := Decode(s)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if got.ID != "abc" {
+		t.Errorf("ID round-trip: got %q want abc", got.ID)
+	}
+}
+
+// SEC-005: a flipped bit in the payload section must be rejected by the
+// MAC verification step.
+func TestCursorTamperRejected(t *testing.T) {
+	original := Encode(Cursor{ID: "abc", CreatedAt: time.Now().UTC()})
+	dot := strings.LastIndex(original, ".")
+	if dot <= 0 {
+		t.Fatalf("encoded cursor missing separator: %q", original)
+	}
+	payloadB64 := original[:dot]
+	macB64 := original[dot+1:]
+
+	// Decode, flip one byte in the payload JSON, re-encode without
+	// touching the MAC.
+	payload, err := base64.RawURLEncoding.DecodeString(payloadB64)
+	if err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	if len(payload) == 0 {
+		t.Fatalf("empty payload")
+	}
+	// Flip the first byte so the JSON is still parseable in shape but the
+	// MAC will mismatch. Just XOR with a tiny bit pattern.
+	tampered := make([]byte, len(payload))
+	copy(tampered, payload)
+	tampered[0] ^= 0x01
+
+	tamperedCursor := base64.RawURLEncoding.EncodeToString(tampered) + "." + macB64
+	if _, err := Decode(tamperedCursor); err == nil {
+		t.Fatalf("expected Decode to reject tampered cursor; original=%q tampered=%q", original, tamperedCursor)
+	}
+}
+
+// SEC-005: a missing MAC section (legacy / unsigned cursor) must be rejected.
+func TestCursorUnsignedRejected(t *testing.T) {
+	// Build a cursor without the MAC suffix.
+	raw, _ := json.Marshal(Cursor{ID: "abc"})
+	unsigned := base64.RawURLEncoding.EncodeToString(raw)
+	if _, err := Decode(unsigned); err == nil {
+		t.Fatalf("expected Decode to reject unsigned cursor %q", unsigned)
 	}
 }
 
@@ -102,35 +171,14 @@ func TestDecodeMalformedBase64(t *testing.T) {
 }
 
 func TestDecodeMalformedJSON(t *testing.T) {
-	// Valid base64 of a non-JSON byte string → must error.
-	s := Encode(Cursor{ID: "x"}) // valid baseline
-	if s == "" {
-		t.Fatalf("Encode returned empty")
-	}
-	// Re-encode plain text "not-json" as base64 (RawURL) so the decode is
-	// fine but the inner JSON parse fails.
-	// "not-json" base64 raw url = "bm90LWpzb24"
-	if _, err := Decode("bm90LWpzb24"); err == nil {
+	// Pack a non-JSON payload but sign it with the correct key so the MAC
+	// passes — the payload-unmarshal step must catch the corruption.
+	payload := []byte("not-json")
+	mac := sign(payload, testKey)
+	s := base64.RawURLEncoding.EncodeToString(payload) + "." +
+		base64.RawURLEncoding.EncodeToString(mac)
+	if _, err := Decode(s); err == nil {
 		t.Fatalf("expected JSON error for non-JSON payload")
-	}
-}
-
-func TestDecodeTolerateStdBase64Padding(t *testing.T) {
-	// Encode produces RawURL (no padding). Forge a standard-base64-padded
-	// version to ensure Decode falls back through StdEncoding successfully.
-	c := Cursor{CreatedAt: time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC), ID: "abcd"}
-	raw := Encode(c)
-	if raw == "" {
-		t.Fatalf("Encode returned empty")
-	}
-	// We cannot easily produce padded base64 of the same payload without
-	// touching internals — instead, just confirm RawURL round-trip works.
-	got, err := Decode(raw)
-	if err != nil {
-		t.Fatalf("Decode: %v", err)
-	}
-	if got.ID != "abcd" || !got.CreatedAt.Equal(c.CreatedAt) {
-		t.Errorf("round-trip mismatch: %+v", got)
 	}
 }
 

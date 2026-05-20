@@ -175,6 +175,27 @@ func Auth(s *auth.Signer, softDelete *auth.SoftDeleteCache) func(http.Handler) h
 	}
 }
 
+// MaxBytes wraps r.Body with http.MaxBytesReader(w, r.Body, n). Anything
+// larger than `n` bytes will surface as a read error when the handler
+// json-decodes, causing apierror.WriteFrom to return 400 BAD_REQUEST.
+// The MaxBytesReader also writes the Connection: close hint so the
+// abusive client doesn't pipeline more giant requests on the same TCP
+// session.
+//
+// SEC-003 (Stage 0): mount globally with 1 MiB under /v1 and override to
+// 64 KiB under /v1/auth. Photos go through R2 presigned PUT, not the API,
+// so 1 MiB is generous.
+func MaxBytes(n int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil && r.Body != http.NoBody {
+				r.Body = http.MaxBytesReader(w, r.Body, n)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // OptionalAuth attempts to parse a token, but does NOT 401 on failure. Used
 // for public endpoints (e.g. GET /v1/users/:username) that show different
 // content when the viewer is authed (e.g. follow state). When softDelete

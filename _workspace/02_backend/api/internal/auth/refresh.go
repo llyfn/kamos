@@ -48,3 +48,13 @@ func HashRefreshToken(raw string) []byte {
 	h := sha256.Sum256([]byte(raw))
 	return h[:]
 }
+
+// HashVerificationToken returns the SHA-256 digest of an email-verification
+// token. Same shape as HashRefreshToken — the repository stores the hash and
+// the verify-email path looks the row up by hashing the incoming token. The
+// raw token is the value rendered into the verification email link; the DB
+// never holds it after the SEC-004 hardening landed in migration 010.
+func HashVerificationToken(raw string) []byte {
+	h := sha256.Sum256([]byte(raw))
+	return h[:]
+}

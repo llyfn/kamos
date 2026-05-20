@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -103,6 +104,19 @@ type Config struct {
 	// returns 503 VENUE_SEARCH_DISABLED; check-in venue.foursquare_id
 	// payloads still succeed (the upsert path does not need the API key).
 	FoursquareAPIKey string
+
+	// SEC-005 / Stage 0 — HMAC key used to sign cursor tokens. In production
+	// this MUST be at least 32 bytes (256 bits). In non-production environments
+	// (dev / test / integration) the loader synthesizes a stable key derived
+	// from JWTSecret if CURSOR_SECRET is unset so local development doesn't
+	// require an extra env knob; production refuses to start without one.
+	CursorSecret string
+
+	// SEC-002 / Stage 0 — CORS allowlist. Comma-separated origins via env
+	// CORS_ALLOWED_ORIGINS. In dev the default is the admin Vite dev
+	// server (http://localhost:5173). Production requires the explicit
+	// admin domain(s); wildcards are not supported.
+	CORSAllowedOrigins []string
 }
 
 // Load reads env vars and returns a Config, erroring on missing required
@@ -133,6 +147,7 @@ func Load() (*Config, error) {
 		ResendAPIKey:      os.Getenv("RESEND_API_KEY"),
 		EmailFrom:         os.Getenv("EMAIL_FROM"),
 		FoursquareAPIKey:  os.Getenv("FOURSQUARE_API_KEY"),
+		CursorSecret:      os.Getenv("CURSOR_SECRET"),
 	}
 
 	// Access-token TTL. Phase 2 (refresh-tokens): default lowered from 720h
@@ -170,12 +185,51 @@ func Load() (*Config, error) {
 	if c.JWTSecret == "" {
 		return nil, fmt.Errorf("Load: JWT_SECRET is required")
 	}
+	// SEC-016: a 32-byte minimum is the HS256 baseline (256 bits). Below
+	// this we refuse to start — a too-short secret meaningfully reduces
+	// the JWT signing strength and is almost always a misconfiguration.
+	// Note: this is byte-length, not rune-length; tests deliberately pin
+	// a >=32-byte string so the constraint is exercised.
+	if len(c.JWTSecret) < 32 {
+		return nil, fmt.Errorf("Load: JWT_SECRET must be at least 32 bytes (got %d)", len(c.JWTSecret))
+	}
 	// SEC-004 production safety guard: never let the brute-force backstop
 	// on /v1/auth/* be silently disabled in production. Local stress runs
 	// and the integration suite still set RATE_LIMIT_DISABLED=1 (with
 	// APP_ENV != "production").
 	if c.Env == "production" && c.RateLimitDisabled {
 		return nil, fmt.Errorf("config.Load: RATE_LIMIT_DISABLED must not be set in production")
+	}
+
+	// SEC-005 — cursor signing key. In production: required, ≥32 bytes.
+	// In dev/test: synthesize a stable per-process derivative of JWTSecret
+	// if CURSOR_SECRET is unset, so single-process integration tests don't
+	// need to wire another env knob. The derivative shares the same secret
+	// space as the JWT signer — fine for non-production since neither
+	// surface is reachable without a deployed environment.
+	if c.CursorSecret == "" {
+		if c.Env == "production" {
+			return nil, fmt.Errorf("Load: CURSOR_SECRET is required in production")
+		}
+		c.CursorSecret = "cursor:" + c.JWTSecret
+	}
+	if len(c.CursorSecret) < 32 {
+		return nil, fmt.Errorf("Load: CURSOR_SECRET must be at least 32 bytes (got %d)", len(c.CursorSecret))
+	}
+
+	// SEC-002 — CORS allowlist. Empty in production is allowed (no
+	// cross-origin admin UI configured); dev falls back to the Vite dev
+	// server default so the admin app boots without extra wiring.
+	if v := os.Getenv("CORS_ALLOWED_ORIGINS"); v != "" {
+		parts := strings.Split(v, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				c.CORSAllowedOrigins = append(c.CORSAllowedOrigins, p)
+			}
+		}
+	} else if c.Env != "production" {
+		c.CORSAllowedOrigins = []string{"http://localhost:5173"}
 	}
 	return c, nil
 }

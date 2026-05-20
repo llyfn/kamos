@@ -161,11 +161,18 @@ func (r *RegisterRequest) Validate() error {
 	if r.DisplayName == "" {
 		r.DisplayName = r.Username
 	}
-	if len([]rune(r.DisplayName)) > 50 {
-		return wrapValidation("display_name must be ≤ 50 characters")
+	// SEC-006: reject control + bidi-override characters in display_name.
+	clean, err := SanitizeText("display_name", r.DisplayName, false, 50)
+	if err != nil {
+		return err
 	}
-	if r.Bio != nil && len([]rune(*r.Bio)) > 200 {
-		return wrapValidation("bio must be ≤ 200 characters")
+	r.DisplayName = clean
+	if r.Bio != nil {
+		bio, err := SanitizeText("bio", *r.Bio, false, 200)
+		if err != nil {
+			return err
+		}
+		*r.Bio = bio
 	}
 	if r.Locale != "en" && r.Locale != "ja" && r.Locale != "ko" {
 		r.Locale = "en"
@@ -257,13 +264,21 @@ type UpdateMeRequest struct {
 func (r *UpdateMeRequest) Validate() error {
 	if r.DisplayName != nil {
 		s := strings.TrimSpace(*r.DisplayName)
-		if len([]rune(s)) < 1 || len([]rune(s)) > 50 {
+		if len([]rune(s)) < 1 {
 			return wrapValidation("display_name must be 1-50 characters")
 		}
-		*r.DisplayName = s
+		clean, err := SanitizeText("display_name", s, false, 50)
+		if err != nil {
+			return err
+		}
+		*r.DisplayName = clean
 	}
-	if r.Bio != nil && len([]rune(*r.Bio)) > 200 {
-		return wrapValidation("bio must be ≤ 200 characters")
+	if r.Bio != nil {
+		clean, err := SanitizeText("bio", *r.Bio, false, 200)
+		if err != nil {
+			return err
+		}
+		*r.Bio = clean
 	}
 	if r.Locale != nil {
 		v := strings.ToLower(strings.TrimSpace(*r.Locale))
@@ -425,6 +440,55 @@ type CheckinVenue struct {
 // hyphen). Used by CheckinVenue.Validate to reject obviously poisoned values.
 var venueFsqIDRE = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
+// SanitizeText enforces a shared charset rule on free-form user-supplied
+// text fields. It rejects:
+//   - ASCII control chars < 0x20 except tab (0x09) and, when allowNewline,
+//     LF (0x0a).
+//   - ASCII DEL (0x7F) — stripped silently (rare in real input but a
+//     poisoning vector).
+//   - Unicode bidi-override codepoints U+202A..U+202E and U+2066..U+2069
+//     (SEC-006 / "Trojan Source").
+//
+// Returns the trimmed string (silent DEL strip applied) and an error if
+// any disallowed rune appears or if the rune-length is outside [1, maxLen].
+// allowNewline = true permits LF as part of the body (used by review +
+// comment bodies). The caller has already trimmed surrounding whitespace
+// when that's desired — SanitizeText leaves internal whitespace alone.
+//
+// SEC-006: the bidi-override block lets a comment look benign in source
+// (e.g. on a moderation review screen) while rendering as something else.
+// We reject rather than strip so the user sees the error and rewrites.
+func SanitizeText(field, s string, allowNewline bool, maxLen int) (string, error) {
+	var b []rune
+	runes := 0
+	for _, r := range s {
+		switch {
+		case r == 0:
+			return "", wrapValidation(field + " contains NUL byte")
+		case r == 0x7F:
+			// DEL — strip silently.
+			continue
+		case r == 0x09:
+			// Tab — always allowed.
+		case r == 0x0a:
+			if !allowNewline {
+				return "", wrapValidation(field + " contains a control character")
+			}
+		case r < 0x20:
+			return "", wrapValidation(field + " contains a control character")
+		case r >= 0x202A && r <= 0x202E,
+			r >= 0x2066 && r <= 0x2069:
+			return "", wrapValidation(field + " contains a bidi-override character")
+		}
+		b = append(b, r)
+		runes++
+	}
+	if runes > maxLen {
+		return "", wrapValidation(fmt.Sprintf("%s must be ≤ %d characters", field, maxLen))
+	}
+	return string(b), nil
+}
+
 // venueValidateString applies the shared charset rule used by every
 // user-controlled string on CheckinVenue: rune-length bounded; reject NUL
 // (0x00) and other ASCII control chars (<0x20) except space (0x20) and tab
@@ -554,8 +618,12 @@ func (r *CreateCheckinRequest) Validate() error {
 	if err := ValidRating(r.Rating); err != nil {
 		return err
 	}
-	if r.Review != nil && len([]rune(*r.Review)) > 500 {
-		return wrapValidation("review must be ≤ 500 characters")
+	if r.Review != nil {
+		clean, err := SanitizeText("review", *r.Review, true, 500)
+		if err != nil {
+			return err
+		}
+		*r.Review = clean
 	}
 	if len(r.Photos) > 4 {
 		return wrapValidation("a check-in may have at most 4 photos")
@@ -612,8 +680,12 @@ func (r *UpdateCheckinRequest) Validate() error {
 	if err := ValidRating(r.Rating); err != nil {
 		return err
 	}
-	if r.Review != nil && len([]rune(*r.Review)) > 500 {
-		return wrapValidation("review must be ≤ 500 characters")
+	if r.Review != nil {
+		clean, err := SanitizeText("review", *r.Review, true, 500)
+		if err != nil {
+			return err
+		}
+		*r.Review = clean
 	}
 	if r.PurchaseType != nil {
 		v := strings.ToLower(strings.ReplaceAll(*r.PurchaseType, "-", "_"))
@@ -750,26 +822,21 @@ type CreateCommentRequest struct {
 
 // Validate enforces SPEC §6.7's "≤ 500 chars" cap plus a control-character
 // guard mirroring the venue-name pattern from migration 006 (defense in
-// depth on a shared user-content surface).
+// depth on a shared user-content surface). SEC-006 extends the guard to
+// reject Unicode bidi-override codepoints.
 func (r *CreateCommentRequest) Validate() error {
 	r.Body = strings.TrimSpace(r.Body)
 	if r.Body == "" {
 		return wrapValidation("body must be 1-500 characters")
 	}
-	runes := []rune(r.Body)
-	if len(runes) < 1 || len(runes) > 500 {
+	clean, err := SanitizeText("body", r.Body, true, 500)
+	if err != nil {
+		return err
+	}
+	if len([]rune(clean)) < 1 {
 		return wrapValidation("body must be 1-500 characters")
 	}
-	for _, ch := range runes {
-		if ch == 0 {
-			return wrapValidation("body contains NUL byte")
-		}
-		// Reject ASCII C0 control chars except tab (0x09) and LF (0x0a) —
-		// same rule as the DB CHECK in migration 009.
-		if ch < 0x20 && ch != '\t' && ch != '\n' {
-			return wrapValidation("body contains a control character")
-		}
-	}
+	r.Body = clean
 	return nil
 }
 

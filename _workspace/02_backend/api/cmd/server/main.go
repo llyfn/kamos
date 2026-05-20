@@ -15,6 +15,7 @@ import (
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
+	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/foursquare"
 	"github.com/kamos/api/internal/handlers"
@@ -87,6 +88,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
+
+	// SEC-005 — install the HMAC key for cursor signing before any handler
+	// can be wired (Encode panics if called pre-init). config.Load already
+	// validated the key length (≥ 32 bytes).
+	cursor.SetSigningKey([]byte(cfg.CursorSecret))
 
 	repos := repository.New(pool)
 	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)

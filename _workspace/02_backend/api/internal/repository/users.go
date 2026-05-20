@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kamos/api/internal/apierror"
+	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
 )
 
@@ -389,6 +390,10 @@ func (r *UserRepo) UpdateEmail(ctx context.Context, id, email string) error {
 }
 
 // MarkEmailVerified flips email_verified = TRUE and consumes the token row.
+//
+// SEC-004 (migration 010): the row is keyed by token_hash, not the raw
+// plaintext. The caller passes the raw token from the verification URL
+// and we hash it here in lockstep with FindUserByVerificationToken.
 func (r *UserRepo) MarkEmailVerified(ctx context.Context, userID, token string) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -396,12 +401,13 @@ func (r *UserRepo) MarkEmailVerified(ctx context.Context, userID, token string) 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	hash := auth.HashVerificationToken(token)
 	const claim = `
 UPDATE email_verifications SET used_at = NOW()
-WHERE token = $1 AND user_id = $2 AND used_at IS NULL AND expires_at > NOW()
+WHERE token_hash = $1 AND user_id = $2 AND used_at IS NULL AND expires_at > NOW()
 RETURNING id;`
 	var rowID string
-	if err := tx.QueryRow(ctx, claim, token, userID).Scan(&rowID); err != nil {
+	if err := tx.QueryRow(ctx, claim, hash, userID).Scan(&rowID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apierror.ErrTokenExpired
 		}
@@ -418,24 +424,30 @@ RETURNING id;`
 }
 
 // CreateVerificationToken stores a token row with a 24h expiry.
+//
+// SEC-004 (migration 010): the DB column is `token_hash` (BYTEA SHA-256);
+// the caller still passes the raw token (so the handler can render it into
+// the verification email link) and we hash it before insert.
 func (r *UserRepo) CreateVerificationToken(ctx context.Context, userID, token string) error {
-	const q = `INSERT INTO email_verifications (user_id, token, expires_at)
+	hash := auth.HashVerificationToken(token)
+	const q = `INSERT INTO email_verifications (user_id, token_hash, expires_at)
               VALUES ($1, $2, NOW() + INTERVAL '24 hours');`
-	if _, err := r.db.Exec(ctx, q, userID, token); err != nil {
+	if _, err := r.db.Exec(ctx, q, userID, hash); err != nil {
 		return fmt.Errorf("CreateVerificationToken: %w", err)
 	}
 	return nil
 }
 
 // FindUserByVerificationToken returns the user a token belongs to (if still
-// fresh and unused).
+// fresh and unused). Looks up by SHA-256 of the raw token (SEC-004).
 func (r *UserRepo) FindUserByVerificationToken(ctx context.Context, token string) (string, error) {
+	hash := auth.HashVerificationToken(token)
 	const q = `
 SELECT user_id FROM email_verifications
-WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
 LIMIT 1;`
 	var id string
-	if err := r.db.QueryRow(ctx, q, token).Scan(&id); err != nil {
+	if err := r.db.QueryRow(ctx, q, hash).Scan(&id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", apierror.ErrTokenExpired
 		}

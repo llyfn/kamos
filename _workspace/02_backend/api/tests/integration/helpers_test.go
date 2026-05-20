@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/config"
+	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/handlers"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/server"
@@ -143,11 +144,16 @@ func buildServerWithTTL(
 	cfg := &config.Config{
 		AppBaseURL:        "http://localhost",
 		JWTSecret:         "integration-secret-please-replace-aaaaaaaaaaaa",
+		CursorSecret:      "integration-cursor-secret-please-replace-aaaaaaaaaa",
 		JWTTTL:            jwtTTL,
 		RefreshTTL:        refreshTTL,
 		Env:               "test",
 		RateLimitDisabled: disableRateLimit,
 	}
+	// SEC-005: install the HMAC key for cursor signing for this test run.
+	// SetSigningKey is process-wide; repeated calls from the integration
+	// helpers are safe because every test uses the same key.
+	cursor.SetSigningKey([]byte(cfg.CursorSecret))
 	signer := auth.NewSigner(cfg.JWTSecret, cfg.JWTTTL)
 	var handler slog.Handler
 	if logSink != nil {

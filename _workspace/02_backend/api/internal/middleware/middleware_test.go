@@ -263,3 +263,108 @@ func TestAccessLogMiddleware(t *testing.T) {
 		t.Errorf("expected access log line, got %q", captured.String())
 	}
 }
+
+// SEC-003 — a request body larger than the configured cap surfaces as a
+// read error to the handler, which decodeJSON returns as ErrBadRequest.
+// The MaxBytesReader also writes a 413 response when ServeHTTP completes
+// without writing one — we verify the handler observes the read error,
+// because that's the contract the auth handlers rely on.
+func TestBodyTooLargeRejected(t *testing.T) {
+	const cap = 16
+	var readErr error
+	h := MaxBytes(cap)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, cap*4)
+		_, readErr = r.Body.Read(buf)
+		// Drain. The MaxBytesReader returns "http: request body too large"
+		// once n bytes have been read. We don't care about the exact
+		// error string — only that the read fails.
+		_ = r.Body.Close()
+		w.WriteHeader(http.StatusOK)
+	}))
+	body := strings.NewReader(strings.Repeat("a", cap*2))
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/x", body)
+	h.ServeHTTP(rr, req)
+	if readErr == nil {
+		t.Fatalf("expected a read error from MaxBytesReader, got nil")
+	}
+	if !strings.Contains(readErr.Error(), "too large") {
+		t.Errorf("expected 'too large' in error, got %q", readErr.Error())
+	}
+}
+
+// SEC-007 — SecurityHeaders sets the documented headers on every response.
+func TestSecurityHeadersPresent(t *testing.T) {
+	h := SecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Run("http path skips HSTS", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		h.ServeHTTP(rr, req)
+		if got := rr.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+			t.Errorf("X-Content-Type-Options: %q", got)
+		}
+		if got := rr.Header().Get("X-Frame-Options"); got != "DENY" {
+			t.Errorf("X-Frame-Options: %q", got)
+		}
+		if got := rr.Header().Get("Referrer-Policy"); got != "strict-origin-when-cross-origin" {
+			t.Errorf("Referrer-Policy: %q", got)
+		}
+		if got := rr.Header().Get("Permissions-Policy"); !strings.Contains(got, "camera=()") {
+			t.Errorf("Permissions-Policy: %q", got)
+		}
+		// HSTS must NOT be set on a plain-HTTP request (no proxy header).
+		if got := rr.Header().Get("Strict-Transport-Security"); got != "" {
+			t.Errorf("HSTS should be empty on http: got %q", got)
+		}
+	})
+	t.Run("forwarded https path sets HSTS", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("X-Forwarded-Proto", "https")
+		h.ServeHTTP(rr, req)
+		if got := rr.Header().Get("Strict-Transport-Security"); !strings.Contains(got, "max-age=") {
+			t.Errorf("HSTS not set on forwarded-https: %q", got)
+		}
+	})
+}
+
+// SEC-002 — CORS echoes the matched origin and adds the Vary header.
+// Unknown origins receive no CORS headers.
+func TestCORSAllowlist(t *testing.T) {
+	cfg := CORSConfig{AllowedOrigins: []string{"http://localhost:5173"}}
+	h := CORS(cfg)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Run("matched origin", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Origin", "http://localhost:5173")
+		h.ServeHTTP(rr, req)
+		if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
+			t.Errorf("Allow-Origin echo: got %q want %q", got, "http://localhost:5173")
+		}
+		if got := rr.Header().Get("Vary"); got != "Origin" {
+			t.Errorf("Vary: got %q", got)
+		}
+	})
+	t.Run("unmatched origin", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Origin", "https://evil.example.com")
+		h.ServeHTTP(rr, req)
+		if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "" {
+			t.Errorf("Allow-Origin should not be set for unknown origin, got %q", got)
+		}
+	})
+	t.Run("preflight short-circuit", func(t *testing.T) {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodOptions, "/", nil)
+		req.Header.Set("Origin", "http://localhost:5173")
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusNoContent {
+			t.Errorf("preflight status: %d", rr.Code)
+		}
+	})
+}
