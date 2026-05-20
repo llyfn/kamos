@@ -3,6 +3,7 @@
 // Renders avatar + username, beverage label + name + brewery, rating, review
 // (truncated @140 chars), tag chips, photo placeholder, kanpai (toast) button.
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -156,23 +157,9 @@ class CheckInCard extends StatelessWidget {
                     .toList(),
               ),
             ],
-            if (item.photoCount > 0) ...[
+            if (item.photos.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Container(
-                height: 160,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: t.border1),
-                  gradient: LinearGradient(
-                    colors: [t.kinari, t.gray100],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Icon(Icons.photo_camera_outlined,
-                    color: t.fgMuted, size: 28),
-              ),
+              _CheckInPhotoGrid(photos: item.photos),
             ],
             if (item.venue != null) ...[
               const SizedBox(height: 8),
@@ -217,6 +204,93 @@ class CheckInCard extends StatelessWidget {
   String _truncated(String text, int max, String moreLabel) {
     if (text.length <= max) return text;
     return '${text.substring(0, max)}… $moreLabel';
+  }
+}
+
+/// Stage 5 (PERF-022): renders 1-4 photos at the bottom of a check-in
+/// card. Single-photo layouts go full-bleed; multi-photo layouts use
+/// a tight 2- or 2x2-column grid. We pin memCacheWidth to the logical
+/// width * devicePixelRatio so cached_network_image stores a properly-
+/// sized bitmap instead of a full-resolution JPEG.
+class _CheckInPhotoGrid extends StatelessWidget {
+  const _CheckInPhotoGrid({required this.photos});
+
+  final List<PhotoRef> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    if (photos.isEmpty) return const SizedBox.shrink();
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final totalWidth = MediaQuery.sizeOf(context).width;
+    // Subtract the KamosCard horizontal padding (token spacing); 32px
+    // is the steady-state in the design system.
+    final usableWidth = (totalWidth - 32).clamp(120.0, totalWidth);
+
+    if (photos.length == 1) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: _PhotoTile(
+          url: photos.first.url,
+          memCacheWidth: (usableWidth * dpr).round(),
+          aspectRatio: 16 / 9,
+        ),
+      );
+    }
+    // 2-up or 2x2 grid.
+    final cols = photos.length == 2 ? 2 : 2;
+    final tileWidth = (usableWidth - (cols - 1) * 4) / cols;
+    return GridView.count(
+      crossAxisCount: cols,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 4,
+      crossAxisSpacing: 4,
+      childAspectRatio: 1,
+      children: photos
+          .take(4)
+          .map(
+            (p) => ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _PhotoTile(
+                url: p.url,
+                memCacheWidth: (tileWidth * dpr).round(),
+                aspectRatio: 1,
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+class _PhotoTile extends StatelessWidget {
+  const _PhotoTile({
+    required this.url,
+    required this.memCacheWidth,
+    required this.aspectRatio,
+  });
+
+  final String url;
+  final int memCacheWidth;
+  final double aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        memCacheWidth: memCacheWidth,
+        placeholder: (context, _) => Container(color: t.gray100),
+        errorWidget: (context, _, __) => Container(
+          color: t.gray100,
+          alignment: Alignment.center,
+          child: Icon(Icons.broken_image_outlined, size: 20, color: t.fgMuted),
+        ),
+      ),
+    );
   }
 }
 

@@ -28,22 +28,17 @@ class _CommentComposerState extends State<CommentComposer> {
   final _controller = TextEditingController();
   bool _submitting = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
+  // Stage 5 (PERF-033): the previous shape called setState on every
+  // keystroke through controller.addListener(setState). That rebuilt
+  // the entire composer (TextField + counter + button) for every
+  // character typed. We now scope rebuilds to the counter + button
+  // via ValueListenableBuilder; the TextField itself is rebuild-free.
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-
-  bool get _canSubmit =>
-      !_submitting && _controller.text.trim().isNotEmpty;
 
   Future<void> _submit() async {
     final text = _controller.text.trim();
@@ -61,7 +56,6 @@ class _CommentComposerState extends State<CommentComposer> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    final length = _controller.text.length;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
@@ -87,28 +81,35 @@ class _CommentComposerState extends State<CommentComposer> {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l.commentsCharCount(length, commentMaxChars),
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 11,
-                  color: length >= commentMaxChars ? t.fgDanger : t.fg3,
-                ),
-              ),
-              FilledButton(
-                onPressed: _canSubmit ? _submit : null,
-                child: _submitting
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(l.commentsSubmit),
-              ),
-            ],
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _controller,
+            builder: (context, value, _) {
+              final length = value.text.length;
+              final canSubmit = !_submitting && value.text.trim().isNotEmpty;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l.commentsCharCount(length, commentMaxChars),
+                    style: TextStyle(
+                      fontFamily: 'JetBrainsMono',
+                      fontSize: 11,
+                      color: length >= commentMaxChars ? t.fgDanger : t.fg3,
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: canSubmit ? _submit : null,
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(l.commentsSubmit),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
