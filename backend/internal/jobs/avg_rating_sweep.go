@@ -15,10 +15,13 @@ import (
 // cases (manual DB edits, trigger gaps during long migrations, etc.) per
 // the roadmap §1.
 //
-// Implementation note: the work is one self-contained UPDATE…FROM that
-// joins every beverage to a recomputed aggregate. NULL avg_rating is
-// distinct from any value (IS DISTINCT FROM handles the NULL=NULL case),
-// so the WHERE clause correctly skips rows that already match.
+// Stage 5 (PERF-025): the sweep is now scoped to beverages with
+// check-in activity in the last hour via a CTE on
+// check_ins.updated_at instead of running the AVG()-over-the-world
+// join over the entire catalog every tick. The trigger path already
+// handles 100% of the normal case; this job only ever fires for the
+// rare drift window, so we don't need to recompute beverages that
+// haven't been touched.
 func JobAvgRatingSweep(log *slog.Logger) JobFn {
 	return func(ctx context.Context, db *pgxpool.Pool) error {
 		// Matches recompute_beverage_rating() in 001_initial.sql exactly:
@@ -27,20 +30,25 @@ func JobAvgRatingSweep(log *slog.Logger) JobFn {
 		// check-ins"). Diverging from the trigger here would flap rows
 		// back and forth every sweep.
 		const q = `
+WITH affected AS (
+  SELECT DISTINCT beverage_id
+  FROM check_ins
+  WHERE updated_at >= NOW() - INTERVAL '1 hour'
+)
 UPDATE beverages b
 SET avg_rating = sub.avg_rating,
     check_in_count = sub.cnt
 FROM (
   SELECT
-    bv.id AS beverage_id,
+    a.beverage_id,
     sub2.avg_rating,
     COALESCE(sub2.cnt, 0) AS cnt
-  FROM beverages bv
+  FROM affected a
   LEFT JOIN LATERAL (
     SELECT AVG(rating)::NUMERIC(3,2) AS avg_rating,
            COUNT(*)::INT             AS cnt
     FROM check_ins
-    WHERE beverage_id = bv.id
+    WHERE beverage_id = a.beverage_id
       AND deleted_at IS NULL
       AND rating IS NOT NULL
   ) sub2 ON TRUE
