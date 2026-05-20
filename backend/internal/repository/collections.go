@@ -16,14 +16,18 @@ import (
 type CollectionRepo struct{ db *pgxpool.Pool }
 
 // List returns the user's live collections with entry counts.
+//
+// Stage 5 (PERF-016): entry_count comes from the denormalized column
+// on collections (migration 011). The previous query LEFT JOINed
+// collection_entries and GROUP BYed c.id per row — that's O(rows) for
+// the JOIN scan even on the common case of a user with <20
+// collections, where the denormalized column is a single read.
 func (r *CollectionRepo) List(ctx context.Context, userID string) ([]domain.Collection, error) {
 	const q = `
 SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
-       COUNT(ce.beverage_id)::int AS entry_count
+       c.entry_count
 FROM collections c
-LEFT JOIN collection_entries ce ON ce.collection_id = c.id
 WHERE c.user_id = $1 AND c.deleted_at IS NULL
-GROUP BY c.id
 ORDER BY c.created_at ASC;`
 	rows, err := r.db.Query(ctx, q, userID)
 	if err != nil {
@@ -69,7 +73,7 @@ RETURNING id, user_id, name, visibility::text, created_at, updated_at;`
 func (r *CollectionRepo) Get(ctx context.Context, id string) (*domain.Collection, error) {
 	const q = `
 SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
-       (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id)
+       c.entry_count
 FROM collections c
 WHERE c.id = $1 AND c.deleted_at IS NULL;`
 	var c domain.Collection
@@ -106,8 +110,7 @@ UPDATE collections SET
   name       = COALESCE($3, name),
   visibility = COALESCE($4::collection_visibility, visibility)
 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
-RETURNING id, user_id, name, visibility::text, created_at, updated_at,
-          (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = $1);`
+RETURNING id, user_id, name, visibility::text, created_at, updated_at, entry_count;`
 	var c domain.Collection
 	if err := r.db.QueryRow(ctx, q, id, userID, p.Name, p.Visibility).Scan(
 		&c.ID, &c.OwnerID, &c.Name, &c.Visibility, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount,
@@ -127,7 +130,7 @@ RETURNING id, user_id, name, visibility::text, created_at, updated_at,
 func (r *CollectionRepo) GetOwned(ctx context.Context, userID, id string) (*domain.Collection, error) {
 	const q = `
 SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
-       (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id)
+       c.entry_count
 FROM collections c
 WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL;`
 	var c domain.Collection
@@ -161,7 +164,7 @@ func (r *CollectionRepo) ListPublic(
 	const q = `
 SELECT
   c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
-  (SELECT COUNT(*)::int FROM collection_entries WHERE collection_id = c.id) AS entry_count,
+  c.entry_count,
   u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM collections c
 JOIN users u ON u.id = c.user_id AND u.deleted_at IS NULL

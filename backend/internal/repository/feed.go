@@ -16,6 +16,14 @@ type FeedRepo struct{ db *pgxpool.Pool }
 // are folded into the response. `limit` is the requested page size; the
 // repository fetches limit+1 and the handler computes has_more.
 func (r *FeedRepo) Page(ctx context.Context, viewerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.FeedItem, error) {
+	// Stage 5 (PERF-001/024): toast_count + comment_count come from
+	// denormalized counter columns on check_ins (migration 011). The
+	// only remaining per-viewer correlated lookup is `you_toasted` —
+	// it can't be denormalized because the answer is per-requesting-user.
+	// Photo count is computed from the hydrated photos array post-fetch
+	// (PhotosFor batch); for the time being we keep emitting it on the
+	// wire under the old field name. The next commit removes photo_count
+	// entirely and ships the photo URLs.
 	const q = `
 SELECT
   ci.id,
@@ -30,13 +38,10 @@ SELECT
   b.label_image_url,
   cat.name_i18n,
   br.id, br.name_i18n, br.region,
-  (SELECT COUNT(*) FROM toasts t WHERE t.check_in_id = ci.id),
+  ci.toast_count,
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
   (SELECT COUNT(*) FROM check_in_photos p WHERE p.check_in_id = ci.id),
-  -- Phase 6a comment_count. Correlated subquery mirroring the toasts/photos
-  -- pattern. A counter-cache on check_ins could replace this if p95
-  -- metrics flag it; for now we lean on idx_comments_checkin_recent.
-  (SELECT COUNT(*) FROM comments cm WHERE cm.check_in_id = ci.id AND cm.deleted_at IS NULL),
+  ci.comment_count,
   v.id, v.name, v.locality, v.country
 FROM check_ins ci
 JOIN follows f
