@@ -31,7 +31,7 @@ WHERE to_tsvector('simple',
         coalesce(b.name_i18n->>'ja','') || ' ' ||
         coalesce(b.name_i18n->>'ko','')
       ) @@ plainto_tsquery('simple', $1)
-  AND ($2::text IS NULL OR b.id::text < $2)
+  AND ($2::text IS NULL OR b.id < $2::uuid)
 ORDER BY b.check_in_count DESC, b.id DESC
 LIMIT $3;`
 	rows, err := r.db.Query(ctx, bq, q, cursorID, limit+1)
@@ -68,7 +68,7 @@ WHERE to_tsvector('simple',
         coalesce(name_i18n->>'ja','') || ' ' ||
         coalesce(name_i18n->>'ko','')
       ) @@ plainto_tsquery('simple', $1)
-  AND ($2::text IS NULL OR id::text < $2)
+  AND ($2::text IS NULL OR id < $2::uuid)
 ORDER BY id DESC
 LIMIT $3;`
 	rows, err := r.db.Query(ctx, brq, q, cursorID, limit+1)

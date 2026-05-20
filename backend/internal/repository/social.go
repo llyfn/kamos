@@ -88,17 +88,20 @@ func (r *SocialRepo) FollowState(ctx context.Context, viewer, target string) (st
 	return s, nil
 }
 
-// Inbox lists pending follow requests for the current user.
-func (r *SocialRepo) Inbox(ctx context.Context, userID string, cursorTs *time.Time, limit int) ([]domain.FollowRequest, error) {
+// Inbox lists pending follow requests for the current user. Cursor
+// uses the tuple keyset (created_at, follower_id) so ties on
+// created_at (rare but possible — two follow requests fired in the
+// same microsecond) paginate deterministically (PERF-013).
+func (r *SocialRepo) Inbox(ctx context.Context, userID string, cursorTs *time.Time, cursorFollowerID *string, limit int) ([]domain.FollowRequest, error) {
 	const q = `
 SELECT f.follower_id, u.username, u.display_username, u.display_name, u.avatar_url, u.bio, f.created_at
 FROM follows f
 JOIN users u ON u.id = f.follower_id AND u.deleted_at IS NULL
 WHERE f.followed_id = $1 AND f.status = 'pending'
-  AND ($2::timestamptz IS NULL OR f.created_at < $2)
-ORDER BY f.created_at DESC
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q, userID, cursorTs, limit+1)
+  AND ($2::timestamptz IS NULL OR (f.created_at, f.follower_id) < ($2::timestamptz, $3::uuid))
+ORDER BY f.created_at DESC, f.follower_id DESC
+LIMIT $4;`
+	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorFollowerID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("Inbox: %w", err)
 	}
@@ -152,16 +155,21 @@ type SocialUser struct {
 	FollowedAt      time.Time `json:"followed_at"`
 }
 
-func (r *SocialRepo) Followers(ctx context.Context, userID string, cursorTs *time.Time, limit int) ([]SocialUser, error) {
+// Followers / Following: tuple keyset on (accepted_at, follower_id|
+// followed_id) backed by idx_follows_followed_accepted_keyset
+// (migration 012). All accepted rows have accepted_at NOT NULL
+// (CHECK on the follows table in 001), so the previous
+// "NULLS LAST" qualifier is no longer needed.
+func (r *SocialRepo) Followers(ctx context.Context, userID string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
 	const q = `
 SELECT u.id, u.username, u.display_username, u.display_name, u.avatar_url, f.accepted_at
 FROM follows f
 JOIN users u ON u.id = f.follower_id AND u.deleted_at IS NULL
 WHERE f.followed_id = $1 AND f.status = 'accepted'
-  AND ($2::timestamptz IS NULL OR f.accepted_at < $2)
-ORDER BY f.accepted_at DESC NULLS LAST
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q, userID, cursorTs, limit+1)
+  AND ($2::timestamptz IS NULL OR (f.accepted_at, f.follower_id) < ($2::timestamptz, $3::uuid))
+ORDER BY f.accepted_at DESC, f.follower_id DESC
+LIMIT $4;`
+	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorUserID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("Followers: %w", err)
 	}
@@ -169,16 +177,16 @@ LIMIT $3;`
 	return scanSocialUsers(rows)
 }
 
-func (r *SocialRepo) Following(ctx context.Context, userID string, cursorTs *time.Time, limit int) ([]SocialUser, error) {
+func (r *SocialRepo) Following(ctx context.Context, userID string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
 	const q = `
 SELECT u.id, u.username, u.display_username, u.display_name, u.avatar_url, f.accepted_at
 FROM follows f
 JOIN users u ON u.id = f.followed_id AND u.deleted_at IS NULL
 WHERE f.follower_id = $1 AND f.status = 'accepted'
-  AND ($2::timestamptz IS NULL OR f.accepted_at < $2)
-ORDER BY f.accepted_at DESC NULLS LAST
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q, userID, cursorTs, limit+1)
+  AND ($2::timestamptz IS NULL OR (f.accepted_at, f.followed_id) < ($2::timestamptz, $3::uuid))
+ORDER BY f.accepted_at DESC, f.followed_id DESC
+LIMIT $4;`
+	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorUserID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("Following: %w", err)
 	}

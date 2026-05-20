@@ -25,8 +25,6 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 	var (
 		qPtr   *string
 		catPtr *string
-		cnt    *int64
-		idPtr  *string
 	)
 	if q != "" {
 		qPtr = &q
@@ -34,17 +32,19 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 	if cat != "" {
 		catPtr = &cat
 	}
-	if c.Score != nil {
-		cnt = c.Score
-		if c.ID != "" {
-			cid := c.ID
-			idPtr = &cid
-		}
-	}
+	// Popularity cursor uses (CheckInCount, CreatedAt, ID) triple after
+	// Stage 5 (PERF-003). Legacy cursors emitted before this commit only
+	// carry Score+ID; we still honor them — the missing timestamp keeps
+	// the keyset at a 2-tuple, which simply walks a slightly larger
+	// page boundary on the upgrade transition.
+	cnt := c.Score
+	ts := optTimestamp(c)
+	idPtr := optString(c.ID)
 	rows, err := h.Repos.Beverages.List(r.Context(), repository.BeverageListParams{
 		Q:            qPtr,
 		CategorySlug: catPtr,
 		CursorCount:  cnt,
+		CursorTs:     ts,
 		CursorID:     idPtr,
 		Limit:        limit,
 	})
@@ -54,7 +54,7 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 	}
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(b domain.Beverage) cursor.Cursor {
 		score := int64(b.CheckInCount)
-		return cursor.Cursor{Score: &score, ID: b.ID}
+		return cursor.Cursor{Score: &score, CreatedAt: b.CreatedAt, ID: b.ID}
 	})
 	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Beverage]{
 		Items: items, NextCursor: next, HasMore: hasMore,
@@ -163,14 +163,15 @@ func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
 	if q != "" {
 		qPtr = &q
 	}
+	ts := optTimestamp(c)
 	cid := optString(c.ID)
-	rows, err := h.Repos.Breweries.List(r.Context(), qPtr, cid, limit)
+	rows, err := h.Repos.Breweries.List(r.Context(), qPtr, ts, cid, limit)
 	if err != nil {
 		h.writeErr(w, "ListBreweries", err)
 		return
 	}
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(b domain.Brewery) cursor.Cursor {
-		return cursor.Cursor{ID: b.ID}
+		return cursor.Cursor{CreatedAt: b.CreatedAt, ID: b.ID}
 	})
 	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Brewery]{
 		Items: items, NextCursor: next, HasMore: hasMore,
@@ -226,14 +227,15 @@ func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "GetBrewery cursor", err)
 		return
 	}
+	ts := optTimestamp(c)
 	cid := optString(c.ID)
-	bevs, err := h.Repos.Breweries.Beverages(r.Context(), id, cid, limit)
+	bevs, err := h.Repos.Breweries.Beverages(r.Context(), id, ts, cid, limit)
 	if err != nil {
 		h.writeErr(w, "GetBrewery beverages", err)
 		return
 	}
 	items, next, hasMore := cursor.SliceAndCursor(bevs, limit, func(b domain.Beverage) cursor.Cursor {
-		return cursor.Cursor{ID: b.ID}
+		return cursor.Cursor{CreatedAt: b.CreatedAt, ID: b.ID}
 	})
 	type out struct {
 		domain.Brewery

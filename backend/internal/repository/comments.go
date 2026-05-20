@@ -100,7 +100,7 @@ FROM comments c
 JOIN users u ON u.id = c.user_id
 WHERE c.check_in_id = $1
   AND c.deleted_at IS NULL
-  AND ($2::timestamptz IS NULL OR (c.created_at, c.id::text) < ($2::timestamptz, $3::text))
+  AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
 ORDER BY c.created_at DESC, c.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, checkInID, cursorTs, cursorID, limit+1)
@@ -250,7 +250,7 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) ml ON TRUE
 WHERE ($1::boolean IS FALSE OR c.deleted_at IS NOT NULL)
-  AND ($2::timestamptz IS NULL OR (c.created_at, c.id::text) < ($2::timestamptz, $3::text))
+  AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
 ORDER BY c.created_at DESC, c.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, onlyDeleted, cursorTs, cursorID, limit+1)

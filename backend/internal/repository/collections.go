@@ -170,7 +170,7 @@ FROM collections c
 JOIN users u ON u.id = c.user_id AND u.deleted_at IS NULL
 WHERE c.visibility = 'public'
   AND c.deleted_at IS NULL
-  AND ($1::timestamptz IS NULL OR (c.created_at, c.id::text) < ($1::timestamptz, $2::text))
+  AND ($1::timestamptz IS NULL OR (c.created_at, c.id) < ($1::timestamptz, $2::uuid))
 ORDER BY c.created_at DESC, c.id DESC
 LIMIT $3;`
 	rows, err := r.db.Query(ctx, q, cursorTs, cursorID, limit+1)
@@ -222,7 +222,7 @@ JOIN beverages b ON b.id = ce.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
 JOIN beverage_categories cat ON cat.id = b.category_id
 WHERE ce.collection_id = $2
-  AND ($3::timestamptz IS NULL OR (ce.added_at, ce.beverage_id::text) < ($3::timestamptz, $4::text))
+  AND ($3::timestamptz IS NULL OR (ce.added_at, ce.beverage_id) < ($3::timestamptz, $4::uuid))
 ORDER BY ce.added_at DESC, ce.beverage_id DESC
 LIMIT $5;`
 	rows, err := r.db.Query(ctx, q, userID, collectionID, cursor, cursorBeverage, limit+1)
