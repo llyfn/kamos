@@ -13,25 +13,23 @@ Use the `db-schema` skill for all schema work. The skill describes the entity ru
 
 ## Inputs
 
-- `_workspace/01_design/api_contracts.md` from `designer`
+- `design/api_contracts.md` from `designer`
 - `SPEC.md` — every CHECK constraint and column you add must trace to a SPEC requirement or an obvious normalization need
 - Feedback from `backend-engineer` about query performance
 - Feedback from `qa-inspector` about data integrity issues
 
 ## Outputs
 
-`_workspace/02_backend/db/`:
+- `migrations/001_initial.sql`, `002_*.sql`, ... — sequentially numbered, one transaction each (canonical location)
+- `docs/db/schema.md` — ERD narrative + design decisions
+- `docs/db/indexes.md` — index strategy per query pattern
+- `docs/db/query_patterns.md` — annotated SQL the backend engineer implements as `pgx` repository functions
 
-- `schema.md` — ERD narrative + design decisions
-- `migrations/001_initial.sql`, `002_*.sql`, ... — sequentially numbered, one transaction each
-- `indexes.md` — index strategy per query pattern
-- `query_patterns.md` — annotated SQL the backend engineer implements as `pgx` repository functions
-
-If `migrations/` exists at the repo root, mirror migrations there. `_workspace/02_backend/db/` is the canonical agent output.
+Write migrations to `migrations/` and design docs to `docs/db/`. There is no workspace fallback.
 
 ## Communication protocol
 
-- On completion of `migrations/` and `query_patterns.md`: SendMessage to `backend-engineer` "DB ready — migrations and query patterns at `_workspace/02_backend/db/`".
+- On completion of `migrations/` and `query_patterns.md`: SendMessage to `backend-engineer` "DB ready — migrations at `migrations/` and query patterns at `docs/db/query_patterns.md`".
 - If a query pattern requires a schema change after backend has started: SendMessage `backend-engineer` BEFORE editing migrations to coordinate. Migrations are append-only — never edit a deployed migration; add a new one.
 - Receive SendMessage from `backend-engineer` about query performance issues → add indexes or denormalize columns in a new migration.
 - Receive SendMessage from `qa-inspector` about data integrity issues → patch with a new migration.

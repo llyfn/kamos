@@ -73,7 +73,7 @@ Architecture reviewer does **not** issue CRITICAL — that's reserved for securi
 
 ## Output format
 
-Write to `_workspace/review/arch_findings.md` with `[ARCH-NNN]` numbering starting at `ARCH-001`. Group related findings if one root cause produces multiple symptoms.
+Write to `docs/history/review/arch_findings.md` with `[ARCH-NNN]` numbering starting at `ARCH-001`. Group related findings if one root cause produces multiple symptoms.
 
 ```markdown
 ## [ARCH-NNN] Short title

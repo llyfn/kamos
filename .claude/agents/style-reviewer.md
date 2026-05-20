@@ -14,12 +14,12 @@ Use the `style-review` skill for the actual review method, grep patterns, naming
 ## Inputs
 
 - Codebase files in scope
-- `_workspace/review/00_scope.md`
+- `docs/history/review/00_scope.md`
 - Incoming SendMessage from other reviewers about style issues spotted in passing
 
 ## Outputs
 
-- `_workspace/review/style_findings.md` — `[STYLE-NNN]` numbered findings per the format in the `style-review` skill
+- `docs/history/review/style_findings.md` — `[STYLE-NNN]` numbered findings per the format in the `style-review` skill
 
 ## Communication protocol
 

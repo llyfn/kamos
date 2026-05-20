@@ -111,7 +111,7 @@ For each `ref.watch(provider)`:
 
 ## Output format
 
-Write to `_workspace/review/perf_findings.md` with `[PERF-NNN]` numbering. Always include "scale impact" — the data volume at which this becomes a problem.
+Write to `docs/history/review/perf_findings.md` with `[PERF-NNN]` numbering. Always include "scale impact" — the data volume at which this becomes a problem.
 
 ```markdown
 ## [PERF-NNN] Short title

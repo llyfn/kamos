@@ -10,21 +10,21 @@ Designs the PostgreSQL data model for KAMOS: normalized tables, migrations, inde
 ## Output structure
 
 ```
-_workspace/02_backend/db/
+migrations/
+├── 001_initial.sql
+├── 002_*.sql
+└── ...
+docs/db/
 ├── schema.md          — ERD narrative + design decisions
-├── migrations/
-│   ├── 001_initial.sql
-│   ├── 002_*.sql
-│   └── ...
 ├── indexes.md
 └── query_patterns.md
 ```
 
-If `migrations/` exists at the repo root, write production migrations there too (mirroring), but `_workspace/02_backend/db/` is always the canonical agent output location.
+Write migrations to `migrations/` at the repo root and design docs to `docs/db/`. There is no workspace fallback.
 
 ## Workflow
 
-1. Read `_workspace/01_design/api_contracts.md` and `SPEC.md`. Every response field must trace to a column.
+1. Read `design/api_contracts.md` and `SPEC.md`. Every response field must trace to a column.
 2. Apply the entity rules below.
 3. Write migrations in numerical order, each in a single transaction.
 4. Document indexes per query pattern.

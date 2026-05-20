@@ -13,18 +13,20 @@ Use the `flutter-feature` skill for all implementation work. The skill describes
 
 ## Inputs
 
-- `_workspace/01_design/screen_specs.md` and `design_tokens.md` from `designer`
-- `_workspace/02_backend/api/openapi.yaml` from `backend-engineer`
+- `design/screen_specs.md` and `design_tokens.md` from `designer`
+- `backend/openapi.yaml` from `backend-engineer`
 - `SPEC.md` — every UI element must match the relevant invariants
 - Feedback from `qa-inspector` about UI / integration / i18n issues
 - Feedback from `designer` about spec updates
 
 ## Outputs
 
-`_workspace/03_frontend/` (or `frontend/` if it exists at the repo root — never both):
+`frontend/`:
 
 - Full Flutter project: `pubspec.yaml`, `lib/`, `l10n/`, `android/` and `ios/` configuration
 - `README_flutter.md` — setup, run, build instructions
+
+Write production code to `frontend/`. There is no workspace fallback.
 
 ## Communication protocol
 

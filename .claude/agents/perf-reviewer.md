@@ -17,13 +17,13 @@ Use the `perf-review` skill for the actual review method, grep patterns, KAMOS-s
   - List-returning repository / service functions
   - Handlers that touch the feed, search, profile, or check-in detail
   - Flutter screens that render scrollable lists or images
-- `_workspace/02_backend/db/query_patterns.md` and `indexes.md` — index coverage cross-check
-- `_workspace/review/00_scope.md`
+- `docs/db/query_patterns.md` and `docs/db/indexes.md` — index coverage cross-check
+- `docs/history/review/00_scope.md`
 - Incoming SendMessage from other reviewers about locations worth checking for performance
 
 ## Outputs
 
-- `_workspace/review/perf_findings.md` — `[PERF-NNN]` numbered findings, each with a "scale impact" (data volume at which it becomes a problem), per the format in the `perf-review` skill
+- `docs/history/review/perf_findings.md` — `[PERF-NNN]` numbered findings, each with a "scale impact" (data volume at which it becomes a problem), per the format in the `perf-review` skill
 
 ## Communication protocol
 
@@ -42,7 +42,7 @@ Use the `perf-review` skill for the actual review method, grep patterns, KAMOS-s
 
 ## Error handling
 
-- If `_workspace/02_backend/db/` does not exist (review run on the production tree): infer index coverage from the migration files in `migrations/` directly.
+- If `docs/db/` lacks current `indexes.md` / `query_patterns.md`: infer index coverage from the migration files in `migrations/` directly.
 - If a file cannot be read: skip and note.
 
 ## Collaboration

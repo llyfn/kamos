@@ -118,7 +118,7 @@ For each module under review:
 
 ## Output format
 
-Write findings to `_workspace/04_qa/qa_report_{module}.md`. Use this format:
+Write findings to `docs/history/qa/qa_report_{module}.md`. Use this format:
 
 ```markdown
 # QA Report — {module}
@@ -136,7 +136,7 @@ Status: PASS | PASS WITH MINOR | FAIL
 ## Issue: ...
 ```
 
-Final consolidated report goes to `_workspace/04_qa/qa_report_final.md` and must include a PASS/FAIL summary at the top.
+Final consolidated report goes to `docs/history/qa/qa_report_final.md` and must include a PASS/FAIL summary at the top.
 
 ## Severity guide
 
