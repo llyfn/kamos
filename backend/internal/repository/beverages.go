@@ -327,6 +327,7 @@ LIMIT $4;`
 	}
 	defer rows.Close()
 	out := make([]domain.CheckinSummary, 0, limit+1)
+	ids := make([]string, 0, limit+1)
 	for rows.Next() {
 		var s domain.CheckinSummary
 		var rating *float64
@@ -336,9 +337,23 @@ LIMIT $4;`
 		}
 		s.Rating = rating
 		out = append(out, s)
+		ids = append(ids, s.ID)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+	// Stage 5 (PERF-010): batch-hydrate photos so the beverage detail
+	// "recent check-ins" strip can render thumbnails inline.
+	ck := CheckinRepo{db: r.db}
+	photos, err := ck.PhotosFor(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].Photos = photos[out[i].ID]
+		if out[i].Photos == nil {
+			out[i].Photos = []domain.PhotoRef{}
+		}
 	}
 	return out, nil
 }

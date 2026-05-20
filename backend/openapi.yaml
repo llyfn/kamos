@@ -1946,12 +1946,16 @@ components:
 
     CheckinSummary:
       type: object
-      required: [id, user, created_at]
+      required: [id, user, photos, created_at]
       properties:
         id: { type: string, format: uuid }
         user: { $ref: "#/components/schemas/CheckinUser" }
         rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0 }
         review: { type: string, nullable: true, maxLength: 500 }
+        photos:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/PhotoRef" }
         created_at: { type: string, format: date-time }
 
     CreateCheckinRequest:
@@ -2078,7 +2082,11 @@ components:
 
     FeedItem:
       type: object
-      required: [id, user, beverage, tags, toasts, you_toasted, photo_count, created_at]
+      description: |
+        Stage 5: the previous `photo_count` integer was replaced by a
+        hydrated `photos` array so feed cards can render the actual
+        photo grid without a follow-up request.
+      required: [id, user, beverage, tags, photos, toasts, you_toasted, comment_count, created_at]
       properties:
         id: { type: string, format: uuid }
         user: { $ref: "#/components/schemas/CheckinUser" }
@@ -2088,14 +2096,12 @@ components:
         tags:
           type: array
           items: { $ref: "#/components/schemas/FlavorTag" }
+        photos:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/PhotoRef" }
         toasts: { type: integer }
         you_toasted: { type: boolean }
-        photo_count: { type: integer }
-        # Phase 6a. Not in `required`: older clients tolerate the field
-        # being absent; the server emits it on every row (zero when no
-        # comments). Adding to `required` would break a hypothetical
-        # server-rollback scenario where the column was emitted on some
-        # responses but not others mid-deploy.
         comment_count: { type: integer, default: 0 }
         venue:
           oneOf:
