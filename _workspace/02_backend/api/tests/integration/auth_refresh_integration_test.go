@@ -5,6 +5,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -281,6 +282,131 @@ func TestLogoutAllTokens(t *testing.T) {
 	}
 	if code, _, _ := doRefresh(t, srv.URL, deviceB.RefreshToken); code != http.StatusUnauthorized {
 		t.Errorf("deviceB refresh after logout-all: %d", code)
+	}
+}
+
+// TestRefreshTokenRotationRace — SEC-010. N concurrent refreshes against
+// the same predecessor must result in exactly one successor; the other
+// N-1 receive TOKEN_INVALID. Previously these would each insert a
+// successor with the predecessor (un-revoked) under read-committed
+// isolation, producing N valid children. The RotateAtomic single-tx
+// UPDATE … WHERE revoked_at IS NULL closes the window.
+func TestRefreshTokenRotationRace(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	body := map[string]any{
+		"username":     "racer",
+		"email":        "racer@example.com",
+		"password":     "hunter2hunter2",
+		"display_name": "racer",
+		"locale":       "en",
+	}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/auth/register", "", body)
+	if code != http.StatusCreated {
+		t.Fatalf("register: %d %s", code, raw)
+	}
+	var arA authResponse
+	_ = json.Unmarshal(raw, &arA)
+
+	const N = 8
+	type res struct {
+		code int
+		ar   authResponse
+	}
+	results := make(chan res, N)
+	// Bar the goroutines all start at the same time.
+	start := make(chan struct{})
+	for i := 0; i < N; i++ {
+		go func() {
+			<-start
+			code, ar, _ := doRefresh(t, srv.URL, arA.RefreshToken)
+			results <- res{code: code, ar: ar}
+		}()
+	}
+	close(start)
+
+	wins := 0
+	losses := 0
+	for i := 0; i < N; i++ {
+		r := <-results
+		switch r.code {
+		case http.StatusOK:
+			wins++
+			if r.ar.RefreshToken == "" {
+				t.Fatalf("winner missing refresh_token")
+			}
+		case http.StatusUnauthorized:
+			losses++
+		default:
+			t.Fatalf("unexpected status %d on concurrent refresh", r.code)
+		}
+	}
+	if wins != 1 {
+		t.Fatalf("expected exactly 1 successful rotation, got %d (%d losses)", wins, losses)
+	}
+	if losses != N-1 {
+		t.Fatalf("expected %d losing rotations, got %d", N-1, losses)
+	}
+}
+
+// TestVerificationTokenLookupByHash — SEC-004. The verify-email flow must
+// claim the row by token_hash; the DB must not retain the plaintext.
+// We verify by:
+//   1. Registering a user (which creates a verification token row).
+//   2. Asserting the row has a non-null token_hash and that the table
+//      schema no longer carries a `token` column at all (migration 010
+//      dropped it).
+//   3. Posting a tampered token through /v1/auth/verify-email and
+//      asserting 410 TOKEN_EXPIRED — proof that lookup is by hash.
+func TestVerificationTokenLookupByHash(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	body := map[string]any{
+		"username":     "verifier",
+		"email":        "verifier@example.com",
+		"password":     "hunter2hunter2",
+		"display_name": "verifier",
+		"locale":       "en",
+	}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/auth/register", "", body)
+	if code != http.StatusCreated {
+		t.Fatalf("register: %d %s", code, raw)
+	}
+
+	p := getPool(t)
+	// Schema check — the column must be gone.
+	var hasTokenColumn bool
+	if err := p.QueryRow(context.Background(), `
+SELECT EXISTS(
+  SELECT 1 FROM information_schema.columns
+  WHERE table_name = 'email_verifications' AND column_name = 'token'
+);`).Scan(&hasTokenColumn); err != nil {
+		t.Fatalf("schema query: %v", err)
+	}
+	if hasTokenColumn {
+		t.Fatalf("email_verifications still has the plaintext token column; migration 010 not applied")
+	}
+
+	// At least one row exists with a non-null token_hash.
+	var hashCount int
+	if err := p.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM email_verifications WHERE token_hash IS NOT NULL;`).Scan(&hashCount); err != nil {
+		t.Fatalf("hash count: %v", err)
+	}
+	if hashCount == 0 {
+		t.Fatalf("no email_verifications rows with token_hash")
+	}
+
+	// A made-up token must be rejected with 410 TOKEN_EXPIRED (which is
+	// how apierror.ErrTokenExpired maps).
+	code, raw = doReq(t, srv, http.MethodPost, "/v1/auth/verify-email", "",
+		map[string]string{"token": "definitely-not-the-real-token"})
+	if code != http.StatusGone {
+		t.Fatalf("bogus verify token: expected 410, got %d %s", code, raw)
 	}
 }
 

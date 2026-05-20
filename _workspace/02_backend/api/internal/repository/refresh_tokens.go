@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kamos/api/internal/apierror"
 )
 
 // RefreshTokenRepo persists rotating refresh tokens. The raw secret is never
@@ -136,6 +137,62 @@ WHERE family_id = $1 AND revoked_at IS NULL;`
 		return 0, fmt.Errorf("RefreshTokenRepo.RevokeFamily: %w", err)
 	}
 	return int(ct.RowsAffected()), nil
+}
+
+// RotateAtomic rotates a refresh token in a single transaction:
+//
+//  1. UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $predecessor
+//     AND revoked_at IS NULL RETURNING id. If RowsAffected = 0, return
+//     apierror.ErrRefreshTokenRaceLost — another concurrent rotation already
+//     burned this predecessor.
+//  2. INSERT the successor in the same family, parent_id = predecessor.id.
+//
+// This is the SEC-010 fix for the previous two-step Insert→MarkRevoked
+// sequence outside a tx, which could let N concurrent refreshes against
+// the same predecessor each land a separate successor before any of them
+// observed the revoke. Now the row-level lock on the UPDATE serializes
+// rotations: exactly one wins, the rest get ErrRefreshTokenRaceLost.
+//
+// Returns the new successor's id on success.
+func (r *RefreshTokenRepo) RotateAtomic(
+	ctx context.Context,
+	predecessorID string,
+	userID string,
+	newHash []byte,
+	familyID string,
+	ttl time.Duration,
+) (string, error) {
+	expiresAt := time.Now().Add(ttl)
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("RefreshTokenRepo.RotateAtomic begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	const revoke = `
+UPDATE refresh_tokens SET revoked_at = NOW()
+WHERE id = $1 AND revoked_at IS NULL
+RETURNING id;`
+	var revokedID string
+	if err := tx.QueryRow(ctx, revoke, predecessorID).Scan(&revokedID); err != nil {
+		// pgx returns ErrNoRows when RETURNING produced zero rows — which is
+		// exactly the lost-race signal.
+		return "", apierror.ErrRefreshTokenRaceLost
+	}
+
+	const ins = `
+INSERT INTO refresh_tokens (user_id, token_hash, parent_id, family_id, expires_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id;`
+	var newID string
+	if err := tx.QueryRow(ctx, ins, userID, newHash, predecessorID, familyID, expiresAt).Scan(&newID); err != nil {
+		return "", fmt.Errorf("RefreshTokenRepo.RotateAtomic insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("RefreshTokenRepo.RotateAtomic commit: %w", err)
+	}
+	return newID, nil
 }
 
 // RevokeAllForUser marks every active refresh token for the given user as

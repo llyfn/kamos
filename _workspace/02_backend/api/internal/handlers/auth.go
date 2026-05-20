@@ -30,8 +30,13 @@ func (h *Handler) sendVerificationEmail(r *http.Request, user *domain.User, toke
 		h.Log.Warn("verification_email_render", "err", err, "user_id", user.ID)
 		return
 	}
-	// Always log the link too — useful in dev when LogMailer is selected.
-	h.Log.Info("verification link", "user_id", user.ID, "link", link)
+	// SEC-011: only log the raw link in non-production. The LogMailer dev
+	// path already prints the link on Send(); the redundant log here used
+	// to fire unconditionally and put live verification URLs into the
+	// production access log.
+	if h.Cfg != nil && h.Cfg.Env != "production" {
+		h.Log.Info("verification link", "user_id", user.ID, "link", link)
+	}
 	if err := h.Mailer.Send(r.Context(), user.Email, subject, htmlBody, textBody); err != nil {
 		h.Log.Warn("verification_email_send", "err", err, "user_id", user.ID)
 	}
@@ -160,6 +165,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	row, err := h.Repos.Users.FindByEmail(r.Context(), req.Email)
 	if err != nil {
 		if errors.Is(err, apierror.ErrNotFound) {
+			// SEC-018: equalize wall-clock time vs the "wrong password"
+			// branch by running an equivalent bcrypt compare against a
+			// precomputed dummy hash. Result is discarded.
+			auth.VerifyDummyPassword(req.Password)
 			apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 			return
 		}
@@ -167,6 +176,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if row.PasswordHash == nil {
+		// Google-only account — also run the dummy compare so a probe
+		// can't distinguish "no local password" from "wrong password".
+		auth.VerifyDummyPassword(req.Password)
 		apierror.WriteError(w, http.StatusUnauthorized, "INVALID_CREDENTIAL", "invalid email or password")
 		return
 	}
@@ -275,7 +287,18 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 				locale = l
 			}
 		}
+		// SEC-006: Google may return a display name containing arbitrary
+		// Unicode including bidi-override codepoints; sanitize before
+		// insert. Fallback to the candidate username on any error so the
+		// flow still completes for legitimate users.
 		dispName := payload.Name
+		if dispName != "" {
+			if clean, err := domain.SanitizeText("display_name", dispName, false, 50); err == nil {
+				dispName = clean
+			} else {
+				dispName = ""
+			}
+		}
 		if dispName == "" {
 			dispName = cand
 		}
@@ -512,9 +535,13 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rotate: revoke the presented token, insert a successor in the same
-	// family. The order matters — if the insert fails we still want the
-	// caller's token to be valid so a retry doesn't bury them.
+	// Rotate atomically — revoke the predecessor + insert the successor in
+	// one transaction. SEC-010: previously this was Insert(successor) then
+	// MarkRevoked(predecessor) outside a tx; N concurrent refreshes of the
+	// same predecessor could each land a separate successor. RotateAtomic
+	// uses UPDATE … WHERE revoked_at IS NULL RETURNING id — only one
+	// caller's row-level lock wins, and the rest get ErrRefreshTokenRaceLost
+	// which we surface as TOKEN_INVALID.
 	access, err := h.Signer.Sign(user.ID, user.Username)
 	if err != nil {
 		h.writeErr(w, "RefreshToken sign", err)
@@ -525,19 +552,15 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "RefreshToken new secret", err)
 		return
 	}
-	parentID := row.ID
-	if _, err := h.Repos.RefreshTokens.Insert(
-		ctx, user.ID, newHash, &parentID, row.FamilyID, h.refreshTTL(),
+	if _, err := h.Repos.RefreshTokens.RotateAtomic(
+		ctx, row.ID, user.ID, newHash, row.FamilyID, h.refreshTTL(),
 	); err != nil {
-		h.writeErr(w, "RefreshToken insert successor", err)
+		if errors.Is(err, apierror.ErrRefreshTokenRaceLost) {
+			apierror.WriteError(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid refresh token")
+			return
+		}
+		h.writeErr(w, "RefreshToken rotate", err)
 		return
-	}
-	if err := h.Repos.RefreshTokens.MarkRevoked(ctx, row.ID); err != nil {
-		// The successor is already issued; we log but do not error out the
-		// caller — leaving the predecessor live for a moment is the lesser
-		// evil. The successor is what the client will use next.
-		h.Log.Error("RefreshToken revoke predecessor", "err", err,
-			"user_id", user.ID, "token_id", row.ID)
 	}
 
 	apierror.WriteJSON(w, http.StatusOK, domain.AuthResponse{

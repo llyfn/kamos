@@ -21,6 +21,13 @@ const presignPutTTL = 15 * time.Minute
 // before the INSERT, instead of pgx surfacing the CHECK error as a 500.
 const maxPhotoBytes int64 = 10 * 1024 * 1024
 
+// presignOutstandingCap caps the number of un-attached, un-expired
+// pending presigns a single user may hold. SEC-008: prevents a user from
+// minting thousands of pending rows + presigned URLs to scrape R2
+// capacity or stage a flood. 8 is comfortably above the SPEC 4-photos-
+// per-check-in cap × concurrent drafts in the UI.
+const presignOutstandingCap = 8
+
 type photoPresignRequest struct {
 	ContentType string `json:"content_type"`
 	ByteSize    int64  `json:"byte_size"`
@@ -46,6 +53,21 @@ type photoPresignResponse struct {
 func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
+		return
+	}
+	// SEC-008: refuse to mint a new presign when the caller already has
+	// `presignOutstandingCap` un-attached pending rows in the window.
+	// Forces the client to either finish attaching (which flips the row
+	// to 'attached') or wait for the TTL to elapse (which makes the row
+	// eligible for orphan cleanup).
+	pending, err := h.Repos.PhotoUploads.CountPendingForUser(r.Context(), uid, presignPutTTL)
+	if err != nil {
+		h.writeErr(w, "PhotoPresign count pending", err)
+		return
+	}
+	if pending >= presignOutstandingCap {
+		apierror.WriteError(w, http.StatusTooManyRequests, "PRESIGN_OUTSTANDING_LIMIT",
+			"too many pending photo uploads; finish attaching or wait")
 		return
 	}
 	var req photoPresignRequest

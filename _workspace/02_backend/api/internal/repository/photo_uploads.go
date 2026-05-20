@@ -123,6 +123,27 @@ LIMIT $2;`
 	return out, rows.Err()
 }
 
+// CountPendingForUser returns the number of presigns this user holds that
+// are still in 'pending' status and have not yet exceeded the
+// presign-PUT TTL. SEC-008 backstop: the handler refuses to issue
+// additional presigns when the count is at the cap.
+//
+// The cutoff matches handlers.presignPutTTL (15 minutes); we compute it
+// in the SQL layer with NOW() - INTERVAL so a clock drift between the
+// app and the DB doesn't open a window.
+func (r *PhotoUploadRepo) CountPendingForUser(ctx context.Context, userID string, ttl time.Duration) (int, error) {
+	const q = `
+SELECT COUNT(*) FROM photo_uploads
+WHERE user_id = $1
+  AND status = 'pending'
+  AND created_at > NOW() - make_interval(secs => $2);`
+	var n int
+	if err := r.db.QueryRow(ctx, q, userID, ttl.Seconds()).Scan(&n); err != nil {
+		return 0, fmt.Errorf("PhotoUploadRepo.CountPendingForUser: %w", err)
+	}
+	return n, nil
+}
+
 // MarkOrphaned flips the row to 'orphaned' after the blob delete.
 func (r *PhotoUploadRepo) MarkOrphaned(ctx context.Context, id string) error {
 	const q = `

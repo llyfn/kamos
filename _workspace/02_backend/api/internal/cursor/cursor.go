@@ -1,11 +1,23 @@
 // Package cursor encodes opaque keyset cursors for list endpoints.
 // Every list endpoint in the API uses cursor pagination per SPEC §6.6.
+//
+// SEC-005 / Stage 0: cursors are HMAC-SHA256-signed using a process-wide
+// key set via SetSigningKey at startup. The wire format is
+//   base64(json) || "." || base64(hmac_sha256(json, key))
+// Decode verifies the MAC in constant time and rejects tampered or
+// unsigned cursors with apierror.ErrBadRequest. The key is required —
+// Encode panics if used before SetSigningKey, which would have surfaced
+// the bug at startup in any handler test path that exercises a list.
 package cursor
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/kamos/api/internal/apierror"
@@ -25,28 +37,119 @@ type Cursor struct {
 	Type      string    `json:"t,omitempty"`
 }
 
-// Encode produces a URL-safe base64 of the JSON representation.
+var (
+	signingKeyMu sync.RWMutex
+	signingKey   []byte
+)
+
+// SetSigningKey installs the HMAC key used by Encode/Decode. Call once at
+// startup from main.go (or from the test bootstrap). A subsequent call
+// overwrites the key — handy for tests that want to verify rotation
+// semantics but otherwise unused. Passing an empty key clears the
+// configuration; subsequent Encode/Decode calls then return an error
+// (Decode) or panic (Encode), which matches "you forgot to wire signing".
+func SetSigningKey(key []byte) {
+	signingKeyMu.Lock()
+	defer signingKeyMu.Unlock()
+	if len(key) == 0 {
+		signingKey = nil
+		return
+	}
+	signingKey = append([]byte(nil), key...)
+}
+
+// getSigningKey returns a copy of the configured key. Returns nil when
+// unset.
+func getSigningKey() []byte {
+	signingKeyMu.RLock()
+	defer signingKeyMu.RUnlock()
+	if signingKey == nil {
+		return nil
+	}
+	return signingKey
+}
+
+func sign(payload []byte, key []byte) []byte {
+	m := hmac.New(sha256.New, key)
+	m.Write(payload)
+	return m.Sum(nil)
+}
+
+// Encode produces a URL-safe base64 of the JSON representation followed by
+// an HMAC-SHA256 tag computed under the configured signing key. Format:
+//   base64url(json) || "." || base64url(mac)
+//
+// Panics if SetSigningKey has not been called — that's a startup wiring
+// bug and silently emitting unsigned cursors would defeat the protection.
 func Encode(c Cursor) string {
+	key := getSigningKey()
+	if key == nil {
+		panic("cursor: SetSigningKey not called before Encode — wire it from main.go")
+	}
 	raw, _ := json.Marshal(c)
-	return base64.RawURLEncoding.EncodeToString(raw)
+	mac := sign(raw, key)
+	return base64.RawURLEncoding.EncodeToString(raw) + "." +
+		base64.RawURLEncoding.EncodeToString(mac)
 }
 
 // Decode parses an opaque cursor string back into a Cursor. Empty input is
-// treated as "no cursor" and returns the zero value without error.
+// treated as "no cursor" and returns the zero value without error. Any
+// mismatch (missing tag, bad base64, MAC mismatch, malformed JSON) is
+// reported as apierror.ErrBadRequest.
 func Decode(s string) (Cursor, error) {
 	var c Cursor
 	if s == "" {
 		return c, nil
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(s)
-	if err != nil {
-		// Be tolerant of standard padding too.
-		raw, err = base64.StdEncoding.DecodeString(s)
-		if err != nil {
-			return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	key := getSigningKey()
+	if key == nil {
+		// No key set at decode time — treat the same as a tamper / unsigned
+		// cursor rather than crash. Mirrors Encode's contract that signing
+		// is mandatory.
+		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	}
+
+	// Tampered or unsigned cursors miss the "." separator entirely; reject
+	// before any decode attempt so old clients that pass a legacy cursor
+	// during a deploy roll receive a clean 400, not a stack trace.
+	dotIdx := -1
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == '.' {
+			dotIdx = i
+			break
 		}
 	}
-	if err := json.Unmarshal(raw, &c); err != nil {
+	if dotIdx < 1 || dotIdx == len(s)-1 {
+		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	}
+	payloadB64 := s[:dotIdx]
+	macB64 := s[dotIdx+1:]
+
+	payload, err := base64.RawURLEncoding.DecodeString(payloadB64)
+	if err != nil {
+		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	}
+	gotMac, err := base64.RawURLEncoding.DecodeString(macB64)
+	if err != nil {
+		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	}
+
+	wantMac := sign(payload, key)
+	// hmac.Equal is constant-time; bytes.Equal would be a timing side channel.
+	if !hmac.Equal(gotMac, wantMac) {
+		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	}
+	// Defensive: assert the payload re-marshals to the same bytes after
+	// JSON parse — guards against a clever attacker submitting a payload
+	// that hashes to the same MAC but unmarshals into a different cursor
+	// (NOT possible with a fixed shape + Go's strict decoder, but the
+	// belt-and-braces re-marshal is cheap).
+	if err := json.Unmarshal(payload, &c); err != nil {
+		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
+	}
+	if want, _ := json.Marshal(c); !bytes.Equal(want, payload) {
+		// Mismatch most likely means the attacker re-ordered keys or
+		// injected extra fields. Reject.
 		return c, errors.Join(apierror.ErrBadRequest, errors.New("invalid cursor"))
 	}
 	return c, nil

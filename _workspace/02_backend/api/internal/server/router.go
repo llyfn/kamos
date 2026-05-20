@@ -59,6 +59,17 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	r.Use(middleware.Trace)
 	r.Use(middleware.RecoverWithSentry(log))
 	r.Use(middleware.AccessLog(log))
+	// SEC-007 — security response headers on every response (HSTS,
+	// nosniff, frame-deny, referrer-policy, permissions-policy).
+	r.Use(middleware.SecurityHeaders)
+	// SEC-002 — CORS allowlist. Mounted after observability so a denied
+	// origin still trace/log; mounted before any business handler so the
+	// preflight OPTIONS short-circuit hits before the route lookup.
+	var allowedOrigins []string
+	if h != nil && h.Cfg != nil {
+		allowedOrigins = h.Cfg.CORSAllowedOrigins
+	}
+	r.Use(middleware.CORS(middleware.CORSConfig{AllowedOrigins: allowedOrigins}))
 	// Phase 7 — global ETag middleware. Only acts on GET/HEAD + 2xx
 	// (see internal/middleware/etag.go); other methods pass through with
 	// no overhead. Mounted globally rather than per-route so a new GET
@@ -92,6 +103,11 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	r.Handle("/metrics", observability.PromHandler())
 
 	r.Route("/v1", func(r chi.Router) {
+		// SEC-003 — global body-size cap for /v1. 1 MiB is generous for
+		// any JSON request the API accepts (photos go through R2
+		// presigned PUT, not through the API). The auth subgroup
+		// overrides this to 64 KiB.
+		r.Use(middleware.MaxBytes(1 << 20))
 		// Phase 7a BLOCKER-2 — default-deny for downstream caching. Every
 		// route under /v1 starts with `Cache-Control: no-store, ...`;
 		// the 5 documented cacheable routes override this with their own
@@ -102,6 +118,8 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		// Auth — all public. Stricter per-IP cap to mitigate
 		// brute-force / enumeration against /v1/auth/* (5 rps, burst 10).
 		r.Route("/auth", func(r chi.Router) {
+			// SEC-003 — auth payloads are tiny; tighten to 64 KiB.
+			r.Use(middleware.MaxBytes(1 << 16))
 			if rateLimited {
 				r.Use(middleware.RateLimitByIP(log, 5, 10))
 			}
@@ -206,7 +224,16 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Post("/check-ins/{id}/toast", h.ToggleToast)
 
 			// Uploads — Phase 3 presigned PUT flow.
-			r.Post("/uploads/photo-presign", h.PhotoPresign)
+			// SEC-008: tight per-user limit on top of the global authed
+			// 60/120 cap. 2 rps / burst 4 prevents a single account from
+			// minting hundreds of presigns per second while still
+			// allowing the SPEC 4-photos-per-check-in burst.
+			if rateLimited {
+				r.With(middleware.RateLimitByUser(log, 2, 4)).
+					Post("/uploads/photo-presign", h.PhotoPresign)
+			} else {
+				r.Post("/uploads/photo-presign", h.PhotoPresign)
+			}
 
 			// Venues — Phase 4 Foursquare-backed search proxy. 503
 			// VENUE_SEARCH_DISABLED when FOURSQUARE_API_KEY is unset.

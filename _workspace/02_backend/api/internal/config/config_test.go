@@ -52,10 +52,47 @@ func TestLoadRequiresJWTSecret(t *testing.T) {
 	}
 }
 
+// SEC-016 — JWT secret < 32 bytes is rejected at startup.
+func TestLoadRejectsShortJWTSecret(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL": "postgres://x/x",
+		"JWT_SECRET":   "tooshort",
+	})
+	if _, err := Load(); err == nil {
+		t.Fatalf("expected error when JWT_SECRET is shorter than 32 bytes")
+	}
+}
+
+// SEC-005 — production refuses to start without CURSOR_SECRET.
+func TestLoadRequiresCursorSecretInProduction(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL":  "postgres://x/x",
+		"JWT_SECRET":    "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"APP_ENV":       "production",
+		"CURSOR_SECRET": "",
+	})
+	if _, err := Load(); err == nil {
+		t.Fatalf("expected error when CURSOR_SECRET missing in production")
+	}
+}
+
+// SEC-005 — CURSOR_SECRET < 32 bytes is rejected even outside production.
+func TestLoadRejectsShortCursorSecret(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DATABASE_URL":  "postgres://x/x",
+		"JWT_SECRET":    "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"APP_ENV":       "test",
+		"CURSOR_SECRET": "tooshort",
+	})
+	if _, err := Load(); err == nil {
+		t.Fatalf("expected error when CURSOR_SECRET is shorter than 32 bytes")
+	}
+}
+
 func TestLoadParsesJWTTTL(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL": "postgres://x/x",
-		"JWT_SECRET":   "secret",
+		"JWT_SECRET":   "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"JWT_TTL":      "30m",
 	})
 	c, err := Load()
@@ -70,7 +107,7 @@ func TestLoadParsesJWTTTL(t *testing.T) {
 func TestLoadRejectsBadJWTTTL(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL": "postgres://x/x",
-		"JWT_SECRET":   "secret",
+		"JWT_SECRET":   "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"JWT_TTL":      "not-a-duration",
 	})
 	if _, err := Load(); err == nil {
@@ -81,7 +118,7 @@ func TestLoadRejectsBadJWTTTL(t *testing.T) {
 func TestLoadDefaults(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL": "postgres://x/x",
-		"JWT_SECRET":   "secret",
+		"JWT_SECRET":   "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"PORT":         "",
 		"APP_ENV":      "",
 		"APP_BASE_URL": "",
@@ -117,7 +154,7 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadParsesRefreshTTL(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL": "postgres://x/x",
-		"JWT_SECRET":   "secret",
+		"JWT_SECRET":   "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"REFRESH_TTL":  "1h",
 	})
 	c, err := Load()
@@ -132,7 +169,7 @@ func TestLoadParsesRefreshTTL(t *testing.T) {
 func TestLoadRejectsBadRefreshTTL(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL": "postgres://x/x",
-		"JWT_SECRET":   "secret",
+		"JWT_SECRET":   "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"REFRESH_TTL":  "not-a-duration",
 	})
 	if _, err := Load(); err == nil {
@@ -143,7 +180,7 @@ func TestLoadRejectsBadRefreshTTL(t *testing.T) {
 func TestLoadRejectsBadSMTPPort(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL": "postgres://x/x",
-		"JWT_SECRET":   "secret",
+		"JWT_SECRET":   "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"SMTP_PORT":    "not-a-number",
 	})
 	if _, err := Load(); err == nil {
@@ -170,7 +207,7 @@ func TestLoadRejectsRateLimitDisabledInProduction(t *testing.T) {
 func TestLoadAllowsRateLimitDisabledOutsideProduction(t *testing.T) {
 	withEnv(t, map[string]string{
 		"DATABASE_URL":        "postgres://x/x",
-		"JWT_SECRET":          "secret",
+		"JWT_SECRET":          "test-secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"APP_ENV":             "test",
 		"RATE_LIMIT_DISABLED": "1",
 	})

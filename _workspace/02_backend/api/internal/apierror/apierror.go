@@ -46,6 +46,12 @@ var (
 	// ErrVenueRateLimited surfaces a Foursquare 429 to the handler. The
 	// handler writes 503 VENUE_RATE_LIMITED with a Retry-After header.
 	ErrVenueRateLimited = errors.New("venue_rate_limited")
+	// ErrRefreshTokenRaceLost is returned by RefreshTokenRepo.RotateAtomic
+	// when the predecessor row was already revoked by a concurrent rotation
+	// (UPDATE … WHERE revoked_at IS NULL RETURNING id, RowsAffected = 0). The
+	// caller treats this as TOKEN_INVALID — exactly one successor lands per
+	// predecessor (SEC-010).
+	ErrRefreshTokenRaceLost = errors.New("refresh_token_race_lost")
 )
 
 // APIError is the body shape every error response uses.

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/jobs"
 )
 
@@ -99,11 +100,14 @@ func TestJobEmailVerificationCleanup(t *testing.T) {
 
 	p := getPool(t)
 	ctx := context.Background()
-	// Seed three tokens with different expires_at values.
+	// Seed three tokens with different expires_at values. SEC-004 (migration
+	// 010): the DB column is now token_hash (BYTEA SHA-256). We compute the
+	// hash from the raw token here so the test mirrors the application path.
 	insert := func(token string, expiresOffset time.Duration) {
+		hash := auth.HashVerificationToken(token)
 		if _, err := p.Exec(ctx, `
-INSERT INTO email_verifications (user_id, token, expires_at)
-VALUES ($1, $2, NOW() + $3::interval);`, userID, token, expiresOffset.String()); err != nil {
+INSERT INTO email_verifications (user_id, token_hash, expires_at)
+VALUES ($1, $2, NOW() + $3::interval);`, userID, hash, expiresOffset.String()); err != nil {
 			t.Fatalf("seed token %q: %v", token, err)
 		}
 	}
@@ -127,8 +131,9 @@ VALUES ($1, $2, NOW() + $3::interval);`, userID, token, expiresOffset.String());
 	}
 
 	var oldExists bool
+	oldHash := auth.HashVerificationToken("oldold")
 	if err := p.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token = 'oldold')`).Scan(&oldExists); err != nil {
+		`SELECT EXISTS(SELECT 1 FROM email_verifications WHERE token_hash = $1)`, oldHash).Scan(&oldExists); err != nil {
 		t.Fatalf("exists: %v", err)
 	}
 	if oldExists {

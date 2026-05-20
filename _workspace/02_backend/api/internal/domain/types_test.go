@@ -300,3 +300,43 @@ func TestCreateCollectionValidate(t *testing.T) {
 		t.Errorf("ok name: %v", err)
 	}
 }
+
+// SEC-006 — SanitizeText rejects ASCII NUL, bidi-override, control chars
+// when newline is not allowed, and over-length input. Multibyte / regular
+// Unicode is passed through.
+func TestSanitizeTextRejectsControl(t *testing.T) {
+	type tc struct {
+		name         string
+		in           string
+		allowNewline bool
+		maxLen       int
+		wantErr      bool
+	}
+	cases := []tc{
+		{"empty ok", "", false, 10, false},
+		{"plain ok", "hello", false, 10, false},
+		{"multibyte ok", "酒造-こんにちは", false, 50, false},
+		{"NUL rejected", "abc\x00def", true, 50, true},
+		{"control rejected", "abc\x05def", true, 50, true},
+		{"newline rejected when not allowed", "line1\nline2", false, 50, true},
+		{"newline ok when allowed", "line1\nline2", true, 50, false},
+		{"tab always ok", "a\tb", false, 50, false},
+		{"DEL stripped", "ab\x7fc", false, 50, false},
+		{"bidi LRE rejected", "ab‪cd", true, 50, true},
+		{"bidi RLO rejected", "ab‮cd", true, 50, true},
+		{"bidi LRI rejected", "ab⁦cd", true, 50, true},
+		{"bidi PDI rejected", "ab⁩cd", true, 50, true},
+		{"length cap", strings.Repeat("x", 11), false, 10, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := SanitizeText("field", c.in, c.allowNewline, c.maxLen)
+			if c.wantErr && err == nil {
+				t.Fatalf("expected error for %q", c.in)
+			}
+			if !c.wantErr && err != nil {
+				t.Fatalf("unexpected error for %q: %v", c.in, err)
+			}
+		})
+	}
+}
