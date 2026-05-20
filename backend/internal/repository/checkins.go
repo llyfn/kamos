@@ -68,13 +68,27 @@ RETURNING id, created_at;`
 		return "", time.Time{}, fmt.Errorf("CheckinRepo.Create insert: %w", err)
 	}
 
-	for i, url := range p.PhotoURLs {
-		if i >= 4 {
-			return "", time.Time{}, domain.ErrPhotoCapExceeded
+	// Stage 5 (PERF-009): one multi-row INSERT for all photos instead
+	// of N round-trips. unnest($2, $3) zips the URL array with a
+	// generated sort_order series. The 4-photo cap is enforced both
+	// by domain.CreateCheckinRequest.Validate at the handler edge and
+	// by the check_in_photos_sort_order_range CHECK constraint at
+	// the DB; this code path additionally short-circuits with the
+	// domain error if a future caller passes more than 4.
+	if len(p.PhotoURLs) > 4 {
+		return "", time.Time{}, domain.ErrPhotoCapExceeded
+	}
+	if len(p.PhotoURLs) > 0 {
+		sortOrders := make([]int32, len(p.PhotoURLs))
+		for i := range p.PhotoURLs {
+			sortOrders[i] = int32(i)
 		}
-		const insPh = `INSERT INTO check_in_photos (check_in_id, photo_url, sort_order) VALUES ($1, $2, $3);`
-		if _, err := tx.Exec(ctx, insPh, id, url, i); err != nil {
-			return "", time.Time{}, fmt.Errorf("CheckinRepo.Create photo: %w", err)
+		const insPh = `
+INSERT INTO check_in_photos (check_in_id, photo_url, sort_order)
+SELECT $1, url, ord
+FROM unnest($2::text[], $3::int[]) AS u(url, ord);`
+		if _, err := tx.Exec(ctx, insPh, id, p.PhotoURLs, sortOrders); err != nil {
+			return "", time.Time{}, fmt.Errorf("CheckinRepo.Create photos: %w", err)
 		}
 	}
 
@@ -316,53 +330,65 @@ RETURNING id;`
 }
 
 // AddPhoto inserts a single photo into the next free slot. Returns
-// ErrPhotoCapExceeded if all four slots are taken.
+// ErrPhotoCapExceeded if all four slots are taken, ErrForbidden if
+// the check-in isn't owned by userID, and ErrNotFound if it doesn't
+// exist or is soft-deleted.
+//
+// Stage 5 (PERF-008): collapsed from a four-statement tx (lock +
+// count + max + insert) into a single INSERT … SELECT … HAVING
+// statement. The HAVING < 4 clause is what enforces the photo cap
+// without needing a separate count round-trip; ownership + liveness
+// are baked into the inner JOIN's WHERE. On NoRows we issue a
+// cheap discriminator query (one extra round-trip on the error
+// path only) to map to NotFound / Forbidden / PhotoCapExceeded.
 func (r *CheckinRepo) AddPhoto(ctx context.Context, checkinID, userID, photoURL string) (domain.PhotoRef, error) {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return domain.PhotoRef{}, fmt.Errorf("AddPhoto: begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	var owner string
-	err = tx.QueryRow(ctx,
-		`SELECT user_id FROM check_ins WHERE id = $1 AND deleted_at IS NULL FOR UPDATE;`,
-		checkinID).Scan(&owner)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.PhotoRef{}, domain.ErrNotFound
-	}
-	if err != nil {
-		return domain.PhotoRef{}, fmt.Errorf("AddPhoto lock: %w", err)
-	}
-	if owner != userID {
-		return domain.PhotoRef{}, domain.ErrForbidden
-	}
-
-	var existing int
-	if err := tx.QueryRow(ctx,
-		`SELECT COUNT(*) FROM check_in_photos WHERE check_in_id = $1;`, checkinID).Scan(&existing); err != nil {
-		return domain.PhotoRef{}, fmt.Errorf("AddPhoto count: %w", err)
-	}
-	if existing >= 4 {
-		return domain.PhotoRef{}, domain.ErrPhotoCapExceeded
-	}
-
+	const q = `
+INSERT INTO check_in_photos (check_in_id, photo_url, sort_order)
+SELECT $1, $2, COALESCE(MAX(p.sort_order), -1) + 1
+FROM check_ins ci
+LEFT JOIN check_in_photos p ON p.check_in_id = ci.id
+WHERE ci.id = $1 AND ci.user_id = $3 AND ci.deleted_at IS NULL
+GROUP BY ci.id
+HAVING COUNT(p.id) < 4
+RETURNING sort_order;`
 	var sortOrder int
-	if err := tx.QueryRow(ctx,
-		`SELECT COALESCE(MAX(sort_order), -1) + 1 FROM check_in_photos WHERE check_in_id = $1;`,
-		checkinID).Scan(&sortOrder); err != nil {
-		return domain.PhotoRef{}, fmt.Errorf("AddPhoto next: %w", err)
-	}
-
-	if _, err := tx.Exec(ctx,
-		`INSERT INTO check_in_photos (check_in_id, photo_url, sort_order) VALUES ($1, $2, $3);`,
-		checkinID, photoURL, sortOrder); err != nil {
-		return domain.PhotoRef{}, fmt.Errorf("AddPhoto insert: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return domain.PhotoRef{}, fmt.Errorf("AddPhoto commit: %w", err)
+	if err := r.db.QueryRow(ctx, q, checkinID, photoURL, userID).Scan(&sortOrder); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.PhotoRef{}, r.classifyAddPhotoFailure(ctx, checkinID, userID)
+		}
+		return domain.PhotoRef{}, fmt.Errorf("AddPhoto: %w", err)
 	}
 	return domain.PhotoRef{URL: photoURL, SortOrder: sortOrder}, nil
+}
+
+// classifyAddPhotoFailure runs after AddPhoto's INSERT … HAVING
+// returned zero rows, to distinguish between the three failure modes
+// (NotFound, Forbidden, PhotoCapExceeded). Single query — order of
+// branches matches the typical user experience: missing > forbidden
+// > full.
+func (r *CheckinRepo) classifyAddPhotoFailure(ctx context.Context, checkinID, userID string) error {
+	const q = `
+SELECT ci.user_id,
+       (SELECT COUNT(*) FROM check_in_photos WHERE check_in_id = ci.id) AS photo_count
+FROM check_ins ci
+WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
+	var owner string
+	var photoCount int
+	if err := r.db.QueryRow(ctx, q, checkinID).Scan(&owner, &photoCount); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrNotFound
+		}
+		return fmt.Errorf("AddPhoto classify: %w", err)
+	}
+	if owner != userID {
+		return domain.ErrForbidden
+	}
+	if photoCount >= 4 {
+		return domain.ErrPhotoCapExceeded
+	}
+	// All known reasons ruled out — surface an internal error so the
+	// regression is visible in logs rather than silently swallowed.
+	return fmt.Errorf("AddPhoto: insert returned no rows but row passes all gates")
 }
 
 // ToggleToast inserts-or-deletes the row, returning the fresh state.
@@ -638,24 +664,35 @@ func isAcceptedFollower(ctx context.Context, db *pgxpool.Pool, viewerID, ownerID
 // a hidden check-in would remain world-readable, defeating the
 // moderation action.
 func (r *CheckinRepo) AssertViewerCanSeeCheckin(ctx context.Context, checkInID, viewerID string) error {
-	const q = `SELECT user_id, privacy_mode FROM check_ins ci
-JOIN users u ON u.id = ci.user_id
-WHERE ci.id = $1 AND ci.deleted_at IS NULL AND u.deleted_at IS NULL;`
-	var ownerID, privacy string
-	if err := r.db.QueryRow(ctx, q, checkInID).Scan(&ownerID, &privacy); err != nil {
+	// Stage 5 (PERF-007): single-query shape per docs/db/query_patterns.md §4.
+	// The OR-tree inside the WHERE encodes the visibility rule in one
+	// round trip instead of the two-step "lookup-then-maybe-followers"
+	// dance. NULLIF($2,'') maps the empty viewerID (unauthenticated)
+	// to NULL so the comparisons against u.id / f.follower_id resolve
+	// to false instead of throwing on cast.
+	const q = `
+SELECT 1
+FROM check_ins ci
+JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
+WHERE ci.id = $1
+  AND ci.deleted_at IS NULL
+  AND (
+    u.privacy_mode = 'public'
+    OR u.id = NULLIF($2,'')::uuid
+    OR EXISTS (
+      SELECT 1 FROM follows f
+      WHERE f.follower_id = NULLIF($2,'')::uuid
+        AND f.followed_id = u.id
+        AND f.status = 'accepted'
+    )
+  )
+LIMIT 1;`
+	var one int
+	if err := r.db.QueryRow(ctx, q, checkInID, viewerID).Scan(&one); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrNotFound
 		}
 		return fmt.Errorf("AssertViewerCanSeeCheckin: %w", err)
-	}
-	if privacy == "private" && viewerID != ownerID {
-		ok, err := isAcceptedFollower(ctx, r.db, viewerID, ownerID)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return domain.ErrNotFound
-		}
 	}
 	return nil
 }
