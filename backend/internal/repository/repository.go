@@ -1,6 +1,6 @@
 // Package repository implements the pgx-backed data access layer. The SQL
-// here matches _workspace/02_backend/db/query_patterns.md as closely as
-// possible — when in doubt, that file wins.
+// here matches docs/db/query_patterns.md as closely as possible — when in
+// doubt, that file wins.
 package repository
 
 import (

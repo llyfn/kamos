@@ -7,7 +7,8 @@
 # captured to a transcript file for the final QA report.
 #
 # Usage:
-#   API_BASE_URL=http://localhost:8080 ./qa_phase6_final_smoke.sh
+#   API_BASE_URL=http://localhost:8080 ./scripts/smoke.sh
+#   (or `make smoke` from the repo root)
 
 set -uo pipefail
 

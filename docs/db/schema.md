@@ -1,6 +1,6 @@
 # KAMOS — Database Schema
 
-Source of truth for the PostgreSQL 15+ data model backing KAMOS. Every entity here traces to `SPEC.md` and the screen data shapes in `_workspace/01_design/HANDOFF.md`.
+Source of truth for the PostgreSQL 15+ data model backing KAMOS. Every entity here traces to `SPEC.md` and the screen data shapes in `design/HANDOFF.md`.
 
 Migrations live in `migrations/`. **Append-only**: never edit a deployed migration; add a new one.
 

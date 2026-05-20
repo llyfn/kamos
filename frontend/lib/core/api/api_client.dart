@@ -33,7 +33,7 @@ import 'auth_interceptor.dart';
 /// EVERY authenticated GET response is eligible for caching when the
 /// server returns a `Cache-Control` directive AND an `ETag`. The server
 /// currently mounts `ETag` globally on all GET routes (see
-/// `_workspace/02_backend/api/internal/server/router.go`).
+/// `backend/internal/server/router.go`).
 ///
 /// Concrete cached routes today (per server `Cache-Control` max-age):
 ///   - GET /v1/categories                    (max-age=3600, public)

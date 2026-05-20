@@ -3,9 +3,9 @@
 // Asserts that the locally-cached category strings exactly match the seeded
 // database values. Any drift here is a SPEC blocker — the same strings must
 // appear in:
-//   - `_workspace/02_backend/db/migrations/002_seed_taxonomy.sql`
-//   - `_workspace/03_frontend/l10n/intl_{en,ja,ko}.arb`
-//   - `_workspace/03_frontend/lib/core/i18n/category_labels.dart`
+//   - `migrations/002_seed_taxonomy.sql`
+//   - `frontend/l10n/intl_{en,ja,ko}.arb`
+//   - `frontend/lib/core/i18n/category_labels.dart`
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kamos/core/i18n/category_labels.dart';

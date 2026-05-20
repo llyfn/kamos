@@ -1,7 +1,7 @@
 // KAMOS — Category labels (SPEC §2.1 / brief §6.1).
 //
 // Hardcoded character-for-character to match
-// `_workspace/02_backend/db/migrations/002_seed_taxonomy.sql`. The API also
+// `migrations/002_seed_taxonomy.sql`. The API also
 // returns `label_i18n` from `/v1/categories`, but the client must NEVER show a
 // different string for these three slugs — this map is the local fallback /
 // canonical reference, and `category_strings_test.dart` asserts it.
