@@ -153,7 +153,7 @@ The design draft at `_workspace/01_design/` is substantial and not greenfield. T
 |---|---|---|
 | Brand README | `_workspace/01_design/README.md` | Complete — voice & tone, visual foundations, iconography, file index, open questions |
 | Design tokens | `_workspace/01_design/colors_and_type.css` | Complete — Japanese-blue palette, type scale, spacing, radii, shadows, motion, semantic tokens |
-| Logo assets | `_workspace/01_design/assets/` | `logo.png`, `logo_mono.png`, `logo_white.png`, `logo_mark.png`, `logo_original.png` |
+| Logo assets | `_workspace/01_design/assets/` | `logo.png`, `logo_mono.png`, `logo_white.png`, `logo_mark.png` |
 | Mobile UI kit | `_workspace/01_design/ui_kits/mobile/` | `index.html` + `ios-frame.jsx` + 8 component files (Primitives, Shell, Feed/Search/Beverage/CheckIn/ProfileLists screens + data) |
 | Primitive previews | `_workspace/01_design/preview/*.html` | 16 standalone HTML previews (colors, type, spacing, radii, elevation, buttons, chips, cards, icons, inputs, logo) |
 | Screenshot | `_workspace/01_design/screenshots/uikit.png` | One reference image of the UI kit |

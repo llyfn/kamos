@@ -11,7 +11,7 @@ KAMOS is to Japanese craft spirits what Untappd is to beer: a place to log what 
 
 | Source | Path | Notes |
 |---|---|---|
-| Logo | `assets/logo_original.png` (received) → `assets/logo.png` (recolored) | Two ceramic cups in a *kanpai* / cheers gesture |
+| Logo | `assets/logo.png` (recolored from original brief artwork) | Two ceramic cups in a *kanpai* / cheers gesture |
 | Spec & overview | `llyfn/kamos` (private GitHub repo) — `README.md`, `SPEC.md` | Product spec only; **no UI codebase exists yet**, so this design system is greenfield, anchored to the spec |
 
 > Reader does not need access to the source repo; the spec content used here is summarised in this README.
@@ -170,7 +170,6 @@ colors_and_type.css        ← all design tokens (vars + classes)
 assets/
   logo.png                 Recolored brand mark (Ai-iro + Kon-iro)
   logo_mono.png            Single-color (Kon-iro) for monochrome contexts
-  logo_original.png        Original orange/brown source from the brief
 
 preview/                   Cards rendered into the Design System tab
   type-display.html        ...etc
