@@ -199,18 +199,25 @@ type PhotoRef struct {
 	SortOrder int    `json:"sort_order"`
 }
 
-// CheckinSummary is a lighter shape for "recent check-ins" sections that
-// don't need photos / tags arrays.
+// CheckinSummary is a lighter shape for "recent check-ins" sections.
+// Stage 5 (PERF-010): the summary now carries Photos hydrated via the
+// PhotosFor batch helper so the beverage detail screen can render
+// thumbnails without a follow-up round trip.
 type CheckinSummary struct {
 	ID        string      `json:"id"`
 	User      CheckinUser `json:"user"`
 	Rating    *float64    `json:"rating"`
 	Review    *string     `json:"review"`
+	Photos    []PhotoRef  `json:"photos"`
 	CreatedAt time.Time   `json:"created_at"`
 }
 
-// FeedItem matches HANDOFF's feedItem shape exactly. Phase 6a added
-// comment_count via correlated subquery — see repository/feed.go.
+// FeedItem matches HANDOFF's feedItem shape. Stage 5 (PERF-002):
+// the previous `photo_count` integer is replaced by a hydrated
+// `photos: []PhotoRef` slice so the Flutter feed card can render
+// the actual photo grid without a follow-up request per check-in.
+// `comment_count` and `toasts` are now denormalized counter reads
+// from check_ins (migration 011) rather than correlated subqueries.
 type FeedItem struct {
 	ID           string      `json:"id"`
 	User         CheckinUser `json:"user"`
@@ -218,9 +225,9 @@ type FeedItem struct {
 	Rating       *float64    `json:"rating"`
 	Review       *string     `json:"review"`
 	Tags         []FlavorTag `json:"tags"`
+	Photos       []PhotoRef  `json:"photos"`
 	Toasts       int         `json:"toasts"`
 	YouToasted   bool        `json:"you_toasted"`
-	PhotoCount   int         `json:"photo_count"`
 	CommentCount int         `json:"comment_count"`
 	Venue        *VenueRef   `json:"venue,omitempty"`
 	CreatedAt    time.Time   `json:"created_at"`

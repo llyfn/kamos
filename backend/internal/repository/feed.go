@@ -16,14 +16,12 @@ type FeedRepo struct{ db *pgxpool.Pool }
 // are folded into the response. `limit` is the requested page size; the
 // repository fetches limit+1 and the handler computes has_more.
 func (r *FeedRepo) Page(ctx context.Context, viewerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.FeedItem, error) {
-	// Stage 5 (PERF-001/024): toast_count + comment_count come from
-	// denormalized counter columns on check_ins (migration 011). The
-	// only remaining per-viewer correlated lookup is `you_toasted` —
-	// it can't be denormalized because the answer is per-requesting-user.
-	// Photo count is computed from the hydrated photos array post-fetch
-	// (PhotosFor batch); for the time being we keep emitting it on the
-	// wire under the old field name. The next commit removes photo_count
-	// entirely and ships the photo URLs.
+	// Stage 5 (PERF-001/002/024): toast_count + comment_count come from
+	// denormalized counter columns on check_ins (migration 011). Photos
+	// are batch-hydrated after the rows.Next() loop via PhotosFor so the
+	// feed ships actual photo URLs (not just a count). The only
+	// remaining per-viewer correlated lookup is `you_toasted` — it
+	// can't be denormalized because the answer is per-requesting-user.
 	const q = `
 SELECT
   ci.id,
@@ -40,7 +38,6 @@ SELECT
   br.id, br.name_i18n, br.region,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
-  (SELECT COUNT(*) FROM check_in_photos p WHERE p.check_in_id = ci.id),
   ci.comment_count,
   v.id, v.name, v.locality, v.country
 FROM check_ins ci
@@ -77,7 +74,6 @@ LIMIT $4;`
 			brwID         string
 			brwRegion     *string
 			toastCnt      int64
-			photoCnt      int64
 			commentCnt    int64
 			youToast      bool
 			userIDVal     string
@@ -102,7 +98,6 @@ LIMIT $4;`
 			&brwID, &brwName, &brwRegion,
 			&toastCnt,
 			&youToast,
-			&photoCnt,
 			&commentCnt,
 			&venueID, &venueName, &venueLocality, &venueCountry,
 		); err != nil {
@@ -122,7 +117,6 @@ LIMIT $4;`
 		}
 		it.Toasts = int(toastCnt)
 		it.YouToasted = youToast
-		it.PhotoCount = int(photoCnt)
 		if venueID != nil && venueName != nil {
 			it.Venue = &domain.VenueRef{ID: *venueID, Name: *venueName, Locality: venueLocality, Country: venueCountry}
 		}
@@ -133,9 +127,15 @@ LIMIT $4;`
 		return nil, err
 	}
 
-	// Hydrate tags per check-in (separate query to avoid join explosion).
+	// Hydrate tags + photos in two batch queries (one round trip each).
+	// Photos pre-Stage 5 only shipped a count on the feed — the new
+	// PhotoRef slice lets the Flutter card render the actual grid.
 	ck := CheckinRepo{db: r.db}
 	tags, err := ck.TagsFor(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	photos, err := ck.PhotosFor(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +143,10 @@ LIMIT $4;`
 		items[i].Tags = tags[items[i].ID]
 		if items[i].Tags == nil {
 			items[i].Tags = []domain.FlavorTag{}
+		}
+		items[i].Photos = photos[items[i].ID]
+		if items[i].Photos == nil {
+			items[i].Photos = []domain.PhotoRef{}
 		}
 	}
 	return items, nil
