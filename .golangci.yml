@@ -1,0 +1,82 @@
+version: "2"
+
+run:
+  go: "1.26"
+  timeout: 5m
+  tests: true
+  concurrency: 4
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - errorlint
+    - gocritic
+    - gosec
+    - revive
+    - staticcheck
+    - sqlclosecheck
+    - rowserrcheck
+    - bodyclose
+    - contextcheck
+    - nilerr
+    - noctx
+    - unparam
+    - prealloc
+    - ineffassign
+    - misspell
+    - unconvert
+    - gocyclo
+    - funlen
+  settings:
+    gocyclo:
+      min-complexity: 15
+    funlen:
+      lines: 100
+      statements: 60
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    gosec:
+      excludes:
+        - G104
+    revive:
+      rules:
+        - name: var-naming
+        - name: exported
+        - name: error-strings
+        - name: error-return
+        - name: error-naming
+        - name: increment-decrement
+        - name: range-val-in-closure
+        - name: time-naming
+        - name: unexported-return
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
+          - gocyclo
+          - errcheck
+          - gosec
+      - linters:
+          - errcheck
+        text: "Error return value of `fmt\\.F?print(f|ln)?` is not checked"
+      - linters:
+          - errcheck
+        source: "^\\s*_ = "
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/kamos/api
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
