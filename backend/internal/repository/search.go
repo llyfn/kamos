@@ -25,7 +25,7 @@ func (r *SearchRepo) SearchBeverages(ctx context.Context, q string, cursorID *st
 	if limit <= 0 {
 		limit = 20
 	}
-	const bq = beverageSelect + `
+	const bq = beverageListSelect + `
 WHERE to_tsvector('simple',
         coalesce(b.name_i18n->>'en','') || ' ' ||
         coalesce(b.name_i18n->>'ja','') || ' ' ||
@@ -42,7 +42,7 @@ LIMIT $3;`
 	brepo := BeverageRepo{db: r.db}
 	var out []SearchResult
 	for rows.Next() {
-		bv, err := scanBeverage(rows)
+		bv, err := scanBeverageList(rows)
 		if err != nil {
 			return nil, fmt.Errorf("SearchBeverages scan: %w", err)
 		}

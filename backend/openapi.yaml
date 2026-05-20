@@ -1795,6 +1795,14 @@ components:
         the JSON key is omitted entirely rather than set to `null`. The
         exception is `avg_rating`, which is `*float64` without `omitempty` —
         it is always present and is `null` when no ratings exist.
+
+        List endpoints (`GET /v1/beverages`, `GET /v1/breweries/{id}` inline
+        beverages page, `GET /v1/search` beverage results) ship a slim
+        projection that **omits the i18n JSONB fields `subcategory` and
+        `description`** on every row to cut payload size by ~30%. Both
+        fields are always present on `BeverageDetail` (the single-item
+        detail response). Clients should treat the fields as optional on
+        the wire and re-fetch detail when the user opens a beverage.
       required: [id, name, brewery, category, flavor_profile, avg_rating, check_in_count, created_at]
       properties:
         id: { type: string, format: uuid }

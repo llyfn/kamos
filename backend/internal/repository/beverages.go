@@ -55,6 +55,9 @@ type beverageRow struct {
 	breweryRegion  *string
 }
 
+// beverageSelect is the full projection used by /v1/beverages/{id}.
+// It carries the two i18n JSONB blobs (subcategory_i18n,
+// description_i18n) that are needed on the detail screen.
 const beverageSelect = `
 SELECT
   b.id,
@@ -68,6 +71,34 @@ SELECT
   b.prefecture,
   b.region,
   b.description_i18n,
+  b.label_image_url,
+  b.avg_rating,
+  b.check_in_count,
+  b.flavor_profile,
+  b.created_at,
+  br.id           AS brewery_id,
+  br.name_i18n    AS brewery_name_i18n,
+  br.region       AS brewery_region
+FROM beverages b
+JOIN breweries br ON br.id = b.brewery_id
+JOIN beverage_categories cat ON cat.id = b.category_id`
+
+// beverageListSelect is the slim projection used by list/search paths:
+// it drops the two JSONB blobs (subcategory_i18n, description_i18n)
+// because list cards only show name + category + brewery + counts.
+// Dropping the JSONB cuts list-response payload size by ~30%
+// (PERF-017). The corresponding scan helper is scanBeverageList.
+const beverageListSelect = `
+SELECT
+  b.id,
+  b.name_i18n,
+  b.category_slug,
+  cat.name_i18n  AS category_name_i18n,
+  cat.id         AS category_id,
+  b.abv,
+  b.polishing_ratio,
+  b.prefecture,
+  b.region,
   b.label_image_url,
   b.avg_rating,
   b.check_in_count,
@@ -94,6 +125,37 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 		&b.prefecture,
 		&b.region,
 		&b.descJSON,
+		&b.labelImgURL,
+		&b.avgRating,
+		&b.checkInCount,
+		&b.flavorProfile,
+		&b.createdAt,
+		&b.breweryID,
+		&b.breweryNameRaw,
+		&b.breweryRegion,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+// scanBeverageList matches the column order of beverageListSelect (no
+// subcategory_i18n, no description_i18n). The returned beverageRow
+// has subcatJSON / descJSON left nil; toBeverage already treats
+// len-0 as "absent", so the API response omits those fields.
+func scanBeverageList(row pgx.Row) (*beverageRow, error) {
+	var b beverageRow
+	err := row.Scan(
+		&b.id,
+		&b.nameJSON,
+		&b.categorySlug,
+		&b.categoryName,
+		&b.categoryID,
+		&b.abv,
+		&b.polRatio,
+		&b.prefecture,
+		&b.region,
 		&b.labelImgURL,
 		&b.avgRating,
 		&b.checkInCount,
@@ -156,7 +218,7 @@ func (r *BeverageRepo) List(ctx context.Context, p BeverageListParams) ([]domain
 	if p.Limit <= 0 {
 		p.Limit = 20
 	}
-	q := beverageSelect + `
+	q := beverageListSelect + `
 WHERE TRUE
   AND ($1::text IS NULL OR
        to_tsvector('simple',
@@ -177,7 +239,7 @@ LIMIT $6;`
 	defer rows.Close()
 	out := make([]domain.Beverage, 0, p.Limit+1)
 	for rows.Next() {
-		bv, err := scanBeverage(rows)
+		bv, err := scanBeverageList(rows)
 		if err != nil {
 			return nil, fmt.Errorf("BeverageRepo.List scan: %w", err)
 		}
@@ -368,7 +430,7 @@ func (r *BreweryRepo) Beverages(ctx context.Context, breweryID string, cursorTs 
 	if limit <= 0 {
 		limit = 20
 	}
-	q := beverageSelect + `
+	q := beverageListSelect + `
 WHERE b.brewery_id = $1
   AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
 ORDER BY b.created_at DESC, b.id DESC
@@ -380,7 +442,7 @@ LIMIT $4;`
 	defer rows.Close()
 	out := make([]domain.Beverage, 0, limit+1)
 	for rows.Next() {
-		bv, err := scanBeverage(rows)
+		bv, err := scanBeverageList(rows)
 		if err != nil {
 			return nil, fmt.Errorf("BreweryRepo.Beverages scan: %w", err)
 		}
