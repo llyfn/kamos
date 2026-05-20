@@ -106,8 +106,15 @@ For Android emulator, replace `localhost` with `10.0.2.2`. For iOS simulator, `l
 Migrations are plain SQL files in `_workspace/02_backend/db/migrations/`, applied in lexicographic order:
 
 ```
-001_initial.sql          schema (13 tables, CHECKs, triggers, indexes)
-002_seed_taxonomy.sql    SPEC §2.1 categories + §4.3 flavor tags
+001_initial.sql                              schema (13 tables, CHECKs, triggers, indexes)
+002_seed_taxonomy.sql                        SPEC §2.1 categories + §4.3 flavor tags
+003_refresh_tokens.sql                       Phase 2 — rotating refresh tokens + family revocation
+004_photo_uploads.sql                        Phase 3 — photo_uploads table (R2 presigned-URL flow)
+005_venues.sql                               Phase 4 — venues table + check_ins.venue_id FK
+006_venue_value_constraints.sql              Phase 4 cleanup — venue CHECKs + first-writer-wins upsert
+007_user_role_and_soft_delete_index.sql      Phase 5 — users.role enum + idx_users_deleted_at_recent
+008_collections_visibility_and_moderation_log.sql  Phase 6 — collection_visibility enum + moderation_log
+009_comments.sql                             Phase 6 — flat comments table + length/control-char CHECKs
 ```
 
 Apply:
@@ -160,21 +167,29 @@ Android notes:
 
 ## 8. Google OAuth setup
 
-1. Create OAuth 2.0 credentials in Google Cloud Console.
-2. iOS / Android client → drop the client ID into Flutter's platform-specific config (per `google_sign_in` package docs, pending wiring — see `README_flutter.md`).
-3. Web/Server client → set `GOOGLE_CLIENT_ID` on the API. This is the audience the server verifies ID tokens against.
+Phase 2 shipped end-to-end Google sign-in wiring (`google_sign_in ^7.2.0` on Flutter, `internal/auth/google.go` on the API). It is gated behind a Flutter `--dart-define` flag so debug builds without platform config remain runnable.
+
+1. Create OAuth 2.0 credentials in Google Cloud Console — one Web/Server, one iOS, one Android client ID (see cookbook §C1 in the roadmap).
+2. Drop the iOS client ID into `ios/Runner/Info.plist` and the Android client ID into `android/app/build.gradle.kts` per `google_sign_in` docs. Reference: `_workspace/03_frontend/README_flutter.md`.
+3. Set `GOOGLE_CLIENT_ID` on the API to the **Web/Server** client ID — this is the audience the server verifies ID tokens against.
+4. Run the app with `--dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true` to surface the Google button.
 
 > The Flutter app **never** holds a client secret, and neither does the API: the ID-token verification flow used here does not require one. SPEC invariant — verified by qa-inspector.
 
-## 9. Known deferred items (MVP gaps)
+## 9. Vendor-gated features
 
-These passed the integration QA as MAJORs, deferred to v1.1:
+Phase 0–7 of the post-MVP roadmap shipped end-to-end. Every external-vendor integration is implemented behind a feature flag that reads the relevant env var; leaving the var empty makes the feature gracefully OFF.
 
-- **Photo storage** — `POST /v1/check-ins/{id}/photos` takes a URL reference; the actual upload path (presigned-URL pattern with S3 / GCS / R2) is not wired. Flutter has `image_picker` ready but does not yet upload.
-- **SMTP** — verification email is written to the API log in dev. Wire `SMTP_*` env vars to a real provider before any public deploy.
-- **Refresh tokens (v1.1, shipped Phase 2)** — short-lived access tokens (`JWT_TTL=15m`) plus rotating refresh tokens with re-use detection. `POST /v1/auth/refresh` rotates the pair; `POST /v1/auth/logout` revokes one or all refresh tokens for the user. The raw refresh secret is hashed (SHA-256) before persistence; the DB stores only the digest.
+| Feature | Phase | Gate | OFF behavior |
+|---|---|---|---|
+| Refresh tokens + Google OAuth | 2 | `GOOGLE_CLIENT_ID` (server) + `--dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true` (client) | Email/password login still works; Google button is hidden when disabled. Cookbook §C1. |
+| Photo storage (Cloudflare R2 presigned URLs) | 3 | `R2_*` env block | `POST /v1/uploads/photo-presign` → `503 STORAGE_DISABLED`. Cookbook §C2. |
+| Verification + change-email outbound mail (Resend) | 3 | `RESEND_API_KEY` + `EMAIL_FROM` | LogMailer logs the rendered template + link at INFO. Cookbook §C3. |
+| OTel + Sentry (Go + Flutter) | 1 | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` + `SENTRY_DSN` | SDKs never initialize; no spans/events emitted. Cookbook §C4. |
+| Venue tag (Foursquare Places API) | 4 | `FOURSQUARE_API_KEY` | `GET /v1/venues/search` → `503 VENUE_SEARCH_DISABLED`. Check-in `venue.foursquare_id` upsert works without the key. Cookbook §C5. |
+| Admin web client hosting (Cloudflare Pages) | 5 | Pages project + `VITE_API_BASE_URL` | Admin client compiles locally; deployment uses any static host. Cookbook §C6. |
 
-See `_workspace/04_qa/qa_report_final.md` for the full punch list.
+The QA punch lists per phase live at `_workspace/04_qa/qa_report_phase{0..7}*.md` (per-layer + final). The historical MVP report is `_workspace/04_qa/qa_report_final.md`.
 
 ## 10. Verification — full integration smoke
 
@@ -225,17 +240,34 @@ make check             Build + unit-test backend, integration when INTEGRATION_D
 
 ## 12. Production hardening checklist (post-MVP)
 
-- [ ] Managed Postgres (RDS / Cloud SQL / Neon) with PITR
-- [ ] Real `JWT_SECRET` from secret manager, not env file
+Shipped end-to-end (implementation present in the repo):
+
+- [x] Rate limiting on `POST /v1/auth/*` *(token-bucket per IP, 5 rps / burst 10; per-user + per-IP layered; Phase 1)*
+- [x] Background job runner *(in-process scheduler at `internal/jobs/`: username-hold cleanup, `avg_rating` sweep, expired email-verification cleanup, photo-orphan cleanup; Phase 1 + 3)*
+- [x] Refresh-token rotation with family revocation + re-use detection *(Phase 2)*
+- [x] Flutter Sentry SDK *(`sentry_flutter ^9.20.0`; Phase 1, no-op when DSN empty)*
+- [x] Photo storage presigned-URL handler *(`internal/storage/r2.go` + `POST /v1/uploads/photo-presign`; Phase 3, gated on `R2_*` env)*
+- [x] Outbound mail with HTML/text templates per locale *(`internal/email/`; Phase 3, gated on `RESEND_API_KEY`)*
+- [x] Optional venue tagging via Foursquare *(`internal/foursquare/`; Phase 4, gated on `FOURSQUARE_API_KEY`)*
+- [x] Admin web client + RBAC *(React 19 / Vite 6 at `_workspace/05_admin/`; `RequireRole` middleware; Phase 5, hosting gated on Cloudflare Pages project)*
+- [x] Public collections + flat comments + admin moderation *(Phase 6)*
+- [x] HTTP `Cache-Control` + strong ETag + LRU + singleflight on read-heavy routes; `cache_requests_total` Prom metric + Grafana panel JSON *(Phase 7)*
+
+Vendor credentials still owed by the operator (flip-the-switch only):
+
+- [ ] Google OAuth client IDs (web + iOS + Android) — cookbook §C1
+- [ ] Cloudflare R2 bucket + API token — cookbook §C2
+- [ ] Resend API key + verified `EMAIL_FROM` domain — cookbook §C3
+- [ ] Sentry DSNs + OTLP endpoint/headers — cookbook §C4
+- [ ] Foursquare Places API key — cookbook §C5
+- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6
+
+Infra outside the codebase:
+
+- [ ] Managed Postgres 18 (RDS / Cloud SQL / Neon) with PITR
+- [ ] `JWT_SECRET` from a secret manager, not env file
 - [ ] TLS termination (load balancer or reverse proxy)
 - [ ] `sslmode=require` in `DATABASE_URL`
-- [ ] S3 (or compat) bucket + presigned-URL endpoint for photos
-- [ ] Real SMTP (SES / SendGrid / Postmark)
 - [ ] CDN for beverage label images
-- [ ] Structured log shipping (slog → Loki/Datadog)
-- [x] Rate limiting on `POST /v1/auth/*` *(token bucket per IP, 5 rps / burst 10; see §3 table)*
-- [x] Background job runner for: 30-day username hold cleanup, beverage `avg_rating` integrity sweep, expired email-verification cleanup *(in-process scheduler at `internal/jobs/`)*
-- [ ] Crash reporting in Flutter (Sentry / Crashlytics)
-- [ ] OTLP endpoint provisioned (`OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` set in production)
-- [ ] Sentry project provisioned (`SENTRY_DSN` set in production)
-- [ ] `APP_VERSION` populated per deploy (release tag / git SHA) so OTel + Sentry can group by version
+- [ ] Structured log shipping (slog → Loki / Datadog)
+- [ ] `APP_VERSION` populated per deploy (release tag / git SHA) so OTel + Sentry group by version

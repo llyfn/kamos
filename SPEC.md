@@ -104,7 +104,7 @@ A check-in is a user's log entry for a specific beverage at a specific moment.
 | Field | Required | Notes |
 |-------|----------|-------|
 | Beverage | Yes | Selected from the catalog via search |
-| Rating | No | 1.0–5.0 in **0.5 steps** (→ §4.2) |
+| Rating | No | 0.5–5.0 in **0.5 steps** (→ §4.2) |
 | Review text | No | Up to 500 chars |
 | Flavor tags | No | Multi-select from predefined taxonomy (→ §4.3) |
 | Photos | No | Up to **4 photos** per check-in |
