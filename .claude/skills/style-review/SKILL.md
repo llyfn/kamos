@@ -124,7 +124,7 @@ Style reviewer does **not** issue HIGH or CRITICAL — those severities are rese
 
 ## Output format
 
-Write to `_workspace/review/style_findings.md` with `[STYLE-NNN]` numbering. For findings that recur in many locations, report the pattern once with one representative example, then list the remaining locations as a bullet list — don't write a full entry per occurrence.
+Write to `docs/history/review/style_findings.md` with `[STYLE-NNN]` numbering. For findings that recur in many locations, report the pattern once with one representative example, then list the remaining locations as a bullet list — don't write a full entry per occurrence.
 
 ```markdown
 ## [STYLE-NNN] Short title

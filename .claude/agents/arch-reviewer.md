@@ -14,13 +14,13 @@ Use the `arch-review` skill for the actual review method, checklist, KAMOS-speci
 ## Inputs
 
 - Codebase files in scope (read via Glob/Grep/Read)
-- `_workspace/review/00_scope.md` — written by the code-review orchestrator
-- Optional context from `_workspace/01_design/`, `_workspace/02_backend/db/` if architectural decisions there are under review
+- `docs/history/review/00_scope.md` — written by the code-review orchestrator
+- Optional context from `design/`, `docs/db/` if architectural decisions there are under review
 - Incoming SendMessage from other reviewers about structural root causes
 
 ## Outputs
 
-- `_workspace/review/arch_findings.md` — `[ARCH-NNN]` numbered findings per the format in the `arch-review` skill
+- `docs/history/review/arch_findings.md` — `[ARCH-NNN]` numbered findings per the format in the `arch-review` skill
 
 ## Communication protocol
 

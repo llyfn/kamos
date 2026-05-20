@@ -10,7 +10,7 @@ Implements features in the KAMOS Flutter app: screens, providers, navigation, AP
 ## Project structure
 
 ```
-frontend/                   (or _workspace/03_frontend/ if frontend/ doesn't exist)
+frontend/
 ├── lib/
 │   ├── main.dart
 │   ├── app/                — app widget, router, theme, providers
@@ -24,7 +24,7 @@ frontend/                   (or _workspace/03_frontend/ if frontend/ doesn't exi
 
 Each feature folder contains: `screens/`, `widgets/`, `providers/`, `repositories/`.
 
-If `frontend/` exists at repo root, write there. Otherwise write to `_workspace/03_frontend/`. Never both.
+Write production code to `frontend/`. There is no workspace fallback.
 
 ## SPEC invariants the app must respect
 

@@ -1,11 +1,11 @@
 ---
 name: design-wireframe
-description: "KAMOS UX/UI design skill. Use this to extend the design system at _workspace/01_design/: tokens (colors_and_type.css), brand document (README.md), mobile UI kit (HTML/JSX), and primitive previews. Invoke whenever design work, wireframing, screen layout, navigation flow, token changes, voice/copy decisions, or design system work is requested."
+description: "KAMOS UX/UI design skill. Use this to extend the design system at design/: tokens (colors_and_type.css), brand document (README.md), mobile UI kit (HTML/JSX), and primitive previews. Invoke whenever design work, wireframing, screen layout, navigation flow, token changes, voice/copy decisions, or design system work is requested."
 ---
 
 # Design Wireframe Skill
 
-Extends the existing KAMOS design system at `_workspace/01_design/`. The system is already established — your job is to maintain it, not redesign it.
+Extends the existing KAMOS design system at `design/`. The system is already established — your job is to maintain it, not redesign it.
 
 ## Authoritative artifacts
 
@@ -13,11 +13,11 @@ Treat the existing files as canonical. If you change a decision, change it here 
 
 | File | Role |
 |---|---|
-| `_workspace/01_design/README.md` | Brand + content fundamentals + visual foundations + iconography + INDEX + open questions. Single source of truth for voice, palette, type, motion, icon rules. |
-| `_workspace/01_design/colors_and_type.css` | All design tokens: colors (Japanese-blue palette + accents + semantic), type scale, 4-px spacing scale, radii, shadows, motion (`--ease-*`, `--dur-*`), layout widths. The only place hex / sp / dp / ms live. |
-| `_workspace/01_design/preview/*.html` | One file per primitive — `buttons`, `tags-chips`, `beverage-card`, `check-in-card`, `type-display`, `type-body`, `colors-{blues,neutrals,semantic,accents}`, `spacing-scale`, `radii`, `elevation`, `iconography`, `form-inputs`, `logo`. |
-| `_workspace/01_design/ui_kits/mobile/index.html` | Demo entrypoint: renders the live 5-tab phone plus deep screens via JSX. |
-| `_workspace/01_design/ui_kits/mobile/components/*.jsx` | `Primitives`, `Shell`, `FeedScreen`, `SearchScreen`, `BeverageScreen`, `CheckInScreen`, `ProfileLists`, `data`, plus `ios-frame.jsx`. |
+| `design/README.md` | Brand + content fundamentals + visual foundations + iconography + INDEX + open questions. Single source of truth for voice, palette, type, motion, icon rules. |
+| `design/colors_and_type.css` | All design tokens: colors (Japanese-blue palette + accents + semantic), type scale, 4-px spacing scale, radii, shadows, motion (`--ease-*`, `--dur-*`), layout widths. The only place hex / sp / dp / ms live. |
+| `design/preview/*.html` | One file per primitive — `buttons`, `tags-chips`, `beverage-card`, `check-in-card`, `type-display`, `type-body`, `colors-{blues,neutrals,semantic,accents}`, `spacing-scale`, `radii`, `elevation`, `iconography`, `form-inputs`, `logo`. |
+| `design/ui_kits/mobile/index.html` | Demo entrypoint: renders the live 5-tab phone plus deep screens via JSX. |
+| `design/ui_kits/mobile/components/*.jsx` | `Primitives`, `Shell`, `FeedScreen`, `SearchScreen`, `BeverageScreen`, `CheckInScreen`, `ProfileLists`, `data`, plus `ios-frame.jsx`. |
 
 Do not introduce Markdown-only wireframes / spec / token files. Wireframes are runnable JSX, tokens are CSS variables.
 
@@ -41,7 +41,7 @@ Do not introduce Markdown-only wireframes / spec / token files. Wireframes are r
 
 ### 1. Read before writing
 
-Always read `_workspace/01_design/README.md` and `colors_and_type.css` first. The decision you're about to make is likely already documented — either reuse it or, if it must change, change it in the canonical file.
+Always read `design/README.md` and `colors_and_type.css` first. The decision you're about to make is likely already documented — either reuse it or, if it must change, change it in the canonical file.
 
 ### 2. Token changes (rare)
 

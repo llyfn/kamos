@@ -82,7 +82,7 @@ grep -rn "log\.\|slog\.\|fmt\.Print" backend/ | grep -i "password\|token\|secret
 
 ## Output format
 
-Write to `_workspace/review/security_findings.md` with `[SEC-NNN]` numbering. Always include an attack scenario — abstract findings without exploitation context can't be triaged.
+Write to `docs/history/review/security_findings.md` with `[SEC-NNN]` numbering. Always include an attack scenario — abstract findings without exploitation context can't be triaged.
 
 ```markdown
 ## [SEC-NNN] Short title

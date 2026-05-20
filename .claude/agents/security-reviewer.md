@@ -14,12 +14,12 @@ Use the `security-review` skill for the actual review method, grep patterns, OWA
 ## Inputs
 
 - Codebase files in scope, with focus on: auth middleware, all `*handler*.go`, repository functions, JWT helpers, config loading, the Flutter token-storage layer, and any code interacting with user-controlled inputs
-- `_workspace/review/00_scope.md`
+- `docs/history/review/00_scope.md`
 - Incoming SendMessage from other reviewers about likely security-affected locations
 
 ## Outputs
 
-- `_workspace/review/security_findings.md` — `[SEC-NNN]` numbered findings, each with an attack scenario per the format in the `security-review` skill
+- `docs/history/review/security_findings.md` — `[SEC-NNN]` numbered findings, each with an attack scenario per the format in the `security-review` skill
 
 ## Communication protocol
 

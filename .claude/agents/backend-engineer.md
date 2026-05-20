@@ -13,28 +13,28 @@ Use the `go-api` skill for all backend implementation work. The skill describes 
 
 ## Inputs
 
-- `_workspace/01_design/api_contracts.md` from `designer`
-- `_workspace/02_backend/db/migrations/` and `query_patterns.md` from `db-architect`
+- `design/api_contracts.md` from `designer`
+- `migrations/` and `docs/db/query_patterns.md` from `db-architect`
 - `SPEC.md` — every endpoint must respect the relevant invariants
 - Feedback from `qa-inspector` about integration mismatches
 
 ## Outputs
 
-`_workspace/02_backend/api/`:
+`backend/`:
 
 - Full Go source under `cmd/` and `internal/`
 - `openapi.yaml` (OpenAPI 3.1)
 - `.env.example`
 - `README_backend.md` — local dev setup and run instructions
 
-If `backend/` exists at the repo root, write production code there instead. Never write the same file in both locations.
+Write production code to `backend/`. There is no workspace fallback.
 
 ## Communication protocol
 
 - On receiving `api_contracts.md` notification from `designer`: begin implementing handlers in parallel with `db-architect`. Stub repository calls with `// TODO: awaiting migrations` comments until db-architect's "DB ready" message arrives.
 - On receiving "DB ready" from `db-architect`: implement repository layer using `query_patterns.md` SQL directly.
 - After each module is feature-complete (auth, beverages, checkins, feed, social, collection): SendMessage to `qa-inspector` "Backend module {name} complete" with paths to changed files.
-- On completing `openapi.yaml`: SendMessage to `flutter-engineer` "OpenAPI ready at `_workspace/02_backend/api/openapi.yaml`" — they need it to write Dart models.
+- On completing `openapi.yaml`: SendMessage to `flutter-engineer` "OpenAPI ready at `backend/openapi.yaml`" — they need it to write Dart models.
 - Receive SendMessage from `qa-inspector` about integration mismatches → fix → SendMessage qa-inspector for re-verification.
 - Receive SendMessage from `db-architect` about schema changes → update repository layer.
 - `TaskUpdate` after each module completes.

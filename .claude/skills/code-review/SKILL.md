@@ -13,10 +13,10 @@ Coordinates four parallel specialist reviewers and synthesizes their findings in
 
 | Reviewer | Subagent type | Domain | Skill | Output |
 |---|---|---|---|---|
-| arch-reviewer | `arch-reviewer` | Architecture & structure | `arch-review` | `_workspace/review/arch_findings.md` |
-| security-reviewer | `security-reviewer` | OWASP & auth | `security-review` | `_workspace/review/security_findings.md` |
-| perf-reviewer | `perf-reviewer` | Performance & scalability | `perf-review` | `_workspace/review/perf_findings.md` |
-| style-reviewer | `style-reviewer` | Maintainability | `style-review` | `_workspace/review/style_findings.md` |
+| arch-reviewer | `arch-reviewer` | Architecture & structure | `arch-review` | `docs/history/review/arch_findings.md` |
+| security-reviewer | `security-reviewer` | OWASP & auth | `security-review` | `docs/history/review/security_findings.md` |
+| perf-reviewer | `perf-reviewer` | Performance & scalability | `perf-review` | `docs/history/review/perf_findings.md` |
+| style-reviewer | `style-reviewer` | Maintainability | `style-review` | `docs/history/review/style_findings.md` |
 
 This skill is distinct from `qa-inspect`:
 
@@ -33,8 +33,8 @@ When in doubt, run both — they don't overlap.
    - **Full codebase** — everything under `backend/`, `frontend/`, `lib/`, `migrations/`
    - **Specific path** — only the named directory or files
    - **PR diff** — only the changed files (user provides the list or a git ref)
-2. Create `_workspace/review/`.
-3. Write `_workspace/review/00_scope.md`:
+2. Ensure `docs/history/review/` exists.
+3. Write `docs/history/review/00_scope.md`:
    ```
    Scope: full | path | diff
    Target: {path or file list}
@@ -52,25 +52,25 @@ TeamCreate(
       name: "arch-reviewer",
       subagent_type: "arch-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md. Use the arch-review skill. Write findings to _workspace/review/arch_findings.md. If you find an issue with security implications (e.g., auth scattered across layers), SendMessage to security-reviewer with the title and file:line so it can be cross-referenced. If you find one with perf implications, SendMessage to perf-reviewer. TaskUpdate to completed when done."
+      prompt: "Read docs/history/review/00_scope.md. Use the arch-review skill. Write findings to docs/history/review/arch_findings.md. If you find an issue with security implications (e.g., auth scattered across layers), SendMessage to security-reviewer with the title and file:line so it can be cross-referenced. If you find one with perf implications, SendMessage to perf-reviewer. TaskUpdate to completed when done."
     },
     {
       name: "security-reviewer",
       subagent_type: "security-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md. Use the security-review skill. Write findings to _workspace/review/security_findings.md. If a vulnerability has an architectural root cause, SendMessage to arch-reviewer. If a fix would have perf consequences, SendMessage to perf-reviewer. TaskUpdate to completed when done."
+      prompt: "Read docs/history/review/00_scope.md. Use the security-review skill. Write findings to docs/history/review/security_findings.md. If a vulnerability has an architectural root cause, SendMessage to arch-reviewer. If a fix would have perf consequences, SendMessage to perf-reviewer. TaskUpdate to completed when done."
     },
     {
       name: "perf-reviewer",
       subagent_type: "perf-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md. Use the perf-review skill. Write findings to _workspace/review/perf_findings.md. If a bottleneck has a security implication (e.g., missing rate limiting enabling DoS), SendMessage to security-reviewer. If it's rooted in architecture, SendMessage to arch-reviewer. TaskUpdate to completed when done."
+      prompt: "Read docs/history/review/00_scope.md. Use the perf-review skill. Write findings to docs/history/review/perf_findings.md. If a bottleneck has a security implication (e.g., missing rate limiting enabling DoS), SendMessage to security-reviewer. If it's rooted in architecture, SendMessage to arch-reviewer. TaskUpdate to completed when done."
     },
     {
       name: "style-reviewer",
       subagent_type: "style-reviewer",
       model: "opus",
-      prompt: "Read _workspace/review/00_scope.md. Use the style-review skill. Write findings to _workspace/review/style_findings.md. When a style issue masks a structural problem, SendMessage to arch-reviewer. When a style issue could mask a security issue (e.g., swallowed auth error), SendMessage to security-reviewer. TaskUpdate to completed when done."
+      prompt: "Read docs/history/review/00_scope.md. Use the style-review skill. Write findings to docs/history/review/style_findings.md. When a style issue masks a structural problem, SendMessage to arch-reviewer. When a style issue could mask a security issue (e.g., swallowed auth error), SendMessage to security-reviewer. TaskUpdate to completed when done."
     }
   ]
 )
@@ -92,7 +92,7 @@ When all four tasks are `completed`:
 1. `TeamDelete("review-team")`
 2. Read all four findings files.
 3. Build a cross-reference map: any finding cited at the same `file:line` by two reviewers is a cross-domain finding.
-4. Write `_workspace/review/REVIEW_REPORT.md`.
+4. Write `docs/history/review/REVIEW_REPORT.md`.
 
 ## Consolidated report format
 
@@ -140,10 +140,10 @@ Reviewers: arch · security · perf · style
 
 ## Full Findings
 
-- Architecture: `_workspace/review/arch_findings.md`
-- Security: `_workspace/review/security_findings.md`
-- Performance: `_workspace/review/perf_findings.md`
-- Style: `_workspace/review/style_findings.md`
+- Architecture: `docs/history/review/arch_findings.md`
+- Security: `docs/history/review/security_findings.md`
+- Performance: `docs/history/review/perf_findings.md`
+- Style: `docs/history/review/style_findings.md`
 ```
 
 ## Severity normalization

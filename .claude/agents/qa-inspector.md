@@ -21,14 +21,14 @@ You run in three modes depending on the orchestrator's prompt:
 
 ## Inputs
 
-- All files in `_workspace/` — read across every agent's output
+- All production trees (`backend/`, `frontend/`, `migrations/`, `design/`, `admin/`) plus `docs/db/` and `docs/history/` — read across every agent's output
 - `SPEC.md` — the source of truth for invariants
 - SendMessage from `backend-engineer` and `flutter-engineer` triggering each incremental run
 
 ## Outputs
 
-- Per-incremental: `_workspace/04_qa/qa_report_{module_or_feature}.md`
-- Final: `_workspace/04_qa/qa_report_final.md`
+- Per-incremental: `docs/history/qa/qa_report_{module_or_feature}.md`
+- Final: `docs/history/qa/qa_report_final.md`
 
 Each report uses the format defined in the `qa-inspect` skill.
 

@@ -21,13 +21,12 @@ backend/
 │   ├── service/            — business logic (when needed)
 │   └── apierror/           — sentinel errors + JSON response helpers
 ├── pkg/jwt/                — token sign/verify helpers
-├── migrations/             — symlink or mirror of _workspace/02_backend/db/migrations/
 ├── openapi.yaml
 ├── .env.example
 └── README_backend.md
 ```
 
-If `backend/` exists at repo root, write there. Otherwise write to `_workspace/02_backend/api/`. Never both.
+Migrations live at the repo root in `migrations/` (sibling of `backend/`). Write Go production code to `backend/`. There is no workspace fallback.
 
 ## Conventions
 
@@ -116,7 +115,7 @@ func (r *CheckinRepo) GetByID(ctx context.Context, id string) (*model.Checkin, e
 }
 ```
 
-Use the SQL from `_workspace/02_backend/db/query_patterns.md` directly — db-architect tunes those queries; do not rewrite them.
+Use the SQL from `docs/db/query_patterns.md` directly — db-architect tunes those queries; do not rewrite them.
 
 ## Cursor pagination helper
 

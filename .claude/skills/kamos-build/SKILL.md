@@ -13,11 +13,11 @@ Coordinates the five KAMOS agents through a phased pipeline (single-agent → fa
 
 | Agent | Subagent type | Role | Skill | Output |
 |---|---|---|---|---|
-| designer | `designer` | Wireframes, design tokens, API contracts | `design-wireframe` | `_workspace/01_design/` |
-| db-architect | `db-architect` | PostgreSQL schema + migrations | `db-schema` | `_workspace/02_backend/db/` |
-| backend-engineer | `backend-engineer` | Go REST API + OpenAPI spec | `go-api` | `_workspace/02_backend/api/` |
-| flutter-engineer | `flutter-engineer` | Flutter mobile app | `flutter-feature` | `_workspace/03_frontend/` |
-| qa-inspector | `qa-inspector` | Cross-layer integration QA | `qa-inspect` | `_workspace/04_qa/` |
+| designer | `designer` | Wireframes, design tokens, API contracts | `design-wireframe` | `design/` |
+| db-architect | `db-architect` | PostgreSQL schema + migrations | `db-schema` | `migrations/` + `docs/db/` |
+| backend-engineer | `backend-engineer` | Go REST API + OpenAPI spec | `go-api` | `backend/` |
+| flutter-engineer | `flutter-engineer` | Flutter mobile app | `flutter-feature` | `frontend/` |
+| qa-inspector | `qa-inspector` | Cross-layer integration QA | `qa-inspect` | `docs/history/qa/` |
 
 ## Pipeline overview
 
@@ -39,8 +39,8 @@ Phase 5 ── deployment artifacts (DEPLOYMENT.md, etc.)
 ### Phase 1 — preparation
 
 1. Read `README.md` and `SPEC.md` to extract MVP scope.
-2. Create workspace directories: `_workspace/01_design/`, `_workspace/02_backend/db/`, `_workspace/02_backend/api/`, `_workspace/03_frontend/`, `_workspace/04_qa/`.
-3. Write `_workspace/00_brief.md` with: feature list, MVP scope, out-of-scope items (mirror `SPEC §9`), tech constraints.
+2. Ensure the production directories exist: `design/`, `migrations/`, `docs/db/`, `backend/`, `frontend/`, `docs/history/qa/`.
+3. Write `docs/history/00_brief.md` with: feature list, MVP scope, out-of-scope items (mirror `SPEC §9`), tech constraints.
 
 ### Phase 2 — design (single agent)
 
@@ -49,7 +49,7 @@ Agent(
   name: "designer",
   subagent_type: "designer",
   model: "opus",
-  prompt: "Read _workspace/00_brief.md, SPEC.md, and README.md. Use the design-wireframe skill to produce all four design deliverables in _workspace/01_design/: wireframes.md, design_tokens.md, screen_specs.md, api_contracts.md. Honor the SPEC invariants: category terminology per §2.1, rating in 0.5 steps per §4.2, cursor pagination per §5.2, default collections (Inventory, Wishlist) per §6.1. On completion: TaskUpdate to completed."
+  prompt: "Read docs/history/00_brief.md, SPEC.md, and README.md. Use the design-wireframe skill to produce all four design deliverables in design/: wireframes.md, design_tokens.md, screen_specs.md, api_contracts.md. Honor the SPEC invariants: category terminology per §2.1, rating in 0.5 steps per §4.2, cursor pagination per §5.2, default collections (Inventory, Wishlist) per §6.1. On completion: TaskUpdate to completed."
 )
 ```
 
@@ -65,19 +65,19 @@ TeamCreate(
       name: "db-architect",
       subagent_type: "db-architect",
       model: "opus",
-      prompt: "Read _workspace/01_design/api_contracts.md and SPEC.md. Use the db-schema skill to design the full PostgreSQL schema and write migrations to _workspace/02_backend/db/. Required invariants: rating NUMERIC(3,1) with CHECK 0.5..5.0; deleted_at TIMESTAMPTZ on users, check_ins, collections; default Inventory + Wishlist on user creation (handle in service layer or via trigger — document the choice). When migrations/ and query_patterns.md are ready: SendMessage to backend-engineer 'DB ready'."
+      prompt: "Read design/api_contracts.md and SPEC.md. Use the db-schema skill to design the full PostgreSQL schema, write migrations to migrations/, and write schema/index/query-pattern docs to docs/db/. Required invariants: rating NUMERIC(3,1) with CHECK 0.5..5.0; deleted_at TIMESTAMPTZ on users, check_ins, collections; default Inventory + Wishlist on user creation (handle in service layer or via trigger — document the choice). When migrations/ and docs/db/query_patterns.md are ready: SendMessage to backend-engineer 'DB ready'."
     },
     {
       name: "backend-engineer",
       subagent_type: "backend-engineer",
       model: "opus",
-      prompt: "Read _workspace/01_design/api_contracts.md and SPEC.md. Use the go-api skill to implement Go API endpoints. Wait for SendMessage 'DB ready' from db-architect before implementing repository layer. Required invariants: cursor pagination on all list endpoints (next_cursor + has_more); JWT middleware applied to all non-public routes; rating field as numeric with one decimal. After each module is feature-complete (auth, beverages, checkins, feed, social, collection): SendMessage to qa-inspector 'Backend module {name} complete' with paths to changed files."
+      prompt: "Read design/api_contracts.md and SPEC.md. Use the go-api skill to implement Go API endpoints in backend/. Wait for SendMessage 'DB ready' from db-architect before implementing repository layer. Required invariants: cursor pagination on all list endpoints (next_cursor + has_more); JWT middleware applied to all non-public routes; rating field as numeric with one decimal. After each module is feature-complete (auth, beverages, checkins, feed, social, collection): SendMessage to qa-inspector 'Backend module {name} complete' with paths to changed files."
     },
     {
       name: "qa-inspector",
       subagent_type: "qa-inspector",
       model: "opus",
-      prompt: "Use the qa-inspect skill. Monitor for SendMessage 'Backend module {name} complete' from backend-engineer. For each notification: read the named files, cross-check Go handler response shapes against api_contracts.md, verify DB column names match Go struct json tags, check index coverage for the module's query patterns, run the SPEC invariant grep checks. Write qa_report_{module}.md to _workspace/04_qa/. SendMessage BLOCKER and MAJOR issues to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix. After re-verification of fixes, mark issues resolved."
+      prompt: "Use the qa-inspect skill. Monitor for SendMessage 'Backend module {name} complete' from backend-engineer. For each notification: read the named files, cross-check Go handler response shapes against api_contracts.md, verify DB column names match Go struct json tags, check index coverage for the module's query patterns, run the SPEC invariant grep checks. Write qa_report_{module}.md to docs/history/qa/. SendMessage BLOCKER and MAJOR issues to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix. After re-verification of fixes, mark issues resolved."
     }
   ]
 )
@@ -114,13 +114,13 @@ TeamCreate(
       name: "flutter-engineer",
       subagent_type: "flutter-engineer",
       model: "opus",
-      prompt: "Read _workspace/01_design/screen_specs.md, design_tokens.md, _workspace/02_backend/api/openapi.yaml, and SPEC.md. Use the flutter-feature skill to implement the Flutter app in _workspace/03_frontend/ (or frontend/ if it exists at repo root). Implement in this order: 1) app scaffold + router + theme, 2) auth, 3) beverage browse + detail, 4) check-in flow, 5) feed, 6) profile + follow, 7) collection. Required invariants: JWT in flutter_secure_storage (NEVER SharedPreferences); category strings exactly as SPEC §2.1; 0.5-step rating widget; cursor pagination consuming next_cursor; all three ARB files updated together. After each feature group: SendMessage to qa-inspector 'Flutter feature {name} complete' with paths."
+      prompt: "Read design/screen_specs.md, design/design_tokens.md, backend/openapi.yaml, and SPEC.md. Use the flutter-feature skill to implement the Flutter app in frontend/. Implement in this order: 1) app scaffold + router + theme, 2) auth, 3) beverage browse + detail, 4) check-in flow, 5) feed, 6) profile + follow, 7) collection. Required invariants: JWT in flutter_secure_storage (NEVER SharedPreferences); category strings exactly as SPEC §2.1; 0.5-step rating widget; cursor pagination consuming next_cursor; all three ARB files updated together. After each feature group: SendMessage to qa-inspector 'Flutter feature {name} complete' with paths."
     },
     {
       name: "qa-inspector",
       subagent_type: "qa-inspector",
       model: "opus",
-      prompt: "Use the qa-inspect skill. Monitor for SendMessage 'Flutter feature {name} complete' from flutter-engineer. For each notification: read the named files, cross-check Flutter repository response parsing against openapi.yaml, verify go_router paths correspond to real screen files, verify all three ARB files have matching keys for the feature, run SPEC invariant grep checks (especially category strings and SharedPreferences). Write qa_report_{feature}.md to _workspace/04_qa/. SendMessage BLOCKER and MAJOR issues to flutter-engineer with file:line and specific fix."
+      prompt: "Use the qa-inspect skill. Monitor for SendMessage 'Flutter feature {name} complete' from flutter-engineer. For each notification: read the named files, cross-check Flutter repository response parsing against openapi.yaml, verify go_router paths correspond to real screen files, verify all three ARB files have matching keys for the feature, run SPEC invariant grep checks (especially category strings and SharedPreferences). Write qa_report_{feature}.md to docs/history/qa/. SendMessage BLOCKER and MAJOR issues to flutter-engineer with file:line and specific fix."
     }
   ]
 )
@@ -152,7 +152,7 @@ Agent(
   name: "qa-inspector-final",
   subagent_type: "qa-inspector",
   model: "opus",
-  prompt: "Use the qa-inspect skill in 'final' mode. Read all files in _workspace/. Verify end-to-end: (1) every endpoint in openapi.yaml is consumed in Flutter repositories; (2) every go_router path corresponds to a real screen file; (3) all three ARB files are consistent and complete; (4) category terminology in all three locales matches SPEC §2.1 exactly; (5) JWT storage uses flutter_secure_storage; (6) cursor pagination is end-to-end (handler → openapi → repository → UI); (7) soft-delete columns and filters are present per SPEC; (8) default collections are created on user registration; (9) photo cap of 4 enforced both client and server; (10) review text 500-char cap enforced both sides. Write qa_report_final.md with PASS/FAIL summary at the top, then per-category findings."
+  prompt: "Use the qa-inspect skill in 'final' mode. Read backend/, frontend/, migrations/, design/, docs/db/, and SPEC.md. Verify end-to-end: (1) every endpoint in openapi.yaml is consumed in Flutter repositories; (2) every go_router path corresponds to a real screen file; (3) all three ARB files are consistent and complete; (4) category terminology in all three locales matches SPEC §2.1 exactly; (5) JWT storage uses flutter_secure_storage; (6) cursor pagination is end-to-end (handler → openapi → repository → UI); (7) soft-delete columns and filters are present per SPEC; (8) default collections are created on user registration; (9) photo cap of 4 enforced both client and server; (10) review text 500-char cap enforced both sides. Write docs/history/qa/qa_report_final.md with PASS/FAIL summary at the top, then per-category findings."
 )
 ```
 
@@ -168,7 +168,7 @@ After final QA passes:
 
 ## Path rule
 
-If `backend/` or `frontend/` exists at the repo root, agents write production code there. Otherwise the workspace paths above apply. Agents never write the same file in both locations.
+Agents write production code to `backend/`, `frontend/`, `migrations/`, `design/`, and `admin/` at the repo root; doc artifacts go to `docs/db/` and `docs/history/`. There is no workspace fallback.
 
 ## Communication rules
 
