@@ -314,9 +314,12 @@ func (r *BreweryRepo) List(ctx context.Context, q *string, cursor *string, limit
 	if limit <= 0 {
 		limit = 20
 	}
+	// Stage 5 (PERF-015): beverage_count comes from the denormalized
+	// column on breweries (migration 011) instead of a correlated
+	// subquery per row.
 	const sql = `
 SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
-       (SELECT COUNT(*)::int FROM beverages bv WHERE bv.brewery_id = b.id) AS beverage_count
+       b.beverage_count
 FROM breweries b
 WHERE ($1::text IS NULL OR
        to_tsvector('simple',
@@ -338,7 +341,7 @@ LIMIT $3;`
 func (r *BreweryRepo) Detail(ctx context.Context, id string) (*domain.Brewery, error) {
 	const sql = `
 SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
-       (SELECT COUNT(*)::int FROM beverages bv WHERE bv.brewery_id = b.id) AS beverage_count
+       b.beverage_count
 FROM breweries b WHERE b.id = $1;`
 	row := r.db.QueryRow(ctx, sql, id)
 	out, err := scanBreweryWithCount(row)

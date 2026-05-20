@@ -110,10 +110,9 @@ SELECT
   cat.name_i18n AS category_name_i18n,
   br.id AS brewery_id, br.name_i18n AS brewery_name_i18n, br.region AS brewery_region,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
-  (SELECT COUNT(*) FROM toasts WHERE check_in_id = ci.id) AS toasts,
+  ci.toast_count AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,
-  -- Phase 6a comment_count projection.
-  (SELECT COUNT(*) FROM comments cm WHERE cm.check_in_id = ci.id AND cm.deleted_at IS NULL) AS comment_count
+  ci.comment_count
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
@@ -464,10 +463,9 @@ SELECT
   cat.name_i18n AS category_name_i18n,
   br.id, br.name_i18n, br.region,
   v.id, v.name, v.locality, v.country,
-  (SELECT COUNT(*) FROM toasts WHERE check_in_id = ci.id),
+  ci.toast_count,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
-  -- Phase 6a comment_count.
-  (SELECT COUNT(*) FROM comments cm WHERE cm.check_in_id = ci.id AND cm.deleted_at IS NULL)
+  ci.comment_count
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
