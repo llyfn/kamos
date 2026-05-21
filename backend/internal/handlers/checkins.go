@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/observability"
@@ -101,12 +103,16 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 // given beverage. Cheap (cache size <= 1000) and best-effort —
 // downstream HTTP caches still honor max-age=300 from the
 // Cache-Control header, but in-process readers see fresh data
-// immediately.
+// immediately. Stage 4: also fire a pg_notify so peer replicas bust
+// their copies; the notify is fire-and-forget (silent on nil DB).
 func (h *Handler) invalidateBeverageDetail(beverageID string) {
-	if h.Caches == nil || beverageID == "" {
+	if beverageID == "" {
 		return
 	}
-	h.Caches.BeverageDetail.InvalidatePrefix(beverageID + ":")
+	if h.Caches != nil {
+		h.Caches.BeverageDetail.InvalidatePrefix(beverageID + ":")
+	}
+	cache.NotifyInvalidation(context.Background(), h.DB, h.Log, "beverage:"+beverageID)
 }
 
 // GetCheckin — GET /v1/check-ins/{id}.

@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"strings"
 	"time"
 
 	"github.com/kamos/api/internal/domain"
@@ -75,4 +76,38 @@ func (c *Caches) SetObservers(onHit, onMiss func(name string)) {
 	c.FlavorTags.SetObservers(onHit, onMiss)
 	c.BeverageDetail.SetObservers(onHit, onMiss)
 	c.BreweryDetail.SetObservers(onHit, onMiss)
+}
+
+// InvalidatePrefix is the cross-replica entry point used by the
+// LISTEN/NOTIFY invalidator. It parses the payload (a free-form string
+// from cache.NotifyInvalidation) and routes it to the appropriate
+// typed-cache InvalidatePrefix call.
+//
+// Payload grammar:
+//
+//	"beverage:<id>" → BeverageDetail.InvalidatePrefix(id + ":")
+//	"brewery:<id>"  → BreweryDetail.InvalidatePrefix(id + ":")
+//	"taxonomy"      → Categories.InvalidatePrefix("") + FlavorTags.InvalidatePrefix("")
+//
+// Empty payloads, unknown prefixes, and nil receivers all no-op — the
+// invalidator MUST stay alive across schema drift.
+func (c *Caches) InvalidatePrefix(payload string) {
+	if c == nil || payload == "" {
+		return
+	}
+	switch {
+	case payload == "taxonomy":
+		c.Categories.InvalidatePrefix("")
+		c.FlavorTags.InvalidatePrefix("")
+	case strings.HasPrefix(payload, "beverage:"):
+		id := strings.TrimPrefix(payload, "beverage:")
+		if id != "" {
+			c.BeverageDetail.InvalidatePrefix(id + ":")
+		}
+	case strings.HasPrefix(payload, "brewery:"):
+		id := strings.TrimPrefix(payload, "brewery:")
+		if id != "" {
+			c.BreweryDetail.InvalidatePrefix(id + ":")
+		}
+	}
 }

@@ -555,3 +555,30 @@ The backend can choose to resolve at the API boundary and emit `name` as a flat 
 ## 14. Read patterns NOT explicitly listed
 
 For everything else — edit profile, change email, change password, account deletion, beverage addition request submission — the queries are straightforward single-table writes guarded by the same conventions (soft-delete filter, ownership check, RETURNING for the response shape). The backend can derive them from the column lists in `schema.md` and the CHECK constraints in `migrations/001_initial.sql`.
+
+---
+
+## 15. Cache coherence (Stage 4)
+
+KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass through three coherence tiers:
+
+1. **L1 — per-replica typed `cache.Caches`** (`backend/internal/cache/caches.go`). In-process LRU + TTL for taxonomy, beverage detail, and brewery detail. Each replica holds its own copy; writes invalidate the local copy synchronously.
+2. **L2 — `cache.Backend`** (`backend/internal/cache/backend.go`). Optional shared adapter. Default `in_process` (per-replica only); production multi-replica deploys set `CACHE_BACKEND=redis` + `CACHE_REDIS_URL` for cross-replica visibility. The Redis adapter uses SCAN + UNLINK for prefix busts.
+3. **Cross-replica bus — Postgres `LISTEN/NOTIFY`** on the `kamos_cache_invalidate` channel. Every write path that busts L1 also calls `cache.NotifyInvalidation(ctx, db, log, payload)`. Each replica runs one `cache.Invalidator` goroutine that holds a hijacked pgx connection, listens, and routes arriving payloads to `Caches.InvalidatePrefix`.
+
+**Payload grammar:**
+
+| Payload                 | Effect                                          |
+| ----------------------- | ----------------------------------------------- |
+| `taxonomy`              | Bust `Categories` + `FlavorTags`                |
+| `beverage:<uuid>`       | Bust `BeverageDetail` rows prefixed `<uuid>:`   |
+| `brewery:<uuid>`        | Bust `BreweryDetail` rows prefixed `<uuid>:`    |
+
+**Eventual-consistency window:** the write-path local L1 bust is immediate; peer replicas observe the bust on the order of single-digit milliseconds under nominal load (NOTIFY → backend forwarding → `WaitForNotification` deliver). Combined with HTTP `Cache-Control` ceilings (`max-age=300` on beverages, `max-age=3600` on taxonomy), the cross-replica stale-read ceiling is **sub-second in normal operation, bounded at the HTTP TTL in the pathological case** (e.g. a downed invalidator that hasn't reconnected yet — the loop self-heals with 500ms → 30s exponential backoff).
+
+**Failure modes & guarantees:**
+
+- A failed `NotifyInvalidation` logs `cache_notify_failed` and returns; the local write is already committed and the local replica is already coherent.
+- A disconnected invalidator logs `cache_invalidator_disconnected` and reconnects with backoff. While disconnected, peer replicas drift up to the L1 TTL ceiling on the relevant key (`5m` beverage, `10m` brewery, `1h` taxonomy).
+- Schema additions that introduce new prefixes do NOT crash the invalidator — `Caches.InvalidatePrefix` no-ops on unknown payloads.
+- The pgx connection is hijacked out of the pool (`Conn.Hijack()`) so the listener cannot be silently recycled mid-flight. Closed explicitly during shutdown.

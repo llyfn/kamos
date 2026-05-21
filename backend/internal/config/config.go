@@ -117,6 +117,18 @@ type Config struct {
 	// server (http://localhost:5173). Production requires the explicit
 	// admin domain(s); wildcards are not supported.
 	CORSAllowedOrigins []string
+
+	// Stage 4 — cache backend selection. CACHE_BACKEND chooses between
+	// "in_process" (default; per-replica LRU) and "redis" (multi-replica
+	// coherent). CACHE_REDIS_URL is required when CacheBackend=="redis";
+	// in any other mode it is ignored.
+	//
+	// Production with CacheBackend=="in_process" emits a startup WARN —
+	// see cache.NewBackend. Multi-replica deploys MUST set
+	// CACHE_BACKEND=redis or live with the per-replica eventual-
+	// consistency window driven by the LISTEN/NOTIFY invalidator.
+	CacheBackend  string
+	CacheRedisURL string
 }
 
 // Load reads env vars and returns a Config, erroring on missing required
@@ -148,6 +160,8 @@ func Load() (*Config, error) {
 		EmailFrom:         os.Getenv("EMAIL_FROM"),
 		FoursquareAPIKey:  os.Getenv("FOURSQUARE_API_KEY"),
 		CursorSecret:      os.Getenv("CURSOR_SECRET"),
+		CacheBackend:      getenv("CACHE_BACKEND", "in_process"),
+		CacheRedisURL:     os.Getenv("CACHE_REDIS_URL"),
 	}
 
 	// Access-token TTL. Phase 2 (refresh-tokens): default lowered from 720h
@@ -230,6 +244,13 @@ func Load() (*Config, error) {
 		}
 	} else if c.Env != "production" {
 		c.CORSAllowedOrigins = []string{"http://localhost:5173"}
+	}
+
+	// Stage 4 — cache backend cross-validation. CACHE_BACKEND=redis without
+	// a URL is a misconfiguration; refuse to start so deploys notice on
+	// boot rather than at first cache call.
+	if c.CacheBackend == "redis" && c.CacheRedisURL == "" {
+		return nil, fmt.Errorf("Load: CACHE_REDIS_URL is required when CACHE_BACKEND=redis")
 	}
 	return c, nil
 }

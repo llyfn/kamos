@@ -3,10 +3,12 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
@@ -93,9 +95,13 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 	// detail response shape doesn't actually change (the LRU caches the
 	// brewery row only, not the inline beverages page), so this is
 	// belt-and-braces: if the response ever embeds beverage_count or a
-	// preview, the cache stays consistent.
-	if h.Caches != nil && body.BreweryID != "" {
-		h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
+	// preview, the cache stays consistent. Stage 4: also fire NOTIFY so
+	// peer replicas bust their copies.
+	if body.BreweryID != "" {
+		if h.Caches != nil {
+			h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
+		}
+		cache.NotifyInvalidation(context.Background(), h.DB, h.Log, "brewery:"+body.BreweryID)
 	}
 	httperr.WriteJSON(w, http.StatusOK, map[string]string{
 		"request_id":  requestID,
