@@ -112,6 +112,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/admin-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Admin / moderator sign-in for the React admin client. Validates
+         *     the credentials, asserts the user's role is `moderator` or `admin`,
+         *     and sets three HttpOnly cookies (access, refresh, csrf).
+         *     Response body carries the user's `Me` shape.
+         */
+        post: operations["adminLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/admin-refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Read kamos_admin_refresh cookie, rotate via the same atomic-rotate
+         *     contract as /v1/auth/refresh, and emit fresh Set-Cookie headers
+         *     for access + refresh + csrf. Returns 204.
+         */
+        post: operations["adminRefresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/admin-logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Revoke the kamos_admin_refresh token and clear all three admin
+         *     cookies with Max-Age=-1.
+         */
+        post: operations["adminLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/verify-email": {
         parameters: {
             query?: never;
@@ -981,6 +1044,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/moderation-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Stage 7 (M-8.1). Moderator audit trail. Returns rows from
+         *     `moderation_log` (migration 008), newest first. Moderator or
+         *     admin role. Filter by target_type / target_id (uses
+         *     idx_moderation_log_target) or by moderator_id (uses
+         *     idx_moderation_log_moderator). Cursor pagination on
+         *     (created_at, id) DESC.
+         */
+        get: operations["adminListModerationLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users": {
         parameters: {
             query?: never;
@@ -1242,6 +1329,14 @@ export interface components {
          *     the JSON key is omitted entirely rather than set to `null`. The
          *     exception is `avg_rating`, which is `*float64` without `omitempty` —
          *     it is always present and is `null` when no ratings exist.
+         *
+         *     List endpoints (`GET /v1/beverages`, `GET /v1/breweries/{id}` inline
+         *     beverages page, `GET /v1/search` beverage results) ship a slim
+         *     projection that **omits the i18n JSONB fields `subcategory` and
+         *     `description`** on every row to cut payload size by ~30%. Both
+         *     fields are always present on `BeverageDetail` (the single-item
+         *     detail response). Clients should treat the fields as optional on
+         *     the wire and re-fetch detail when the user opens a beverage.
          */
         Beverage: {
             /** Format: uuid */
@@ -1364,6 +1459,7 @@ export interface components {
             user: components["schemas"]["CheckinUser"];
             rating?: number | null;
             review?: string | null;
+            photos: components["schemas"]["PhotoRef"][];
             /** Format: date-time */
             created_at: string;
         };
@@ -1470,6 +1566,11 @@ export interface components {
         VenueSearchResponse: {
             items: components["schemas"]["FoursquarePlace"][];
         };
+        /**
+         * @description Stage 5: the previous `photo_count` integer was replaced by a
+         *     hydrated `photos` array so feed cards can render the actual
+         *     photo grid without a follow-up request.
+         */
         FeedItem: {
             /** Format: uuid */
             id: string;
@@ -1478,9 +1579,9 @@ export interface components {
             rating?: number | null;
             review?: string | null;
             tags: components["schemas"]["FlavorTag"][];
+            photos: components["schemas"]["PhotoRef"][];
             toasts: number;
             you_toasted: boolean;
-            photo_count: number;
             /** @default 0 */
             comment_count: number;
             /** @description Absent when the check-in has no venue attached. */
@@ -1639,6 +1740,9 @@ export interface components {
         PageOfSearchResult: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["SearchResult"][];
         };
+        PageOfModerationLogEntry: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["ModerationLogEntry"][];
+        };
         /**
          * @description RBAC role from migration 007. Roles live on users.role and are
          *     not embedded in JWT claims, so a demotion takes effect on the
@@ -1700,6 +1804,34 @@ export interface components {
         };
         AdminUserRoleUpdate: {
             role: components["schemas"]["UserRole"];
+        };
+        /**
+         * @description Stage 7 (M-8.1). One row of the audit trail for an admin action.
+         *     Mirrors migration 008's `moderation_log` columns. `notes` is the
+         *     free-form moderator reason (may be null); `metadata` is JSONB
+         *     and varies by action (e.g. `role_change` carries
+         *     {"old_role","new_role"}, `approve` carries {"beverage_id"}).
+         */
+        ModerationLogEntry: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description null when the moderator was hard-purged
+             */
+            moderator_id?: string | null;
+            /** @enum {string} */
+            action: "soft_delete" | "role_change" | "suspend" | "approve" | "reject";
+            /** @enum {string} */
+            target_type: "check_in" | "comment" | "user" | "beverage_request";
+            /** Format: uuid */
+            target_id: string;
+            notes?: string | null;
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: date-time */
+            created_at: string;
         };
         /**
          * @description Phase 6a. Comment row for the moderator review queue. Embeds the
@@ -1919,6 +2051,79 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    adminLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description cookies set; body carries user */
+            200: {
+                headers: {
+                    /** @description kamos_admin_access / kamos_admin_refresh / kamos_admin_csrf */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        user: components["schemas"]["Me"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminRefresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description cookies rotated */
+            204: {
+                headers: {
+                    /** @description refreshed kamos_admin_* cookies */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    adminLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description cookies cleared */
+            204: {
+                headers: {
+                    /** @description kamos_admin_* cookies with Max-Age=-1 */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     verifyEmail: {
@@ -3381,6 +3586,39 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    adminListModerationLog: {
+        parameters: {
+            query?: {
+                target_type?: "check_in" | "comment" | "user" | "beverage_request";
+                target_id?: string;
+                moderator_id?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of moderation log entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["ModerationLogEntry"][];
+                        next_cursor?: string | null;
+                        has_more: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
         };
     };
     adminListUsers: {

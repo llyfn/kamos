@@ -1508,6 +1508,56 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/admin/moderation-log:
+    get:
+      tags: [admin]
+      operationId: adminListModerationLog
+      description: |
+        Stage 7 (M-8.1). Moderator audit trail. Returns rows from
+        `moderation_log` (migration 008), newest first. Moderator or
+        admin role. Filter by target_type / target_id (uses
+        idx_moderation_log_target) or by moderator_id (uses
+        idx_moderation_log_moderator). Cursor pagination on
+        (created_at, id) DESC.
+      parameters:
+        - in: query
+          name: target_type
+          required: false
+          schema: { type: string, enum: [check_in, comment, user, beverage_request] }
+        - in: query
+          name: target_id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: moderator_id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: cursor
+          required: false
+          schema: { type: string }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of moderation log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, has_more]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ModerationLogEntry" }
+                  next_cursor: { type: string, nullable: true }
+                  has_more: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Validation" }
+
   /v1/admin/users:
     get:
       tags: [admin]
@@ -2427,6 +2477,14 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/SearchResult" }
+    PageOfModerationLogEntry:
+      allOf:
+        - $ref: "#/components/schemas/PageBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ModerationLogEntry" }
 
     # ========================================================================
     # Phase 5a — RBAC + admin
@@ -2517,6 +2575,34 @@ components:
       required: [role]
       properties:
         role: { $ref: "#/components/schemas/UserRole" }
+
+    ModerationLogEntry:
+      type: object
+      description: |
+        Stage 7 (M-8.1). One row of the audit trail for an admin action.
+        Mirrors migration 008's `moderation_log` columns. `notes` is the
+        free-form moderator reason (may be null); `metadata` is JSONB
+        and varies by action (e.g. `role_change` carries
+        {"old_role","new_role"}, `approve` carries {"beverage_id"}).
+      required: [id, action, target_type, target_id, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        moderator_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: null when the moderator was hard-purged
+        action: { type: string, enum: [soft_delete, role_change, suspend, approve, reject] }
+        target_type: { type: string, enum: [check_in, comment, user, beverage_request] }
+        target_id: { type: string, format: uuid }
+        notes:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+        created_at: { type: string, format: date-time }
 
     AdminComment:
       type: object
