@@ -57,7 +57,9 @@ RETURNING id, check_in_id, user_id, body, created_at;`
 		return nil, fmt.Errorf("CommentRepo.Create insert: %w", err)
 	}
 
-	// Hydrate the author row for the response.
+	// Hydrate the author row for the response. INSERT cannot succeed with
+	// a NULL user_id (the writer is always the authed caller), so the
+	// JOIN partner here is always present — no LEFT JOIN needed.
 	var u domain.CheckinUser
 	if err := r.db.QueryRow(ctx, `
 SELECT id, username, display_username, display_name, avatar_url
@@ -70,7 +72,7 @@ FROM users WHERE id = $1;`,
 	return &domain.Comment{
 		ID:        id,
 		CheckInID: checkInIDOut,
-		User:      u,
+		User:      &u,
 		Body:      bodyOut,
 		CreatedAt: createdAt,
 	}, nil
@@ -92,12 +94,16 @@ func (r *CommentRepo) List(
 	if limit <= 0 {
 		limit = 20
 	}
+	// LEFT JOIN — migration 013 (M-12.2) sets comments.user_id ON DELETE
+	// SET NULL so the join may have no match when the author was
+	// hard-purged. hydrateCommentUser materializes the row only when the
+	// joined columns are non-null.
 	const q = `
 SELECT
   c.id, c.check_in_id, c.body, c.created_at,
   u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM comments c
-JOIN users u ON u.id = c.user_id
+LEFT JOIN users u ON u.id = c.user_id
 WHERE c.check_in_id = $1
   AND c.deleted_at IS NULL
   AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
@@ -111,35 +117,70 @@ LIMIT $4;`
 	out := make([]domain.Comment, 0, limit+1)
 	for rows.Next() {
 		var row domain.Comment
+		var (
+			uID, uUsername, uDisplayUsername, uDisplayName *string
+			uAvatarURL                                     *string
+		)
 		if err := rows.Scan(
 			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt,
-			&row.User.ID, &row.User.Username, &row.User.DisplayUsername,
-			&row.User.DisplayName, &row.User.AvatarURL,
+			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL,
 		); err != nil {
 			return nil, fmt.Errorf("CommentRepo.List scan: %w", err)
 		}
+		row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
 		out = append(out, row)
 	}
 	return out, rows.Err()
 }
 
+// hydrateCommentUser maps the LEFT JOINed user columns into a *CheckinUser,
+// returning nil when the author was hard-purged (migration 013 — comments
+// keep `id+body+timestamps` but `user_id` becomes NULL). The handler /
+// service treat nil as "orphaned author"; the Flutter card renders the
+// localized commentAuthorDeleted placeholder.
+func hydrateCommentUser(id, username, displayUsername, displayName, avatarURL *string) *domain.CheckinUser {
+	if id == nil || username == nil {
+		return nil
+	}
+	u := domain.CheckinUser{
+		ID:              *id,
+		Username:        *username,
+		DisplayUsername: stringOrZero(displayUsername),
+		DisplayName:     stringOrZero(displayName),
+		AvatarURL:       avatarURL,
+	}
+	return &u
+}
+
+func stringOrZero(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // Get fetches a single live (non-soft-deleted) comment with its author
 // hydrated. Used by the soft-delete path to authorize the caller
-// (own-comment vs admin).
+// (own-comment vs admin). The user join is LEFT — an orphaned comment
+// (author hard-purged) still returns; callers treat User == nil as
+// "owner check cannot pass" so only moderator+ may delete it.
 func (r *CommentRepo) Get(ctx context.Context, id string) (*domain.Comment, error) {
 	const q = `
 SELECT
   c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
   u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM comments c
-JOIN users u ON u.id = c.user_id
+LEFT JOIN users u ON u.id = c.user_id
 WHERE c.id = $1;`
 	var row domain.Comment
 	var deletedAt *time.Time
+	var (
+		uID, uUsername, uDisplayUsername, uDisplayName *string
+		uAvatarURL                                     *string
+	)
 	if err := r.db.QueryRow(ctx, q, id).Scan(
 		&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &deletedAt,
-		&row.User.ID, &row.User.Username, &row.User.DisplayUsername,
-		&row.User.DisplayName, &row.User.AvatarURL,
+		&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -151,6 +192,7 @@ WHERE c.id = $1;`
 		return nil, domain.ErrNotFound
 	}
 	row.DeletedAt = deletedAt
+	row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
 	return &row, nil
 }
 
@@ -241,7 +283,7 @@ SELECT
   u.id, u.username, u.display_username, u.display_name, u.avatar_url,
   ml.notes, ml.moderator_id, ml.created_at AS moderated_at
 FROM comments c
-JOIN users u ON u.id = c.user_id
+LEFT JOIN users u ON u.id = c.user_id
 LEFT JOIN LATERAL (
   SELECT notes, moderator_id, created_at
   FROM moderation_log
@@ -261,14 +303,18 @@ LIMIT $4;`
 	out := make([]AdminCommentRow, 0, limit+1)
 	for rows.Next() {
 		var row AdminCommentRow
+		var (
+			uID, uUsername, uDisplayUsername, uDisplayName *string
+			uAvatarURL                                     *string
+		)
 		if err := rows.Scan(
 			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &row.DeletedAt,
-			&row.User.ID, &row.User.Username, &row.User.DisplayUsername,
-			&row.User.DisplayName, &row.User.AvatarURL,
+			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL,
 			&row.ModerationNotes, &row.ModeratedBy, &row.ModeratedAt,
 		); err != nil {
 			return nil, fmt.Errorf("CommentRepo.ListForAdmin scan: %w", err)
 		}
+		row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
 		out = append(out, row)
 	}
 	return out, rows.Err()

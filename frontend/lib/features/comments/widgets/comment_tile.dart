@@ -33,7 +33,13 @@ class CommentTile extends ConsumerWidget {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final me = ref.watch(meProvider).asData?.value;
-    final isOwn = me != null && me.user.id == comment.user.id;
+    // Stage 7 (M-12.2): comment.user can be null when the original author
+    // was hard-purged (migration 013 sets comments.user_id ON DELETE SET
+    // NULL). isOwn is false for orphaned rows — only moderator+ can
+    // delete them and that surface lives in the admin React client.
+    final author = comment.user;
+    final isOwn = me != null && author != null && me.user.id == author.id;
+    final displayName = author?.displayUsername ?? l.commentAuthorDeleted;
     final when = parseIsoDateOrNull(comment.createdAt);
 
     return Padding(
@@ -42,9 +48,9 @@ class CommentTile extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           KamosAvatar(
-            initial: comment.user.displayUsername,
+            initial: displayName,
             size: 32,
-            imageUrl: comment.user.avatarUrl,
+            imageUrl: author?.avatarUrl,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -55,7 +61,7 @@ class CommentTile extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        comment.user.displayUsername,
+                        displayName,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

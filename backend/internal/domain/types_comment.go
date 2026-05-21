@@ -14,12 +14,18 @@ import (
 // PublicUser — id, username, display_username, display_name, avatar_url)
 // so email + email_verified can never leak. The shape mirrors the existing
 // FeedItem.User shape so the Flutter client uses one renderer for both.
+//
+// Stage 7 (M-12.2): `User` is a pointer because migration 013 sets
+// comments.user_id ON DELETE SET NULL. When the original author has been
+// hard-purged by the username-hold sweep, the comment row remains but
+// the user pointer is nil; Flutter renders the localized
+// `commentAuthorDeleted` placeholder.
 type Comment struct {
-	ID        string      `json:"id"`
-	CheckInID string      `json:"check_in_id"`
-	User      CheckinUser `json:"user"`
-	Body      string      `json:"body"`
-	CreatedAt time.Time   `json:"created_at"`
+	ID        string       `json:"id"`
+	CheckInID string       `json:"check_in_id"`
+	User      *CheckinUser `json:"user"`
+	Body      string       `json:"body"`
+	CreatedAt time.Time    `json:"created_at"`
 	// DeletedAt is exposed for completeness; List queries filter
 	// soft-deleted rows server-side so clients never see one here.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`

@@ -526,6 +526,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commentsLoadEarlier => 'Load earlier comments';
 
   @override
+  String get commentAuthorDeleted => '[deleted user]';
+
+  @override
   String get collectionVisibilityChangeFailed =>
       'Could not change visibility. You may not own this collection.';
 

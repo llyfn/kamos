@@ -103,7 +103,10 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isOwner := c.User.ID == uid
+	// Stage 7 (M-12.2): User may be nil for orphaned comments (author
+	// hard-purged by the username-hold sweep). No owner means moderator+
+	// is the only path that can authorize the delete.
+	isOwner := c.User != nil && c.User.ID == uid
 	isAdminPath := false
 	if !isOwner {
 		// Check role. NOT a hot path — we only run this branch when the

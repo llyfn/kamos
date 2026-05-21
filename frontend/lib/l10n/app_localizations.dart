@@ -1066,6 +1066,12 @@ abstract class AppLocalizations {
   /// **'Load earlier comments'**
   String get commentsLoadEarlier;
 
+  /// No description provided for @commentAuthorDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'[deleted user]'**
+  String get commentAuthorDeleted;
+
   /// No description provided for @collectionVisibilityChangeFailed.
   ///
   /// In en, this message translates to:
