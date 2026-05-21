@@ -86,7 +86,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: KamosSpacing.xl),
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -102,7 +102,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: KamosSpacing.md),
                 Center(
                   child: Text(
                     l.verifyEmailTitle,
@@ -115,14 +115,14 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: KamosSpacing.md),
                 if (_status == _VerifyStatus.loading)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 16,
-                        height: 16,
+                        width: KamosSpacing.lg,
+                        height: KamosSpacing.lg,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(t.ai),
@@ -155,7 +155,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                       style: TextStyle(fontSize: 14, color: t.fgDanger),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: KamosSpacing.md),
                   TextButton(
                     onPressed: () => context.go('/auth'),
                     child: Text(l.verifyEmailBackToAuth),

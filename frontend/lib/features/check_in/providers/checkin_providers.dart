@@ -18,8 +18,8 @@ final checkInDetailProvider = FutureProvider.autoDispose
       return ref.read(checkInRepositoryProvider).getOne(id);
     });
 
-class CheckInControllerState {
-  const CheckInControllerState({
+class CheckInControllerNotifierState {
+  const CheckInControllerNotifierState({
     this.isSubmitting = false,
     this.posted,
     this.error,
@@ -29,9 +29,9 @@ class CheckInControllerState {
   final String? error;
 }
 
-class CheckInController extends Notifier<CheckInControllerState> {
+class CheckInControllerNotifier extends Notifier<CheckInControllerNotifierState> {
   @override
-  CheckInControllerState build() => const CheckInControllerState();
+  CheckInControllerNotifierState build() => const CheckInControllerNotifierState();
 
   Future<Checkin?> submit({
     required String beverageId,
@@ -44,7 +44,7 @@ class CheckInController extends Notifier<CheckInControllerState> {
     String? servingStyle,
     Map<String, dynamic>? venue,
   }) async {
-    state = const CheckInControllerState(isSubmitting: true);
+    state = const CheckInControllerNotifierState(isSubmitting: true);
     try {
       final posted = await ref
           .read(checkInRepositoryProvider)
@@ -59,22 +59,22 @@ class CheckInController extends Notifier<CheckInControllerState> {
             servingStyle: servingStyle,
             venue: venue,
           );
-      state = CheckInControllerState(posted: posted);
+      state = CheckInControllerNotifierState(posted: posted);
       return posted;
     } on DioException catch (e) {
       final err = e.error is ApiException
           ? (e.error as ApiException).message
           : (e.message ?? 'Request failed');
-      state = CheckInControllerState(error: err);
+      state = CheckInControllerNotifierState(error: err);
       return null;
     } catch (e) {
-      state = CheckInControllerState(error: e.toString());
+      state = CheckInControllerNotifierState(error: e.toString());
       return null;
     }
   }
 }
 
 final checkInControllerProvider =
-    NotifierProvider.autoDispose<CheckInController, CheckInControllerState>(
-      CheckInController.new,
+    NotifierProvider.autoDispose<CheckInControllerNotifier, CheckInControllerNotifierState>(
+      CheckInControllerNotifier.new,
     );

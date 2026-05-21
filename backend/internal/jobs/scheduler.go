@@ -24,6 +24,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// jobTickBudget caps how long any one job invocation may take. The tick
+// body inherits a context with this deadline; jobs that need longer must
+// chunk their work or run more frequently. Generous enough for an admin
+// re-aggregate (~minutes) but small enough that a wedged job can't pin a
+// scheduler goroutine forever.
+const jobTickBudget = 5 * time.Minute
+
 // JobFn is the function signature every registered job satisfies. The DB
 // is passed explicitly so jobs can be unit-tested without a Scheduler.
 type JobFn func(ctx context.Context, db *pgxpool.Pool) error
@@ -104,7 +111,7 @@ func (s *Scheduler) invoke(j Job) {
 			s.log.Error("job_panic", "name", j.Name, "panic", fmt.Sprint(rec))
 		}
 	}()
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(s.ctx, jobTickBudget)
 	defer cancel()
 
 	if s.db == nil {

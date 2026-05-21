@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -200,6 +199,3 @@ func (s *CheckinService) resolveVenue(ctx context.Context, v *domain.CheckinVenu
 	}
 	return nil, nil // silent drop
 }
-
-// silenceUnused keeps imports alive.
-var _ = errors.Is

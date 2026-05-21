@@ -520,6 +520,3 @@ func (s *AuthService) Logout(ctx context.Context, userID, raw string) error {
 	_, err := s.tokens.RevokeAllForUser(ctx, userID)
 	return err
 }
-
-// silenceUnused keeps imports alive when later changes drop one helper.
-var _ = strings.TrimSpace

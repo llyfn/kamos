@@ -3,7 +3,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -216,9 +215,6 @@ func randomToken(n int) (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
-
-// ctxBg shortens context for handlers that need a detached ctx (rare).
-var _ = context.Background
 
 // authedID returns the authed user's ID or writes 401. The bool indicates
 // "ok to proceed".

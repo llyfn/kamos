@@ -9,7 +9,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kamos/core/models/beverage_request.dart';
-import 'package:kamos/features/beverage_requests/exceptions.dart';
+import 'package:kamos/core/api/api_exceptions.dart';
 import 'package:kamos/features/beverage_requests/repository/beverage_request_repository.dart';
 
 class _Adapter implements HttpClientAdapter {

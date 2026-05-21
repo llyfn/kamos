@@ -47,13 +47,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: KamosSpacing.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
+              const SizedBox(height: KamosSpacing.xxl),
               _Header(),
-              const SizedBox(height: 24),
+              const SizedBox(height: KamosSpacing.xl),
               if (_mode == _Mode.verify)
                 _VerifyEmailBody(email: _email.text)
               else if (_mode == _Mode.forgot)
@@ -124,14 +124,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
               if (controller.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: KamosSpacing.md),
                   child: Text(
                     controller.error!,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: t.fgDanger, fontSize: 13),
                   ),
                 ),
-              const SizedBox(height: 32),
+              const SizedBox(height: KamosSpacing.xxl),
             ],
           ),
         ),
@@ -248,7 +248,7 @@ class _SignInOrUp extends StatelessWidget {
           autocorrect: false,
           decoration: const InputDecoration(hintText: 'you@example.com'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: KamosSpacing.md),
         _FieldLabel(l.authPasswordLabel),
         TextField(
           controller: password,

@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kamos/app/theme.dart';
 import 'package:kamos/core/models/comment.dart';
 import 'package:kamos/core/models/page.dart' as models;
-import 'package:kamos/features/comments/exceptions.dart';
+import 'package:kamos/core/api/api_exceptions.dart';
 import 'package:kamos/features/comments/repository/comment_repository.dart';
 import 'package:kamos/features/comments/widgets/comments_section.dart';
 import 'package:kamos/l10n/app_localizations.dart';

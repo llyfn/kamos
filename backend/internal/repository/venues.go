@@ -44,10 +44,10 @@ type UpsertVenueInput struct {
 // branch because PostgreSQL still emits the row.
 func (r *VenueRepo) UpsertByFoursquareID(ctx context.Context, in UpsertVenueInput) (string, error) {
 	if in.FoursquareID == "" {
-		return "", fmt.Errorf("UpsertByFoursquareID: foursquare_id is required")
+		return "", errors.New("UpsertByFoursquareID: foursquare_id is required")
 	}
 	if in.Name == "" {
-		return "", fmt.Errorf("UpsertByFoursquareID: name is required")
+		return "", errors.New("UpsertByFoursquareID: name is required")
 	}
 	const q = `
 INSERT INTO venues (foursquare_id, name, address, lat, lng, country, prefecture, locality)

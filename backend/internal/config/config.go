@@ -4,6 +4,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -194,10 +195,10 @@ func Load() (*Config, error) {
 	}
 
 	if c.DatabaseURL == "" {
-		return nil, fmt.Errorf("Load: DATABASE_URL is required")
+		return nil, errors.New("Load: DATABASE_URL is required")
 	}
 	if c.JWTSecret == "" {
-		return nil, fmt.Errorf("Load: JWT_SECRET is required")
+		return nil, errors.New("Load: JWT_SECRET is required")
 	}
 	// SEC-016: a 32-byte minimum is the HS256 baseline (256 bits). Below
 	// this we refuse to start — a too-short secret meaningfully reduces
@@ -212,7 +213,7 @@ func Load() (*Config, error) {
 	// and the integration suite still set RATE_LIMIT_DISABLED=1 (with
 	// APP_ENV != "production").
 	if c.Env == "production" && c.RateLimitDisabled {
-		return nil, fmt.Errorf("config.Load: RATE_LIMIT_DISABLED must not be set in production")
+		return nil, errors.New("config.Load: RATE_LIMIT_DISABLED must not be set in production")
 	}
 
 	// SEC-005 — cursor signing key. In production: required, ≥32 bytes.
@@ -223,7 +224,7 @@ func Load() (*Config, error) {
 	// surface is reachable without a deployed environment.
 	if c.CursorSecret == "" {
 		if c.Env == "production" {
-			return nil, fmt.Errorf("Load: CURSOR_SECRET is required in production")
+			return nil, errors.New("Load: CURSOR_SECRET is required in production")
 		}
 		c.CursorSecret = "cursor:" + c.JWTSecret
 	}
@@ -250,7 +251,7 @@ func Load() (*Config, error) {
 	// a URL is a misconfiguration; refuse to start so deploys notice on
 	// boot rather than at first cache call.
 	if c.CacheBackend == "redis" && c.CacheRedisURL == "" {
-		return nil, fmt.Errorf("Load: CACHE_REDIS_URL is required when CACHE_BACKEND=redis")
+		return nil, errors.New("Load: CACHE_REDIS_URL is required when CACHE_BACKEND=redis")
 	}
 	return c, nil
 }

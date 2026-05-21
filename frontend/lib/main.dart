@@ -17,21 +17,21 @@ import 'core/observability/sentry_observer.dart';
 // Compile-time configuration. The DSN gate (`kSentryConfigured`) lives in
 // `sentry_observer.dart` so other layers can import it without pulling in
 // `main.dart`.
-const String _kSentryDsn = String.fromEnvironment(
+const String _sentryDsn = String.fromEnvironment(
   'KAMOS_SENTRY_DSN',
   defaultValue: '',
 );
-const String _kSentryEnv = String.fromEnvironment(
+const String _sentryEnv = String.fromEnvironment(
   'KAMOS_ENV',
   defaultValue: 'dev',
 );
-const String _kSentryRelease = String.fromEnvironment(
+const String _sentryRelease = String.fromEnvironment(
   'KAMOS_VERSION',
   defaultValue: 'dev',
 );
 
 void main() {
-  if (_kSentryDsn.isEmpty) {
+  if (_sentryDsn.isEmpty) {
     // Dev / test path: log once, run the app, route any uncaught async error
     // through `debugPrint` instead of Sentry.
     assert(() {
@@ -53,9 +53,9 @@ void main() {
   runZonedGuarded<Future<void>>(
     () => SentryFlutter.init(
       (options) {
-        options.dsn = _kSentryDsn;
-        options.environment = _kSentryEnv;
-        options.release = _kSentryRelease;
+        options.dsn = _sentryDsn;
+        options.environment = _sentryEnv;
+        options.release = _sentryRelease;
         // No client-side performance traces yet — that lands in a later
         // observability slice once the backend OTel pipeline is settled.
         options.tracesSampleRate = 0.0;

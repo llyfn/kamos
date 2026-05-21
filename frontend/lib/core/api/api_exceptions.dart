@@ -1,11 +1,8 @@
 // KAMOS — Central API exceptions.
 //
 // Single source of truth for the typed exceptions that repositories throw.
-// Previously each feature had its own `exceptions.dart`; the three legacy
-// files (`features/comments/exceptions.dart`, `features/venues/exceptions.dart`,
-// `features/beverage_requests/exceptions.dart`) now re-export from here so
-// existing imports keep working while new code can pull everything from one
-// place.
+// Previously each feature had its own `exceptions.dart`; Stage 8 deleted
+// those compat shims, so every import now resolves directly here.
 //
 // Layers
 // ------

@@ -8,8 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-const _kJwtKey = 'kamos.jwt';
-const _kRefreshKey = 'kamos.refresh';
+const _jwtKey = 'kamos.jwt';
+const _refreshKey = 'kamos.refresh';
 
 /// Wrapper around `FlutterSecureStorage` scoped to KAMOS keys.
 ///
@@ -85,18 +85,18 @@ class SecureStorageService {
   // --- Access token ---------------------------------------------------------
 
   Future<String?> readToken() async {
-    final t = await _storage.read(key: _kJwtKey);
+    final t = await _storage.read(key: _jwtKey);
     _accessTokenSnapshot = t;
     return t;
   }
 
   Future<void> writeToken(String token) async {
-    await _storage.write(key: _kJwtKey, value: token);
+    await _storage.write(key: _jwtKey, value: token);
     _accessTokenSnapshot = token;
   }
 
   Future<void> clearToken() async {
-    await _storage.delete(key: _kJwtKey);
+    await _storage.delete(key: _jwtKey);
     _accessTokenSnapshot = null;
     _subSnapshot = null;
     _subSnapshotForToken = null;
@@ -104,20 +104,20 @@ class SecureStorageService {
 
   // --- Refresh token ---------------------------------------------
 
-  Future<String?> readRefreshToken() => _storage.read(key: _kRefreshKey);
+  Future<String?> readRefreshToken() => _storage.read(key: _refreshKey);
 
   Future<void> writeRefreshToken(String token) =>
-      _storage.write(key: _kRefreshKey, value: token);
+      _storage.write(key: _refreshKey, value: token);
 
-  Future<void> clearRefreshToken() => _storage.delete(key: _kRefreshKey);
+  Future<void> clearRefreshToken() => _storage.delete(key: _refreshKey);
 
   // --- Bulk ----------------------------------------------------------------
 
   /// Wipe every KAMOS-owned secret. Called on logout and on a hard auth
   /// failure (refresh exchange returned a non-2xx).
   Future<void> clearAll() async {
-    await _storage.delete(key: _kJwtKey);
-    await _storage.delete(key: _kRefreshKey);
+    await _storage.delete(key: _jwtKey);
+    await _storage.delete(key: _refreshKey);
     _accessTokenSnapshot = null;
     _subSnapshot = null;
     _subSnapshotForToken = null;

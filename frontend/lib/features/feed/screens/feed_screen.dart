@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/state_views.dart';
-import '../providers/feed_provider.dart';
+import '../providers/feed_providers.dart';
 import '../widgets/check_in_card.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {

@@ -14,7 +14,6 @@ import (
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/email"
-	"github.com/kamos/api/internal/middleware"
 )
 
 // sendVerificationEmail renders the locale-appropriate template and ships
@@ -73,6 +72,3 @@ func (h *Handler) issueAuthPair(r *http.Request, user *domain.User) (string, str
 	}
 	return access, raw, nil
 }
-
-// Compile-time ref to keep middleware import alive across files.
-var _ = middleware.UserFromContext

@@ -388,7 +388,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 	}
 	// All known reasons ruled out — surface an internal error so the
 	// regression is visible in logs rather than silently swallowed.
-	return fmt.Errorf("AddPhoto: insert returned no rows but row passes all gates")
+	return errors.New("AddPhoto: insert returned no rows but row passes all gates")
 }
 
 // ToggleToast inserts-or-deletes the row, returning the fresh state.

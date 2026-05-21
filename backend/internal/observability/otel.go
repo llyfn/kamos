@@ -22,6 +22,11 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
+// otelShutdownTimeout is the per-provider deadline applied to trace + metric
+// shutdown when the process is exiting. Tight enough that a stuck exporter
+// can't block container shutdown past the orchestrator's grace period.
+const otelShutdownTimeout = 5 * time.Second
+
 // ShutdownFunc flushes any pending telemetry. Always safe to call, even
 // when the SDK was never initialized.
 type ShutdownFunc func(context.Context) error
@@ -94,7 +99,7 @@ func InitOTel(ctx context.Context, cfg *config.Config) (ShutdownFunc, error) {
 	otel.SetMeterProvider(mp)
 
 	shutdown := func(parent context.Context) error {
-		ctx, cancel := context.WithTimeout(parent, 5*time.Second)
+		ctx, cancel := context.WithTimeout(parent, otelShutdownTimeout)
 		defer cancel()
 		var firstErr error
 		if err := tp.Shutdown(ctx); err != nil && firstErr == nil {

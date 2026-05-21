@@ -57,7 +57,7 @@ class _CommentComposerState extends State<CommentComposer> {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: KamosSpacing.lg, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -125,6 +125,44 @@ Current sink coverage (Stage 7 partial — see ARCH-011):
 
 When you change a color in `tokens.json`, mirror the same value into `design/colors_and_type.css` and the relevant constants in `frontend/lib/app/theme.dart` in the same PR until the codegen lands for those sinks.
 
+## Coding conventions
+
+These are house-style rules QA enforces during cross-layer review (the `style-review` skill). Diverging is fine when a localized reason warrants it; leave a `// non-standard …` comment so a reviewer knows it was a choice rather than an oversight.
+
+### Dart — file-private constants
+
+File-private constants use a leading underscore. **No `_k` prefix.** The `_k` convention is a Google C++ holdover that adds noise without value in Dart, where the leading `_` already conveys privacy and constants are syntactically distinguished by `const`.
+
+```dart
+// Good
+const _sentryDsn = String.fromEnvironment('KAMOS_SENTRY_DSN');
+const _nameMax = 200;
+
+// Bad
+const _kSentryDsn = String.fromEnvironment('KAMOS_SENTRY_DSN');
+const _kNameMax = 200;
+```
+
+### Dart — Riverpod notifier naming
+
+Notifier classes end in `Notifier` (`FeedNotifier`, `CommentsNotifier`, `CheckInControllerNotifier`). Providers end in `Provider` and are named after their public surface (`feedProvider`, `commentsProvider`, `checkInControllerProvider`).
+
+Provider files in `features/<x>/providers/` are named in the plural (`feed_providers.dart`, `checkin_providers.dart`) — even when the file currently exports one provider, the convention scales to N without a rename.
+
+### Dart — spacing literals
+
+`SizedBox(width: …)` / `SizedBox(height: …)` / `EdgeInsets.*` should reach for `KamosSpacing.xs/sm/md/lg/xl/xxl` (4/8/12/16/24/32 px) from `frontend/lib/app/theme.dart`. The named scale mirrors `design/tokens.json → spacing.named`.
+
+Outliers (e.g. `10`, `6`, `14`) are acceptable when no named alias fits; leave a `// non-standard spacing — design decision` comment.
+
+### Dart — async UI
+
+Conventional `ref.watch(provider).when(loading:, error:, data:)` patterns should use `AsyncWidget<T>` from `frontend/lib/shared/widgets/async_widget.dart`. The wrapper centralizes the default loading spinner and localized error string. Skip it when the screen needs a bespoke loading or error UI.
+
+### Go — error construction
+
+Use `errors.New("msg")` for static error messages. Use `fmt.Errorf("…: %w", err)` only when wrapping an inner error or formatting a value (`%q`, `%s`, `%d`). A static string passed to `fmt.Errorf` is a lint smell.
+
 ## Migration discipline
 
 - **Append-only.** Never edit a migration that has been applied to a shared environment.

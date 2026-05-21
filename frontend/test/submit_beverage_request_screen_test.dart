@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kamos/app/theme.dart';
 import 'package:kamos/core/models/beverage_request.dart';
-import 'package:kamos/features/beverage_requests/exceptions.dart';
+import 'package:kamos/core/api/api_exceptions.dart';
 import 'package:kamos/features/beverage_requests/repository/beverage_request_repository.dart';
 import 'package:kamos/features/beverage_requests/screens/submit_beverage_request_screen.dart';
 import 'package:kamos/l10n/app_localizations.dart';
