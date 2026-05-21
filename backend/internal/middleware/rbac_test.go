@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/kamos/api/internal/domain"
 )
@@ -58,5 +61,47 @@ func TestUserRole_Valid(t *testing.T) {
 		if got := r.Valid(); got != want {
 			t.Errorf("%q.Valid() = %v, want %v", r, got, want)
 		}
+	}
+}
+
+// TestRoleCacheHit asserts a cache hit short-circuits the DB path: with
+// a nil pool, a populated cache entry still returns cleanly via GetRole.
+func TestRoleCacheHit(t *testing.T) {
+	rr := NewRoleResolver(nil)
+	rr.cache.Add("u-1", domain.RoleAdmin)
+	role, err := rr.GetRole(context.Background(), "u-1")
+	if err != nil {
+		t.Fatalf("cache hit path: %v", err)
+	}
+	if role != domain.RoleAdmin {
+		t.Fatalf("role=%v, want admin", role)
+	}
+}
+
+// TestRoleCacheInvalidatedOnRoleChange drops a cached entry via
+// Invalidate; the next GetRole goes back to the DB. With a nil pool the
+// DB path errors — what we assert is that no cache hit took place.
+func TestRoleCacheInvalidatedOnRoleChange(t *testing.T) {
+	rr := NewRoleResolver(nil)
+	rr.cache.Add("u-1", domain.RoleAdmin)
+	rr.Invalidate("u-1")
+	if _, err := rr.GetRole(context.Background(), "u-1"); err == nil {
+		t.Fatalf("expected error after invalidate (nil db) — cache should not have hit")
+	}
+}
+
+// TestRoleCacheTTL tunes the cache to a very short TTL and asserts the
+// entry disappears after the wait, validating the expirable LRU works
+// the way we configured it.
+func TestRoleCacheTTL(t *testing.T) {
+	rr := NewRoleResolver(nil)
+	rr.cache = expirable.NewLRU[string, domain.UserRole](16, nil, 50*time.Millisecond)
+	rr.cache.Add("u-1", domain.RoleAdmin)
+	if _, ok := rr.cache.Get("u-1"); !ok {
+		t.Fatalf("seed: cache should hit")
+	}
+	time.Sleep(120 * time.Millisecond)
+	if _, ok := rr.cache.Get("u-1"); ok {
+		t.Fatalf("expected eviction after TTL elapsed")
 	}
 }

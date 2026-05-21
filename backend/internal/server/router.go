@@ -54,6 +54,11 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	var roleResolver *middleware.RoleResolver
 	if h != nil && h.Repos != nil && h.Repos.DB != nil {
 		roleResolver = middleware.NewRoleResolver(h.Repos.DB)
+		// SEC-027 — wire the role cache into AdminService so role/suspend
+		// writes flush the per-user entry immediately. Idempotent.
+		if h.Services != nil && h.Services.Admin != nil {
+			h.Services.Admin.WithRoleCache(roleResolver)
+		}
 	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -137,6 +142,14 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(middleware.Auth(signer, softDelete)).Post("/password-change", h.PasswordChange)
 			r.With(middleware.Auth(signer, softDelete)).Post("/email-change", h.EmailChange)
 			r.With(middleware.Auth(signer, softDelete)).Post("/logout", h.Logout)
+
+			// Stage 4 — admin cookie auth surface. admin-login + admin-
+			// refresh are public (refresh reads its own cookie; possession
+			// of the raw secret IS the credential). admin-logout requires
+			// AdminAuth so we can identify the user for refresh revocation.
+			r.Post("/admin-login", h.AdminLogin)
+			r.Post("/admin-refresh", h.AdminRefresh)
+			r.With(middleware.AdminAuth(signer, softDelete)).Post("/admin-logout", h.AdminLogout)
 		})
 
 		// Taxonomy — public reads. Phase 7: long Cache-Control TTL (1h)
@@ -285,9 +298,13 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		// Phase 5a — admin surface. Authed + role-gated per-route. Generous
 		// per-user rate limit (30/60) — admin tooling fires bursts of
 		// reads during triage but doesn't need the 60/120 of the regular
-		// authed surface.
+		// authed surface. Stage 4: AdminAuth replaces Auth so the React
+		// admin client can authenticate via HttpOnly cookies (SEC-001);
+		// RequireCSRF enforces the double-submit pattern on mutating
+		// requests (GET / HEAD / OPTIONS skip internally).
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(middleware.Auth(signer, softDelete))
+			r.Use(middleware.AdminAuth(signer, softDelete))
+			r.Use(middleware.RequireCSRF)
 			if rateLimited {
 				r.Use(middleware.RateLimitByUser(log, 30, 60))
 			}

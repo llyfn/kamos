@@ -155,6 +155,76 @@ paths:
         "204": { description: token(s) revoked }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /v1/auth/admin-login:
+    post:
+      tags: [auth]
+      operationId: adminLogin
+      security: []
+      description: |
+        Admin / moderator sign-in for the React admin client. Validates
+        the credentials, asserts the user's role is `moderator` or `admin`,
+        and sets three HttpOnly cookies (access, refresh, csrf).
+        Response body carries the user's `Me` shape.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: cookies set; body carries user
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: kamos_admin_access / kamos_admin_refresh / kamos_admin_csrf
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/auth/admin-refresh:
+    post:
+      tags: [auth]
+      operationId: adminRefresh
+      security: []
+      description: |
+        Read kamos_admin_refresh cookie, rotate via the same atomic-rotate
+        contract as /v1/auth/refresh, and emit fresh Set-Cookie headers
+        for access + refresh + csrf. Returns 204.
+      responses:
+        "204":
+          description: cookies rotated
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: refreshed kamos_admin_* cookies
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/auth/admin-logout:
+    post:
+      tags: [auth]
+      operationId: adminLogout
+      security:
+        - adminCookieAuth: []
+        - bearerAuth: []
+      description: |
+        Revoke the kamos_admin_refresh token and clear all three admin
+        cookies with Max-Age=-1.
+      responses:
+        "204":
+          description: cookies cleared
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: kamos_admin_* cookies with Max-Age=-1
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /v1/auth/verify-email:
     post:
       tags: [auth]
@@ -1536,6 +1606,26 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    # Stage 4 — admin cookie auth (SEC-001). The React admin client
+    # signs in via POST /v1/auth/admin-login, which sets the three
+    # HttpOnly cookies below. The /v1/admin/* surface accepts either
+    # cookie auth or bearerAuth (transition window); CSRF protection
+    # only applies to cookie-authenticated mutating requests.
+    adminCookieAuth:
+      type: apiKey
+      in: cookie
+      name: kamos_admin_access
+      description: |
+        HttpOnly + Secure + SameSite=Strict access token cookie.
+        Browser-only; never readable from JS. Path=/v1/admin.
+    adminCsrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: |
+        CSRF double-submit token. Required on POST / PATCH / PUT /
+        DELETE under /v1/admin when the request is cookie-authed.
+        The value MUST match the kamos_admin_csrf cookie.
 
   responses:
     Unauthorized:

@@ -1,5 +1,5 @@
 import { ToastProvider } from '@/components/toast';
-import { clearTokens, getAccessToken } from '@/lib/tokens';
+import { useAuth } from '@/lib/auth';
 import type { QueryClient } from '@tanstack/react-query';
 import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router';
 
@@ -12,7 +12,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootLayout() {
-  const loggedIn = getAccessToken() !== null;
+  // Stage 4 — auth state lives in HttpOnly cookies, so we derive the
+  // "logged in" flag from the /v1/users/me query rather than reading
+  // localStorage. The query loading state collapses to "not logged in"
+  // for the header rendering — the only consequence is a brief blank-
+  // nav flash on first paint, which is fine for an admin tool.
+  const { me, logout } = useAuth();
+  const loggedIn = me !== null;
   return (
     <ToastProvider>
       <div className="min-h-full flex flex-col">
@@ -55,8 +61,7 @@ function RootLayout() {
                   <button
                     type="button"
                     onClick={() => {
-                      clearTokens();
-                      window.location.assign('/login');
+                      void logout();
                     }}
                     className="text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]"
                   >
