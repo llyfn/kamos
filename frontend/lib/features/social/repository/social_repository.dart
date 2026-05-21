@@ -8,6 +8,10 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/social.dart';
 
+/// Wraps the `social` tag of [KamosApi] (follow / unfollow, follow
+/// requests inbox, accept + reject) and lifts `DioException` into typed
+/// `core/api/api_exceptions.dart` exceptions. Used by the social feature's
+/// inbox screen and profile-follow buttons.
 class SocialRepository {
   SocialRepository({required Dio dio}) : _api = KamosApi(dio);
   final KamosApi _api;

@@ -21,6 +21,10 @@ import '../../../core/models/comment.dart';
 import '../../../core/models/page.dart' as models;
 import '../../../core/api/api_exceptions.dart';
 
+/// Wraps the `comments` tag of [KamosApi] (list / create / delete) and
+/// lifts `DioException`s into the typed comment exceptions in
+/// `core/api/api_exceptions.dart`. Used by the comments feature's
+/// providers and widgets.
 class CommentRepository {
   CommentRepository(Dio dio) : _api = KamosApi(dio);
   final KamosApi _api;

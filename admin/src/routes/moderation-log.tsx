@@ -1,10 +1,11 @@
-import { RoleGuard } from '@/components/guard';
-import { JsonTree } from '@/components/json-tree';
-import { api } from '@/lib/api';
-import type { components } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import { RoleGuard } from '@/components/guard';
+import { JsonTree } from '@/components/json-tree';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
+import { api } from '@/lib/api';
+import type { components } from '@/types/api';
 
 type Entry = components['schemas']['ModerationLogEntry'];
 
@@ -17,6 +18,15 @@ interface Filters {
 }
 
 const EMPTY_FILTERS: Filters = { target_type: '', target_id: '', moderator_id: '' };
+
+const COLUMNS: QueueTableColumn[] = [
+  { key: 'when', label: 'When' },
+  { key: 'moderator', label: 'Moderator' },
+  { key: 'action', label: 'Action' },
+  { key: 'target', label: 'Target' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'metadata', label: 'Metadata' },
+];
 
 export const Route = createFileRoute('/moderation-log')({
   component: GuardedModerationLogPage,
@@ -133,52 +143,16 @@ function ModerationLogPage() {
       {isLoading && <p className="text-sm text-[color:var(--color-muted)]">Loading…</p>}
       {isError && <p className="text-sm text-red-700">Failed to load moderation log.</p>}
       {data && (
-        <>
-          <div className="border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-bg)] text-left">
-                <tr>
-                  <th className="p-2">When</th>
-                  <th className="p-2">Moderator</th>
-                  <th className="p-2">Action</th>
-                  <th className="p-2">Target</th>
-                  <th className="p-2">Notes</th>
-                  <th className="p-2">Metadata</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-[color:var(--color-muted)]">
-                      No entries.
-                    </td>
-                  </tr>
-                )}
-                {data.items.map((e) => (
-                  <EntryRow key={e.id} entry={e} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-3 flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              disabled={!cursor}
-              onClick={() => setCursor(null)}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              First
-            </button>
-            <button
-              type="button"
-              disabled={!data.has_more}
-              onClick={() => setCursor(data.next_cursor ?? null)}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
-        </>
+        <QueueTable<Entry>
+          columns={COLUMNS}
+          items={data.items}
+          page={{ hasMore: data.has_more, nextCursor: data.next_cursor ?? null }}
+          cursor={cursor}
+          onCursorChange={setCursor}
+          rowKey={(e) => e.id}
+          emptyLabel="No entries."
+          renderRow={(e) => <EntryRow entry={e} />}
+        />
       )}
     </div>
   );

@@ -14,6 +14,9 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/page.dart';
 
+/// Wraps the `discover` tag of [KamosApi] and lifts `DioException` into
+/// typed `core/api/api_exceptions.dart` exceptions. Used by the discover
+/// feature's providers (public collections list, paginated).
 class PublicCollectionsRepository {
   PublicCollectionsRepository(Dio dio) : _api = KamosApi(dio);
   final KamosApi _api;

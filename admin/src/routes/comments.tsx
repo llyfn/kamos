@@ -1,11 +1,13 @@
-import { RoleGuard } from '@/components/guard';
-import { Modal } from '@/components/modal';
-import { useToast } from '@/components/toast';
-import { api } from '@/lib/api';
-import type { components } from '@/types/api';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import { RoleGuard } from '@/components/guard';
+import { Modal } from '@/components/modal';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
+import { useToast } from '@/components/toast';
+import { useModerateComment } from '@/hooks/admin/mutations';
+import { api } from '@/lib/api';
+import type { components } from '@/types/api';
 
 type AdminComment = components['schemas']['AdminComment'];
 
@@ -14,6 +16,15 @@ type AdminComment = components['schemas']['AdminComment'];
 // distinguishing). `status=deleted` returns only soft-deleted rows. To get
 // "live only", we fetch `visible` and client-filter on `deleted_at == null`.
 type Filter = 'visible' | 'deleted' | 'all';
+
+const COLUMNS: QueueTableColumn[] = [
+  { key: 'created', label: 'Created' },
+  { key: 'checkin', label: 'Check-in' },
+  { key: 'author', label: 'Author' },
+  { key: 'body', label: 'Body' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions', className: 'text-right' },
+];
 
 export const Route = createFileRoute('/comments')({
   component: GuardedCommentsPage,
@@ -78,52 +89,16 @@ function CommentsPage() {
       {isLoading && <p className="text-sm text-[color:var(--color-muted)]">Loading…</p>}
       {isError && <p className="text-sm text-red-700">Failed to load comments.</p>}
       {data && (
-        <>
-          <div className="border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-bg)] text-left">
-                <tr>
-                  <th className="p-2">Created</th>
-                  <th className="p-2">Check-in</th>
-                  <th className="p-2">Author</th>
-                  <th className="p-2">Body</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleItems.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-[color:var(--color-muted)]">
-                      No comments.
-                    </td>
-                  </tr>
-                )}
-                {visibleItems.map((c) => (
-                  <CommentRow key={c.id} comment={c} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-3 flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              disabled={!cursor}
-              onClick={() => setCursor(null)}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              First
-            </button>
-            <button
-              type="button"
-              disabled={!data.has_more}
-              onClick={() => setCursor(data.next_cursor ?? null)}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
-        </>
+        <QueueTable<AdminComment>
+          columns={COLUMNS}
+          items={visibleItems}
+          page={{ hasMore: data.has_more, nextCursor: data.next_cursor ?? null }}
+          cursor={cursor}
+          onCursorChange={setCursor}
+          rowKey={(c) => c.id}
+          emptyLabel="No comments."
+          renderRow={(c) => <CommentRow comment={c} />}
+        />
       )}
     </div>
   );
@@ -191,32 +166,20 @@ function ModerateModal({
   onClose: () => void;
 }) {
   const toast = useToast();
-  const qc = useQueryClient();
+  const mut = useModerateComment(comment.id);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const mut = useMutation({
-    mutationFn: async () => {
-      const body = notes.trim() ? { notes: notes.trim() } : undefined;
-      const init = body ? { body } : {};
-      const { error: err, response } = await api.POST('/v1/admin/comments/{id}/moderate', {
-        params: { path: { id: comment.id } },
-        ...init,
-      });
-      if (err || response.status !== 204) throw new Error(`moderate_failed_${response.status}`);
-    },
-    onSuccess: () => {
-      toast.push('Comment moderated (soft-deleted)');
-      qc.invalidateQueries({ queryKey: ['admin', 'comments'] });
-      onClose();
-    },
-    onError: (e: Error) => setError(e.message),
-  });
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    mut.mutate();
+    mut.mutate(notes, {
+      onSuccess: () => {
+        toast.push('Comment moderated (soft-deleted)');
+        onClose();
+      },
+      onError: (e: Error) => setError(e.message),
+    });
   }
 
   return (

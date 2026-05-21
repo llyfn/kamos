@@ -8,6 +8,10 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/page.dart';
 
+/// Wraps the `feed` tag of [KamosApi] (cursor-paginated `/v1/feed`) and
+/// lifts `DioException` into typed `core/api/api_exceptions.dart`
+/// exceptions. Supports `forceRefresh` via the `kBypassCache` extras so
+/// the global `DioCacheInterceptor` is short-circuited on pull-to-refresh.
 class FeedRepository {
   FeedRepository({required Dio dio}) : _api = KamosApi(dio);
 

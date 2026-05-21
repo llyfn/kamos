@@ -1,9 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
+import { useSuspendUser, useUpdateUserRole } from '@/hooks/admin/mutations';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { components } from '@/types/api';
@@ -14,6 +16,15 @@ type Role = components['schemas']['UserRole'];
 export const Route = createFileRoute('/users')({
   component: GuardedUsersPage,
 });
+
+const COLUMNS: QueueTableColumn[] = [
+  { key: 'username', label: 'Username' },
+  { key: 'email', label: 'Email' },
+  { key: 'role', label: 'Role' },
+  { key: 'created', label: 'Created' },
+  { key: 'deleted', label: 'Deleted' },
+  { key: 'actions', label: 'Actions', className: 'text-right' },
+];
 
 function GuardedUsersPage() {
   return (
@@ -83,55 +94,16 @@ function UsersPage() {
       {isLoading && <p className="text-sm text-[color:var(--color-muted)]">Loading…</p>}
       {isError && <p className="text-sm text-red-700">Failed to load users.</p>}
       {data && (
-        <>
-          <div className="border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-bg)] text-left">
-                <tr>
-                  <th className="p-2">Username</th>
-                  <th className="p-2">Email</th>
-                  <th className="p-2">Role</th>
-                  <th className="p-2">Created</th>
-                  <th className="p-2">Deleted</th>
-                  <th className="p-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="p-6 text-center text-[color:var(--color-muted)]"
-                    >
-                      No users.
-                    </td>
-                  </tr>
-                )}
-                {data.items.map((u) => (
-                  <UserRow key={u.id} user={u} isAdmin={isAdmin} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-3 flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              disabled={!cursor}
-              onClick={() => setCursor(null)}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              First
-            </button>
-            <button
-              type="button"
-              disabled={!data.has_more}
-              onClick={() => setCursor(data.next_cursor ?? null)}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
-        </>
+        <QueueTable<AdminUser>
+          columns={COLUMNS}
+          items={data.items}
+          page={{ hasMore: data.has_more, nextCursor: data.next_cursor ?? null }}
+          cursor={cursor}
+          onCursorChange={setCursor}
+          rowKey={(u) => u.id}
+          emptyLabel="No users."
+          renderRow={(u) => <UserRow user={u} isAdmin={isAdmin} />}
+        />
       )}
     </div>
   );
@@ -180,31 +152,20 @@ function UserRow({ user, isAdmin }: { user: AdminUser; isAdmin: boolean }) {
 
 function RoleModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
   const toast = useToast();
-  const qc = useQueryClient();
+  const mut = useUpdateUserRole(user.id);
   const [role, setRole] = useState<Role>(user.role);
   const [error, setError] = useState<string | null>(null);
-
-  const mut = useMutation({
-    mutationFn: async () => {
-      const { data, error: err, response } = await api.POST(
-        '/v1/admin/users/{id}/role',
-        { params: { path: { id: user.id } }, body: { role } },
-      );
-      if (err || !data) throw new Error(`role_update_failed_${response.status}`);
-      return data;
-    },
-    onSuccess: () => {
-      toast.push('Role updated');
-      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
-      onClose();
-    },
-    onError: (e: Error) => setError(e.message),
-  });
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    mut.mutate();
+    mut.mutate(role, {
+      onSuccess: () => {
+        toast.push('Role updated');
+        onClose();
+      },
+      onError: (e: Error) => setError(e.message),
+    });
   }
 
   return (
@@ -246,23 +207,19 @@ function RoleModal({ user, onClose }: { user: AdminUser; onClose: () => void }) 
 
 function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
   const toast = useToast();
-  const qc = useQueryClient();
+  const mut = useSuspendUser(user.id);
   const [error, setError] = useState<string | null>(null);
 
-  const mut = useMutation({
-    mutationFn: async () => {
-      const { error: err, response } = await api.POST('/v1/admin/users/{id}/suspend', {
-        params: { path: { id: user.id } },
-      });
-      if (err || response.status !== 204) throw new Error(`suspend_failed_${response.status}`);
-    },
-    onSuccess: () => {
-      toast.push(`Suspended ${user.display_username}`);
-      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
-      onClose();
-    },
-    onError: (e: Error) => setError(e.message),
-  });
+  function trigger() {
+    setError(null);
+    mut.mutate(undefined, {
+      onSuccess: () => {
+        toast.push(`Suspended ${user.display_username}`);
+        onClose();
+      },
+      onError: (e: Error) => setError(e.message),
+    });
+  }
 
   return (
     <Modal open onClose={onClose} title={`Suspend ${user.display_username}?`}>
@@ -281,7 +238,7 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
         </button>
         <button
           type="button"
-          onClick={() => mut.mutate()}
+          onClick={trigger}
           disabled={mut.isPending}
           className="px-3 py-1 bg-red-700 text-white rounded text-sm disabled:opacity-50"
         >

@@ -8,6 +8,11 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/page.dart';
 
+/// Wraps the `collections` tag of [KamosApi] (list / detail / create /
+/// rename / delete / add+remove entries / visibility) and lifts
+/// `DioException` into typed `core/api/api_exceptions.dart` exceptions.
+/// Used by the collections feature's list + detail screens and the
+/// picker sheet.
 class CollectionRepository {
   CollectionRepository({required Dio dio}) : _api = KamosApi(dio);
 

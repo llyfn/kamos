@@ -17,6 +17,10 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage_request.dart';
 import '../../../core/api/api_exceptions.dart';
 
+/// Wraps the `beverage-requests` tag of [KamosApi] (submit, queue
+/// listing) and lifts `DioException` into the
+/// [BeverageRequestSubmissionException] in `core/api/api_exceptions.dart`.
+/// Used by the beverage-requests feature's submission screen.
 class BeverageRequestRepository {
   BeverageRequestRepository(Dio dio) : _api = KamosApi(dio);
   final KamosApi _api;
