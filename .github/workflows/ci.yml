@@ -111,6 +111,23 @@ jobs:
       - name: sqlfluff lint
         run: sqlfluff lint migrations/ --config .sqlfluffrc
 
+  tokens-codegen:
+    name: Design tokens codegen drift check
+    runs-on: ubuntu-latest
+    # Run on every PR + main push. The job is cheap (a single node
+    # invocation + git diff) and the gate it provides — "design/tokens.json
+    # is the source of truth for admin/src/lib/tokens.ts" — is REQUIRED
+    # for merge. If you edit one without the other, this fails.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run gen-tokens.sh
+        run: scripts/gen-tokens.sh
+      - name: Fail on drift
+        run: git diff --exit-code -- admin/src/lib/tokens.ts
+
   admin-build:
     name: Admin (React/TS)
     needs: changes

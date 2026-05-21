@@ -361,6 +361,16 @@ paths:
       responses:
         "200":
           description: public profile
+          headers:
+            Cache-Control:
+              description: |
+                Stage 7 (M-3.5) — emitted by middleware:
+                `private, must-revalidate`. The response varies by the
+                viewer's follow_state / restricted flag, so a shared
+                cache entry would leak relationship signal across
+                viewers. Only the end-user's browser/app may cache,
+                and only after revalidating each time.
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublicProfile" }
@@ -410,6 +420,7 @@ paths:
       description: |
         Status: scaffold-for-Phase6 — pre-wired for the followers list screen
         in a future profile iteration. No Flutter caller in MVP.
+      x-internal: true
       security:
         - bearerAuth: []
         - {}
@@ -439,6 +450,7 @@ paths:
       description: |
         Status: scaffold-for-Phase6 — pre-wired for the following list screen
         in a future profile iteration. No Flutter caller in MVP.
+      x-internal: true
       security:
         - bearerAuth: []
         - {}
@@ -489,6 +501,15 @@ paths:
       responses:
         "200":
           description: beverage detail
+          headers:
+            Cache-Control:
+              description: |
+                Stage 7 (M-3.5) — emitted by middleware:
+                `public, max-age=300, stale-while-revalidate=86400`.
+                Short max-age because avg_rating + check_in_count drift
+                as new check-ins land; the in-process LRU is busted on
+                write but downstream caches honor this header.
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BeverageDetail" }
@@ -514,6 +535,7 @@ paths:
         moderation by beverage). Endpoint is intentionally pre-wired; no
         Flutter caller in MVP (BeverageDetailScreen uses the inline
         `recent_check_ins` from `getBeverage`).
+      x-internal: true
       security: []
       responses:
         "200":
@@ -557,6 +579,15 @@ paths:
       responses:
         "200":
           description: brewery detail with beverage list
+          headers:
+            Cache-Control:
+              description: |
+                Stage 7 (M-3.5) — emitted by middleware:
+                `public, max-age=600, stale-while-revalidate=86400`.
+                Slower-moving aggregates than beverage detail; the
+                in-process LRU is busted on writes to the brewery's
+                beverages and downstream caches honor this header.
+              schema: { type: string }
           content:
             application/json:
               schema:
@@ -616,6 +647,7 @@ paths:
       description: |
         Status: scaffold-for-Phase5 (admin edit surface). Endpoint is
         intentionally pre-wired; no Flutter caller in MVP.
+      x-internal: true
       requestBody:
         required: true
         content:
@@ -644,6 +676,7 @@ paths:
       description: |
         Status: scaffold-for-Phase5 (admin moderation). Endpoint is
         intentionally pre-wired; no Flutter caller in MVP.
+      x-internal: true
       responses:
         "204": { description: soft-deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -1184,6 +1217,7 @@ paths:
         Status: scaffold-for-Phase6 (collection entry note edits, low cost
         to keep pre-wired). Endpoint is intentionally pre-wired; no Flutter
         caller in MVP.
+      x-internal: true
       requestBody:
         required: true
         content:
@@ -1238,10 +1272,20 @@ paths:
         Status: scaffold-for-Phase5 — server-validated taxonomy used by the
         admin surface to populate category dropdowns. Endpoint is
         intentionally pre-wired; Flutter MVP uses local `kCategoryStrings`.
+      x-internal: true
       security: []
       responses:
         "200":
           description: SPEC §2.1 categories with locale-aware labels
+          headers:
+            Cache-Control:
+              description: |
+                Stage 7 (M-3.5) — emitted by middleware:
+                `public, max-age=3600, stale-while-revalidate=86400`.
+                Taxonomy effectively never changes during a deploy
+                window; stale-while-revalidate lets intermediaries
+                background-refresh.
+              schema: { type: string }
           content:
             application/json:
               schema:
@@ -1256,6 +1300,14 @@ paths:
       responses:
         "200":
           description: SPEC §4.3 taxonomy
+          headers:
+            Cache-Control:
+              description: |
+                Stage 7 (M-3.5) — emitted by middleware:
+                `public, max-age=3600, stale-while-revalidate=86400`.
+                Taxonomy is effectively immutable during a deploy
+                window.
+              schema: { type: string }
           content:
             application/json:
               schema:
@@ -2379,6 +2431,7 @@ components:
       properties:
         next_cursor:
           type: string
+          nullable: true
           description: "opaque keyset cursor; absent on last page"
         has_more: { type: boolean }
     PageOfBeverage:
