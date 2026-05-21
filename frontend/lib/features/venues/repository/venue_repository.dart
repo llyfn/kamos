@@ -19,13 +19,14 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/venue.dart';
 import '../../../core/observability/sentry_observer.dart';
 import '../exceptions.dart';
 
 class VenueRepository {
-  VenueRepository(this._dio);
-  final Dio _dio;
+  VenueRepository(Dio dio) : _api = KamosApi(dio);
+  final KamosApi _api;
 
   /// Calls `GET /v1/venues/search?q=&lat=&lng=&locale=`. Returns the
   /// `items` array as `FoursquarePlace`s. The endpoint is NOT
@@ -37,35 +38,27 @@ class VenueRepository {
     String locale = 'en',
   }) async {
     try {
-      final res = await _dio.get(
-        '/v1/venues/search',
-        queryParameters: {
-          'q': query,
-          'lat': ?lat,
-          'lng': ?lng,
-          'locale': locale,
-        },
+      final data = await _api.venues.search(
+        query: query,
+        lat: lat,
+        lng: lng,
+        locale: locale,
       );
-      final data = res.data;
-      if (data is! Map<String, dynamic>) {
+      if (data.isEmpty) {
         // 200 with an unexpected body shape — should never happen, but a
         // server bug or upstream proxy mangling the response would land here.
         // Don't swallow silently; route to Sentry so we can see it. The user
         // still gets an empty result rather than a hard error.
-        final runtimeType = data.runtimeType.toString();
         if (kSentryConfigured) {
           Sentry.captureMessage(
             'venues/search: unexpected response shape',
             level: SentryLevel.warning,
             withScope: (scope) {
-              scope.setContexts('response', {'runtimeType': runtimeType});
+              scope.setContexts('response', {'runtimeType': 'empty'});
             },
           );
         } else {
-          debugPrint(
-            'venues/search: unexpected response shape '
-            '(runtimeType=$runtimeType)',
-          );
+          debugPrint('venues/search: unexpected response shape (empty)');
         }
         return const [];
       }

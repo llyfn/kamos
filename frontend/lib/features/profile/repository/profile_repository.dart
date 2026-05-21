@@ -9,17 +9,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/user.dart';
 
 class ProfileRepository {
-  ProfileRepository({required this.dio});
-  final Dio dio;
+  ProfileRepository({required Dio dio}) : _api = KamosApi(dio);
+
+  final KamosApi _api;
 
   Future<Me> me() async {
-    final res = await dio.get('/v1/users/me');
-    return Me.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.users.getMe();
+    return Me.fromJson(data);
   }
 
   Future<User> updateMe({
@@ -29,26 +31,21 @@ class ProfileRepository {
     String? locale,
     String? privacyMode,
   }) async {
-    final res = await dio.patch(
-      '/v1/users/me',
-      data: {
-        'display_name': ?displayName,
-        'bio': ?bio,
-        'avatar_url': ?avatarUrl,
-        'locale': ?locale,
-        'privacy_mode': ?privacyMode,
-      },
+    final data = await _api.users.updateMe(
+      displayName: displayName,
+      bio: bio,
+      avatarUrl: avatarUrl,
+      locale: locale,
+      privacyMode: privacyMode,
     );
-    return User.fromJson(res.data as Map<String, dynamic>);
+    return User.fromJson(data);
   }
 
-  Future<void> deleteMe() async {
-    await dio.delete('/v1/users/me');
-  }
+  Future<void> deleteMe() => _api.users.deleteMe();
 
   Future<PublicProfile> getProfile(String username) async {
-    final res = await dio.get('/v1/users/$username');
-    return PublicProfile.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.users.getUser(username);
+    return PublicProfile.fromJson(data);
   }
 
   Future<Page<Checkin>> userCheckins(
@@ -56,15 +53,13 @@ class ProfileRepository {
     String? cursor,
     int limit = 20,
   }) async {
-    final res = await dio.get(
-      '/v1/users/$username/check-ins',
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-        'limit': limit,
-      },
+    final data = await _api.users.getUserCheckins(
+      username,
+      cursor: cursor,
+      limit: limit,
     );
     return Page.fromJson(
-      res.data as Map<String, dynamic>,
+      data,
       (raw) => Checkin.fromJson(raw as Map<String, dynamic>),
     );
   }

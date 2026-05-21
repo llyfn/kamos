@@ -13,12 +13,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage_request.dart';
 import '../exceptions.dart';
 
 class BeverageRequestRepository {
-  BeverageRequestRepository(this._dio);
-  final Dio _dio;
+  BeverageRequestRepository(Dio dio) : _api = KamosApi(dio);
+  final KamosApi _api;
 
   /// POST `/v1/beverage-requests` with the request body shaped by
   /// [BeverageRequest.toJson]. Throws [BeverageRequestSubmissionException]
@@ -26,7 +27,7 @@ class BeverageRequestRepository {
   /// the payload is non-empty — so 422 here is unusual).
   Future<void> submit(BeverageRequest req) async {
     try {
-      await _dio.post('/v1/beverage-requests', data: req.toJson());
+      await _api.beverageRequests.submit(req.toJson());
     } on DioException catch (e) {
       throw BeverageRequestSubmissionException(e);
     }

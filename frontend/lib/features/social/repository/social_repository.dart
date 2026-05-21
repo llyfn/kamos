@@ -4,43 +4,37 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/social.dart';
 
 class SocialRepository {
-  SocialRepository({required this.dio});
-  final Dio dio;
+  SocialRepository({required Dio dio}) : _api = KamosApi(dio);
+  final KamosApi _api;
 
   Future<FollowResult> follow(String username) async {
-    final res = await dio.post('/v1/users/$username/follow');
-    return FollowResult.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.social.follow(username);
+    return FollowResult.fromJson(data);
   }
 
-  Future<void> unfollow(String username) async {
-    await dio.delete('/v1/users/$username/follow');
-  }
+  Future<void> unfollow(String username) => _api.social.unfollow(username);
 
   Future<Page<FollowRequest>> requests({String? cursor, int limit = 20}) async {
-    final res = await dio.get(
-      '/v1/follow-requests',
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-        'limit': limit,
-      },
+    final data = await _api.social.followRequests(
+      cursor: cursor,
+      limit: limit,
     );
     return Page.fromJson(
-      res.data as Map<String, dynamic>,
+      data,
       (raw) => FollowRequest.fromJson(raw as Map<String, dynamic>),
     );
   }
 
-  Future<void> approve(String userId) async {
-    await dio.post('/v1/follow-requests/$userId/approve');
-  }
+  Future<void> approve(String userId) =>
+      _api.social.approveFollowRequest(userId);
 
-  Future<void> decline(String userId) async {
-    await dio.post('/v1/follow-requests/$userId/decline');
-  }
+  Future<void> decline(String userId) =>
+      _api.social.declineFollowRequest(userId);
 }
 
 final socialRepositoryProvider = Provider<SocialRepository>(
