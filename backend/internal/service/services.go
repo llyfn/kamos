@@ -17,6 +17,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
@@ -46,6 +47,11 @@ type Deps struct {
 	Mailer     email.Mailer
 	Caches     *cache.Caches
 	SoftDelete *auth.SoftDeleteCache
+	// DB is the raw pgx pool used by cacheAdapter to publish
+	// pg_notify cache-bust signals to peer replicas (Stage 4). Nil-safe;
+	// when nil, services still invalidate their local L1 cache but skip
+	// the cross-replica fan-out.
+	DB *pgxpool.Pool
 }
 
 // New wires every service from the given dependencies. Nil-safe for tests:
@@ -66,26 +72,39 @@ func New(d Deps) *Bundle {
 //   - *cache.Caches (production)
 //   - nil (handlers' nil-Caches → invalidate becomes a no-op)
 type CacheInvalidator interface {
-	InvalidateBeverageDetail(beverageID string)
-	InvalidateBreweryDetail(breweryID string)
+	InvalidateBeverageDetail(ctx context.Context, beverageID string)
+	InvalidateBreweryDetail(ctx context.Context, breweryID string)
 }
 
-// cacheAdapter wraps a *cache.Caches to satisfy CacheInvalidator. The
-// no-op branch handles the nil case so callers don't sprinkle nil checks.
-type cacheAdapter struct{ c *cache.Caches }
-
-func (a cacheAdapter) InvalidateBeverageDetail(id string) {
-	if a.c == nil || id == "" {
-		return
-	}
-	a.c.BeverageDetail.InvalidatePrefix(id + ":")
+// cacheAdapter wraps the cache bundle + pool. Each Invalidate* call does
+// two things, in order: bust the local LRU synchronously, then fire a
+// pg_notify so peer replicas bust their copies on the LISTEN bus. The
+// nil-safe branches handle the no-cache / no-db test paths so callers
+// don't sprinkle guards through every write.
+type cacheAdapter struct {
+	c   *cache.Caches
+	db  *pgxpool.Pool
+	log *slog.Logger
 }
 
-func (a cacheAdapter) InvalidateBreweryDetail(id string) {
-	if a.c == nil || id == "" {
+func (a cacheAdapter) InvalidateBeverageDetail(ctx context.Context, id string) {
+	if id == "" {
 		return
 	}
-	a.c.BreweryDetail.InvalidatePrefix(id + ":")
+	if a.c != nil {
+		a.c.BeverageDetail.InvalidatePrefix(id + ":")
+	}
+	cache.NotifyInvalidation(ctx, a.db, a.log, "beverage:"+id)
+}
+
+func (a cacheAdapter) InvalidateBreweryDetail(ctx context.Context, id string) {
+	if id == "" {
+		return
+	}
+	if a.c != nil {
+		a.c.BreweryDetail.InvalidatePrefix(id + ":")
+	}
+	cache.NotifyInvalidation(ctx, a.db, a.log, "brewery:"+id)
 }
 
 // observe is the centralized hook for business counters. Services call it

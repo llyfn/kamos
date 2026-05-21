@@ -48,7 +48,7 @@ type AdminRefreshRepo interface {
 func newAdminService(d Deps) *AdminService {
 	s := &AdminService{
 		log:    d.Log,
-		caches: cacheAdapter{c: d.Caches},
+		caches: cacheAdapter{c: d.Caches, db: d.DB, log: d.Log},
 	}
 	if d.Repos != nil {
 		s.admin = d.Repos.Admin
@@ -65,7 +65,7 @@ func (s *AdminService) ApproveBeverageRequest(ctx context.Context, p repository.
 		return "", err
 	}
 	if p.BreweryID != "" {
-		s.caches.InvalidateBreweryDetail(p.BreweryID)
+		s.caches.InvalidateBreweryDetail(ctx, p.BreweryID)
 	}
 	return bevID, nil
 }
@@ -85,7 +85,7 @@ func (s *AdminService) ModerateCheckin(ctx context.Context, checkinID, moderator
 	if err := s.admin.ModerateCheckin(ctx, checkinID, moderatorID, notes); err != nil {
 		return err
 	}
-	s.caches.InvalidateBeverageDetail(bevID)
+	s.caches.InvalidateBeverageDetail(ctx, bevID)
 	return nil
 }
 

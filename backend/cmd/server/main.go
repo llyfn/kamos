@@ -166,12 +166,23 @@ func main() {
 	caches := cache.NewCaches()
 	caches.SetObservers(observability.RecordCacheHit, observability.RecordCacheMiss)
 
+	// Stage 4 — cross-replica cache invalidation bus. Every write path
+	// that calls caches.X.InvalidatePrefix(...) also fires
+	// cache.NotifyInvalidation(...). Each replica runs an Invalidator
+	// listening on the shared kamos_cache_invalidate channel; arriving
+	// payloads route through caches.InvalidatePrefix on the peer's L1.
+	inv := cache.NewInvalidator(pool, caches, log)
+	invCtx, invCancel := context.WithCancel(context.Background())
+	defer invCancel()
+	go inv.Start(invCtx)
+
 	h := handlers.New(cfg, log, repos, signer, google).
 		WithStorage(store).
 		WithMailer(mailer).
 		WithFoursquare(fsq).
 		WithSoftDeleteCache(softDelete).
 		WithCaches(caches).
+		WithDB(pool).
 		EnsureServices()
 	mux := server.New(log, signer, softDelete, h)
 
@@ -209,4 +220,9 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("shutdown", "err", err)
 	}
+	// Stop the cache invalidator BEFORE the deferred pool.Close so the
+	// hijacked connection is released cleanly. invCancel is also fired
+	// via defer above as a safety net.
+	inv.Stop()
+	invCancel()
 }

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/config"
@@ -62,6 +64,11 @@ type Handler struct {
 	// handlers that pre-date the migration fall back to the legacy
 	// direct-repo path when Services is nil.
 	Services *service.Bundle
+	// DB is the raw pgx pool (Stage 4). Wired so services can fan out
+	// pg_notify writes to the cache-invalidation bus on the same
+	// transaction-local connection that just committed. Nil-safe — the
+	// notify path is fire-and-forget and silently skips when DB is nil.
+	DB *pgxpool.Pool
 }
 
 // New creates the bundle. Storage/Mailer/Foursquare default to disabled
@@ -121,6 +128,14 @@ func (h *Handler) WithServices(s *service.Bundle) *Handler {
 	return h
 }
 
+// WithDB wires the raw pgx pool used for cross-replica cache-invalidation
+// NOTIFY writes (Stage 4). Optional; tests pass nil and the notify path
+// silently skips.
+func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
+	h.DB = db
+	return h
+}
+
 // buildServices is the package-internal helper that constructs the service
 // bundle from the handler's existing dependencies. main.go uses this so the
 // wiring stays in one place; tests can opt-in by calling h.WithServices.
@@ -133,6 +148,7 @@ func (h *Handler) buildServices() *service.Bundle {
 		Mailer:     h.Mailer,
 		Caches:     h.Caches,
 		SoftDelete: h.SoftDelete,
+		DB:         h.DB,
 	})
 }
 

@@ -49,7 +49,7 @@ type CheckinVenueRepo interface {
 func newCheckinService(d Deps) *CheckinService {
 	s := &CheckinService{
 		log:       d.Log,
-		caches:    cacheAdapter{c: d.Caches},
+		caches:    cacheAdapter{c: d.Caches, db: d.DB, log: d.Log},
 		onCreated: observability.IncCheckinsCreated,
 	}
 	if d.Repos != nil {
@@ -102,7 +102,7 @@ func (s *CheckinService) Create(ctx context.Context, userID string, req domain.C
 	if err != nil {
 		return nil, fmt.Errorf("CheckinService.Create reload: %w", err)
 	}
-	s.caches.InvalidateBeverageDetail(req.BeverageID)
+	s.caches.InvalidateBeverageDetail(ctx, req.BeverageID)
 	if s.onCreated != nil {
 		s.onCreated(ctx)
 	}
@@ -138,7 +138,7 @@ func (s *CheckinService) Update(ctx context.Context, userID, id string, req doma
 	if err != nil {
 		return nil, fmt.Errorf("CheckinService.Update reload: %w", err)
 	}
-	s.caches.InvalidateBeverageDetail(out.Beverage.ID)
+	s.caches.InvalidateBeverageDetail(ctx, out.Beverage.ID)
 	return out, nil
 }
 
@@ -151,7 +151,7 @@ func (s *CheckinService) Delete(ctx context.Context, userID, id string) error {
 	if err := s.checkins.SoftDelete(ctx, id, userID); err != nil {
 		return err
 	}
-	s.caches.InvalidateBeverageDetail(bevID)
+	s.caches.InvalidateBeverageDetail(ctx, bevID)
 	return nil
 }
 
