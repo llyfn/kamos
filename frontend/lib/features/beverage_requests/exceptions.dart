@@ -1,16 +1,9 @@
-// KAMOS — Typed beverage-request submission exceptions (user-side).
+// KAMOS — Beverage request submission exception (compat shim).
 //
-// Lives in a leaf file so widgets can pattern-match on the error path without
-// importing the repository (mirrors `features/venues/exceptions.dart`).
-//
-// The `POST /v1/beverage-requests` endpoint has no special status-code
-// surface — every non-2xx becomes a single `BeverageRequestSubmissionException`
-// the UI renders as `submitBeverageRequestErrorGeneric`.
+// The canonical definition lives in `core/api/api_exceptions.dart`. This file
+// re-exports it so existing imports
+// (`features/beverage_requests/exceptions.dart`) continue to resolve
+// unchanged. New code should import from the core path.
 
-class BeverageRequestSubmissionException implements Exception {
-  const BeverageRequestSubmissionException([this.cause]);
-  final Object? cause;
-
-  @override
-  String toString() => 'BeverageRequestSubmissionException(${cause ?? ''})';
-}
+export '../../core/api/api_exceptions.dart'
+    show BeverageRequestSubmissionException;
