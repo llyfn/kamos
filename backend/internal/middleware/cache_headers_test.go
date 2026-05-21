@@ -113,7 +113,10 @@ func TestETagChangesWhenBodyChanges(t *testing.T) {
 	// Stale If-None-Match → 200 again, not 304.
 	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 	req.Header.Set("If-None-Match", tag1)
-	resp3, _ := http.DefaultClient.Do(req)
+	resp3, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("third request: %v", err)
+	}
 	defer resp3.Body.Close()
 	if resp3.StatusCode != http.StatusOK {
 		t.Fatalf("stale ETag should not 304; got %d", resp3.StatusCode)
@@ -146,7 +149,10 @@ func TestETagSkipsOn4xx(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	resp, _ := http.Get(srv.URL)
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404; got %d", resp.StatusCode)
@@ -213,7 +219,10 @@ func TestCacheControlSurvives304(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 	req.Header.Set("If-None-Match", etag)
-	resp2, _ := http.DefaultClient.Do(req)
+	resp2, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("conditional Do: %v", err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusNotModified {
 		t.Fatalf("expected 304; got %d", resp2.StatusCode)

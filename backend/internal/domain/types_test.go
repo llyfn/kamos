@@ -101,6 +101,46 @@ func TestValidRating(t *testing.T) {
 	}
 }
 
+// TestRating_SPECScale centralizes the SPEC §4.2 rating invariant
+// (0.5–5.0 in 0.5 steps; nil is allowed since rating is optional). The
+// existing TestValidRating sprays the cases across two slices; this
+// table-driven shape is what reviewers should grep for when checking
+// "is the rating scale still enforced?" — one row per documented edge.
+func TestRating_SPECScale(t *testing.T) {
+	v0 := 0.0
+	v05 := 0.5
+	v04 := 0.4
+	v5 := 5.0
+	v55 := 5.5
+	v47 := 4.7
+
+	cases := []struct {
+		name string
+		in   *float64
+		ok   bool
+	}{
+		{"zero is rejected (below floor)", &v0, false},
+		{"half-step floor is accepted", &v05, true},
+		{"below floor (0.4) is rejected", &v04, false},
+		{"ceiling 5.0 is accepted", &v5, true},
+		{"above ceiling 5.5 is rejected", &v55, false},
+		{"step-misaligned 4.7 is rejected", &v47, false},
+		{"nil is accepted (optional rating)", nil, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidRating(tc.in)
+			if tc.ok && err != nil {
+				t.Errorf("want valid, got %v", err)
+			}
+			if !tc.ok && err == nil {
+				t.Errorf("want error, got nil")
+			}
+		})
+	}
+}
+
 func TestCreateCheckinValidate(t *testing.T) {
 	tooLong := strings.Repeat("r", 501)
 	cases := []struct {
