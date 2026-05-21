@@ -18,4 +18,8 @@ COPY --from=build /out/worker /usr/local/bin/worker
 # continue to work — the binary at /usr/local/bin/kamos-api is the server.
 COPY --from=build /out/server /usr/local/bin/kamos-api
 EXPOSE 8080 9091
-ENTRYPOINT ["/usr/local/bin/server"]
+# Use CMD (not ENTRYPOINT) so docker-compose `command:` and Fly `[processes]`
+# can fully override the launched binary. ENTRYPOINT would be prepended,
+# turning `command: ["/usr/local/bin/worker"]` into
+# `/usr/local/bin/server /usr/local/bin/worker` (server with stray arg).
+CMD ["/usr/local/bin/server"]
