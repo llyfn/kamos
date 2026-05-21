@@ -17,6 +17,9 @@ class BreweryDetail {
   final Page<Beverage> beverages;
 }
 
+/// Wraps the `breweries` tag of [KamosApi] (detail + beverages list per
+/// brewery) and lifts `DioException` into typed `core/api/api_exceptions.dart`
+/// exceptions. Used by the breweries feature's detail screen.
 class BreweryRepository {
   BreweryRepository({required Dio dio}) : _api = KamosApi(dio);
 

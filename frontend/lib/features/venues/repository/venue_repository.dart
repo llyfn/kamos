@@ -24,6 +24,10 @@ import '../../../core/models/venue.dart';
 import '../../../core/observability/sentry_observer.dart';
 import '../../../core/api/api_exceptions.dart';
 
+/// Wraps the `venues` tag of [KamosApi] (Foursquare-backed venue
+/// search) and lifts `DioException` into [VenueSearchDisabledException] /
+/// [VenueRateLimitedException] in `core/api/api_exceptions.dart`. Used by
+/// the venues feature's picker sheet inside the check-in flow.
 class VenueRepository {
   VenueRepository(Dio dio) : _api = KamosApi(dio);
   final KamosApi _api;

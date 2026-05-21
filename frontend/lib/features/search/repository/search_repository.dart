@@ -31,6 +31,10 @@ class SearchResultItem {
   }
 }
 
+/// Wraps the `search` tag of [KamosApi] (beverages, breweries, users)
+/// and lifts `DioException` into typed `core/api/api_exceptions.dart`
+/// exceptions. Used by the search feature's typeahead + results screen
+/// providers.
 class SearchRepository {
   SearchRepository({required Dio dio}) : _api = KamosApi(dio);
   final KamosApi _api;

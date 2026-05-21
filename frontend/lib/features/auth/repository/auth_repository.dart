@@ -14,6 +14,10 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/auth.dart';
 import '../../../core/storage/secure_storage.dart';
 
+/// Wraps the `auth` tag of [KamosApi] (register / login / refresh /
+/// password + email change / Google login / verify email) and lifts
+/// `DioException` into typed `core/api/api_exceptions.dart` exceptions.
+/// Used by the auth feature's controller and the secure-storage seam.
 class AuthRepository {
   AuthRepository({required Dio dio, required this.storage})
     : _api = KamosApi(dio);

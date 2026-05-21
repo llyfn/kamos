@@ -8,6 +8,10 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/page.dart';
 
+/// Wraps the `beverages` tag of [KamosApi] (popular list, detail,
+/// recent check-ins per beverage) and lifts `DioException` into typed
+/// `core/api/api_exceptions.dart` exceptions. Used by the beverages
+/// feature's discovery + detail screens.
 class BeverageRepository {
   BeverageRepository({required Dio dio}) : _api = KamosApi(dio);
 

@@ -1,9 +1,8 @@
-import { useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { RoleGuard } from '@/components/guard';
 import { useToast } from '@/components/toast';
-import { api } from '@/lib/api';
+import { useModerateCheckin } from '@/hooks/admin/mutations';
 
 export const Route = createFileRoute('/checkins')({
   component: GuardedCheckinsPage,
@@ -23,28 +22,21 @@ function CheckinsPage() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const mut = useMutation({
-    mutationFn: async () => {
-      const body = notes.trim() ? { notes: notes.trim() } : undefined;
-      const init = body ? { body } : {};
-      const { error: err, response } = await api.POST('/v1/admin/check-ins/{id}/moderate', {
-        params: { path: { id: id.trim() } },
-        ...init,
-      });
-      if (err || response.status !== 204) throw new Error(`moderate_failed_${response.status}`);
-    },
-    onSuccess: () => {
-      toast.push('Check-in moderated (soft-deleted)');
-      setId('');
-      setNotes('');
-    },
-    onError: (e: Error) => setError(e.message),
-  });
+  // useModerateCheckin keys on the check-in id; we re-instantiate per submit
+  // since the id is form-driven rather than route-driven.
+  const mut = useModerateCheckin(id.trim());
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    mut.mutate();
+    mut.mutate(notes, {
+      onSuccess: () => {
+        toast.push('Check-in moderated (soft-deleted)');
+        setId('');
+        setNotes('');
+      },
+      onError: (e: Error) => setError(e.message),
+    });
   }
 
   return (

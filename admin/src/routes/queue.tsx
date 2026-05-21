@@ -1,23 +1,31 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { RoleGuard } from '@/components/guard';
 import { JsonTree } from '@/components/json-tree';
 import { Modal } from '@/components/modal';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
+import {
+  useApproveBeverageRequest,
+  useRejectBeverageRequest,
+} from '@/hooks/admin/mutations';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
 
 type Request = components['schemas']['AdminBeverageRequest'];
-type Approval = components['schemas']['AdminBeverageRequestApproval'];
 
 export const Route = createFileRoute('/queue')({
   component: GuardedQueuePage,
 });
 
-interface QueueState {
-  cursor: string | null;
-}
+const COLUMNS: QueueTableColumn[] = [
+  { key: 'created', label: 'Created' },
+  { key: 'submitter', label: 'Submitter' },
+  { key: 'payload', label: 'Payload' },
+  { key: 'status', label: 'Status' },
+  { key: 'actions', label: 'Actions', className: 'text-right' },
+];
 
 function GuardedQueuePage() {
   return (
@@ -28,12 +36,12 @@ function GuardedQueuePage() {
 }
 
 function QueuePage() {
-  const [state, setState] = useState<QueueState>({ cursor: null });
+  const [cursor, setCursor] = useState<string | null>(null);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['admin', 'beverage-requests', state.cursor],
+    queryKey: ['admin', 'beverage-requests', cursor],
     queryFn: async () => {
       const params: { status: 'pending'; cursor?: string } = { status: 'pending' };
-      if (state.cursor) params.cursor = state.cursor;
+      if (cursor) params.cursor = cursor;
       const { data: page, error } = await api.GET('/v1/admin/beverage-requests', {
         params: { query: params },
       });
@@ -48,54 +56,16 @@ function QueuePage() {
       {isLoading && <p className="text-sm text-[color:var(--color-muted)]">Loading…</p>}
       {isError && <p className="text-sm text-red-700">Failed to load queue.</p>}
       {data && (
-        <>
-          <div className="border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-[color:var(--color-bg)] text-left">
-                <tr>
-                  <th className="p-2">Created</th>
-                  <th className="p-2">Submitter</th>
-                  <th className="p-2">Payload</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="p-6 text-center text-[color:var(--color-muted)]"
-                    >
-                      No pending requests.
-                    </td>
-                  </tr>
-                )}
-                {data.items.map((r) => (
-                  <Row key={r.id} request={r} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-3 flex justify-end gap-2 text-sm">
-            <button
-              type="button"
-              disabled={!state.cursor}
-              onClick={() => setState({ cursor: null })}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              First
-            </button>
-            <button
-              type="button"
-              disabled={!data.has_more}
-              onClick={() => setState({ cursor: data.next_cursor ?? null })}
-              className="px-3 py-1 border border-[color:var(--color-border)] rounded disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
-        </>
+        <QueueTable<Request>
+          columns={COLUMNS}
+          items={data.items}
+          page={{ hasMore: data.has_more, nextCursor: data.next_cursor ?? null }}
+          cursor={cursor}
+          onCursorChange={setCursor}
+          rowKey={(r) => r.id}
+          emptyLabel="No pending requests."
+          renderRow={(r) => <Row request={r} />}
+        />
       )}
     </div>
   );
@@ -141,7 +111,7 @@ function Row({ request }: { request: Request }) {
 
 function ApproveModal({ request, onClose }: { request: Request; onClose: () => void }) {
   const toast = useToast();
-  const qc = useQueryClient();
+  const approve = useApproveBeverageRequest(request.id);
   const [form, setForm] = useState<{
     brewery_id: string;
     category_id: string;
@@ -161,38 +131,27 @@ function ApproveModal({ request, onClose }: { request: Request; onClose: () => v
   });
   const [error, setError] = useState<string | null>(null);
 
-  const approve = useMutation({
-    mutationFn: async () => {
-      const body: Approval = {
-        brewery_id: form.brewery_id.trim(),
-        category_id: form.category_id.trim(),
-        name_i18n: {
-          en: form.name_en.trim(),
-          ja: form.name_ja.trim(),
-          ko: form.name_ko.trim(),
-        },
-      };
-      if (form.abv.trim()) body.abv = Number(form.abv);
-      if (form.label_image_url.trim()) body.label_image_url = form.label_image_url.trim();
-      const { data, error: err, response } = await api.POST(
-        '/v1/admin/beverage-requests/{id}/approve',
-        { params: { path: { id: request.id } }, body },
-      );
-      if (err || !data) throw new Error(`approve_failed_${response.status}`);
-      return data;
-    },
-    onSuccess: () => {
-      toast.push('Approved');
-      qc.invalidateQueries({ queryKey: ['admin', 'beverage-requests'] });
-      onClose();
-    },
-    onError: (e: Error) => setError(e.message),
-  });
-
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    approve.mutate();
+    const body: components['schemas']['AdminBeverageRequestApproval'] = {
+      brewery_id: form.brewery_id.trim(),
+      category_id: form.category_id.trim(),
+      name_i18n: {
+        en: form.name_en.trim(),
+        ja: form.name_ja.trim(),
+        ko: form.name_ko.trim(),
+      },
+    };
+    if (form.abv.trim()) body.abv = Number(form.abv);
+    if (form.label_image_url.trim()) body.label_image_url = form.label_image_url.trim();
+    approve.mutate(body, {
+      onSuccess: () => {
+        toast.push('Approved');
+        onClose();
+      },
+      onError: (e: Error) => setError(e.message),
+    });
   }
 
   return (
@@ -263,31 +222,20 @@ function ApproveModal({ request, onClose }: { request: Request; onClose: () => v
 
 function RejectModal({ request, onClose }: { request: Request; onClose: () => void }) {
   const toast = useToast();
-  const qc = useQueryClient();
+  const reject = useRejectBeverageRequest(request.id);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const reject = useMutation({
-    mutationFn: async () => {
-      const { data, error: err, response } = await api.POST(
-        '/v1/admin/beverage-requests/{id}/reject',
-        { params: { path: { id: request.id } }, body: { notes } },
-      );
-      if (err || !data) throw new Error(`reject_failed_${response.status}`);
-      return data;
-    },
-    onSuccess: () => {
-      toast.push('Rejected', 'success');
-      qc.invalidateQueries({ queryKey: ['admin', 'beverage-requests'] });
-      onClose();
-    },
-    onError: (e: Error) => setError(e.message),
-  });
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    reject.mutate();
+    reject.mutate(notes, {
+      onSuccess: () => {
+        toast.push('Rejected', 'success');
+        onClose();
+      },
+      onError: (e: Error) => setError(e.message),
+    });
   }
 
   return (

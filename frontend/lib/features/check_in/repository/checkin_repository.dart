@@ -43,6 +43,11 @@ export '../../../core/api/api_exceptions.dart'
 /// be converted upstream (image_picker on iOS auto-converts to JPEG).
 const _allowedContentTypes = {'image/jpeg', 'image/png', 'image/webp'};
 
+/// Wraps the `check-ins` tag of [KamosApi] (create, get, list, update,
+/// soft-delete, toast, photo presign + upload) and lifts `DioException`
+/// into typed `core/api/api_exceptions.dart` exceptions. Used by the
+/// check-in feature's composer + detail screens and the feed's toast
+/// button. The raw Dio is held separately for direct R2 PUT uploads.
 class CheckInRepository {
   CheckInRepository({required Dio dio, Dio? rawDio})
     : _api = KamosApi(dio),

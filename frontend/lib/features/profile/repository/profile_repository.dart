@@ -14,6 +14,10 @@ import '../../../core/models/checkin.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/user.dart';
 
+/// Wraps the `users` tag of [KamosApi] (me, public profile, update,
+/// avatar upload, user check-ins listing) and lifts `DioException` into
+/// typed `core/api/api_exceptions.dart` exceptions. Used by the profile
+/// feature's providers and edit-profile screen.
 class ProfileRepository {
   ProfileRepository({required Dio dio}) : _api = KamosApi(dio);
 
