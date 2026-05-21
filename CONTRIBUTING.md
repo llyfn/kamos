@@ -105,6 +105,26 @@ The following are intentionally **advisory** in CI for now:
 
 A future PR (Stage 8) will flip these from advisory to required once the existing findings are resolved. The list of currently-demoted strict Flutter lints is documented inline in `frontend/analysis_options.yaml`.
 
+## Design tokens
+
+The canonical source for color / spacing / radius / typography / motion tokens is `design/tokens.json`. A bash + node codegen script (`scripts/gen-tokens.sh`) reads it and emits per-platform sinks. The CI `tokens-codegen` job runs the script and fails if the generated sinks drift, which makes this a **required** check on every PR.
+
+Workflow:
+
+1. Edit `design/tokens.json`.
+2. Run `scripts/gen-tokens.sh`.
+3. Commit the JSON change **and** the regenerated sinks together.
+
+Current sink coverage (Stage 7 partial — see ARCH-011):
+
+| Sink | Path | Status |
+|---|---|---|
+| Admin (TypeScript) | `admin/src/lib/tokens.ts` | Generated. |
+| CSS variables | `design/colors_and_type.css` | Hand-maintained. Codegen target is queued; values must be kept in sync with `tokens.json` by hand for now. |
+| Flutter theme | `frontend/lib/app/theme.dart` | Hand-maintained. Same caveat — codegen target is queued. |
+
+When you change a color in `tokens.json`, mirror the same value into `design/colors_and_type.css` and the relevant constants in `frontend/lib/app/theme.dart` in the same PR until the codegen lands for those sinks.
+
 ## Migration discipline
 
 - **Append-only.** Never edit a migration that has been applied to a shared environment.

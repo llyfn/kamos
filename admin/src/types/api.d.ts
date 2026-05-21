@@ -1701,7 +1701,7 @@ export interface components {
         };
         PageBase: {
             /** @description opaque keyset cursor; absent on last page */
-            next_cursor?: string;
+            next_cursor?: string | null;
             has_more: boolean;
         };
         PageOfBeverage: components["schemas"]["PageBase"] & {
@@ -2324,6 +2324,15 @@ export interface operations {
             /** @description public profile */
             200: {
                 headers: {
+                    /**
+                     * @description Stage 7 (M-3.5) — emitted by middleware:
+                     *     `private, must-revalidate`. The response varies by the
+                     *     viewer's follow_state / restricted flag, so a shared
+                     *     cache entry would leak relationship signal across
+                     *     viewers. Only the end-user's browser/app may cache,
+                     *     and only after revalidating each time.
+                     */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -2450,6 +2459,14 @@ export interface operations {
             /** @description beverage detail */
             200: {
                 headers: {
+                    /**
+                     * @description Stage 7 (M-3.5) — emitted by middleware:
+                     *     `public, max-age=300, stale-while-revalidate=86400`.
+                     *     Short max-age because avg_rating + check_in_count drift
+                     *     as new check-ins land; the in-process LRU is busted on
+                     *     write but downstream caches honor this header.
+                     */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -2522,6 +2539,14 @@ export interface operations {
             /** @description brewery detail with beverage list */
             200: {
                 headers: {
+                    /**
+                     * @description Stage 7 (M-3.5) — emitted by middleware:
+                     *     `public, max-age=600, stale-while-revalidate=86400`.
+                     *     Slower-moving aggregates than beverage detail; the
+                     *     in-process LRU is busted on writes to the brewery's
+                     *     beverages and downstream caches honor this header.
+                     */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3333,6 +3358,14 @@ export interface operations {
             /** @description SPEC §2.1 categories with locale-aware labels */
             200: {
                 headers: {
+                    /**
+                     * @description Stage 7 (M-3.5) — emitted by middleware:
+                     *     `public, max-age=3600, stale-while-revalidate=86400`.
+                     *     Taxonomy effectively never changes during a deploy
+                     *     window; stale-while-revalidate lets intermediaries
+                     *     background-refresh.
+                     */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3353,6 +3386,13 @@ export interface operations {
             /** @description SPEC §4.3 taxonomy */
             200: {
                 headers: {
+                    /**
+                     * @description Stage 7 (M-3.5) — emitted by middleware:
+                     *     `public, max-age=3600, stale-while-revalidate=86400`.
+                     *     Taxonomy is effectively immutable during a deploy
+                     *     window.
+                     */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
