@@ -102,10 +102,9 @@ class _FakeRepo extends CheckInRepository {
     progressReports.add(0.5);
     onProgress(1.0);
     progressReports.add(1.0);
-    return PhotoRef(
-      id: 'pho-${uploadCalls.length}',
-      url: 'https://cdn.test/${uploadCalls.length}.jpg',
-    );
+    // PhotoRef no longer carries `id` (M-1.4) — wire shape is `url` +
+    // `sort_order` only.
+    return PhotoRef(url: 'https://cdn.test/${uploadCalls.length}.jpg');
   }
 }
 

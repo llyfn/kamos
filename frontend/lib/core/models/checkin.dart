@@ -13,13 +13,14 @@ part 'checkin.freezed.dart';
 abstract class PhotoRef with _$PhotoRef {
   const factory PhotoRef({
     required String url,
-    @Default('') String id,
     @Default(0) int sortOrder,
   }) = _PhotoRef;
 
+  // The OpenAPI `PhotoRef` schema only carries `url` + `sort_order` (see
+  // `openapi.yaml` and `backend/internal/domain/types_checkin.go`). The
+  // previous `id` field was speculative — the wire never delivered it.
   factory PhotoRef.fromJson(Map<String, dynamic> json) => PhotoRef(
     url: (json['url'] as String?) ?? '',
-    id: (json['id'] as String?) ?? '',
     sortOrder: (json['sort_order'] as int?) ?? 0,
   );
 }
@@ -62,6 +63,11 @@ abstract class Checkin with _$Checkin {
     VenueRef? venue,
     @Default(0) int toasts,
     @Default(false) bool youToasted,
+    // Server-aggregated comment count (Phase 6a). Defaults to 0 so older
+    // servers (or omitted-key responses) remain wire-compatible. Mirrors
+    // the same field on FeedItem so the detail screen can render the
+    // comment badge without a separate `GET /comments` round trip.
+    @Default(0) int commentCount,
     @Default('') String createdAt,
     @Default('') String updatedAt,
   }) = _Checkin;
@@ -92,6 +98,7 @@ abstract class Checkin with _$Checkin {
         : null,
     toasts: (json['toasts'] as int?) ?? 0,
     youToasted: (json['you_toasted'] as bool?) ?? false,
+    commentCount: (json['comment_count'] as int?) ?? 0,
     createdAt: (json['created_at'] as String?) ?? '',
     updatedAt: (json['updated_at'] as String?) ?? '',
   );
