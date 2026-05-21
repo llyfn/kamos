@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/brewery.dart';
 import '../../../core/models/page.dart';
@@ -17,12 +18,12 @@ class BreweryDetail {
 }
 
 class BreweryRepository {
-  BreweryRepository({required this.dio});
-  final Dio dio;
+  BreweryRepository({required Dio dio}) : _api = KamosApi(dio);
+
+  final KamosApi _api;
 
   Future<BreweryDetail> get(String id) async {
-    final res = await dio.get('/v1/breweries/$id');
-    final data = res.data as Map<String, dynamic>;
+    final data = await _api.breweries.get(id);
     final beveragesPage = data['beverages'] is Map<String, dynamic>
         ? Page.fromJson(
             data['beverages'] as Map<String, dynamic>,

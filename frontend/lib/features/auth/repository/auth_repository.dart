@@ -1,5 +1,5 @@
-// KAMOS — AuthRepository. Talks to /v1/auth/* and persists the JWT pair on
-// success.
+// KAMOS — AuthRepository. Talks to /v1/auth/* via [KamosApi.auth] and
+// persists the JWT pair on success.
 //
 // Rotating refresh tokens: `login`, `register`, `google`, and `refresh`
 // all return a fresh pair; the access token expires in 15 min and the
@@ -10,23 +10,23 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/auth.dart';
 import '../../../core/storage/secure_storage.dart';
 
 class AuthRepository {
-  AuthRepository({required this.dio, required this.storage});
-  final Dio dio;
+  AuthRepository({required Dio dio, required this.storage})
+    : _api = KamosApi(dio);
+
+  final KamosApi _api;
   final SecureStorageService storage;
 
   Future<AuthResponse> login({
     required String email,
     required String password,
   }) async {
-    final res = await dio.post(
-      '/v1/auth/login',
-      data: {'email': email, 'password': password},
-    );
-    final auth = AuthResponse.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.auth.login(email: email, password: password);
+    final auth = AuthResponse.fromJson(data);
     await _persist(auth);
     return auth;
   }
@@ -38,18 +38,14 @@ class AuthRepository {
     String? displayName,
     String locale = 'en',
   }) async {
-    final res = await dio.post(
-      '/v1/auth/register',
-      data: {
-        'username': username,
-        'email': email,
-        'password': password,
-        if (displayName != null && displayName.isNotEmpty)
-          'display_name': displayName,
-        'locale': locale,
-      },
+    final data = await _api.auth.register(
+      username: username,
+      email: email,
+      password: password,
+      displayName: displayName,
+      locale: locale,
     );
-    final auth = AuthResponse.fromJson(res.data as Map<String, dynamic>);
+    final auth = AuthResponse.fromJson(data);
     await _persist(auth);
     return auth;
   }
@@ -59,15 +55,12 @@ class AuthRepository {
     String? username,
     String locale = 'en',
   }) async {
-    final res = await dio.post(
-      '/v1/auth/google',
-      data: {
-        'id_token': idToken,
-        if (username != null && username.isNotEmpty) 'username': username,
-        'locale': locale,
-      },
+    final data = await _api.auth.google(
+      idToken: idToken,
+      username: username,
+      locale: locale,
     );
-    final auth = AuthResponse.fromJson(res.data as Map<String, dynamic>);
+    final auth = AuthResponse.fromJson(data);
     await _persist(auth);
     return auth;
   }
@@ -79,11 +72,8 @@ class AuthRepository {
   /// this interceptor (see `api_client.dart`) so that a 401 here can never
   /// recurse into another refresh attempt.
   Future<AuthResponse> refresh(String refreshToken) async {
-    final res = await dio.post(
-      '/v1/auth/refresh',
-      data: {'refresh_token': refreshToken},
-    );
-    final auth = AuthResponse.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.auth.refresh(refreshToken);
+    final auth = AuthResponse.fromJson(data);
     await _persist(auth);
     return auth;
   }
@@ -94,12 +84,7 @@ class AuthRepository {
   /// tokens for the user.
   Future<void> logout({String? refreshToken}) async {
     try {
-      await dio.post(
-        '/v1/auth/logout',
-        data: refreshToken != null && refreshToken.isNotEmpty
-            ? {'refresh_token': refreshToken}
-            : <String, dynamic>{},
-      );
+      await _api.auth.logout(refreshToken: refreshToken);
     } on DioException {
       // Ignore — server may be unreachable or the token may already be invalid.
       // Local token clearing is handled by the caller.
@@ -107,28 +92,22 @@ class AuthRepository {
   }
 
   Future<bool> verifyEmail(String token) async {
-    final res = await dio.post('/v1/auth/verify-email', data: {'token': token});
-    final body = res.data as Map<String, dynamic>;
+    final body = await _api.auth.verifyEmail(token);
     return (body['verified'] as bool?) ?? false;
   }
 
-  Future<void> resendVerification() async {
-    await dio.post('/v1/auth/resend-verification');
-  }
+  Future<void> resendVerification() => _api.auth.resendVerification();
 
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
-  }) async {
-    await dio.post(
-      '/v1/auth/password-change',
-      data: {'current_password': currentPassword, 'new_password': newPassword},
-    );
-  }
+  }) => _api.auth.changePassword(
+    currentPassword: currentPassword,
+    newPassword: newPassword,
+  );
 
-  Future<void> changeEmail(String newEmail) async {
-    await dio.post('/v1/auth/email-change', data: {'new_email': newEmail});
-  }
+  Future<void> changeEmail(String newEmail) =>
+      _api.auth.changeEmail(newEmail);
 
   Future<void> _persist(AuthResponse auth) async {
     await storage.writeToken(auth.accessToken);
