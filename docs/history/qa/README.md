@@ -5,13 +5,17 @@ phase-by-phase reports live under `archive/`.
 
 ## Active
 
-- `qa_report_phase7_final.md` — Phase 7 cross-layer drift final, the
-  current QA pin.
+- `qa_report_post_refactor.md` — **POST-REFACTOR FINAL** (Stage 9).
+  Certifies the codebase at the close of the 10-stage refactor (Stages
+  0 through 9). This pin supersedes every prior report.
+- `qa_report_phase7_final.md` — Phase 7 cross-layer drift final. Kept
+  active as the most recent per-phase pin; refer back when the Stage 9
+  pin notes "covered by Phase 7."
 - `qa_report_phase7_flutter.md` — Phase 7 frontend-specific findings.
-- `qa_report_phase7a_backend_qa.md` — the most recent integration
-  check, run after Phase 7's backend slice (M-8 series).
-- `qa_phase7_grafana_panel.json` — the observability dashboard
-  artifact pinned to the Phase 7 panel layout.
+- `qa_report_phase7a_backend_qa.md` — Phase 7 backend slice (M-8
+  series) integration check.
+- `qa_phase7_grafana_panel.json` — observability dashboard artifact
+  pinned to the Phase 7 panel layout.
 
 ## Archive
 
