@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as QueueRouteImport } from './routes/queue'
+import { Route as ModerationLogRouteImport } from './routes/moderation-log'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CommentsRouteImport } from './routes/comments'
 import { Route as CheckinsRouteImport } from './routes/checkins'
@@ -24,6 +25,11 @@ const UsersRoute = UsersRouteImport.update({
 const QueueRoute = QueueRouteImport.update({
   id: '/queue',
   path: '/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModerationLogRoute = ModerationLogRouteImport.update({
+  id: '/moderation-log',
+  path: '/moderation-log',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
   '/login': typeof LoginRoute
+  '/moderation-log': typeof ModerationLogRoute
   '/queue': typeof QueueRoute
   '/users': typeof UsersRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
   '/login': typeof LoginRoute
+  '/moderation-log': typeof ModerationLogRoute
   '/queue': typeof QueueRoute
   '/users': typeof UsersRoute
 }
@@ -69,20 +77,36 @@ export interface FileRoutesById {
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
   '/login': typeof LoginRoute
+  '/moderation-log': typeof ModerationLogRoute
   '/queue': typeof QueueRoute
   '/users': typeof UsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checkins' | '/comments' | '/login' | '/queue' | '/users'
+  fullPaths:
+    | '/'
+    | '/checkins'
+    | '/comments'
+    | '/login'
+    | '/moderation-log'
+    | '/queue'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checkins' | '/comments' | '/login' | '/queue' | '/users'
+  to:
+    | '/'
+    | '/checkins'
+    | '/comments'
+    | '/login'
+    | '/moderation-log'
+    | '/queue'
+    | '/users'
   id:
     | '__root__'
     | '/'
     | '/checkins'
     | '/comments'
     | '/login'
+    | '/moderation-log'
     | '/queue'
     | '/users'
   fileRoutesById: FileRoutesById
@@ -92,6 +116,7 @@ export interface RootRouteChildren {
   CheckinsRoute: typeof CheckinsRoute
   CommentsRoute: typeof CommentsRoute
   LoginRoute: typeof LoginRoute
+  ModerationLogRoute: typeof ModerationLogRoute
   QueueRoute: typeof QueueRoute
   UsersRoute: typeof UsersRoute
 }
@@ -110,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/queue'
       fullPath: '/queue'
       preLoaderRoute: typeof QueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/moderation-log': {
+      id: '/moderation-log'
+      path: '/moderation-log'
+      fullPath: '/moderation-log'
+      preLoaderRoute: typeof ModerationLogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -148,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckinsRoute: CheckinsRoute,
   CommentsRoute: CommentsRoute,
   LoginRoute: LoginRoute,
+  ModerationLogRoute: ModerationLogRoute,
   QueueRoute: QueueRoute,
   UsersRoute: UsersRoute,
 }

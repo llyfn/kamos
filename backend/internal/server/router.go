@@ -317,6 +317,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(modOrAdmin).Post("/check-ins/{id}/moderate", h.AdminModerateCheckin)
 			r.With(modOrAdmin).Get("/users", h.AdminListUsers)
 
+			// Stage 7 (M-8.1) — moderator audit trail (read only).
+			// Moderator-or-admin: it's a read, both roles should see
+			// history. Write happens inside each admin action's
+			// transaction (see admin.go::insertModerationLog).
+			r.With(modOrAdmin).Get("/moderation-log", h.AdminListModerationLog)
+
 			// Phase 6a — comment moderation surface. Both endpoints
 			// (review list + per-row soft-delete) are moderator-or-admin.
 			r.With(modOrAdmin).Get("/comments", h.AdminListComments)

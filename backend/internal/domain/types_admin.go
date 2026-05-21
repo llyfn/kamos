@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // ---------------------------------------------------------------------------
 // RBAC roles (Phase 5a)
 // ---------------------------------------------------------------------------
@@ -24,4 +26,25 @@ func (r UserRole) Valid() bool {
 		return true
 	}
 	return false
+}
+
+// ---------------------------------------------------------------------------
+// Moderation log audit entry (Stage 7, item M-8.1)
+// ---------------------------------------------------------------------------
+
+// ModerationLogEntry is one row of the audit trail backing
+// `GET /v1/admin/moderation-log`. Column shape matches migration 008
+// (moderation_log). `notes` is the SQL column name; the JSON tag stays
+// `notes` for consistency with the request bodies on
+// admin/{approve,reject,moderate,comments/moderate} endpoints that take
+// notes alongside their state-change writes.
+type ModerationLogEntry struct {
+	ID          string         `json:"id"`
+	ModeratorID *string        `json:"moderator_id"`
+	Action      string         `json:"action"`
+	TargetType  string         `json:"target_type"`
+	TargetID    string         `json:"target_id"`
+	Notes       *string        `json:"notes,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
 }

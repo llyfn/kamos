@@ -58,6 +58,13 @@ function RootLayout() {
                   >
                     Comments
                   </Link>
+                  <Link
+                    to="/moderation-log"
+                    className="hover:underline"
+                    activeProps={{ className: 'underline' }}
+                  >
+                    Audit
+                  </Link>
                   <button
                     type="button"
                     onClick={() => {
