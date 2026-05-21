@@ -63,9 +63,12 @@ jobs:
         run: go mod download
       - name: go build
         run: go build ./...
-      - name: go vet (advisory until Stage 8)
-        run: go vet ./... || true
-      - name: golangci-lint (advisory)
+      - name: go vet
+        run: go vet ./...
+      # golangci-lint: 184 outstanding findings tracked for Stage 8 cleanup
+      # (contextcheck, noctx, revive, gosec, staticcheck). Remains advisory
+      # until that PR lands.
+      - name: golangci-lint (advisory until Stage 8)
         uses: golangci/golangci-lint-action@v6
         with:
           version: v2.12.2
@@ -90,13 +93,18 @@ jobs:
           cache: true
       - name: flutter pub get
         run: flutter pub get
-      - name: flutter analyze (advisory)
+      # flutter analyze: 38 outstanding infos + warnings (directives_ordering,
+      # inference_failure_*, etc.) tracked for Stage 8 cleanup. Remains
+      # advisory until that PR lands.
+      - name: flutter analyze (advisory until Stage 8)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: flutter test
         run: flutter test
 
+  # SQL lint: existing migrations have CP03/LT02 noise tracked for Stage 8.
+  # Remains advisory until that cleanup PR.
   sql-lint:
-    name: SQL Lint (advisory)
+    name: SQL Lint (advisory until Stage 8)
     needs: changes
     if: needs.changes.outputs.migrations == 'true' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -145,13 +153,19 @@ jobs:
           cache-dependency-path: admin/package-lock.json
       - name: npm ci
         run: npm ci
-      - name: biome check (advisory)
+      # biome: 24 outstanding import-sort errors tracked for Stage 8.
+      - name: biome check (advisory until Stage 8)
         run: npx biome check src/ || true
       - name: npm run build
         run: npm run build
 
+  # Integration smoke in CI is advisory: the job applies migrations against
+  # a local Postgres but does not start the API server, so smoke.sh has
+  # nothing to hit. The hard smoke gate is the post-deploy step in
+  # .github/workflows/deploy-dev.yml, which exercises the live dev API.
+  # Fixing CI to spin up its own server is tracked separately.
   integration-smoke:
-    name: Integration smoke (advisory, main only)
+    name: Integration smoke (advisory; real gate is post-deploy)
     needs: [backend-go]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
