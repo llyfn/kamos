@@ -20,6 +20,10 @@ abstract class Brewery with _$Brewery {
     int? foundedYear,
     String? website,
     I18nText? description,
+    // Populated by `GET /v1/breweries/{id}` and `GET /v1/breweries`. Absent in
+    // nested `BreweryRef` embeddings (which use the BreweryRef model) and in
+    // /v1/search brewery results — `null` then.
+    int? beverageCount,
     @Default('') String createdAt,
   }) = _Brewery;
 
@@ -35,6 +39,7 @@ abstract class Brewery with _$Brewery {
     description: json['description'] is Map<String, dynamic>
         ? I18nText.fromJson(json['description'] as Map<String, dynamic>)
         : null,
+    beverageCount: (json['beverage_count'] as num?)?.toInt(),
     createdAt: (json['created_at'] as String?) ?? '',
   );
 }

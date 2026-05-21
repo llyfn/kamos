@@ -1,9 +1,4 @@
 // KAMOS — User models (OpenAPI `User`, `Me`, `PublicProfile`).
-//
-// NOTE: per QA MINOR #8, `GET /v1/users/{username}` currently returns the
-// public profile WITH the target user's email. The contract here mirrors the
-// server, but the UI does NOT render email on a public profile — that field
-// is treated as private metadata.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -92,6 +87,12 @@ abstract class Me with _$Me {
     // as "you have admin rights; open the admin console" links. Defaults to
     // `UserRole.user` if the key is missing so older servers keep working.
     @Default(UserRole.user) UserRole role,
+    // Soft-delete timestamp on the owner's own account. The Stage 7
+    // backend change made the field `omitempty`, so it's absent for live
+    // users; non-null only in the rare window between admin suspension
+    // and the SoftDeleteCache refresh. UI can branch on this to show a
+    // "your account is being deleted" banner.
+    String? deletedAt,
   }) = _Me;
 
   factory Me.fromJson(Map<String, dynamic> json) => Me(
@@ -100,6 +101,7 @@ abstract class Me with _$Me {
       (json['stats'] as Map<String, dynamic>?) ?? const {},
     ),
     role: UserRoleParse.fromWire(json['role'] as String?),
+    deletedAt: json['deleted_at'] as String?,
   );
 }
 

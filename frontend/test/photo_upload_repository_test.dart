@@ -141,7 +141,9 @@ void main() {
       );
 
       expect(result, isA<PhotoRef>());
-      expect(result.id, 'pho-1');
+      // PhotoRef no longer carries `id` (M-1.4) — the OpenAPI schema only
+      // emits `url` + `sort_order`. The attach response's `id` is the
+      // server-side photo row id but it's never consumed by the client.
       expect(result.url, 'https://cdn.test/objects/abc.jpg');
       expect(apiAdapter.presignCalls, 1);
       expect(apiAdapter.attachCalls, 1);

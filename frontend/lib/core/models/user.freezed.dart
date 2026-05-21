@@ -569,12 +569,17 @@ as String,
 /// @nodoc
 mixin _$Me {
 
- User get user; UserStats get stats;// `role` is `required` in the OpenAPI `Me` schema (Phase 5a). The Flutter
+ User get user; UserStats get stats;// `role` is `required` in the OpenAPI `Me` schema. The Flutter
 // client itself is not the admin surface — that ships as a separate React
 // web app — but exposing the field future-proofs in-app affordances such
 // as "you have admin rights; open the admin console" links. Defaults to
 // `UserRole.user` if the key is missing so older servers keep working.
- UserRole get role;
+ UserRole get role;// Soft-delete timestamp on the owner's own account. The Stage 7
+// backend change made the field `omitempty`, so it's absent for live
+// users; non-null only in the rare window between admin suspension
+// and the SoftDeleteCache refresh. UI can branch on this to show a
+// "your account is being deleted" banner.
+ String? get deletedAt;
 /// Create a copy of Me
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -585,16 +590,16 @@ $MeCopyWith<Me> get copyWith => _$MeCopyWithImpl<Me>(this as Me, _$identity);
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Me&&(identical(other.user, user) || other.user == user)&&(identical(other.stats, stats) || other.stats == stats)&&(identical(other.role, role) || other.role == role));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Me&&(identical(other.user, user) || other.user == user)&&(identical(other.stats, stats) || other.stats == stats)&&(identical(other.role, role) || other.role == role)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,user,stats,role);
+int get hashCode => Object.hash(runtimeType,user,stats,role,deletedAt);
 
 @override
 String toString() {
-  return 'Me(user: $user, stats: $stats, role: $role)';
+  return 'Me(user: $user, stats: $stats, role: $role, deletedAt: $deletedAt)';
 }
 
 
@@ -605,7 +610,7 @@ abstract mixin class $MeCopyWith<$Res>  {
   factory $MeCopyWith(Me value, $Res Function(Me) _then) = _$MeCopyWithImpl;
 @useResult
 $Res call({
- User user, UserStats stats, UserRole role
+ User user, UserStats stats, UserRole role, String? deletedAt
 });
 
 
@@ -622,12 +627,13 @@ class _$MeCopyWithImpl<$Res>
 
 /// Create a copy of Me
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? user = null,Object? stats = null,Object? role = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? user = null,Object? stats = null,Object? role = null,Object? deletedAt = freezed,}) {
   return _then(_self.copyWith(
 user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as User,stats: null == stats ? _self.stats : stats // ignore: cast_nullable_to_non_nullable
 as UserStats,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
-as UserRole,
+as UserRole,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of Me
@@ -730,10 +736,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User user,  UserStats stats,  UserRole role)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User user,  UserStats stats,  UserRole role,  String? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Me() when $default != null:
-return $default(_that.user,_that.stats,_that.role);case _:
+return $default(_that.user,_that.stats,_that.role,_that.deletedAt);case _:
   return orElse();
 
 }
@@ -751,10 +757,10 @@ return $default(_that.user,_that.stats,_that.role);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User user,  UserStats stats,  UserRole role)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User user,  UserStats stats,  UserRole role,  String? deletedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Me():
-return $default(_that.user,_that.stats,_that.role);case _:
+return $default(_that.user,_that.stats,_that.role,_that.deletedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -771,10 +777,10 @@ return $default(_that.user,_that.stats,_that.role);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User user,  UserStats stats,  UserRole role)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User user,  UserStats stats,  UserRole role,  String? deletedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Me() when $default != null:
-return $default(_that.user,_that.stats,_that.role);case _:
+return $default(_that.user,_that.stats,_that.role,_that.deletedAt);case _:
   return null;
 
 }
@@ -786,17 +792,23 @@ return $default(_that.user,_that.stats,_that.role);case _:
 
 
 class _Me implements Me {
-  const _Me({required this.user, required this.stats, this.role = UserRole.user});
+  const _Me({required this.user, required this.stats, this.role = UserRole.user, this.deletedAt});
   
 
 @override final  User user;
 @override final  UserStats stats;
-// `role` is `required` in the OpenAPI `Me` schema (Phase 5a). The Flutter
+// `role` is `required` in the OpenAPI `Me` schema. The Flutter
 // client itself is not the admin surface — that ships as a separate React
 // web app — but exposing the field future-proofs in-app affordances such
 // as "you have admin rights; open the admin console" links. Defaults to
 // `UserRole.user` if the key is missing so older servers keep working.
 @override@JsonKey() final  UserRole role;
+// Soft-delete timestamp on the owner's own account. The Stage 7
+// backend change made the field `omitempty`, so it's absent for live
+// users; non-null only in the rare window between admin suspension
+// and the SoftDeleteCache refresh. UI can branch on this to show a
+// "your account is being deleted" banner.
+@override final  String? deletedAt;
 
 /// Create a copy of Me
 /// with the given fields replaced by the non-null parameter values.
@@ -808,16 +820,16 @@ _$MeCopyWith<_Me> get copyWith => __$MeCopyWithImpl<_Me>(this, _$identity);
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Me&&(identical(other.user, user) || other.user == user)&&(identical(other.stats, stats) || other.stats == stats)&&(identical(other.role, role) || other.role == role));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Me&&(identical(other.user, user) || other.user == user)&&(identical(other.stats, stats) || other.stats == stats)&&(identical(other.role, role) || other.role == role)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,user,stats,role);
+int get hashCode => Object.hash(runtimeType,user,stats,role,deletedAt);
 
 @override
 String toString() {
-  return 'Me(user: $user, stats: $stats, role: $role)';
+  return 'Me(user: $user, stats: $stats, role: $role, deletedAt: $deletedAt)';
 }
 
 
@@ -828,7 +840,7 @@ abstract mixin class _$MeCopyWith<$Res> implements $MeCopyWith<$Res> {
   factory _$MeCopyWith(_Me value, $Res Function(_Me) _then) = __$MeCopyWithImpl;
 @override @useResult
 $Res call({
- User user, UserStats stats, UserRole role
+ User user, UserStats stats, UserRole role, String? deletedAt
 });
 
 
@@ -845,12 +857,13 @@ class __$MeCopyWithImpl<$Res>
 
 /// Create a copy of Me
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? user = null,Object? stats = null,Object? role = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? user = null,Object? stats = null,Object? role = null,Object? deletedAt = freezed,}) {
   return _then(_Me(
 user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as User,stats: null == stats ? _self.stats : stats // ignore: cast_nullable_to_non_nullable
 as UserStats,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
-as UserRole,
+as UserRole,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
