@@ -8,6 +8,12 @@
 // `deletedAt` is exposed for completeness but the server already filters
 // soft-deleted comments out of the list response — clients never need to
 // render a tombstone.
+//
+// Stage 7 (M-12.2): `user` is nullable. Migration 013 sets
+// comments.user_id ON DELETE SET NULL, so a comment whose author was
+// hard-purged by the username-hold sweep arrives with `user: null`. The
+// tile renders the localized commentAuthorDeleted placeholder in that
+// case.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -20,20 +26,23 @@ abstract class Comment with _$Comment {
   const factory Comment({
     required String id,
     required String checkInId,
-    required CheckinUser user,
+    CheckinUser? user,
     required String body,
     @Default('') String createdAt,
     String? deletedAt,
   }) = _Comment;
 
-  factory Comment.fromJson(Map<String, dynamic> json) => Comment(
-        id: (json['id'] as String?) ?? '',
-        checkInId: (json['check_in_id'] as String?) ?? '',
-        user: CheckinUser.fromJson(
-          (json['user'] as Map<String, dynamic>?) ?? const {},
-        ),
-        body: (json['body'] as String?) ?? '',
-        createdAt: (json['created_at'] as String?) ?? '',
-        deletedAt: json['deleted_at'] as String?,
-      );
+  factory Comment.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'];
+    return Comment(
+      id: (json['id'] as String?) ?? '',
+      checkInId: (json['check_in_id'] as String?) ?? '',
+      user: userJson is Map<String, dynamic>
+          ? CheckinUser.fromJson(userJson)
+          : null,
+      body: (json['body'] as String?) ?? '',
+      createdAt: (json['created_at'] as String?) ?? '',
+      deletedAt: json['deleted_at'] as String?,
+    );
+  }
 }

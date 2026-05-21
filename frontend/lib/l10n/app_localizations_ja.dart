@@ -514,6 +514,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commentsLoadEarlier => '以前のコメントを読み込む';
 
   @override
+  String get commentAuthorDeleted => '[削除されたユーザー]';
+
+  @override
   String get collectionVisibilityChangeFailed =>
       '公開設定を変更できませんでした。このコレクションの所有者ではない可能性があります。';
 

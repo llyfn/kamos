@@ -338,3 +338,160 @@ func TestSanitizeTextRejectsControl(t *testing.T) {
 		})
 	}
 }
+
+// Stage 7 (M-11.5 / SEC-024) — the public submission body must reject
+// payloads that omit required keys, use a non-enum category_slug, exceed
+// the 4 KiB JSON cap, smuggle bidi/control bytes, or stuff a non-string
+// into one of the typed string fields.
+func TestBeverageRequestValidate(t *testing.T) {
+	valid := func() map[string]any {
+		return map[string]any{
+			"name":          "Dassai 23",
+			"brewery_name":  "Asahi Shuzo",
+			"category_slug": "nihonshu",
+		}
+	}
+
+	cases := []struct {
+		name    string
+		payload map[string]any
+		wantErr string // substring; "" = no error
+	}{
+		{"valid minimal", valid(), ""},
+		{
+			"valid with optionals",
+			func() map[string]any {
+				m := valid()
+				m["subcategory"] = "Junmai Daiginjo"
+				notes := "tasted at\nizakaya"
+				m["notes"] = notes
+				return m
+			}(),
+			"",
+		},
+		{"empty payload", map[string]any{}, "payload is required"},
+		{
+			"missing name",
+			func() map[string]any {
+				m := valid()
+				delete(m, "name")
+				return m
+			}(),
+			"name is required",
+		},
+		{
+			"missing brewery_name",
+			func() map[string]any {
+				m := valid()
+				delete(m, "brewery_name")
+				return m
+			}(),
+			"brewery_name is required",
+		},
+		{
+			"missing category_slug",
+			func() map[string]any {
+				m := valid()
+				delete(m, "category_slug")
+				return m
+			}(),
+			"category_slug is required",
+		},
+		{
+			"empty required string",
+			func() map[string]any {
+				m := valid()
+				m["name"] = ""
+				return m
+			}(),
+			"name is required",
+		},
+		{
+			"category_slug not enum",
+			func() map[string]any {
+				m := valid()
+				m["category_slug"] = "whiskey"
+				return m
+			}(),
+			"category_slug must be one of",
+		},
+		{
+			"name not a string",
+			func() map[string]any {
+				m := valid()
+				m["name"] = 42
+				return m
+			}(),
+			"name must be a string",
+		},
+		{
+			"name too long",
+			func() map[string]any {
+				m := valid()
+				m["name"] = strings.Repeat("x", 201)
+				return m
+			}(),
+			"name must be ≤ 200",
+		},
+		{
+			"notes too long",
+			func() map[string]any {
+				m := valid()
+				m["notes"] = strings.Repeat("n", 501)
+				return m
+			}(),
+			"notes must be ≤ 500",
+		},
+		{
+			"name has newline",
+			func() map[string]any {
+				m := valid()
+				m["name"] = "line1\nline2"
+				return m
+			}(),
+			"control character",
+		},
+		{
+			"name has bidi override",
+			func() map[string]any {
+				m := valid()
+				m["name"] = "Dassai‮23"
+				return m
+			}(),
+			"bidi-override",
+		},
+		{
+			"payload too large",
+			func() map[string]any {
+				m := valid()
+				// Push the JSON over 4 KiB by stashing a large unknown
+				// blob. Unknown keys are allowed to round-trip but the
+				// total payload still has to fit the cap.
+				m["bulk"] = strings.Repeat("a", 5*1024)
+				return m
+			}(),
+			"≤ 4096 bytes",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			r := BeverageRequest{Payload: tt.payload}
+			err := r.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("want nil, got %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("want error containing %q, got nil", tt.wantErr)
+			}
+			if !errors.Is(err, ErrValidation) {
+				t.Errorf("error should wrap ErrValidation, got %v", err)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error %q does not contain %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}

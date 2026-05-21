@@ -71,7 +71,11 @@ func (s *CommentService) Delete(ctx context.Context, commentID, viewerID string,
 	if err != nil {
 		return false, err
 	}
-	isOwner := c.User.ID == viewerID
+	// Stage 7 (M-12.2): User may be nil when the original author has been
+	// hard-purged (migration 013 sets comments.user_id ON DELETE SET NULL).
+	// An orphaned comment has no owner, so the owner short-circuit cannot
+	// fire and we fall through to the moderator role check below.
+	isOwner := c.User != nil && c.User.ID == viewerID
 	if !isOwner {
 		role, err := s.users.GetUserRole(ctx, viewerID)
 		if err != nil {

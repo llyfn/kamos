@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Comment {
 
- String get id; String get checkInId; CheckinUser get user; String get body; String get createdAt; String? get deletedAt;
+ String get id; String get checkInId; CheckinUser? get user; String get body; String get createdAt; String? get deletedAt;
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,11 +45,11 @@ abstract mixin class $CommentCopyWith<$Res>  {
   factory $CommentCopyWith(Comment value, $Res Function(Comment) _then) = _$CommentCopyWithImpl;
 @useResult
 $Res call({
- String id, String checkInId, CheckinUser user, String body, String createdAt, String? deletedAt
+ String id, String checkInId, CheckinUser? user, String body, String createdAt, String? deletedAt
 });
 
 
-$CheckinUserCopyWith<$Res> get user;
+$CheckinUserCopyWith<$Res>? get user;
 
 }
 /// @nodoc
@@ -62,12 +62,12 @@ class _$CommentCopyWithImpl<$Res>
 
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? checkInId = null,Object? user = null,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? checkInId = null,Object? user = freezed,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,checkInId: null == checkInId ? _self.checkInId : checkInId // ignore: cast_nullable_to_non_nullable
-as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
-as CheckinUser,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String,user: freezed == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
+as CheckinUser?,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -77,9 +77,12 @@ as String?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$CheckinUserCopyWith<$Res> get user {
-  
-  return $CheckinUserCopyWith<$Res>(_self.user, (value) {
+$CheckinUserCopyWith<$Res>? get user {
+    if (_self.user == null) {
+    return null;
+  }
+
+  return $CheckinUserCopyWith<$Res>(_self.user!, (value) {
     return _then(_self.copyWith(user: value));
   });
 }
@@ -164,7 +167,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser user,  String body,  String createdAt,  String? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Comment() when $default != null:
 return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt);case _:
@@ -185,7 +188,7 @@ return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser user,  String body,  String createdAt,  String? deletedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Comment():
 return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt);case _:
@@ -205,7 +208,7 @@ return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String checkInId,  CheckinUser user,  String body,  String createdAt,  String? deletedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Comment() when $default != null:
 return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt);case _:
@@ -220,12 +223,12 @@ return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_
 
 
 class _Comment implements Comment {
-  const _Comment({required this.id, required this.checkInId, required this.user, required this.body, this.createdAt = '', this.deletedAt});
+  const _Comment({required this.id, required this.checkInId, this.user, required this.body, this.createdAt = '', this.deletedAt});
   
 
 @override final  String id;
 @override final  String checkInId;
-@override final  CheckinUser user;
+@override final  CheckinUser? user;
 @override final  String body;
 @override@JsonKey() final  String createdAt;
 @override final  String? deletedAt;
@@ -260,11 +263,11 @@ abstract mixin class _$CommentCopyWith<$Res> implements $CommentCopyWith<$Res> {
   factory _$CommentCopyWith(_Comment value, $Res Function(_Comment) _then) = __$CommentCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String checkInId, CheckinUser user, String body, String createdAt, String? deletedAt
+ String id, String checkInId, CheckinUser? user, String body, String createdAt, String? deletedAt
 });
 
 
-@override $CheckinUserCopyWith<$Res> get user;
+@override $CheckinUserCopyWith<$Res>? get user;
 
 }
 /// @nodoc
@@ -277,12 +280,12 @@ class __$CommentCopyWithImpl<$Res>
 
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? checkInId = null,Object? user = null,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? checkInId = null,Object? user = freezed,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,}) {
   return _then(_Comment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,checkInId: null == checkInId ? _self.checkInId : checkInId // ignore: cast_nullable_to_non_nullable
-as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
-as CheckinUser,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String,user: freezed == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
+as CheckinUser?,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -293,9 +296,12 @@ as String?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$CheckinUserCopyWith<$Res> get user {
-  
-  return $CheckinUserCopyWith<$Res>(_self.user, (value) {
+$CheckinUserCopyWith<$Res>? get user {
+    if (_self.user == null) {
+    return null;
+  }
+
+  return $CheckinUserCopyWith<$Res>(_self.user!, (value) {
     return _then(_self.copyWith(user: value));
   });
 }

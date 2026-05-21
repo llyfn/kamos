@@ -202,6 +202,7 @@
   "commentsPostFailed": "Could not post. Try again.",
   "commentsLoadFailed": "Could not load comments",
   "commentsLoadEarlier": "Load earlier comments",
+  "commentAuthorDeleted": "[deleted user]",
   "collectionVisibilityChangeFailed": "Could not change visibility. You may not own this collection.",
   "feedCardCommentsCountLabel": "{count} comments",
   "@feedCardCommentsCountLabel": { "placeholders": { "count": { "type": "int" } } },
