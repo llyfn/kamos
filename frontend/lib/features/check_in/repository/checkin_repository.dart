@@ -11,7 +11,8 @@
 // * The PUT runs through a separate Dio instance with NO interceptors. The
 //   auth interceptor must not attach a Bearer header (the presigned URL signs
 //   the request itself) and a 401 from the storage provider must not trigger
-//   the refresh loop.
+//   the refresh loop. Because the URL is fully-qualified (R2 host), this PUT
+//   does NOT go through KamosApi.
 // * `onProgress` reports the PUT progress (0.0 → 1.0). Phases 1 and 3 are
 //   not part of the bar, but they normally complete in tens of ms.
 // * Backend may answer presign 503 with `code: STORAGE_DISABLED` when R2 is
@@ -27,6 +28,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/api_exceptions.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
 
@@ -42,10 +44,11 @@ export '../../../core/api/api_exceptions.dart'
 const _allowedContentTypes = {'image/jpeg', 'image/png', 'image/webp'};
 
 class CheckInRepository {
-  CheckInRepository({required this.dio, Dio? rawDio})
-    : _rawDio = rawDio ?? Dio();
+  CheckInRepository({required Dio dio, Dio? rawDio})
+    : _api = KamosApi(dio),
+      _rawDio = rawDio ?? Dio();
 
-  final Dio dio;
+  final KamosApi _api;
 
   /// Bare Dio for the presigned PUT. No interceptors, no Authorization header.
   /// The presigned URL signs the request itself.
@@ -62,34 +65,30 @@ class CheckInRepository {
     String? servingStyle,
     Map<String, dynamic>? venue,
   }) async {
-    final res = await dio.post(
-      '/v1/check-ins',
-      data: {
-        'beverage_id': beverageId,
-        'rating': ?rating,
-        if (review != null && review.isNotEmpty) 'review': review,
-        if (tags.isNotEmpty) 'tags': tags,
-        if (photos.isNotEmpty) 'photos': photos,
-        'price': ?price?.toJson(),
-        'purchase_type': ?purchaseType,
-        'serving_style': ?servingStyle,
-        if (venue != null && venue.isNotEmpty) 'venue': venue,
-      },
-    );
-    return Checkin.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.checkins.create({
+      'beverage_id': beverageId,
+      if (rating != null) 'rating': rating,
+      if (review != null && review.isNotEmpty) 'review': review,
+      if (tags.isNotEmpty) 'tags': tags,
+      if (photos.isNotEmpty) 'photos': photos,
+      if (price != null) 'price': price.toJson(),
+      if (purchaseType != null) 'purchase_type': purchaseType,
+      if (servingStyle != null) 'serving_style': servingStyle,
+      if (venue != null && venue.isNotEmpty) 'venue': venue,
+    });
+    return Checkin.fromJson(data);
   }
 
   /// Fetches a single check-in by id for the detail screen. The endpoint
   /// is OptionalAuth on the server side; signed-out users still get a
   /// response gated by the check-in's visibility rules.
   Future<Checkin> getOne(String id) async {
-    final res = await dio.get('/v1/check-ins/$id');
-    return Checkin.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.checkins.get(id);
+    return Checkin.fromJson(data);
   }
 
   Future<List<FlavorTag>> tags() async {
-    final res = await dio.get('/v1/flavor-tags');
-    final raw = (res.data as List?) ?? const [];
+    final raw = await _api.taxonomy.flavorTags();
     return raw
         .map((e) => FlavorTag.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -118,11 +117,10 @@ class CheckInRepository {
     // Step 1: presign.
     final Map<String, dynamic> presign;
     try {
-      final res = await dio.post(
-        '/v1/uploads/photo-presign',
-        data: {'content_type': contentType, 'byte_size': byteSize},
+      presign = await _api.uploads.presignPhotoUpload(
+        contentType: contentType,
+        byteSize: byteSize,
       );
-      presign = res.data as Map<String, dynamic>;
     } on DioException catch (e) {
       final status = e.response?.statusCode ?? 0;
       final body = e.response?.data;
@@ -168,7 +166,8 @@ class CheckInRepository {
     // already include it in `headers`; fall back if it didn't.
     headers.putIfAbsent('Content-Type', () => contentType);
 
-    // Step 2: PUT bytes through the raw Dio (no auth interceptor).
+    // Step 2: PUT bytes through the raw Dio (no auth interceptor, no
+    // KamosApi facade — the URL is fully-qualified and signed).
     try {
       await _rawDio.put<dynamic>(
         uploadUrl,
@@ -201,11 +200,10 @@ class CheckInRepository {
     // Step 3: attach the upload to the check-in.
     final Map<String, dynamic> attachBody;
     try {
-      final res = await dio.post(
-        '/v1/check-ins/$checkInId/photos',
-        data: {'upload_id': uploadId},
+      attachBody = await _api.checkins.attachPhoto(
+        checkInId: checkInId,
+        uploadId: uploadId,
       );
-      attachBody = res.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw PhotoUploadException(e.message ?? 'attach failed', stage: 'attach');
     }
