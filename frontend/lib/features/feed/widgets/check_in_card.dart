@@ -36,7 +36,7 @@ class CheckInCard extends StatelessWidget {
     final when = parseIsoDateOrNull(item.createdAt);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: KamosSpacing.md),
       child: KamosCard(
         onTap: () => context.push('/check-ins/${item.id}'),
         child: Column(
@@ -72,7 +72,7 @@ class CheckInCard extends StatelessWidget {
                 Icon(Icons.more_horiz, color: t.fg3, size: 18),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: KamosSpacing.md),
             InkWell(
               onTap: () => context.push('/beverages/${item.beverage.id}'),
               child: Row(
@@ -84,7 +84,7 @@ class CheckInCard extends StatelessWidget {
                     tone: labelToneFromCategory(item.beverage.category.slug),
                     imageUrl: item.beverage.labelImageUrl,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: KamosSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +157,7 @@ class CheckInCard extends StatelessWidget {
               _CheckInPhotoGrid(photos: item.photos),
             ],
             if (item.venue != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: KamosSpacing.sm),
               Text(
                 (item.venue!.locality ?? '').isEmpty
                     ? l.feedCardAtVenueNoLocality(item.venue!.name)
@@ -168,7 +168,7 @@ class CheckInCard extends StatelessWidget {
                 style: TextStyle(fontSize: 12, color: t.fg3),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: KamosSpacing.md),
             Container(height: 1, color: t.border1),
             const SizedBox(height: 10),
             Row(
@@ -178,7 +178,7 @@ class CheckInCard extends StatelessWidget {
                   active: item.youToasted,
                   onTap: onToast,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: KamosSpacing.sm),
                 _CommentBadge(
                   count: item.commentCount,
                   semanticLabel: l.feedCardCommentsCountLabel(

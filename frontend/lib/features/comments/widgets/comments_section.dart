@@ -14,7 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/state_views.dart';
-import '../exceptions.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../providers/comment_providers.dart';
 import 'comment_composer.dart';
 import 'comment_tile.dart';
@@ -33,7 +33,12 @@ class CommentsSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          padding: const EdgeInsets.fromLTRB(
+            KamosSpacing.lg,
+            KamosSpacing.lg,
+            KamosSpacing.lg,
+            KamosSpacing.xs,
+          ),
           child: Text(
             l.commentsTitle,
             style: TextStyle(
@@ -54,7 +59,7 @@ class CommentsSection extends ConsumerWidget {
           data: (s) {
             if (s.items.isEmpty) {
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: KamosSpacing.sm),
                 child: EmptyView(title: l.commentsEmpty),
               );
             }
@@ -67,7 +72,7 @@ class CommentsSection extends ConsumerWidget {
                   ),
                 if (s.hasMore)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: KamosSpacing.sm),
                     child: TextButton(
                       onPressed: s.isLoadingMore
                           ? null

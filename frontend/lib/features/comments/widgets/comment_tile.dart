@@ -39,7 +39,10 @@ class CommentTile extends ConsumerWidget {
     final when = parseIsoDateOrNull(comment.createdAt);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: KamosSpacing.lg,
+        vertical: KamosSpacing.sm,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -23,6 +23,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// Presign TTL bounds. The default applies when the caller passes a non-
+// positive TTL; the cap is the SPEC ceiling for how long a single upload
+// URL may be valid.
+const (
+	defaultPresignTTL = 15 * time.Minute
+	maxPresignTTL     = time.Hour
+)
+
 // R2 is the production Storage backend.
 type R2 struct {
 	bucket        string
@@ -70,10 +78,10 @@ func NewR2(ctx context.Context, endpoint, accessKey, secretKey, bucket, publicBa
 // PresignPut issues a one-shot PUT URL valid for `ttl`.
 func (r *R2) PresignPut(ctx context.Context, blobKey, contentType string, byteSize int64, ttl time.Duration) (*PresignedPut, error) {
 	if ttl <= 0 {
-		ttl = 15 * time.Minute
+		ttl = defaultPresignTTL
 	}
-	if ttl > time.Hour {
-		ttl = time.Hour
+	if ttl > maxPresignTTL {
+		ttl = maxPresignTTL
 	}
 
 	in := &s3.PutObjectInput{

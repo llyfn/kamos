@@ -65,7 +65,7 @@ func NewRoleResolver(db *pgxpool.Pool) *RoleResolver {
 // (e.g. CommentService.Delete).
 func (rr *RoleResolver) GetRole(ctx context.Context, userID string) (domain.UserRole, error) {
 	if rr == nil {
-		return "", fmt.Errorf("RoleResolver.GetRole: not configured")
+		return "", errors.New("RoleResolver.GetRole: not configured")
 	}
 	if rr.cache != nil {
 		if role, ok := rr.cache.Get(userID); ok {
@@ -73,7 +73,7 @@ func (rr *RoleResolver) GetRole(ctx context.Context, userID string) (domain.User
 		}
 	}
 	if rr.db == nil {
-		return "", fmt.Errorf("RoleResolver.GetRole: not configured")
+		return "", errors.New("RoleResolver.GetRole: not configured")
 	}
 	role, err := rr.roleOf(ctx, userID)
 	if err != nil {

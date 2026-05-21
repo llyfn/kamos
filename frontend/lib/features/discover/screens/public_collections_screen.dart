@@ -81,7 +81,7 @@ class _PublicCollectionsScreenState
           }
           return ListView.builder(
             controller: _controller,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(KamosSpacing.lg),
             itemCount: state.items.length + 1,
             itemBuilder: (context, i) {
               if (i == state.items.length) {
@@ -117,7 +117,7 @@ class _PublicCollectionsScreenState
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: KamosSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

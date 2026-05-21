@@ -6,6 +6,36 @@
 
 import 'package:flutter/material.dart';
 
+/// Named spacing constants (4 px base). Mirrors the `space1..10` scale on
+/// [KamosTokens], but as compile-time `static const double` so widgets can
+/// use them in `const SizedBox(...)` literals without a `BuildContext`.
+///
+/// Use these in widget literals; reach for `context.tokens.spaceN` when the
+/// surface already needs the context.
+///
+/// Sync source: `design/tokens.json` (spacing block).
+class KamosSpacing {
+  const KamosSpacing._();
+
+  /// 4 px — micro gap (icon-to-text).
+  static const double xs = 4;
+
+  /// 8 px — tight (chip padding, list-row inner gap).
+  static const double sm = 8;
+
+  /// 12 px — default (card inner gap, button vertical padding).
+  static const double md = 12;
+
+  /// 16 px — comfortable (screen padding, between rows).
+  static const double lg = 16;
+
+  /// 24 px — section separator.
+  static const double xl = 24;
+
+  /// 32 px — major break (between hero + body, between auth blocks).
+  static const double xxl = 32;
+}
+
 @immutable
 class KamosTokens extends ThemeExtension<KamosTokens> {
   const KamosTokens({

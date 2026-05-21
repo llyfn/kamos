@@ -19,7 +19,7 @@ import '../../../core/api/api_exception.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/comment.dart';
 import '../../../core/models/page.dart' as models;
-import '../exceptions.dart';
+import '../../../core/api/api_exceptions.dart';
 
 class CommentRepository {
   CommentRepository(Dio dio) : _api = KamosApi(dio);

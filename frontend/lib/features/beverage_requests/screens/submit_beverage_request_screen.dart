@@ -28,9 +28,9 @@ import '../providers/beverage_request_providers.dart';
 /// Maximum lengths chosen to mirror the closest existing fields on
 /// `beverages` (name ≤ 200) and `check_ins` (review ≤ 500). The server is
 /// the backstop and accepts anything non-empty today.
-const _kNameMax = 200;
-const _kBreweryMax = 200;
-const _kNotesMax = 500;
+const _nameMax = 200;
+const _breweryMax = 200;
+const _notesMax = 500;
 
 class SubmitBeverageRequestScreen extends ConsumerStatefulWidget {
   const SubmitBeverageRequestScreen({
@@ -133,7 +133,7 @@ class _SubmitBeverageRequestScreenState
             _SectionLabel(text: l.submitBeverageRequestNameLabel),
             TextField(
               controller: _name,
-              maxLength: _kNameMax,
+              maxLength: _nameMax,
               inputFormatters: [
                 FilteringTextInputFormatter.deny(RegExp(r'[\x00-\x1F\x7F]')),
               ],
@@ -145,7 +145,7 @@ class _SubmitBeverageRequestScreenState
             _SectionLabel(text: l.submitBeverageRequestBreweryLabel),
             TextField(
               controller: _brewery,
-              maxLength: _kBreweryMax,
+              maxLength: _breweryMax,
               inputFormatters: [
                 FilteringTextInputFormatter.deny(RegExp(r'[\x00-\x1F\x7F]')),
               ],
@@ -162,7 +162,7 @@ class _SubmitBeverageRequestScreenState
             _SectionLabel(text: l.submitBeverageRequestNotesLabel),
             TextField(
               controller: _notes,
-              maxLength: _kNotesMax,
+              maxLength: _notesMax,
               maxLines: 4,
               minLines: 3,
               inputFormatters: [

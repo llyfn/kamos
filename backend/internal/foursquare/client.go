@@ -64,6 +64,16 @@ const (
 	// held in memory. ~64 bytes per key + a small []Place per entry ≪ 1MB.
 	cacheSize = 1000
 
+	// transportIdleConnTimeout drops an idle keep-alive connection from
+	// the pool after this long. The default is 90s; we set it explicitly
+	// so the rationale is grep-able.
+	transportIdleConnTimeout = 90 * time.Second
+
+	// transportTLSHandshakeTimeout caps the TLS handshake on a fresh
+	// upstream dial. Foursquare is in us-east, so this is intentionally
+	// looser than the per-request httpTimeout.
+	transportTLSHandshakeTimeout = 5 * time.Second
+
 	// defaultLimit / maxLimit cap the Foursquare response page.
 	defaultLimit = 10
 	maxLimit     = 50
@@ -123,9 +133,9 @@ func New(apiKey string) *Client {
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 32,
 		MaxConnsPerHost:     64,
-		IdleConnTimeout:     90 * time.Second,
+		IdleConnTimeout:     transportIdleConnTimeout,
 		ForceAttemptHTTP2:   true,
-		TLSHandshakeTimeout: 5 * time.Second,
+		TLSHandshakeTimeout: transportTLSHandshakeTimeout,
 	}
 	return &Client{
 		apiKey: apiKey,

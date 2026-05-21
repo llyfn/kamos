@@ -30,6 +30,12 @@ const resendQueueDepth = 100
 // long-lived goroutines. A future spike can raise the count.
 const resendWorkerCount = 2
 
+// resendHTTPTimeout caps a single outbound POST to api.resend.com.
+// 10s is generous enough for Resend's ~p99 plus a TLS handshake on a
+// cold pool; long enough that we rarely time out before the upstream
+// itself does.
+const resendHTTPTimeout = 10 * time.Second
+
 // ResendMailer ships outbound mail through Resend's REST API.
 //
 // Stage 5 (PERF-029): the previous shape blocked the caller for one
@@ -63,7 +69,7 @@ func NewResendMailer(apiKey, from string, log *slog.Logger) *ResendMailer {
 		APIKey:  apiKey,
 		From:    from,
 		Log:     log,
-		HTTP:    &http.Client{Timeout: 10 * time.Second},
+		HTTP:    &http.Client{Timeout: resendHTTPTimeout},
 		queue:   make(chan resendRequest, resendQueueDepth),
 		stopped: make(chan struct{}),
 	}

@@ -15,7 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage_request.dart';
-import '../exceptions.dart';
+import '../../../core/api/api_exceptions.dart';
 
 class BeverageRequestRepository {
   BeverageRequestRepository(Dio dio) : _api = KamosApi(dio);

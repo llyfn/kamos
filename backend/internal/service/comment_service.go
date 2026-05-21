@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"time"
 
@@ -104,5 +103,3 @@ func (s *CommentService) ModerateForAdmin(ctx context.Context, commentID, modera
 func (s *CommentService) ListForAdmin(ctx context.Context, onlyDeleted bool, cursorTs *time.Time, cursorID *string, limit int) ([]repository.AdminCommentRow, error) {
 	return s.comments.ListForAdmin(ctx, onlyDeleted, cursorTs, cursorID, limit)
 }
-
-var _ = errors.Is
