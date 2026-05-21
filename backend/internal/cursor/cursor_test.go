@@ -241,3 +241,63 @@ func TestPageJSONShape(t *testing.T) {
 		}
 	}
 }
+
+// TestCursorRoundTripAllShapes exercises every Cursor field combination
+// that a handler emits (feed, search t=beverage, search t=brewery,
+// userCheckins, comments, popularity-with-CheckInCount). Each row is
+// encoded with the test signing key, decoded back, and asserted equal to
+// the original. Catches HMAC drift and field-omission regressions across
+// every cursor-emitting endpoint, not just the bare CreatedAt+ID pair.
+func TestCursorRoundTripAllShapes(t *testing.T) {
+	ts := time.Date(2026, 5, 21, 8, 0, 0, 0, time.UTC)
+	score := int64(42)
+	count := int64(1337)
+
+	cases := []struct {
+		name string
+		in   Cursor
+	}{
+		{"feed_keyset", Cursor{CreatedAt: ts, ID: "aa11"}},
+		{"comments_keyset", Cursor{CreatedAt: ts, ID: "bb22"}},
+		{"user_checkins_keyset", Cursor{CreatedAt: ts, ID: "cc33"}},
+		{"search_beverage", Cursor{CreatedAt: ts, ID: "dd44", Type: "beverage"}},
+		{"search_brewery", Cursor{CreatedAt: ts, ID: "ee55", Type: "brewery"}},
+		{"search_with_score", Cursor{CreatedAt: ts, ID: "ff66", Score: &score, Type: "beverage"}},
+		{"popularity_triple", Cursor{CreatedAt: ts, ID: "gg77", CheckInCount: &count}},
+		{"empty_id_only_ts", Cursor{CreatedAt: ts}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := Encode(tc.in)
+			if s == "" {
+				t.Fatalf("Encode returned empty string")
+			}
+			got, err := Decode(s)
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			if !got.CreatedAt.Equal(tc.in.CreatedAt) {
+				t.Errorf("CreatedAt: got %v want %v", got.CreatedAt, tc.in.CreatedAt)
+			}
+			if got.ID != tc.in.ID {
+				t.Errorf("ID: got %q want %q", got.ID, tc.in.ID)
+			}
+			if got.Type != tc.in.Type {
+				t.Errorf("Type: got %q want %q", got.Type, tc.in.Type)
+			}
+			if (got.Score == nil) != (tc.in.Score == nil) {
+				t.Fatalf("Score nil-ness mismatch: got %v want %v", got.Score, tc.in.Score)
+			}
+			if got.Score != nil && *got.Score != *tc.in.Score {
+				t.Errorf("Score: got %d want %d", *got.Score, *tc.in.Score)
+			}
+			if (got.CheckInCount == nil) != (tc.in.CheckInCount == nil) {
+				t.Fatalf("CheckInCount nil-ness mismatch: got %v want %v", got.CheckInCount, tc.in.CheckInCount)
+			}
+			if got.CheckInCount != nil && *got.CheckInCount != *tc.in.CheckInCount {
+				t.Errorf("CheckInCount: got %d want %d", *got.CheckInCount, *tc.in.CheckInCount)
+			}
+		})
+	}
+}

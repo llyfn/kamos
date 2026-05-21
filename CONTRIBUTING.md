@@ -163,6 +163,18 @@ Conventional `ref.watch(provider).when(loading:, error:, data:)` patterns should
 
 Use `errors.New("msg")` for static error messages. Use `fmt.Errorf("…: %w", err)` only when wrapping an inner error or formatting a value (`%q`, `%s`, `%d`). A static string passed to `fmt.Errorf` is a lint smell.
 
+### Flutter — golden baselines
+
+Golden tests live under `frontend/test/golden/` and write PNGs under `frontend/test/golden/goldens/`. The captured pixels are platform-specific (font hinting and emoji rasterization diverge across macOS / Linux / Windows), so a baseline produced on a developer laptop will not match Linux CI.
+
+Workflow:
+
+1. **Capture on Linux CI**, not locally. Push a branch and run the `flutter test --update-goldens test/golden/` step on the Ubuntu runner.
+2. Pull the artifact PNGs into `frontend/test/golden/goldens/`, commit them, and remove the `@Skip('golden baselines pending CI Linux capture')` annotation from the test file.
+3. Subsequent runs should pass on the same runner. A diff after a layout change means either (a) the change was intentional and you re-capture, or (b) the change was unintentional and you fix it.
+
+Until baselines land, the golden tests stay `@Skip`-ed so the suite is green for everyone.
+
 ## Migration discipline
 
 - **Append-only.** Never edit a migration that has been applied to a shared environment.
