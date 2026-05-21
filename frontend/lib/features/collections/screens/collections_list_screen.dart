@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/collection_providers.dart';
@@ -20,11 +21,10 @@ class CollectionsListScreen extends ConsumerWidget {
     final t = context.tokens;
     final async = ref.watch(collectionsProvider);
     return Scaffold(
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(onRetry: () => ref.invalidate(collectionsProvider)),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(collectionsProvider),
         data: (page) {
           return ListView(
             padding: const EdgeInsets.all(16),

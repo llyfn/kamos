@@ -9,6 +9,7 @@ import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
 import '../../../core/models/collection.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -83,14 +84,10 @@ class CollectionDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(
-            onRetry: () =>
-                ref.invalidate(collectionDetailProvider(collectionId)),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(collectionDetailProvider(collectionId)),
         data: (record) {
           final (collection, entries) = record;
           return ListView(

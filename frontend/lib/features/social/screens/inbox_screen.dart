@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -21,13 +22,10 @@ class InboxScreen extends ConsumerWidget {
     final async = ref.watch(followRequestsProvider);
     return Scaffold(
       appBar: AppBar(title: Text(l.inboxTitle)),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(
-            onRetry: () => ref.invalidate(followRequestsProvider),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(followRequestsProvider),
         data: (page) {
           if (page.items.isEmpty) {
             return EmptyView(title: l.inboxEmptyTitle, body: l.inboxEmptyBody);
