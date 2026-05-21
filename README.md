@@ -41,7 +41,15 @@ cd frontend && flutter run       # mobile app against http://localhost:8080
 cd admin && npm install && npm run dev  # admin SPA against http://localhost:8080
 ```
 
-Full env-var reference and staging/production deploy notes live in [DEPLOYMENT.md](DEPLOYMENT.md).
+Hosted dev environment (auto-deploys on every merge to `main`):
+
+| What | Where |
+|---|---|
+| API | `https://dev-api.kamos.app` (Fly.io, NRT) |
+| Admin SPA | `https://dev-admin.kamos.app` (Cloudflare Pages) |
+| Mobile | `flutter run --dart-define=KAMOS_API_BASE_URL=https://dev-api.kamos.app` |
+
+Operator runbook: [docs/runbooks/staging-deploy.md](docs/runbooks/staging-deploy.md). Full env-var reference: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Documentation
 

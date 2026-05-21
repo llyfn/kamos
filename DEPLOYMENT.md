@@ -52,6 +52,10 @@ Copy `backend/.env.example` to `.env` at the repo root (or wherever your runner 
 | `RESEND_API_KEY` | Resend API key for verification email. Empty → LogMailer (link logged at INFO). | optional |
 | `EMAIL_FROM` | `From:` address used by ResendMailer (e.g. `no-reply@kamos.app`). Required when `RESEND_API_KEY` is set. | optional |
 | `FOURSQUARE_API_KEY` | Foursquare Places API key (Phase 4 venue tag). Empty disables `GET /v1/venues/search` (503 `VENUE_SEARCH_DISABLED`). Check-in `venue.foursquare_id` upsert path is independent and still works without it. | optional |
+| `CURSOR_SECRET` | HMAC key for keyset-pagination cursor envelopes (≥ 32 bytes). Required in production; dev derives one from `JWT_SECRET` if unset. Tampered cursors → `400 INVALID_CURSOR`. | **production** |
+| `CACHE_BACKEND` | `in_process` (default) or `redis`. Selecting `redis` enables cross-replica L2; `in_process` keeps each replica's LRU isolated (still coherent via `pg_notify`). | optional |
+| `CACHE_REDIS_URL` | `rediss://...` DSN for the Redis L2 cache. Required when `CACHE_BACKEND=redis` — startup fails otherwise. | only if `CACHE_BACKEND=redis` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist for admin SPA origins. Dev default `http://localhost:5173`; production requires explicit list. | **production** |
 
 **Rate-limit defaults** (set in `internal/server/router.go`):
 
@@ -262,14 +266,15 @@ Vendor credentials still owed by the operator (flip-the-switch only):
 - [ ] Resend API key + verified `EMAIL_FROM` domain — cookbook §C3
 - [ ] Sentry DSNs + OTLP endpoint/headers — cookbook §C4
 - [ ] Foursquare Places API key — cookbook §C5
-- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6
+- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6 — wired by [`docs/runbooks/staging-deploy.md`](docs/runbooks/staging-deploy.md) §1.4
 
 Infra outside the codebase:
 
-- [ ] Managed Postgres 18 (RDS / Cloud SQL / Neon) with PITR
+- [x] **Dev environment on Fly.io (NRT)** — `kamos-dev` app + Fly Postgres 18 + Upstash Redis; auto-deploy via [`.github/workflows/deploy-dev.yml`](.github/workflows/deploy-dev.yml); runbook at [`docs/runbooks/staging-deploy.md`](docs/runbooks/staging-deploy.md).
+- [ ] Production: managed Postgres 18 (RDS / Cloud SQL / Neon) with PITR
 - [ ] `JWT_SECRET` from a secret manager, not env file
-- [ ] TLS termination (load balancer or reverse proxy)
+- [ ] TLS termination (load balancer or reverse proxy) — dev: Fly edge handles TLS via `flyctl certs`
 - [ ] `sslmode=require` in `DATABASE_URL`
 - [ ] CDN for beverage label images
 - [ ] Structured log shipping (slog → Loki / Datadog)
-- [ ] `APP_VERSION` populated per deploy (release tag / git SHA) so OTel + Sentry group by version
+- [x] **`APP_VERSION` populated per deploy** — dev pipeline stages `APP_VERSION=<git-sha>` on every `flyctl deploy` (see `deploy-dev.yml`).

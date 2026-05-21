@@ -1,94 +1,191 @@
-# Runbook — staging deploy (first cut)
+# Runbook — dev environment deploy (Fly.io)
 
-A checklist for bringing the KAMOS stack up on a fresh staging environment. Assumes you can provision Postgres + Redis + a container runtime and have admin access to the Sentry org + Grafana stack listed in `~/.claude/memory/reference_observability_vendors.md`.
+Concrete checklist for bringing the KAMOS dev environment up on Fly.io
+(Tokyo / NRT) and operating the auto-deploy pipeline. Production hardening
+(managed Postgres with PITR, fronted custom domains, hardened secrets
+rotation) lives in [`DEPLOYMENT.md §12`](../../DEPLOYMENT.md#12-production-hardening-checklist-post-mvp)
+and is out of scope here.
 
 Cross-references:
-- `DEPLOYMENT.md` — full env-var reference + flag-gated feature list.
-- `ARCHITECTURE.md` — process topology (API + worker, cache, NOTIFY).
+- [`DEPLOYMENT.md`](../../DEPLOYMENT.md) — env-var reference + feature-flag list.
+- [`ARCHITECTURE.md`](../../ARCHITECTURE.md) — process topology, multi-replica cache invalidation.
+- [`fly.toml`](../../fly.toml) — committed app definition (two processes, NRT).
+- [`.github/workflows/deploy-dev.yml`](../../.github/workflows/deploy-dev.yml) — the CD pipeline.
 
-## 1. Provision
+## 1. Provision (one-time, manual)
 
-- [ ] Managed Postgres 18+ (RDS / Cloud SQL / Neon). PITR enabled. Single instance is fine for staging.
-- [ ] Managed Redis 7+ (Elasticache / Upstash / similar). Single node is fine. Required only if you'll run more than one API replica.
-- [ ] Cloudflare R2 bucket + scoped API token (or leave R2 vars empty to disable photo upload).
-- [ ] DNS records for API + admin SPA + (optional) photo CDN.
+1. **Fly app + Postgres** (Tokyo / NRT):
+   ```sh
+   flyctl auth login
+   flyctl postgres create \
+     --name kamos-dev-db --region nrt \
+     --image-ref postgres:18-alpine \
+     --vm-size shared-cpu-1x --volume-size 10
+   flyctl apps create kamos-dev --org <your-org>
+   flyctl postgres attach kamos-dev-db --app kamos-dev   # sets DATABASE_URL
+   ```
+   Capture the printed `DATABASE_URL` (and a copy with `sslmode=require` for CI).
 
-## 2. Apply schema
+2. **Upstash Redis** (NRT, TLS, `allkeys-lru`): create from dashboard, capture
+   the `rediss://` URL — needed for `CACHE_BACKEND=redis` + `CACHE_REDIS_URL`.
 
-```sh
-# from repo root, with PSQL_URL pointed at staging
-make db-migrate
-```
+3. **Cloudflare R2** bucket + scoped API token:
+   - Bucket: `kamos-checkin-photos-dev`
+   - Token scope: Object Read + Write on that bucket only
+   - Optional: custom domain `photos-dev.kamos.app` → `R2_PUBLIC_BASE_URL`
 
-Migrations are applied in lexical order; you'll see `→ 001_initial.sql ... → 013_comments_user_fk_cascade.sql`. Migrations are append-only — do not edit a file that was applied to staging.
+4. **Cloudflare Pages** project `kamos-admin-dev`:
+   - Connect to the GitHub repo, build dir `admin/`, build command `npm run build`,
+     output dir `dist`
+   - Env vars (dashboard): `VITE_API_BASE_URL=https://dev-api.kamos.app`
+   - Custom domain `dev-admin.kamos.app`
 
-Sanity:
+5. **DNS**:
+   - `dev-api.kamos.app` → Fly app (TLS issued by Fly): `flyctl certs add dev-api.kamos.app -a kamos-dev`
+   - `dev-admin.kamos.app` → Cloudflare Pages (TLS auto)
 
-```sh
-psql "$PSQL_URL" -c '\d+ users' | head -40
-```
+6. **Sentry + Grafana Cloud** — already provisioned (see
+   [`reference_observability_vendors.md`](../../.claude/memory/reference_observability_vendors.md)).
+   Get the `kamos-api` DSN and OTLP gateway URL + Basic auth header.
 
-## 3. Secrets + env
+7. **GitHub `dev` environment**:
+   Repo → Settings → Environments → `dev` → add secrets:
+   - `FLY_API_TOKEN` (from `flyctl auth token`)
+   - `DEV_DATABASE_URL` — admin DSN with `sslmode=require`
+   - `GITHUB_TOKEN` already auto-provided for GHCR
 
-Set these on the API + worker processes. Anything marked optional can be left blank — the SDK never initializes and the feature degrades gracefully.
-
-| Var | Required? | Notes |
-|---|---|---|
-| `APP_ENV` | required | `staging` |
-| `DATABASE_URL` | required | `sslmode=require` |
-| `JWT_SECRET` | required | ≥ 32 random bytes; `openssl rand -base64 48` |
-| `CURSOR_SECRET` | required in prod | ≥ 32 random bytes; same shape as JWT_SECRET. In dev a default is used. |
-| `JWT_TTL` / `REFRESH_TTL` | optional | defaults `15m` / `720h` |
-| `APP_BASE_URL` | required | public origin used in email links |
-| `GOOGLE_CLIENT_ID` | required for Google sign-in | server-side audience |
-| `RESEND_API_KEY` + `EMAIL_FROM` | optional | empty → LogMailer (link printed at INFO) |
-| `R2_ENDPOINT_URL` + `R2_ACCESS_KEY_ID` + `R2_SECRET_ACCESS_KEY` + `R2_BUCKET` + `R2_PUBLIC_BASE_URL` | optional | empty → uploads return `503 STORAGE_DISABLED` |
-| `FOURSQUARE_API_KEY` | optional | empty → `/v1/venues/search` returns `503` |
-| `CACHE_BACKEND` | optional | `inprocess` (default) or `redis` |
-| `CACHE_REDIS_URL` | required if `CACHE_BACKEND=redis` | DSN |
-| `CORS_ALLOWED_ORIGINS` | required for admin | comma-separated; admin SPA origin |
-| `SENTRY_DSN` | optional | `kamos-api` project DSN |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` | optional | Grafana Cloud OTLP gateway + auth header |
-| `APP_VERSION` | optional | git SHA or release tag — surfaces on traces + Sentry |
-| `RATE_LIMIT_DISABLED` | leave unset | only `1` for local stress |
-
-Verify before deploy: `JWT_SECRET` and `CURSOR_SECRET` are both ≥ 32 bytes — startup fails otherwise.
-
-## 4. Build + push images
-
-`backend/Dockerfile` produces two binaries from the same image: `server` (HTTP listener) and `worker` (scheduler). Tag both with the same release SHA.
+## 2. Initial schema + secrets
 
 ```sh
-# from backend/
-docker build -t kamos/api:$(git rev-parse --short HEAD) .
-docker push kamos/api:$(git rev-parse --short HEAD)
+# Migrate the freshly-attached Postgres
+PSQL_URL='postgres://...?sslmode=require' make db-migrate
+psql "$PSQL_URL" -c '\d+ users' | head -40   # sanity
+
+# Generate secrets
+openssl rand -base64 48   # JWT_SECRET
+openssl rand -base64 48   # CURSOR_SECRET
 ```
-
-Flutter ships via the App Store / Play Console; out of scope here. The admin SPA (`admin/`) ships to Cloudflare Pages (or any static host) — `npm run build` produces `admin/dist/`.
-
-## 5. Deploy
-
-- [ ] API replicas: deploy as `kamos/api:<sha> /server`. Start with N=2 to exercise the multi-replica cache path.
-- [ ] Worker: deploy as `kamos/api:<sha> /worker`. Keep at single replica — the advisory-lock guard is a safety net, not a license to scale.
-- [ ] Both processes need the same env block, minus the HTTP-listener vars on the worker.
-- [ ] Health probes: API `/healthz` → 200; worker prints `worker started` on stdout.
-
-## 6. Smoke
 
 ```sh
-STAGING_URL=https://staging-api.example.com make smoke
+flyctl secrets set -a kamos-dev \
+  APP_ENV=staging \
+  APP_VERSION=initial \
+  JWT_SECRET=... \
+  CURSOR_SECRET=... \
+  APP_BASE_URL=https://dev-api.kamos.app \
+  CORS_ALLOWED_ORIGINS=https://dev-admin.kamos.app \
+  CACHE_BACKEND=redis \
+  CACHE_REDIS_URL='rediss://...' \
+  R2_ENDPOINT_URL='https://<account>.r2.cloudflarestorage.com' \
+  R2_ACCESS_KEY_ID=... \
+  R2_SECRET_ACCESS_KEY=... \
+  R2_BUCKET=kamos-checkin-photos-dev \
+  R2_PUBLIC_BASE_URL=https://photos-dev.kamos.app \
+  SENTRY_DSN='https://...@sentry.io/...' \
+  OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp-gateway-prod-ap-northeast-0.grafana.net' \
+  OTEL_EXPORTER_OTLP_HEADERS='Authorization=Basic <base64-of-instanceID:apikey>'
 ```
 
-`scripts/smoke.sh` runs 18 checks against the integrated public-collection + flat-comment + moderation slice. Expected: `=== Phase 6 FINAL smoke PASSED (18/18) ===`.
+`JWT_SECRET` and `CURSOR_SECRET` are both validated `≥ 32 bytes` at startup
+(`backend/internal/config/config.go:208,231`). Skipping either or supplying a
+short value fails the boot.
 
-## 7. Verify observability ingest
+Leave `GOOGLE_CLIENT_ID`, `RESEND_API_KEY`, `EMAIL_FROM`, `FOURSQUARE_API_KEY`
+empty for now — features degrade per [`DEPLOYMENT.md §9`](../../DEPLOYMENT.md#9-vendor-gated-features).
 
-- [ ] Sentry → kamos-api → fire a synthetic error: `curl -X POST https://staging-api.example.com/__test/panic` (only if the panic endpoint is wired; otherwise trigger via a bad request that the handler `recover` lifts to Sentry). Look for the event under "Issues" within ~60s.
-- [ ] Grafana → stack `kamos` → Explore → Prometheus → `rate(http_requests_total[5m]) > 0` should return data. Loki should show `service.name="kamos-api"`.
-- [ ] OnCall schedule for `kamos` team is populated (Grafana → Alerting → OnCall).
+## 3. First deploy
 
-## 8. Post-deploy
+```sh
+gh workflow run deploy-dev.yml --ref main
+gh run watch
+```
 
-- [ ] Tag the release in git: `git tag staging-$(date +%Y%m%d-%H%M)` + push.
-- [ ] Note the deploy in `#kamos-deploys` (or equivalent) with commit SHA + smoke output.
-- [ ] If anything failed: see `docs/runbooks/incident-response.md`.
+This pushes a fresh image to `ghcr.io/<owner>/kamos-api:<sha>`, applies
+migrations, calls `flyctl deploy --image`, then runs `scripts/smoke.sh`
+against `https://dev-api.kamos.app`. Expected smoke output:
+`=== Phase 6 FINAL smoke PASSED (18/18) ===`.
+
+Subsequent deploys happen automatically on every merge to `main` once CI passes.
+
+## 4. Verify observability ingest
+
+- **Sentry** → `kamos-api` project → trigger any 4xx with `Authorization: Bearer bad`;
+  event should appear within ~60s. (Routine 4xx are filtered; trigger a panic via
+  an internal-only debug endpoint if one is wired, otherwise wait for natural traffic.)
+- **Grafana** → stack `kamos` → Explore → Prometheus:
+  `rate(http_requests_total{app="kamos-dev"}[5m]) > 0`. Loki should show
+  `service.name="kamos-api"`.
+- **OnCall** schedule for the `kamos` team is populated (Grafana → Alerting → OnCall).
+- The `APP_VERSION` tag on traces should equal the deployed git SHA.
+
+## 5. Multi-replica cache path
+
+`fly.toml` sets `min_machines_running = 2`. Verify cross-replica invalidation:
+
+```sh
+flyctl status -a kamos-dev   # confirm 2 server machines + 1 worker
+
+# Mutate via one machine, read via the other; cache should drop within ~500ms.
+# (Exact mutation path is in the smoke script.)
+```
+
+If only 1 machine is running, increase: `flyctl scale count server=2 -a kamos-dev`.
+
+## 6. Rollback
+
+```sh
+flyctl releases list -a kamos-dev
+# Roll the deployment back to a previous Fly release (binary only — does
+# NOT roll back migrations; KAMOS migrations are append-only by policy).
+flyctl releases rollback <version> -a kamos-dev
+
+# Or re-deploy a specific GHCR tag:
+flyctl deploy -a kamos-dev \
+  --image ghcr.io/<owner>/kamos-api:<previous-sha> \
+  --strategy rolling
+```
+
+**Migrations are not rolled back.** If a deploy introduced a schema change
+that the previous binary can't read, you must either (a) ship a forward-only
+fix or (b) deploy a binary that tolerates both schemas. This is why migrations
+are append-only ([`DEPLOYMENT.md §5`](../../DEPLOYMENT.md#5-database)).
+
+Run the smoke script after a rollback:
+```sh
+API_BASE_URL=https://dev-api.kamos.app scripts/smoke.sh
+```
+
+## 7. Worker liveness
+
+```sh
+flyctl logs -a kamos-dev --instance <worker-machine-id>
+```
+
+Expected log lines (intervals per [`ARCHITECTURE.md §4`](../../ARCHITECTURE.md#4-multi-replica-topology)):
+`username_hold`, `avg_rating_sweep`, `email_verification_cleanup`, `photo_orphan_cleanup`.
+
+Every tick is wrapped in `pg_try_advisory_lock`, so a stray second worker
+would log "lock not acquired, skipping" instead of double-running jobs.
+
+## 8. Admin SPA
+
+Cloudflare Pages auto-deploys on every push to `main`. Verify:
+
+```sh
+curl -I https://dev-admin.kamos.app
+# Should serve from Cloudflare; HTTP/2 200.
+
+# CSRF + cookie flow (the failure-prone surface):
+# log in via the admin UI, confirm Set-Cookie has kamos_admin_csrf with
+# SameSite=Strict, Secure, HttpOnly absent on the csrf cookie (so JS can read it),
+# and that mutating requests echo X-CSRF-Token matching that cookie value.
+```
+
+If admin can't reach the API, verify `CORS_ALLOWED_ORIGINS` on Fly contains
+`https://dev-admin.kamos.app` exactly (no trailing slash).
+
+## 9. Post-deploy housekeeping
+
+- Tag the release: `git tag dev-$(date +%Y%m%d-%H%M) && git push --tags`.
+- Note the deploy in `#kamos-deploys` (or equivalent) with commit SHA + smoke output.
+- If anything failed: see [`incident-response.md`](./incident-response.md).
