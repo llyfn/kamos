@@ -1,16 +1,8 @@
-// Typed venue-search exceptions exposed by `VenueRepository`.
+// KAMOS — Venue search exceptions (compat shim).
 //
-// Lives in a leaf file so widgets can pattern-match on the error path
-// without importing the repository.
+// The canonical definitions live in `core/api/api_exceptions.dart`. This file
+// re-exports them so existing imports (`features/venues/exceptions.dart`)
+// continue to resolve unchanged. New code should import from the core path.
 
-class VenueSearchDisabledException implements Exception {
-  const VenueSearchDisabledException();
-  @override
-  String toString() => 'Venue search is not configured on this server.';
-}
-
-class VenueRateLimitedException implements Exception {
-  const VenueRateLimitedException();
-  @override
-  String toString() => 'Venue search rate-limited. Try again shortly.';
-}
+export '../../core/api/api_exceptions.dart'
+    show VenueSearchDisabledException, VenueRateLimitedException;

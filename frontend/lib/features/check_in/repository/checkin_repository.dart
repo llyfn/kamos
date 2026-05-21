@@ -26,33 +26,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
+
+// The repository's typed exception family lives in
+// `core/api/api_exceptions.dart`. Re-export the two photo-upload symbols so
+// existing callers and tests that import them via this file (`package:kamos/
+// features/check_in/repository/checkin_repository.dart`) keep working.
+export '../../../core/api/api_exceptions.dart'
+    show StorageDisabledException, PhotoUploadException;
 
 /// Allowed image MIME types for the presign endpoint. HEIC and friends must
 /// be converted upstream (image_picker on iOS auto-converts to JPEG).
 const _allowedContentTypes = {'image/jpeg', 'image/png', 'image/webp'};
-
-/// Thrown when the backend signals that the storage provider (R2) is not
-/// configured. The UI catches this and completes the check-in without photos.
-class StorageDisabledException implements Exception {
-  const StorageDisabledException([this.message = 'Photo upload disabled']);
-  final String message;
-  @override
-  String toString() => 'StorageDisabledException: $message';
-}
-
-/// Thrown for any other failure in the 3-step upload chain (presign non-503,
-/// PUT non-2xx, attach non-2xx, network errors).
-class PhotoUploadException implements Exception {
-  const PhotoUploadException(this.message, {this.stage});
-  final String message;
-
-  /// One of `presign`, `put`, `attach` — handy for telemetry.
-  final String? stage;
-  @override
-  String toString() => 'PhotoUploadException($stage): $message';
-}
 
 class CheckInRepository {
   CheckInRepository({required this.dio, Dio? rawDio})
