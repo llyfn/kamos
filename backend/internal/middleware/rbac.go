@@ -23,7 +23,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -32,13 +34,66 @@ import (
 )
 
 // RoleResolver wraps the user-role lookup. One per server.
+//
+// SEC-027 (Stage 4): an in-process LRU + 5s TTL on (user_id → role)
+// lookups cuts the hot-admin-endpoint DB pressure from one SELECT per
+// request to ~one per 5s per user. The 5s ceiling is the explicit
+// staleness window — a demotion via UpdateUserRole / SuspendUser flushes
+// the entry immediately via Invalidate, so the cache is staleness-
+// bounded in both directions.
 type RoleResolver struct {
-	db *pgxpool.Pool
+	db    *pgxpool.Pool
+	cache *expirable.LRU[string, domain.UserRole]
 }
+
+const (
+	roleCacheSize = 10000
+	roleCacheTTL  = 5 * time.Second
+)
 
 // NewRoleResolver constructs a resolver bound to the given pool.
 func NewRoleResolver(db *pgxpool.Pool) *RoleResolver {
-	return &RoleResolver{db: db}
+	return &RoleResolver{
+		db:    db,
+		cache: expirable.NewLRU[string, domain.UserRole](roleCacheSize, nil, roleCacheTTL),
+	}
+}
+
+// GetRole returns the role for the given user, hitting the cache first
+// and falling back to the DB. Exported so the service layer can use the
+// same single source of truth for role checks outside of the middleware
+// (e.g. CommentService.Delete).
+func (rr *RoleResolver) GetRole(ctx context.Context, userID string) (domain.UserRole, error) {
+	if rr == nil {
+		return "", fmt.Errorf("RoleResolver.GetRole: not configured")
+	}
+	if rr.cache != nil {
+		if role, ok := rr.cache.Get(userID); ok {
+			return role, nil
+		}
+	}
+	if rr.db == nil {
+		return "", fmt.Errorf("RoleResolver.GetRole: not configured")
+	}
+	role, err := rr.roleOf(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if rr.cache != nil {
+		rr.cache.Add(userID, role)
+	}
+	return role, nil
+}
+
+// Invalidate evicts the cached role for the given user. Called from
+// AdminService.UpdateUserRole and AdminService.SuspendUser after the
+// underlying DB write commits so subsequent role checks see the new
+// state without waiting for the 5s TTL.
+func (rr *RoleResolver) Invalidate(userID string) {
+	if rr == nil || rr.cache == nil || userID == "" {
+		return
+	}
+	rr.cache.Remove(userID)
 }
 
 // roleOf reads users.role for a live (non-deleted) user. NotFound on miss.
@@ -83,7 +138,7 @@ func (rr *RoleResolver) RequireRole(allowed ...domain.UserRole) func(http.Handle
 				httperr.WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 				return
 			}
-			role, err := rr.roleOf(r.Context(), uid)
+			role, err := rr.GetRole(r.Context(), uid)
 			if err != nil {
 				if errors.Is(err, domain.ErrNotFound) {
 					// User was deleted between Auth check and role lookup;

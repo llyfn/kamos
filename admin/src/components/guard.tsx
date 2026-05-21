@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useAuth, type Role } from '@/lib/auth';
-import { clearTokens } from '@/lib/tokens';
+import { logout as sessionLogout } from '@/lib/session';
 
 interface RoleGuardProps {
   requires: Role[];
@@ -33,8 +33,9 @@ export function InsufficientPrivileges() {
       <button
         type="button"
         onClick={() => {
-          clearTokens();
-          window.location.assign('/login');
+          void sessionLogout().then(() => {
+            if (typeof window !== 'undefined') window.location.assign('/login');
+          });
         }}
         className="px-3 py-1 border border-[color:var(--color-border)] rounded"
       >

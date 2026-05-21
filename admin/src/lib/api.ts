@@ -1,13 +1,19 @@
-// Typed Fetch wrapper around openapi-fetch. Reads the access token from
-// localStorage and attaches Authorization on every request. On 401, attempts
-// a refresh once via /v1/auth/refresh; on second failure, clears tokens and
-// reloads to /login.
+// Typed Fetch wrapper around openapi-fetch. Stage 4 — drops localStorage
+// + Bearer in favor of HttpOnly cookies. The browser auto-attaches the
+// kamos_admin_* cookies when `credentials: 'include'` is set, and the
+// CSRF middleware demands an X-CSRF-Token header that mirrors the
+// kamos_admin_csrf cookie value (double-submit pattern).
+//
+// On 401 we attempt one /v1/auth/admin-refresh round-trip (cookies-only,
+// no body) and retry. On second failure we redirect to /login —
+// session is gone.
 
 import createClient, { type Middleware } from 'openapi-fetch';
 import type { paths } from '@/types/api';
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '@/lib/tokens';
+import { attachCsrf, getCsrfToken } from '@/lib/session';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
+const API_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
 
 export class ForbiddenError extends Error {
   constructor(message = 'Forbidden') {
@@ -16,30 +22,19 @@ export class ForbiddenError extends Error {
   }
 }
 
-interface RefreshResponseJSON {
-  access_token: string;
-  refresh_token: string;
-}
+let refreshInFlight: Promise<boolean> | null = null;
 
-let refreshInFlight: Promise<string | null> | null = null;
-
-async function tryRefresh(): Promise<string | null> {
+async function tryRefresh(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
-  const refresh = getRefreshToken();
-  if (!refresh) return null;
   refreshInFlight = (async () => {
     try {
-      const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
+      const res = await fetch(`${API_BASE}/v1/auth/admin-refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refresh }),
+        credentials: 'include',
       });
-      if (!res.ok) return null;
-      const body = (await res.json()) as RefreshResponseJSON;
-      setTokens(body.access_token, body.refresh_token);
-      return body.access_token;
+      return res.ok;
     } catch {
-      return null;
+      return false;
     } finally {
       refreshInFlight = null;
     }
@@ -47,33 +42,45 @@ async function tryRefresh(): Promise<string | null> {
   return refreshInFlight;
 }
 
-const authMiddleware: Middleware = {
+const sessionMiddleware: Middleware = {
   async onRequest({ request }) {
-    const token = getAccessToken();
-    if (token) request.headers.set('Authorization', `Bearer ${token}`);
-    return request;
+    // Make every request a cookie request and stamp the CSRF header
+    // when applicable. The Request object exposed by openapi-fetch is
+    // immutable in shape, but headers + credentials propagate through
+    // the returned Request below.
+    const method = request.method.toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      const csrf = getCsrfToken();
+      if (csrf) request.headers.set('X-CSRF-Token', csrf);
+    }
+    return new Request(request, { credentials: 'include' });
   },
   async onResponse({ request, response }) {
     if (response.status === 403) {
       throw new ForbiddenError();
     }
     if (response.status !== 401) return response;
-    // Avoid loops on the refresh endpoint itself.
-    if (new URL(request.url).pathname.endsWith('/v1/auth/refresh')) return response;
+    if (new URL(request.url).pathname.endsWith('/v1/auth/admin-refresh')) return response;
 
-    const newAccess = await tryRefresh();
-    if (!newAccess) {
-      clearTokens();
+    const ok = await tryRefresh();
+    if (!ok) {
       if (typeof window !== 'undefined') window.location.assign('/login');
       return response;
     }
-    const retry = new Request(request, {});
-    retry.headers.set('Authorization', `Bearer ${newAccess}`);
+    const retry = new Request(request, { credentials: 'include' });
+    const method = retry.method.toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      const csrf = getCsrfToken();
+      if (csrf) retry.headers.set('X-CSRF-Token', csrf);
+    }
     return fetch(retry);
   },
 };
 
-export const api = createClient<paths>({ baseUrl: API_BASE });
-api.use(authMiddleware);
+export const api = createClient<paths>({ baseUrl: API_BASE, credentials: 'include' });
+api.use(sessionMiddleware);
+
+// Re-export attachCsrf for ad-hoc fetch() callers (non-openapi-fetch paths).
+export { attachCsrf };
 
 export type { paths } from '@/types/api';

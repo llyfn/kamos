@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { clearTokens } from '@/lib/tokens';
+import { logout as sessionLogout } from '@/lib/session';
 import type { components } from '@/types/api';
 
 export type Role = components['schemas']['UserRole'];
@@ -27,8 +27,8 @@ export function useAuth() {
     isModerator: role === 'moderator' || role === 'admin',
     isLoading: query.isLoading,
     isError: query.isError,
-    logout: () => {
-      clearTokens();
+    logout: async () => {
+      await sessionLogout();
       if (typeof window !== 'undefined') window.location.assign('/login');
     },
   };

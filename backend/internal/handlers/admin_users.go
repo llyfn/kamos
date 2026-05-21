@@ -80,7 +80,12 @@ func (h *Handler) AdminUpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminUpdateUserRole validate", err)
 		return
 	}
-	if err := h.Repos.Admin.UpdateUserRole(r.Context(), userID, uid, domain.UserRole(body.Role)); err != nil {
+	if h.Services != nil && h.Services.Admin != nil {
+		if err := h.Services.Admin.UpdateUserRole(r.Context(), userID, uid, domain.UserRole(body.Role)); err != nil {
+			h.writeErr(w, "AdminUpdateUserRole", err)
+			return
+		}
+	} else if err := h.Repos.Admin.UpdateUserRole(r.Context(), userID, uid, domain.UserRole(body.Role)); err != nil {
 		h.writeErr(w, "AdminUpdateUserRole", err)
 		return
 	}
@@ -115,13 +120,20 @@ func (h *Handler) AdminSuspendUser(w http.ResponseWriter, r *http.Request) {
 			"cannot suspend yourself")
 		return
 	}
-	if err := h.Repos.Admin.SuspendUser(r.Context(), userID, uid); err != nil {
-		h.writeErr(w, "AdminSuspendUser", err)
-		return
-	}
-	if _, err := h.Repos.RefreshTokens.RevokeAllForUser(r.Context(), userID); err != nil {
-		h.writeErr(w, "AdminSuspendUser revoke refresh", err)
-		return
+	if h.Services != nil && h.Services.Admin != nil {
+		if err := h.Services.Admin.SuspendUser(r.Context(), userID, uid); err != nil {
+			h.writeErr(w, "AdminSuspendUser", err)
+			return
+		}
+	} else {
+		if err := h.Repos.Admin.SuspendUser(r.Context(), userID, uid); err != nil {
+			h.writeErr(w, "AdminSuspendUser", err)
+			return
+		}
+		if _, err := h.Repos.RefreshTokens.RevokeAllForUser(r.Context(), userID); err != nil {
+			h.writeErr(w, "AdminSuspendUser revoke refresh", err)
+			return
+		}
 	}
 	if h.SoftDelete != nil {
 		h.SoftDelete.Add(userID)

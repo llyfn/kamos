@@ -19,6 +19,25 @@ type AdminService struct {
 	checkins AdminCheckinRepo
 	tokens   AdminRefreshRepo
 	caches   cacheAdapter
+	// roles is the optional RBAC cache invalidator. Set by the handler
+	// layer (it owns the RoleResolver). Nil-safe.
+	roles RoleCacheInvalidator
+}
+
+// RoleCacheInvalidator is the slice of *middleware.RoleResolver the
+// admin service uses to evict cached role entries after a role/suspend
+// write. Defined here so service doesn't import middleware.
+type RoleCacheInvalidator interface {
+	Invalidate(userID string)
+}
+
+// WithRoleCache wires the RBAC cache so role changes flush the per-user
+// entry on commit. Idempotent; nil-safe.
+func (s *AdminService) WithRoleCache(inv RoleCacheInvalidator) *AdminService {
+	if s != nil {
+		s.roles = inv
+	}
+	return s
 }
 
 // AdminRepo is the slice of repository.AdminRepo this service uses.
@@ -91,7 +110,9 @@ func (s *AdminService) ModerateCheckin(ctx context.Context, checkinID, moderator
 
 // SuspendUser owns the suspend + refresh-token revoke combo. The
 // SoftDeleteCache.Add() call stays at the handler today (the cache is
-// process-local and shouldn't be a service dependency).
+// process-local and shouldn't be a service dependency). SEC-027: the
+// role cache for the suspended user is flushed immediately so any
+// in-flight admin request stops seeing the old role on next refresh.
 func (s *AdminService) SuspendUser(ctx context.Context, userID, moderatorID string) error {
 	if err := s.admin.SuspendUser(ctx, userID, moderatorID); err != nil {
 		return err
@@ -99,12 +120,21 @@ func (s *AdminService) SuspendUser(ctx context.Context, userID, moderatorID stri
 	if _, err := s.tokens.RevokeAllForUser(ctx, userID); err != nil {
 		return err
 	}
+	if s.roles != nil {
+		s.roles.Invalidate(userID)
+	}
 	return nil
 }
 
-// UpdateUserRole pass-through.
+// UpdateUserRole owns the role write + RBAC cache flush.
 func (s *AdminService) UpdateUserRole(ctx context.Context, userID, moderatorID string, role domain.UserRole) error {
-	return s.admin.UpdateUserRole(ctx, userID, moderatorID, role)
+	if err := s.admin.UpdateUserRole(ctx, userID, moderatorID, role); err != nil {
+		return err
+	}
+	if s.roles != nil {
+		s.roles.Invalidate(userID)
+	}
+	return nil
 }
 
 // ListBeverageRequests pass-through.

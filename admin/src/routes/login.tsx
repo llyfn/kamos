@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { api } from '@/lib/api';
-import { setTokens } from '@/lib/tokens';
+import { LoginError, login as sessionLogin } from '@/lib/session';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -19,15 +19,10 @@ function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      const { data: auth, error: loginError, response } = await api.POST('/v1/auth/login', {
-        body: { email, password },
-      });
-      if (loginError || !auth) {
-        setError(response.status === 401 ? 'Invalid credentials' : 'Login failed');
-        return;
-      }
-      setTokens(auth.access_token, auth.refresh_token);
-
+      await sessionLogin(email, password);
+      // Confirm the session works + role is appropriate. The admin-login
+      // endpoint already role-gates server-side, but we double-check
+      // here so the client surfaces the same copy as Stage <4.
       const { data: me, error: meError } = await api.GET('/v1/users/me');
       if (meError || !me) {
         setError('Could not fetch profile');
@@ -38,8 +33,12 @@ function LoginPage() {
         return;
       }
       navigate({ to: '/queue' });
-    } catch {
-      setError('Network error');
+    } catch (err) {
+      if (err instanceof LoginError) {
+        setError(err.status === 401 ? 'Invalid credentials' : 'Login failed');
+      } else {
+        setError('Network error');
+      }
     } finally {
       setBusy(false);
     }
