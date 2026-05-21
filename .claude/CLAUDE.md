@@ -29,6 +29,23 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 - **Locales:** `en`, `ja`, `ko` (full coverage in MVP)
 - **Min platforms:** iOS 13+, Android API 26+
 
+## Dev environment
+
+The hosted dev environment auto-deploys on every merge to `main`.
+
+| What | Where |
+|---|---|
+| API | `https://dev-api.kamos.app` (Fly.io app `kamos-dev`, NRT/Tokyo, two processes) |
+| Admin SPA | `https://dev-admin.kamos.app` (Cloudflare Pages project `kamos-admin-dev`) |
+| DB | Fly Postgres `kamos-dev-db` (Pg18, NRT) |
+| Cache L2 | Upstash Redis (NRT, `rediss://`) |
+| Photos | Cloudflare R2 bucket `kamos-checkin-photos-dev` |
+| Image registry | `ghcr.io/<owner>/kamos-api:<sha>` + `:dev-latest` |
+
+CI: `.github/workflows/ci.yml` (`go vet` required; lint/style gates advisory pending Stage 8). CD: `.github/workflows/deploy-dev.yml` (workflow_run on CI green → build → push GHCR → migrate → `flyctl deploy --image` → post-deploy smoke against the live dev API). App config: `fly.toml`. Runbook: `docs/runbooks/staging-deploy.md`.
+
+Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://dev-api.kamos.app`. TestFlight / Play Internal pipelines are not in place yet.
+
 ## Repository layout
 
 The project uses a standard top-level layout. Production code lives here only — there is no `_workspace/` fallback anymore.
