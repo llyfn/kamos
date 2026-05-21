@@ -10,22 +10,18 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/page.dart';
 
 class PublicCollectionsRepository {
-  PublicCollectionsRepository(this._dio);
-  final Dio _dio;
+  PublicCollectionsRepository(Dio dio) : _api = KamosApi(dio);
+  final KamosApi _api;
 
   Future<Page<CollectionWithOwner>> list({String? cursor}) async {
-    final res = await _dio.get(
-      '/v1/collections/public',
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-      },
-    );
+    final data = await _api.collections.listPublic(cursor: cursor);
     return Page.fromJson(
-      res.data as Map<String, dynamic>,
+      data,
       (raw) => CollectionWithOwner.fromJson(raw as Map<String, dynamic>),
     );
   }
