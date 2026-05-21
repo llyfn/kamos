@@ -165,8 +165,7 @@ func (r *UpdateCheckinRequest) Validate() error {
 	return nil
 }
 
-// Checkin is the canonical check-in DTO returned by the API. Phase 6a
-// added CommentCount; FeedItem mirrors the field.
+// Checkin is the canonical check-in DTO returned by the API. // added CommentCount; FeedItem mirrors the field.
 type Checkin struct {
 	ID           string      `json:"id"`
 	User         CheckinUser `json:"user"`

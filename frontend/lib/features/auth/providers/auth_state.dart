@@ -15,19 +15,16 @@ import '../../../core/storage/secure_storage.dart';
 import '../repository/auth_repository.dart';
 
 class AuthState {
-  const AuthState({
-    required this.isAuthenticated,
-    this.isLoading = false,
-  });
+  const AuthState({required this.isAuthenticated, this.isLoading = false});
   final bool isAuthenticated;
   final bool isLoading;
 
   static const initial = AuthState(isAuthenticated: false, isLoading: true);
 
   AuthState copyWith({bool? isAuthenticated, bool? isLoading}) => AuthState(
-        isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-        isLoading: isLoading ?? this.isLoading,
-      );
+    isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+    isLoading: isLoading ?? this.isLoading,
+  );
 }
 
 class AuthStateNotifier extends Notifier<AuthState> {
@@ -46,12 +43,10 @@ class AuthStateNotifier extends Notifier<AuthState> {
     // protected endpoint. Holding only an expired access token is fine too;
     // the same 401 → refresh path handles it.
     final refresh = await storage.readRefreshToken();
-    final hasToken = (access != null && access.isNotEmpty) ||
+    final hasToken =
+        (access != null && access.isNotEmpty) ||
         (refresh != null && refresh.isNotEmpty);
-    state = AuthState(
-      isAuthenticated: hasToken,
-      isLoading: false,
-    );
+    state = AuthState(isAuthenticated: hasToken, isLoading: false);
   }
 
   /// Called by the repository after a successful login/register. The tokens
@@ -91,5 +86,6 @@ class AuthStateNotifier extends Notifier<AuthState> {
   }
 }
 
-final authStateProvider =
-    NotifierProvider<AuthStateNotifier, AuthState>(AuthStateNotifier.new);
+final authStateProvider = NotifierProvider<AuthStateNotifier, AuthState>(
+  AuthStateNotifier.new,
+);

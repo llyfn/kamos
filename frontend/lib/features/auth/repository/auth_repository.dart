@@ -1,9 +1,9 @@
 // KAMOS — AuthRepository. Talks to /v1/auth/* and persists the JWT pair on
 // success.
 //
-// Phase 2 introduces rotating refresh tokens. `login`, `register`, `google`,
-// and `refresh` all return a fresh pair; the access token expires in 15 min
-// and the refresh token in 30 days by default. Both are persisted under
+// Rotating refresh tokens: `login`, `register`, `google`, and `refresh`
+// all return a fresh pair; the access token expires in 15 min and the
+// refresh token in 30 days by default. Both are persisted under
 // `flutter_secure_storage` (never SharedPreferences — SPEC §6.9).
 
 import 'package:dio/dio.dart';
@@ -107,10 +107,7 @@ class AuthRepository {
   }
 
   Future<bool> verifyEmail(String token) async {
-    final res = await dio.post(
-      '/v1/auth/verify-email',
-      data: {'token': token},
-    );
+    final res = await dio.post('/v1/auth/verify-email', data: {'token': token});
     final body = res.data as Map<String, dynamic>;
     return (body['verified'] as bool?) ?? false;
   }
@@ -125,18 +122,12 @@ class AuthRepository {
   }) async {
     await dio.post(
       '/v1/auth/password-change',
-      data: {
-        'current_password': currentPassword,
-        'new_password': newPassword,
-      },
+      data: {'current_password': currentPassword, 'new_password': newPassword},
     );
   }
 
   Future<void> changeEmail(String newEmail) async {
-    await dio.post(
-      '/v1/auth/email-change',
-      data: {'new_email': newEmail},
-    );
+    await dio.post('/v1/auth/email-change', data: {'new_email': newEmail});
   }
 
   Future<void> _persist(AuthResponse auth) async {

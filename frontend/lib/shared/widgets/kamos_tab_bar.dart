@@ -69,7 +69,11 @@ class KamosTabBar extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.add, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(

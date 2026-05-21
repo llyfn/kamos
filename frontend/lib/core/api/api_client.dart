@@ -26,7 +26,7 @@ import 'api_config.dart';
 import 'api_toast.dart';
 import 'auth_interceptor.dart';
 
-/// HTTP cache contract for the authed Dio singleton (Phase 7).
+/// HTTP cache contract for the authed Dio singleton.
 ///
 /// Cached on the client (via `dio_cache_interceptor`):
 ///
@@ -98,8 +98,8 @@ String cacheKeyBuilder({
   // SecureStorageService so the keyBuilder doesn't pay the base64 +
   // JSON parse cost on every request. The memo invalidates whenever
   // the active token changes.
-  final uid = SecureStorageService.currentSubMemoized(decodeUserIdFromJwt) ??
-      'anon';
+  final uid =
+      SecureStorageService.currentSubMemoized(decodeUserIdFromJwt) ?? 'anon';
   // The default builder accepts a Uri, but we want to fold a non-URL
   // discriminator in. Hash via the same SHA-1-based pathway by stuffing the
   // discriminator into the URL fragment, which is a legal Uri component and
@@ -116,7 +116,7 @@ String cacheKeyBuilder({
 
 CacheOptions _buildCacheOptions() {
   return CacheOptions(
-    // In-memory store, 5 MB cap (LRU eviction). Phase 7 sticks to in-memory
+    // In-memory store, 5 MB cap (LRU eviction). sticks to in-memory
     // to avoid the platform-specific filesystem code path; a Hive-backed
     // store can land later if offline reads become a requirement.
     store: MemCacheStore(maxSize: 5 * 1024 * 1024),

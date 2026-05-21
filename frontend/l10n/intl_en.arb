@@ -61,7 +61,6 @@
   "checkInPostFailed": "Could not post. Tap to retry.",
   "checkInPhotoLimitReached": "You can attach up to 4 photos.",
   "photoUploadDisabled": "Photo upload is not available — saved without photos.",
-  "photoUploadFailed": "Photo failed to upload. Tap to retry.",
 
   "checkInWhereLabel": "Where?",
   "checkInWhereCta": "Add a venue",

@@ -1,4 +1,4 @@
-// KAMOS — Comment composer (Phase 6).
+// KAMOS — Comment composer.
 //
 // Multi-line text field with a 500-character hard cap, live char counter, and
 // a submit button. Submit is disabled while the input is empty or while a
@@ -67,7 +67,9 @@ class _CommentComposerState extends State<CommentComposer> {
             maxLines: 4,
             maxLength: commentMaxChars,
             // Hide the default character counter; we render a localized one.
-            buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+            buildCounter:
+                (_, {required currentLength, required isFocused, maxLength}) =>
+                    null,
             inputFormatters: [
               LengthLimitingTextInputFormatter(commentMaxChars),
             ],
@@ -76,8 +78,10 @@ class _CommentComposerState extends State<CommentComposer> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
             ),
           ),
           const SizedBox(height: 6),

@@ -60,8 +60,7 @@ class CollectionsListScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: KamosCard(
-                  onTap: () =>
-                      context.push('/discover/public-collections'),
+                  onTap: () => context.push('/discover/public-collections'),
                   child: Row(
                     children: [
                       Container(
@@ -137,8 +136,7 @@ class CollectionsListScreen extends ConsumerWidget {
                                 ),
                                 Text(
                                   '${c.entryCount == 1 ? l.collectionsBottleCountOne(c.entryCount) : l.collectionsBottleCountOther(c.entryCount)} · ${l.collectionsPrivate}',
-                                  style: TextStyle(
-                                      fontSize: 12, color: t.fg2),
+                                  style: TextStyle(fontSize: 12, color: t.fg2),
                                 ),
                               ],
                             ),

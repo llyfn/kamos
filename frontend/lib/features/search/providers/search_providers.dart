@@ -20,10 +20,10 @@ class SearchQuery {
 
 final searchProvider = FutureProvider.autoDispose
     .family<Page<SearchResultItem>, SearchQuery>((ref, query) async {
-  if (query.q.isEmpty) {
-    return const Page<SearchResultItem>(items: []);
-  }
-  return ref
-      .read(searchRepositoryProvider)
-      .search(q: query.q, type: query.type);
-});
+      if (query.q.isEmpty) {
+        return const Page<SearchResultItem>(items: []);
+      }
+      return ref
+          .read(searchRepositoryProvider)
+          .search(q: query.q, type: query.type);
+    });

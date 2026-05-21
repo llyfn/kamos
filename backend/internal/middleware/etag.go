@@ -36,12 +36,12 @@ func containsNoStore(cc string) bool {
 // public profile) the response is a few KB at most; the extra alloc is
 // invisible compared to the saved DB round-trip on a 304.
 //
-// Order-of-magnitude estimate (Phase 7a MAJOR-2): SHA-256 on a modern
+// Order-of-magnitude estimate (MAJOR-2): SHA-256 on a modern
 // x86 CPU runs at ~500 MB/s, so the hash cost scales linearly with body
 // size: 10 KB → ~20 µs, 100 KB → ~200 µs, 1 MB → ~2 ms, 5 MB → ~10 ms.
 // Buffer alloc adds one bytes.Buffer per request on top.
 //
-// Size cap (Phase 7a MAJOR-2): bodies larger than etagMaxBufBytes
+// Size cap (MAJOR-2): bodies larger than etagMaxBufBytes
 // (256 KB) bypass ETag computation entirely and flush as-is. This
 // protects against a future regression that accidentally returns a
 // huge response (e.g., misconfigured pagination yielding 1000 items
@@ -54,12 +54,12 @@ func containsNoStore(cc string) bool {
 // header is already on the response when we flush the 200 OR the 304.
 //
 // Limitations:
-//   - We only hash 2xx responses. Errors (4xx/5xx) pass through unmodified.
-//   - We skip the hash when the response body is empty (no Content-Length
-//     advantage to a 304 over a 204).
-//   - We skip the hash when the body exceeds etagMaxBufBytes.
-//   - Streaming handlers won't benefit — they'd be buffered whole. None of
-//     the cacheable KAMOS endpoints stream, so this is fine.
+// - We only hash 2xx responses. Errors (4xx/5xx) pass through unmodified.
+// - We skip the hash when the response body is empty (no Content-Length
+// advantage to a 304 over a 204).
+// - We skip the hash when the body exceeds etagMaxBufBytes.
+// - Streaming handlers won't benefit — they'd be buffered whole. None of
+// the cacheable KAMOS endpoints stream, so this is fine.
 //
 // ETag value is truncated SHA-256 (first 8 bytes / 16 hex chars). 64 bits
 // of entropy gives a ~2^32 birthday-collision domain, which at our scale
@@ -97,7 +97,7 @@ func ETag(next http.Handler) http.Handler {
 			w.WriteHeader(buf.status)
 			return
 		}
-		// Phase 7a MAJOR-2: size cap. Bodies larger than etagMaxBufBytes
+		// size cap. Bodies larger than etagMaxBufBytes
 		// bypass the hash to avoid quietly bloating CPU + memory on a
 		// future regression. The body still flushes normally.
 		if buf.body.Len() > etagMaxBufBytes {
@@ -138,7 +138,7 @@ func ETag(next http.Handler) http.Handler {
 // etagBuffer captures the response so we can hash it before flush.
 // It implements http.ResponseWriter by intercepting Write + WriteHeader.
 //
-// Phase 7a MAJOR-3: the previous `wroteHeader bool` field was set in
+// the previous `wroteHeader bool` field was set in
 // WriteHeader/Write but never read outside this type — the outer flush
 // logic decides what to emit from `status` (defaults to 200) and
 // `body.Len()` alone. Removing the dead field also removes the

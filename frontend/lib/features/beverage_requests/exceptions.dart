@@ -1,4 +1,4 @@
-// KAMOS — Typed beverage-request submission exceptions (Phase 5 user-side).
+// KAMOS — Typed beverage-request submission exceptions (user-side).
 //
 // Lives in a leaf file so widgets can pattern-match on the error path without
 // importing the repository (mirrors `features/venues/exceptions.dart`).

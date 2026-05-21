@@ -1,6 +1,6 @@
 // KAMOS — CheckInRepository.
 //
-// Phase 3 wires the real 3-step photo upload flow against the backend:
+// Implements the real 3-step photo upload flow against the backend:
 //
 //   1. POST  /v1/uploads/photo-presign            (auth) → presign response
 //   2. PUT   <upload_url>                         (no auth — URL is signed)
@@ -47,6 +47,7 @@ class StorageDisabledException implements Exception {
 class PhotoUploadException implements Exception {
   const PhotoUploadException(this.message, {this.stage});
   final String message;
+
   /// One of `presign`, `put`, `attach` — handy for telemetry.
   final String? stage;
   @override
@@ -55,7 +56,7 @@ class PhotoUploadException implements Exception {
 
 class CheckInRepository {
   CheckInRepository({required this.dio, Dio? rawDio})
-      : _rawDio = rawDio ?? Dio();
+    : _rawDio = rawDio ?? Dio();
 
   final Dio dio;
 
@@ -91,9 +92,9 @@ class CheckInRepository {
     return Checkin.fromJson(res.data as Map<String, dynamic>);
   }
 
-  /// Phase 6 — fetches a single check-in by id for the detail screen. The
-  /// endpoint is OptionalAuth on the server side; signed-out users still get
-  /// a response gated by the check-in's visibility rules.
+  /// Fetches a single check-in by id for the detail screen. The endpoint
+  /// is OptionalAuth on the server side; signed-out users still get a
+  /// response gated by the check-in's visibility rules.
   Future<Checkin> getOne(String id) async {
     final res = await dio.get('/v1/check-ins/$id');
     return Checkin.fromJson(res.data as Map<String, dynamic>);
@@ -132,17 +133,15 @@ class CheckInRepository {
     try {
       final res = await dio.post(
         '/v1/uploads/photo-presign',
-        data: {
-          'content_type': contentType,
-          'byte_size': byteSize,
-        },
+        data: {'content_type': contentType, 'byte_size': byteSize},
       );
       presign = res.data as Map<String, dynamic>;
     } on DioException catch (e) {
       final status = e.response?.statusCode ?? 0;
       final body = e.response?.data;
       if (status == 503 && body is Map<String, dynamic>) {
-        final code = (body['code'] as String?) ??
+        final code =
+            (body['code'] as String?) ??
             (e.error is ApiException ? (e.error as ApiException).code : '');
         if (code == 'STORAGE_DISABLED') {
           throw const StorageDisabledException();
@@ -165,8 +164,10 @@ class CheckInRepository {
     final uploadId = presign['upload_id'] as String?;
     final uploadUrl = presign['upload_url'] as String?;
     final headersAny = presign['headers'];
-    if (uploadId == null || uploadId.isEmpty ||
-        uploadUrl == null || uploadUrl.isEmpty) {
+    if (uploadId == null ||
+        uploadId.isEmpty ||
+        uploadUrl == null ||
+        uploadUrl.isEmpty) {
       throw const PhotoUploadException(
         'presign response missing upload_id or upload_url',
         stage: 'presign',
@@ -174,9 +175,7 @@ class CheckInRepository {
     }
     final headers = <String, dynamic>{};
     if (headersAny is Map) {
-      headers.addAll(headersAny.map(
-        (k, v) => MapEntry(k.toString(), v),
-      ));
+      headers.addAll(headersAny.map((k, v) => MapEntry(k.toString(), v)));
     }
     // R2 requires Content-Type to match what was signed. Backend should
     // already include it in `headers`; fall back if it didn't.
@@ -221,10 +220,7 @@ class CheckInRepository {
       );
       attachBody = res.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw PhotoUploadException(
-        e.message ?? 'attach failed',
-        stage: 'attach',
-      );
+      throw PhotoUploadException(e.message ?? 'attach failed', stage: 'attach');
     }
 
     return PhotoRef.fromJson(attachBody);

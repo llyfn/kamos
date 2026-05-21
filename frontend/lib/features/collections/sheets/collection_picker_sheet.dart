@@ -24,8 +24,7 @@ class CollectionPickerSheet extends ConsumerStatefulWidget {
       _CollectionPickerSheetState();
 }
 
-class _CollectionPickerSheetState
-    extends ConsumerState<CollectionPickerSheet> {
+class _CollectionPickerSheetState extends ConsumerState<CollectionPickerSheet> {
   late Set<String> _picked;
   final _nameController = TextEditingController();
   bool _creating = false;
@@ -56,10 +55,8 @@ class _CollectionPickerSheetState
           height: 200,
           child: Center(child: CircularProgressIndicator()),
         ),
-        error: (e, _) => SizedBox(
-          height: 200,
-          child: Center(child: Text(l.errorGeneric)),
-        ),
+        error: (e, _) =>
+            SizedBox(height: 200, child: Center(child: Text(l.errorGeneric))),
         data: (page) {
           if (!_hydrated) {
             _local = List.from(page.items);
@@ -155,10 +152,9 @@ class _CollectionPickerSheetState
                     child: FilledButton(
                       onPressed: () async {
                         for (final id in _picked) {
-                          await ref.read(collectionRepositoryProvider).addEntry(
-                                id,
-                                widget.beverageId,
-                              );
+                          await ref
+                              .read(collectionRepositoryProvider)
+                              .addEntry(id, widget.beverageId);
                         }
                         ref.invalidate(collectionsProvider);
                         if (context.mounted) Navigator.pop(context);

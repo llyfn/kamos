@@ -1,4 +1,4 @@
-// Package middleware — role-based access control (Phase 5a).
+// Package middleware — role-based access control.
 //
 // Usage:
 //

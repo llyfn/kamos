@@ -1,4 +1,4 @@
-// KAMOS — Comments section (Phase 6).
+// KAMOS — Comments section.
 //
 // Composite: section header + list (or empty/error/loading state) + composer.
 // Designed to be embedded inside a check-in detail screen. Handles the
@@ -72,14 +72,13 @@ class CommentsSection extends ConsumerWidget {
                       onPressed: s.isLoadingMore
                           ? null
                           : () => ref
-                              .read(commentsProvider(checkInId).notifier)
-                              .loadMore(),
+                                .read(commentsProvider(checkInId).notifier)
+                                .loadMore(),
                       child: s.isLoadingMore
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(l.commentsLoadEarlier),
                     ),
@@ -89,9 +88,7 @@ class CommentsSection extends ConsumerWidget {
           },
         ),
         const Divider(height: 1),
-        CommentComposer(
-          onSubmit: (body) => _submit(context, ref, l, body),
-        ),
+        CommentComposer(onSubmit: (body) => _submit(context, ref, l, body)),
       ],
     );
   }
@@ -107,30 +104,30 @@ class CommentsSection extends ConsumerWidget {
       return true;
     } on CommentTooLongException {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.commentsTooLong)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.commentsTooLong)));
       }
       return false;
     } on CommentInvalidBodyException {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.commentsInvalidBody)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.commentsInvalidBody)));
       }
       return false;
     } on CommentRateLimitedException {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.commentsRateLimited)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.commentsRateLimited)));
       }
       return false;
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.commentsPostFailed)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.commentsPostFailed)));
       }
       return false;
     }
@@ -143,14 +140,12 @@ class CommentsSection extends ConsumerWidget {
     String commentId,
   ) async {
     try {
-      await ref
-          .read(commentsProvider(checkInId).notifier)
-          .deleteOwn(commentId);
+      await ref.read(commentsProvider(checkInId).notifier).deleteOwn(commentId);
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.errorGeneric)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.errorGeneric)));
       }
     }
   }

@@ -1,4 +1,4 @@
-// KAMOS — CommentRepository (Phase 6).
+// KAMOS — CommentRepository.
 //
 // Wraps the three comment endpoints:
 //
@@ -24,10 +24,7 @@ class CommentRepository {
   CommentRepository(this._dio);
   final Dio _dio;
 
-  Future<models.Page<Comment>> list(
-    String checkInId, {
-    String? cursor,
-  }) async {
+  Future<models.Page<Comment>> list(String checkInId, {String? cursor}) async {
     final res = await _dio.get(
       '/v1/check-ins/$checkInId/comments',
       queryParameters: {
@@ -49,8 +46,9 @@ class CommentRepository {
   /// and the beverage-request feature's input formatter — clients catch this
   /// locally so the UI can show `commentsInvalidBody` rather than the generic
   /// failure toast.
-  static final RegExp _controlCharRegex =
-      RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]');
+  static final RegExp _controlCharRegex = RegExp(
+    r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]',
+  );
 
   Future<Comment> create({
     required String checkInId,

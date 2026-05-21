@@ -1,4 +1,4 @@
-// admin_users.go — Phase 5a admin user management (list, role updates,
+// admin_users.go — admin user management (list, role updates,
 // suspend). Split out of admin.go in Stage 3.
 package handlers
 
@@ -16,10 +16,10 @@ import (
 // AdminListUsers — GET /v1/admin/users
 //
 // Query params:
-//   - role: user|moderator|admin (optional)
-//   - include_deleted: 1 to include soft-deleted (default false)
-//   - cursor: opaque cursor token
-//   - limit:  1..50, default 20
+// - role: user|moderator|admin (optional)
+// - include_deleted: 1 to include soft-deleted (default false)
+// - cursor: opaque cursor token
+// - limit: 1..50, default 20
 func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)

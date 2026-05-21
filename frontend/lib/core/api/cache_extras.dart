@@ -1,4 +1,4 @@
-// KAMOS — Per-request HTTP-cache opt-out (Phase 7).
+// KAMOS — Per-request HTTP-cache opt-out.
 //
 // The cache contract is documented in `api_client.dart`'s header: the server's
 // `Cache-Control` directive is the source of truth (policy is

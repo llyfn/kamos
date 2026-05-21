@@ -2,10 +2,10 @@
 //
 // SPEC §6.9: JWT is read from `flutter_secure_storage` only.
 //
-// Phase 2 added a refresh-token exchange loop. On a 401 from a non-auth
-// endpoint, the interceptor pauses the original request, swaps the rotating
-// refresh token for a fresh pair, and retries the original request once. If
-// the refresh exchange itself fails (network or 4xx), both tokens are cleared
+// Refresh-token exchange loop: on a 401 from a non-auth endpoint, the
+// interceptor pauses the original request, swaps the rotating refresh
+// token for a fresh pair, and retries the original request once. If the
+// refresh exchange itself fails (network or 4xx), both tokens are cleared
 // and the unauthorized toast fires.
 //
 // Concurrency rule: at most one refresh exchange in flight at a time. Any
@@ -37,12 +37,11 @@ typedef RefreshExchange = Future<RefreshResult> Function(String refreshToken);
 
 /// Outcome of one refresh exchange.
 class RefreshResult {
-  const RefreshResult.success(this.accessToken, this.refreshToken)
-      : ok = true;
+  const RefreshResult.success(this.accessToken, this.refreshToken) : ok = true;
   const RefreshResult.failure()
-      : ok = false,
-        accessToken = '',
-        refreshToken = '';
+    : ok = false,
+      accessToken = '',
+      refreshToken = '';
 
   final bool ok;
   final String accessToken;
@@ -208,10 +207,7 @@ class AuthInterceptor extends Interceptor {
         responseType: o.responseType,
         followRedirects: o.followRedirects,
         validateStatus: o.validateStatus,
-        extra: {
-          ...o.extra,
-          '__kamos_retried__': true,
-        },
+        extra: {...o.extra, '__kamos_retried__': true},
       ),
     );
   }

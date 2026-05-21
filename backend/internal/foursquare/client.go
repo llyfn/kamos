@@ -1,11 +1,11 @@
 // Package foursquare is a thin client over the Foursquare Places API used by
-// the KAMOS venue tag (Phase 4). Only one upstream call is needed
+// the KAMOS venue tag. Only one upstream call is needed
 // (`GET /v3/places/search`), so the package depends on net/http directly
 // instead of an SDK.
 //
 // Disabled mode: when constructed with an empty API key, Search always
 // returns ErrDisabled. The handler maps that to 503 VENUE_SEARCH_DISABLED.
-// This mirrors the Phase 3 storage.Disabled / STORAGE_DISABLED pattern: a
+// This mirrors the storage.Disabled / STORAGE_DISABLED pattern: a
 // missing vendor credential is a deliberate "feature off at this deployment"
 // signal, not a runtime failure.
 //
@@ -73,8 +73,8 @@ const (
 	// are in-scope; museums and laundromats are not. Foursquare's category
 	// taxonomy is a forest; these top-level node IDs match the published
 	// Foursquare reference (https://docs.foursquare.com/data-products/docs/categories).
-	//   13000 = Dining & Drinking (umbrella including bars, restaurants, cafes)
-	//   17069 = Liquor Store (Retail > Food & Beverage Retail)
+	// 13000 = Dining & Drinking (umbrella including bars, restaurants, cafes)
+	// 17069 = Liquor Store (Retail > Food & Beverage Retail)
 	fsqCategories = "13000,17069"
 )
 

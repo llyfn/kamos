@@ -104,7 +104,10 @@ class BreweryDetailScreen extends ConsumerWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: Text(
-                          brewery.website!.replaceFirst(RegExp(r'^https?://'), ''),
+                          brewery.website!.replaceFirst(
+                            RegExp(r'^https?://'),
+                            '',
+                          ),
                           style: TextStyle(
                             fontFamily: 'JetBrainsMono',
                             color: t.fgLink,
@@ -169,12 +172,15 @@ class BreweryDetailScreen extends ConsumerWidget {
                                       Row(
                                         children: [
                                           StarsDisplay(
-                                              value: b.avgRating, size: 12),
+                                            value: b.avgRating,
+                                            size: 12,
+                                          ),
                                           const SizedBox(width: 6),
                                           if (b.avgRating != null)
                                             Text(
-                                              l.ratingValue(b.avgRating!
-                                                  .toStringAsFixed(1)),
+                                              l.ratingValue(
+                                                b.avgRating!.toStringAsFixed(1),
+                                              ),
                                               style: const TextStyle(
                                                 fontFamily: 'JetBrainsMono',
                                                 fontSize: 12,

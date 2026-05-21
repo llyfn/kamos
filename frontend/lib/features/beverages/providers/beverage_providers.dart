@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/beverage.dart';
 import '../repository/beverage_repository.dart';
 
-final beverageDetailProvider =
-    FutureProvider.autoDispose.family<BeverageDetail, String>((ref, id) async {
-  return ref.read(beverageRepositoryProvider).get(id);
-});
+final beverageDetailProvider = FutureProvider.autoDispose
+    .family<BeverageDetail, String>((ref, id) async {
+      return ref.read(beverageRepositoryProvider).get(id);
+    });
 
 class BeverageListState {
   const BeverageListState({
@@ -41,17 +41,16 @@ class BeverageListState {
     String? category,
     String? query,
     bool clearCategory = false,
-  }) =>
-      BeverageListState(
-        items: items ?? this.items,
-        nextCursor: nextCursor ?? this.nextCursor,
-        hasMore: hasMore ?? this.hasMore,
-        isLoading: isLoading ?? this.isLoading,
-        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-        error: error ?? this.error,
-        category: clearCategory ? null : (category ?? this.category),
-        query: query ?? this.query,
-      );
+  }) => BeverageListState(
+    items: items ?? this.items,
+    nextCursor: nextCursor ?? this.nextCursor,
+    hasMore: hasMore ?? this.hasMore,
+    isLoading: isLoading ?? this.isLoading,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    error: error ?? this.error,
+    category: clearCategory ? null : (category ?? this.category),
+    query: query ?? this.query,
+  );
 }
 
 class BeverageListNotifier extends Notifier<BeverageListState> {
@@ -81,7 +80,9 @@ class BeverageListNotifier extends Notifier<BeverageListState> {
       error: null,
     );
     try {
-      final page = await ref.read(beverageRepositoryProvider).list(
+      final page = await ref
+          .read(beverageRepositoryProvider)
+          .list(
             q: state.query.isEmpty ? null : state.query,
             category: state.category,
           );
@@ -100,7 +101,9 @@ class BeverageListNotifier extends Notifier<BeverageListState> {
     if (state.isLoadingMore || !state.hasMore) return;
     state = state.copyWith(isLoadingMore: true);
     try {
-      final page = await ref.read(beverageRepositoryProvider).list(
+      final page = await ref
+          .read(beverageRepositoryProvider)
+          .list(
             q: state.query.isEmpty ? null : state.query,
             category: state.category,
             cursor: state.nextCursor,
@@ -119,5 +122,5 @@ class BeverageListNotifier extends Notifier<BeverageListState> {
 
 final beverageListProvider =
     NotifierProvider<BeverageListNotifier, BeverageListState>(
-  BeverageListNotifier.new,
-);
+      BeverageListNotifier.new,
+    );

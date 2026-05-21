@@ -24,16 +24,12 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
   @override
   AuthControllerState build() => const AuthControllerState();
 
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     state = const AuthControllerState(isSubmitting: true);
     try {
-      await ref.read(authRepositoryProvider).login(
-            email: email,
-            password: password,
-          );
+      await ref
+          .read(authRepositoryProvider)
+          .login(email: email, password: password);
       ref.read(authStateProvider.notifier).signIn();
       state = const AuthControllerState();
     } on DioException catch (e) {
@@ -52,7 +48,9 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
   }) async {
     state = const AuthControllerState(isSubmitting: true);
     try {
-      await ref.read(authRepositoryProvider).register(
+      await ref
+          .read(authRepositoryProvider)
+          .register(
             username: username,
             email: email,
             password: password,
@@ -77,10 +75,9 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
   }) async {
     state = const AuthControllerState(isSubmitting: true);
     try {
-      await ref.read(authRepositoryProvider).google(
-            idToken: idToken,
-            locale: locale,
-          );
+      await ref
+          .read(authRepositoryProvider)
+          .google(idToken: idToken, locale: locale);
       ref.read(authStateProvider.notifier).signIn();
       state = const AuthControllerState();
     } on DioException catch (e) {
@@ -99,5 +96,5 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
 
 final authControllerProvider =
     NotifierProvider<AuthControllerNotifier, AuthControllerState>(
-  AuthControllerNotifier.new,
-);
+      AuthControllerNotifier.new,
+    );

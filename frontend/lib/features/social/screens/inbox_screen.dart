@@ -30,10 +30,7 @@ class InboxScreen extends ConsumerWidget {
         ),
         data: (page) {
           if (page.items.isEmpty) {
-            return EmptyView(
-              title: l.inboxEmptyTitle,
-              body: l.inboxEmptyBody,
-            );
+            return EmptyView(title: l.inboxEmptyTitle, body: l.inboxEmptyBody);
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -62,7 +59,9 @@ class InboxScreen extends ConsumerWidget {
                                     ? r.displayUsername
                                     : r.displayName,
                                 style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w600),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               Text(
                                 '@${r.username}',
@@ -78,7 +77,9 @@ class InboxScreen extends ConsumerWidget {
                                   child: Text(
                                     r.bio!,
                                     style: TextStyle(
-                                        fontSize: 12, color: t.fg2),
+                                      fontSize: 12,
+                                      color: t.fg2,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -112,8 +113,7 @@ class InboxScreen extends ConsumerWidget {
                             style: FilledButton.styleFrom(
                               backgroundColor: t.ai,
                               shape: const StadiumBorder(),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
                             child: Text(l.inboxApprove),
                           ),

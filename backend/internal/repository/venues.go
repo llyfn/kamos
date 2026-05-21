@@ -11,7 +11,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 )
 
-// VenueRepo backs the Phase 4 optional venue tag on check-ins. The Foursquare
+// VenueRepo backs the optional venue tag on check-ins. The Foursquare
 // HTTP client lives in internal/foursquare; this repository works purely in
 // domain types so it has no upstream-API knowledge. The handler is the seam
 // that translates foursquare.Place into the upsert input here.
@@ -20,7 +20,7 @@ type VenueRepo struct{ db *pgxpool.Pool }
 // UpsertVenueInput is the data the handler hands the repository after
 // validating the CheckinVenue payload (or after parsing a foursquare.Place).
 // `FoursquareID` is required — free-form (no-fsq) venues aren't accepted in
-// Phase 4 and would need a separate insert path.
+// and would need a separate insert path.
 type UpsertVenueInput struct {
 	FoursquareID string
 	Name         string
@@ -53,7 +53,7 @@ func (r *VenueRepo) UpsertByFoursquareID(ctx context.Context, in UpsertVenueInpu
 INSERT INTO venues (foursquare_id, name, address, lat, lng, country, prefecture, locality)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (foursquare_id) DO UPDATE SET
-  updated_at = now()
+ updated_at = now()
 RETURNING id;`
 	var id string
 	if err := r.db.QueryRow(ctx, q,
@@ -71,7 +71,7 @@ RETURNING id;`
 func (r *VenueRepo) GetByID(ctx context.Context, id string) (*domain.Venue, error) {
 	const q = `
 SELECT id, foursquare_id, name, address, lat, lng,
-       country, prefecture, locality, created_at, updated_at
+ country, prefecture, locality, created_at, updated_at
 FROM venues
 WHERE id = $1;`
 	var v domain.Venue

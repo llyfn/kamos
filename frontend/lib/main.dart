@@ -17,12 +17,18 @@ import 'core/observability/sentry_observer.dart';
 // Compile-time configuration. The DSN gate (`kSentryConfigured`) lives in
 // `sentry_observer.dart` so other layers can import it without pulling in
 // `main.dart`.
-const String _kSentryDsn =
-    String.fromEnvironment('KAMOS_SENTRY_DSN', defaultValue: '');
-const String _kSentryEnv =
-    String.fromEnvironment('KAMOS_ENV', defaultValue: 'dev');
-const String _kSentryRelease =
-    String.fromEnvironment('KAMOS_VERSION', defaultValue: 'dev');
+const String _kSentryDsn = String.fromEnvironment(
+  'KAMOS_SENTRY_DSN',
+  defaultValue: '',
+);
+const String _kSentryEnv = String.fromEnvironment(
+  'KAMOS_ENV',
+  defaultValue: 'dev',
+);
+const String _kSentryRelease = String.fromEnvironment(
+  'KAMOS_VERSION',
+  defaultValue: 'dev',
+);
 
 void main() {
   if (_kSentryDsn.isEmpty) {

@@ -45,12 +45,12 @@ const Map<String, String> kCategoryStrings = {
   'nihonshu_en': 'Nihonshu (Sake)',
   'nihonshu_ja': '日本酒',
   'nihonshu_ko': '니혼슈 (사케)',
-  'shochu_en':   'Shochu',
-  'shochu_ja':   '焼酎',
-  'shochu_ko':   '쇼츄',
-  'liqueur_en':  'Liqueur',
-  'liqueur_ja':  'リキュール',
-  'liqueur_ko':  '리큐어',
+  'shochu_en': 'Shochu',
+  'shochu_ja': '焼酎',
+  'shochu_ko': '쇼츄',
+  'liqueur_en': 'Liqueur',
+  'liqueur_ja': 'リキュール',
+  'liqueur_ko': '리큐어',
 };
 
 /// Resolve a SPEC category string from a [BuildContext]. Goes through ARB so

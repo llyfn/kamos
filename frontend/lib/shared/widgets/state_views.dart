@@ -45,13 +45,7 @@ class LoadingView extends StatelessWidget {
 }
 
 class EmptyView extends StatelessWidget {
-  const EmptyView({
-    super.key,
-    this.glyph,
-    this.title,
-    this.body,
-    this.action,
-  });
+  const EmptyView({super.key, this.glyph, this.title, this.body, this.action});
 
   final String? glyph;
   final String? title;
@@ -106,10 +100,7 @@ class EmptyView extends StatelessWidget {
               ),
             ),
           ],
-          if (action != null) ...[
-            const SizedBox(height: 12),
-            action!,
-          ],
+          if (action != null) ...[const SizedBox(height: 12), action!],
         ],
       ),
     );

@@ -55,7 +55,7 @@ type Handler struct {
 	// (tests that don't bring up the cache also don't care about revocation
 	// semantics). Production wiring lives in cmd/server/main.go.
 	SoftDelete *auth.SoftDeleteCache
-	// Caches is the Phase 7 in-process LRU bundle (taxonomy + beverage +
+	// Caches is the in-process LRU bundle (taxonomy + beverage +
 	// brewery hot rows). Nil-safe — handlers null-check before using; tests
 	// that don't care about caching pass nil and the path falls through to
 	// the DB on every call.
@@ -112,7 +112,7 @@ func (h *Handler) WithSoftDeleteCache(c *auth.SoftDeleteCache) *Handler {
 	return h
 }
 
-// WithCaches wires the Phase 7 LRU bundle. Nil-safe; tests that don't
+// WithCaches wires the LRU bundle. Nil-safe; tests that don't
 // care about caching can either omit this call (no bundle) or pass a
 // fresh one for isolation.
 func (h *Handler) WithCaches(c *cache.Caches) *Handler {
@@ -235,7 +235,7 @@ func (h *Handler) authedID(w http.ResponseWriter, r *http.Request) (string, bool
 // header. We only care about the first 2 chars of the primary tag — "en-US"
 // and "en-GB" collapse to "en" — because KAMOS only ships en/ja/ko.
 //
-// Phase 7a MINOR-2 fix: unsupported locales (e.g. "zh") map to "en" so the
+// unsupported locales (e.g. "zh") map to "en" so the
 // cache-key axis stays bounded to {en, ja, ko, any} regardless of what
 // misbehaving clients send. "any" is reserved for the empty-header case so
 // callers that pre-resolved to EN still hit a distinct LRU slot.

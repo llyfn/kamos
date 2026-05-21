@@ -1,4 +1,4 @@
-// KAMOS — Venue picker bottom sheet (Phase 4).
+// KAMOS — Venue picker bottom sheet.
 //
 // Triggered from the check-in screen via [showVenuePicker]. Wraps a search
 // field, a results list, and the 503 handling for VENUE_SEARCH_DISABLED and
@@ -17,8 +17,8 @@ import '../exceptions.dart';
 import '../providers/venue_providers.dart';
 
 /// Sheet renders at most this many; results past ~30 lose discoverability
-/// without a map view (Phase 4 has no map). The server still returns up
-/// to 20 (was 50 — see Phase 4 review SEC-007/SEC-004), so this UI cap
+/// without a map view (has no map). The server still returns up
+/// to 20 (was 50 — see review SEC-007/SEC-004), so this UI cap
 /// only kicks in if the backend's limit is raised later.
 const _maxResultsOnScreen = 30;
 
@@ -57,9 +57,9 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet> {
   }
 
   void _onChanged(String text) {
-    ref.read(venueSearchProvider.notifier).setQuery(
-          VenueSearchQuery(text: text, locale: _locale),
-        );
+    ref
+        .read(venueSearchProvider.notifier)
+        .setQuery(VenueSearchQuery(text: text, locale: _locale));
   }
 
   @override
@@ -200,10 +200,9 @@ class _Results extends StatelessWidget {
             ),
           );
         }
-        final visible =
-            items.length > _maxResultsOnScreen
-                ? items.sublist(0, _maxResultsOnScreen)
-                : items;
+        final visible = items.length > _maxResultsOnScreen
+            ? items.sublist(0, _maxResultsOnScreen)
+            : items;
         return ListView.separated(
           controller: controller,
           itemCount: visible.length,

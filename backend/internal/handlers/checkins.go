@@ -35,7 +35,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin validate", err)
 		return
 	}
-	// Phase 4 — SEC-001: bound + sanitize venue strings before the upsert path
+	// SEC-001: bound + sanitize venue strings before the upsert path
 	// to keep poisoned payloads out of the shared venues table.
 	if err := req.Venue.Validate(); err != nil {
 		h.writeErr(w, "CreateCheckin validate venue", err)
@@ -312,16 +312,16 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Phase 3 — the MVP scaffold accepted `{ url }` (any URL the client claimed
+// The MVP scaffold accepted `{ url }` (any URL the client claimed
 // to have stored somewhere). That contract is replaced by a 3-step flow:
 //
-//  1. POST /v1/uploads/photo-presign   → server returns a presigned PUT URL.
-//  2. Client PUTs the bytes to R2 with the supplied Content-Type header.
-//  3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
-//     server promotes the photo_uploads row to 'attached', looks up the
-//     public URL for the blob_key, and inserts into check_in_photos.
+// 1. POST /v1/uploads/photo-presign → server returns a presigned PUT URL.
+// 2. Client PUTs the bytes to R2 with the supplied Content-Type header.
+// 3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
+// server promotes the photo_uploads row to 'attached', looks up the
+// public URL for the blob_key, and inserts into check_in_photos.
 //
-// We do NOT verify the client's PUT against R2 in Phase 3 — the orphan
+// We do NOT verify the client's PUT against R2 historically — the orphan
 // cleanup job sweeps anything that never reaches 'attached'. A future
 // hardening pass can add a HEAD check before the attach.
 //

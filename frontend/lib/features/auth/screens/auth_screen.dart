@@ -70,20 +70,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   controllerState: controller,
                   onForgot: () => setState(() => _mode = _Mode.forgot),
                   onToggleMode: () => setState(
-                    () => _mode = _mode == _Mode.signIn ? _Mode.signUp : _Mode.signIn,
+                    () => _mode = _mode == _Mode.signIn
+                        ? _Mode.signUp
+                        : _Mode.signIn,
                   ),
                   onSubmit: () async {
                     if (_mode == _Mode.signIn) {
-                      await ref.read(authControllerProvider.notifier).signIn(
+                      await ref
+                          .read(authControllerProvider.notifier)
+                          .signIn(
                             email: _email.text.trim(),
                             password: _password.text,
                           );
                     } else {
-                      await ref.read(authControllerProvider.notifier).signUp(
+                      await ref
+                          .read(authControllerProvider.notifier)
+                          .signUp(
                             username: _username.text.trim(),
                             email: _email.text.trim(),
                             password: _password.text,
-                            locale: Localizations.localeOf(context).languageCode,
+                            locale: Localizations.localeOf(
+                              context,
+                            ).languageCode,
                           );
                       // After signup, show the verify message even though the
                       // user is already signed-in (unverified accounts can still
@@ -111,10 +119,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     }
                     await ref
                         .read(authControllerProvider.notifier)
-                        .signInWithGoogle(
-                          idToken: idToken,
-                          locale: locale,
-                        );
+                        .signInWithGoogle(idToken: idToken, locale: locale);
                   },
                 ),
               if (controller.error != null)
@@ -123,10 +128,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: Text(
                     controller.error!,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: t.fgDanger,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: t.fgDanger, fontSize: 13),
                   ),
                 ),
               const SizedBox(height: 32),
@@ -196,7 +198,8 @@ class _SignInOrUp extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
 
-    final usernameInvalid = isSignUp &&
+    final usernameInvalid =
+        isSignUp &&
         username.text.isNotEmpty &&
         !RegExp(r'^[A-Za-z0-9_]{3,30}$').hasMatch(username.text);
 
@@ -225,8 +228,9 @@ class _SignInOrUp extends StatelessWidget {
               errorText: usernameInvalid ? l.authUsernameInvalid : null,
             ),
             maxLength: 30,
-            buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                null,
+            buildCounter:
+                (_, {required currentLength, required isFocused, maxLength}) =>
+                    null,
             onChanged: (_) => (context as Element).markNeedsBuild(),
           ),
           Padding(

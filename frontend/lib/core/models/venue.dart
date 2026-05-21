@@ -1,4 +1,4 @@
-// KAMOS — Venue models (Phase 4).
+// KAMOS — Venue models.
 //
 // `Venue` is the full row returned by venue endpoints. `VenueRef` is the
 // lightweight projection embedded on `Checkin`. `FoursquarePlace` is what
@@ -24,16 +24,16 @@ abstract class Venue with _$Venue {
   }) = _Venue;
 
   factory Venue.fromJson(Map<String, dynamic> json) => Venue(
-        id: (json['id'] as String?) ?? '',
-        name: (json['name'] as String?) ?? '',
-        foursquareId: json['foursquare_id'] as String?,
-        address: json['address'] as String?,
-        lat: (json['lat'] as num?)?.toDouble(),
-        lng: (json['lng'] as num?)?.toDouble(),
-        country: json['country'] as String?,
-        prefecture: json['prefecture'] as String?,
-        locality: json['locality'] as String?,
-      );
+    id: (json['id'] as String?) ?? '',
+    name: (json['name'] as String?) ?? '',
+    foursquareId: json['foursquare_id'] as String?,
+    address: json['address'] as String?,
+    lat: (json['lat'] as num?)?.toDouble(),
+    lng: (json['lng'] as num?)?.toDouble(),
+    country: json['country'] as String?,
+    prefecture: json['prefecture'] as String?,
+    locality: json['locality'] as String?,
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -46,11 +46,11 @@ abstract class VenueRef with _$VenueRef {
   }) = _VenueRef;
 
   factory VenueRef.fromJson(Map<String, dynamic> json) => VenueRef(
-        id: (json['id'] as String?) ?? '',
-        name: (json['name'] as String?) ?? '',
-        locality: json['locality'] as String?,
-        country: json['country'] as String?,
-      );
+    id: (json['id'] as String?) ?? '',
+    name: (json['name'] as String?) ?? '',
+    locality: json['locality'] as String?,
+    country: json['country'] as String?,
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -83,14 +83,13 @@ abstract class FoursquarePlace with _$FoursquarePlace {
   /// `venue` field of `POST /v1/check-ins`. Only the populated fields are
   /// emitted; the backend's `CheckinVenueInput` accepts any subset.
   Map<String, dynamic> toCheckinVenueJson() => {
-        'foursquare_id': foursquareId,
-        'name': name,
-        if (address != null && address!.isNotEmpty) 'address': address,
-        if (lat != null) 'lat': lat,
-        if (lng != null) 'lng': lng,
-        if (country != null && country!.isNotEmpty) 'country': country,
-        if (prefecture != null && prefecture!.isNotEmpty)
-          'prefecture': prefecture,
-        if (locality != null && locality!.isNotEmpty) 'locality': locality,
-      };
+    'foursquare_id': foursquareId,
+    'name': name,
+    if (address != null && address!.isNotEmpty) 'address': address,
+    if (lat != null) 'lat': lat,
+    if (lng != null) 'lng': lng,
+    if (country != null && country!.isNotEmpty) 'country': country,
+    if (prefecture != null && prefecture!.isNotEmpty) 'prefecture': prefecture,
+    if (locality != null && locality!.isNotEmpty) 'locality': locality,
+  };
 }

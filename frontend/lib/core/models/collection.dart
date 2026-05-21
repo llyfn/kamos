@@ -6,29 +6,30 @@ import 'beverage.dart';
 
 part 'collection.freezed.dart';
 
-/// Collection visibility (Phase 6). `private` is the default for backward
+/// Collection visibility. `private` is the default for backward
 /// compatibility with older servers that don't emit the field.
 enum CollectionVisibility { private, public }
 
 extension CollectionVisibilityParse on CollectionVisibility {
   static CollectionVisibility fromWire(String? s) => switch (s) {
-        'public' => CollectionVisibility.public,
-        _ => CollectionVisibility.private,
-      };
+    'public' => CollectionVisibility.public,
+    _ => CollectionVisibility.private,
+  };
 
   String toWire() => switch (this) {
-        CollectionVisibility.public => 'public',
-        CollectionVisibility.private => 'private',
-      };
+    CollectionVisibility.public => 'public',
+    CollectionVisibility.private => 'private',
+  };
 }
 
 @Freezed(fromJson: false, toJson: false)
 abstract class Collection with _$Collection {
   const factory Collection({
     required String id,
-    // Phase 6a — owner_id is required on the wire (`Collection` schema in
-    // openapi.yaml). Used to gate owner-only UI such as the visibility toggle
-    // without an extra `/v1/users/me` lookup or a membership approximation.
+    // owner_id is required on the wire (`Collection` schema in
+    // openapi.yaml). Used to gate owner-only UI such as the visibility
+    // toggle without an extra `/v1/users/me` lookup or a membership
+    // approximation.
     required String ownerId,
     required String name,
     @Default(0) int entryCount,
@@ -53,15 +54,16 @@ abstract class Collection with _$Collection {
       ownerId: ownerId,
       name: (json['name'] as String?) ?? '',
       entryCount: (json['entry_count'] as int?) ?? 0,
-      visibility:
-          CollectionVisibilityParse.fromWire(json['visibility'] as String?),
+      visibility: CollectionVisibilityParse.fromWire(
+        json['visibility'] as String?,
+      ),
       createdAt: (json['created_at'] as String?) ?? '',
       updatedAt: (json['updated_at'] as String?) ?? '',
     );
   }
 }
 
-/// Owner attribution for a public collection (Phase 6 — `GET /v1/collections/public`).
+/// Owner attribution for a public collection (— `GET /v1/collections/public`).
 /// Mirrors the server's slim `PublicCollectionOwner` shape — privacy-safe (never
 /// carries email). `display_name` is `required` on the wire; defaults to the
 /// empty string only as a defensive fallback against older server builds.
@@ -79,7 +81,8 @@ abstract class CollectionOwner with _$CollectionOwner {
       CollectionOwner(
         id: (json['id'] as String?) ?? '',
         username: (json['username'] as String?) ?? '',
-        displayUsername: (json['display_username'] as String?) ??
+        displayUsername:
+            (json['display_username'] as String?) ??
             (json['username'] as String? ?? ''),
         displayName: (json['display_name'] as String?) ?? '',
         avatarUrl: json['avatar_url'] as String?,

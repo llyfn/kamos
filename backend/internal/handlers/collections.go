@@ -145,7 +145,7 @@ func (h *Handler) GetCollection(w http.ResponseWriter, r *http.Request) {
 
 // UpdateCollection — PATCH /v1/collections/{id}.
 //
-// Phase 6a: was RenameCollection; now also accepts {visibility: ...} to
+// was RenameCollection; now also accepts {visibility: ...} to
 // flip between private and public. Either or both fields can be sent;
 // missing-both is a 422.
 func (h *Handler) UpdateCollection(w http.ResponseWriter, r *http.Request) {

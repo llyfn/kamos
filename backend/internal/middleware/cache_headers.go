@@ -9,7 +9,7 @@ import "net/http"
 //	r.With(middleware.CacheControl("public, max-age=300, stale-while-revalidate=86400")).
 //	    Get("/v1/beverages/{id}", h.GetBeverage)
 //
-// Phase 7 design note: the header is set BEFORE next.ServeHTTP, not after.
+// Design note: the header is set BEFORE next.ServeHTTP, not after.
 // If we set it after, a handler that decided to write its own
 // Cache-Control (e.g., a private response on the public-profile route)
 // would already have flushed headers by the time we tried — wWriteHeader
@@ -37,7 +37,7 @@ func CacheControl(value string) func(http.Handler) http.Handler {
 // Together this is the strongest "do not cache" signal HTTP can carry.
 const noStoreValue = "no-store, no-cache, must-revalidate, max-age=0"
 
-// NoStore tags the response as never-cacheable. Phase 7a BLOCKER-2 fix —
+// NoStore tags the response as never-cacheable. fix —
 // ETag is mounted globally for the "every GET gets it for free" property,
 // but every route that isn't intentionally cacheable must declare
 // `no-store` so heuristic-caching intermediaries don't treat an ETagged

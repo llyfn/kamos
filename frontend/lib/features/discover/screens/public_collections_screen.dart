@@ -1,4 +1,4 @@
-// KAMOS — Public collections discovery (Phase 6).
+// KAMOS — Public collections discovery.
 //
 // Paginated list of public collections from `GET /v1/collections/public`. Each
 // row shows the collection name, bottle count, and the owner's display
@@ -77,10 +77,7 @@ class _PublicCollectionsScreenState
         ),
         data: (state) {
           if (state.items.isEmpty) {
-            return EmptyView(
-              glyph: '集',
-              title: l.publicCollectionsEmpty,
-            );
+            return EmptyView(glyph: '集', title: l.publicCollectionsEmpty);
           }
           return ListView.builder(
             controller: _controller,
@@ -151,9 +148,9 @@ class _PublicCollectionsScreenState
                                 const SizedBox(width: 6),
                                 Text(
                                   l.publicCollectionsByOwner(
-                                      owner.displayUsername),
-                                  style:
-                                      TextStyle(fontSize: 12, color: t.fg3),
+                                    owner.displayUsername,
+                                  ),
+                                  style: TextStyle(fontSize: 12, color: t.fg3),
                                 ),
                               ],
                             ),

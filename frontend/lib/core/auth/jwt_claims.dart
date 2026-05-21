@@ -28,7 +28,10 @@ String? decodeUserIdFromJwt(String? token) {
     final payload = parts[1];
     // JWT uses base64url WITHOUT padding; `base64Url.decode` requires
     // length%4==0, so pad manually.
-    final padded = payload.padRight(payload.length + ((4 - payload.length % 4) % 4), '=');
+    final padded = payload.padRight(
+      payload.length + ((4 - payload.length % 4) % 4),
+      '=',
+    );
     final bytes = base64Url.decode(padded);
     final json = utf8.decode(bytes);
     final map = jsonDecode(json);

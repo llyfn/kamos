@@ -24,19 +24,19 @@ abstract class Brewery with _$Brewery {
   }) = _Brewery;
 
   factory Brewery.fromJson(Map<String, dynamic> json) => Brewery(
-        id: (json['id'] as String?) ?? '',
-        name: I18nText.fromJson(
-          (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
-        ),
-        prefecture: json['prefecture'] as String?,
-        region: json['region'] as String?,
-        foundedYear: (json['founded_year'] as num?)?.toInt(),
-        website: json['website'] as String?,
-        description: json['description'] is Map<String, dynamic>
-            ? I18nText.fromJson(json['description'] as Map<String, dynamic>)
-            : null,
-        createdAt: (json['created_at'] as String?) ?? '',
-      );
+    id: (json['id'] as String?) ?? '',
+    name: I18nText.fromJson(
+      (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
+    ),
+    prefecture: json['prefecture'] as String?,
+    region: json['region'] as String?,
+    foundedYear: (json['founded_year'] as num?)?.toInt(),
+    website: json['website'] as String?,
+    description: json['description'] is Map<String, dynamic>
+        ? I18nText.fromJson(json['description'] as Map<String, dynamic>)
+        : null,
+    createdAt: (json['created_at'] as String?) ?? '',
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -48,10 +48,10 @@ abstract class BreweryRef with _$BreweryRef {
   }) = _BreweryRef;
 
   factory BreweryRef.fromJson(Map<String, dynamic> json) => BreweryRef(
-        id: (json['id'] as String?) ?? '',
-        name: I18nText.fromJson(
-          (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
-        ),
-        region: json['region'] as String?,
-      );
+    id: (json['id'] as String?) ?? '',
+    name: I18nText.fromJson(
+      (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
+    ),
+    region: json['region'] as String?,
+  );
 }

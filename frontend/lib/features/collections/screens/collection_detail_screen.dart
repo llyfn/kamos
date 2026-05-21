@@ -27,60 +27,62 @@ class CollectionDetailScreen extends ConsumerWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final async = ref.watch(collectionDetailProvider(collectionId));
     return Scaffold(
-      appBar: AppBar(actions: [
-        IconButton(
-          icon: const Icon(Icons.more_horiz),
-          onPressed: () async {
-            final picked = await showModalBottomSheet<String>(
-              context: context,
-              showDragHandle: true,
-              builder: (_) => ListView(
-                shrinkWrap: true,
-                children: [
-                  ListTile(
-                    title: Text(l.collectionsRename),
-                    onTap: () => Navigator.pop(context, 'rename'),
-                  ),
-                  ListTile(
-                    title: Text(
-                      l.collectionsDeleteAction,
-                      style: TextStyle(color: t.fgDanger),
-                    ),
-                    onTap: () => Navigator.pop(context, 'delete'),
-                  ),
-                ],
-              ),
-            );
-            if (picked == 'delete' && context.mounted) {
-              final confirm = await showDialog<bool>(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.more_horiz),
+            onPressed: () async {
+              final picked = await showModalBottomSheet<String>(
                 context: context,
-                builder: (_) => AlertDialog(
-                  title: Text(l.collectionsConfirmDelete),
-                  content: Text(l.collectionsConfirmDeleteBody),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(l.actionCancel),
+                showDragHandle: true,
+                builder: (_) => ListView(
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      title: Text(l.collectionsRename),
+                      onTap: () => Navigator.pop(context, 'rename'),
                     ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: t.akane),
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(l.actionDelete),
+                    ListTile(
+                      title: Text(
+                        l.collectionsDeleteAction,
+                        style: TextStyle(color: t.fgDanger),
+                      ),
+                      onTap: () => Navigator.pop(context, 'delete'),
                     ),
                   ],
                 ),
               );
-              if (confirm == true) {
-                await ref
-                    .read(collectionRepositoryProvider)
-                    .delete(collectionId);
-                ref.invalidate(collectionsProvider);
-                if (context.mounted) context.pop();
+              if (picked == 'delete' && context.mounted) {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: Text(l.collectionsConfirmDelete),
+                    content: Text(l.collectionsConfirmDeleteBody),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(l.actionCancel),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: t.akane),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(l.actionDelete),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await ref
+                      .read(collectionRepositoryProvider)
+                      .delete(collectionId);
+                  ref.invalidate(collectionsProvider);
+                  if (context.mounted) context.pop();
+                }
               }
-            }
-          },
-        ),
-      ]),
+            },
+          ),
+        ],
+      ),
       body: async.when(
         loading: () => Center(child: LoadingView(label: l.loadingLabel)),
         error: (e, _) => Center(
@@ -142,10 +144,11 @@ class CollectionDetailScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              // Phase 6 — the visibility toggle must only render for the
-              // collection's OWNER. Phase 6a added `owner_id` to the wire
-              // `Collection` schema, so ownership is a direct compare against
-              // the signed-in user's id from `meProvider`. If `meProvider`
+              // The visibility toggle must only render for the
+              // collection's OWNER. `owner_id` is part of the wire
+              // `Collection` schema, so ownership is a direct compare
+              // against the signed-in user's id from `meProvider`. If
+              // `meProvider`
               // hasn't resolved yet (loading / error), the toggle is hidden;
               // the server-side ownership check on PATCH /v1/collections/{id}
               // remains the source of truth and rejects a non-owner write
@@ -165,15 +168,15 @@ class CollectionDetailScreen extends ConsumerWidget {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: KamosCard(
-                      onTap: () =>
-                          context.push('/beverages/${e.beverage.id}'),
+                      onTap: () => context.push('/beverages/${e.beverage.id}'),
                       child: Row(
                         children: [
                           KamosLabel(
                             width: 48,
                             height: 64,
-                            tone:
-                                labelToneFromCategory(e.beverage.category.slug),
+                            tone: labelToneFromCategory(
+                              e.beverage.category.slug,
+                            ),
                             imageUrl: e.beverage.labelImageUrl,
                           ),
                           const SizedBox(width: 12),
@@ -191,8 +194,7 @@ class CollectionDetailScreen extends ConsumerWidget {
                                 ),
                                 Text(
                                   resolveI18n(e.beverage.brewery.name, locale),
-                                  style: TextStyle(
-                                      fontSize: 12, color: t.fg2),
+                                  style: TextStyle(fontSize: 12, color: t.fg2),
                                 ),
                               ],
                             ),
@@ -212,7 +214,7 @@ class CollectionDetailScreen extends ConsumerWidget {
 }
 
 /// Checks whether the signed-in user owns [collection] by directly comparing
-/// the viewer's id (`meProvider`) against `collection.ownerId` (Phase 6a wire
+/// the viewer's id (`meProvider`) against `collection.ownerId` (wire
 /// field). Returns `false` when `meProvider` is still loading or has errored
 /// so the visibility toggle stays hidden in those transient states.
 bool _viewerOwnsCollection(WidgetRef ref, Collection collection) {
@@ -221,8 +223,9 @@ bool _viewerOwnsCollection(WidgetRef ref, Collection collection) {
   return me.user.id == collection.ownerId;
 }
 
-/// Phase 6 — public/private toggle for an OWN collection. Rendered only when
-/// the surrounding screen has confirmed ownership via `_viewerOwnsCollection`.
+/// Public/private toggle for an OWN collection. Rendered only when the
+/// surrounding screen has confirmed ownership via
+/// `_viewerOwnsCollection`.
 /// The server-side check on PATCH /v1/collections/{id} still enforces
 /// ownership and 403s any cross-user write; this is purely UX gating.
 class _VisibilityToggle extends ConsumerStatefulWidget {
@@ -234,7 +237,8 @@ class _VisibilityToggle extends ConsumerStatefulWidget {
 }
 
 class _VisibilityToggleState extends ConsumerState<_VisibilityToggle> {
-  late bool _isPublic = widget.collection.visibility == CollectionVisibility.public;
+  late bool _isPublic =
+      widget.collection.visibility == CollectionVisibility.public;
   bool _pending = false;
 
   @override

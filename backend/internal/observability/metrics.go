@@ -10,7 +10,7 @@ import (
 
 const meterName = "github.com/kamos/api"
 
-// One counter for Phase 1. The roadmap calls for keeping this small; new
+// One counter for . The roadmap calls for keeping this small; new
 // counters live in this file as the surface grows.
 var (
 	metricsOnce            sync.Once

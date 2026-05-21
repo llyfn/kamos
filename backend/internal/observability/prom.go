@@ -8,22 +8,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// cacheRequests is the Phase 7 cache observability counter. Two label
+// cacheRequests is the cache observability counter. Two label
 // dimensions:
 //
-//	cache    — the named cache (categories, flavor_tags, beverage_detail,
-//	           brewery_detail). Cardinality bounded by what's registered
-//	           in cache.NewCaches.
-//	outcome  — "hit" | "miss". Two values, fixed.
+//	cache — the named cache (categories, flavor_tags, beverage_detail,
+//	 brewery_detail). Cardinality bounded by what's registered
+//	 in cache.NewCaches.
+//	outcome — "hit" | "miss". Two values, fixed.
 //
 // Total cardinality: 4 × 2 = 8 series. Well within Prom's comfort zone.
 //
 // Grafana usage (see docs/history/qa/qa_phase7_grafana_panel.json):
 //
 //	hit rate by cache =
-//	  sum by (cache) (rate(cache_requests_total{outcome="hit"}[5m]))
-//	  /
-//	  sum by (cache) (rate(cache_requests_total[5m]))
+//	 sum by (cache) (rate(cache_requests_total{outcome="hit"}[5m]))
+//	 /
+//	 sum by (cache) (rate(cache_requests_total[5m]))
 var cacheRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "cache_requests_total",
 	Help: "Cache lookups by cache name and outcome (hit|miss).",

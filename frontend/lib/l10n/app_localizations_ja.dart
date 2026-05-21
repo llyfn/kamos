@@ -167,9 +167,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get photoUploadDisabled => '写真のアップロードは利用できません — 写真なしで保存しました。';
 
   @override
-  String get photoUploadFailed => '写真をアップロードできませんでした。タップしてやり直し。';
-
-  @override
   String get checkInWhereLabel => 'どこで？';
 
   @override

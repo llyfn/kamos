@@ -12,14 +12,18 @@ final flavorTagsProvider = FutureProvider<List<FlavorTag>>((ref) async {
   return ref.read(checkInRepositoryProvider).tags();
 });
 
-/// Phase 6 — single check-in by id for the detail screen.
+/// Single check-in by id for the detail screen.
 final checkInDetailProvider = FutureProvider.autoDispose
     .family<Checkin, String>((ref, id) async {
-  return ref.read(checkInRepositoryProvider).getOne(id);
-});
+      return ref.read(checkInRepositoryProvider).getOne(id);
+    });
 
 class CheckInControllerState {
-  const CheckInControllerState({this.isSubmitting = false, this.posted, this.error});
+  const CheckInControllerState({
+    this.isSubmitting = false,
+    this.posted,
+    this.error,
+  });
   final bool isSubmitting;
   final Checkin? posted;
   final String? error;
@@ -42,7 +46,9 @@ class CheckInController extends Notifier<CheckInControllerState> {
   }) async {
     state = const CheckInControllerState(isSubmitting: true);
     try {
-      final posted = await ref.read(checkInRepositoryProvider).create(
+      final posted = await ref
+          .read(checkInRepositoryProvider)
+          .create(
             beverageId: beverageId,
             rating: rating,
             review: review,
@@ -70,5 +76,5 @@ class CheckInController extends Notifier<CheckInControllerState> {
 
 final checkInControllerProvider =
     NotifierProvider.autoDispose<CheckInController, CheckInControllerState>(
-  CheckInController.new,
-);
+      CheckInController.new,
+    );

@@ -27,7 +27,7 @@ import (
 // Stricter per-group limits (auth brute-force / per-user fairness) layer
 // inside their respective r.Route / r.Group blocks below.
 //
-// Caching contract (Phase 7a BLOCKER-2):
+// Caching contract:
 //
 //   - middleware.ETag is mounted GLOBALLY (line ~50). Every 2xx GET response
 //     gets a strong ETag for free.
@@ -76,7 +76,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		allowedOrigins = h.Cfg.CORSAllowedOrigins
 	}
 	r.Use(middleware.CORS(middleware.CORSConfig{AllowedOrigins: allowedOrigins}))
-	// Phase 7 — global ETag middleware. Only acts on GET/HEAD + 2xx
+	// global ETag middleware. Only acts on GET/HEAD + 2xx
 	// (see internal/middleware/etag.go); other methods pass through with
 	// no overhead. Mounted globally rather than per-route so a new GET
 	// route gets ETag support by default — write paths are unaffected.
@@ -101,7 +101,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	r.Get("/health", healthHandler)
 	r.Get("/healthz", healthHandler)
 
-	// Phase 7 — Prometheus scrape endpoint. The bundle of counters
+	// Prometheus scrape endpoint. The bundle of counters
 	// includes cache_requests_total{cache,outcome} fed by the cache
 	// package's hit/miss observers. Mount unauthenticated: production
 	// scrapers run on the same internal network; if external scrapers
@@ -114,7 +114,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		// presigned PUT, not through the API). The auth subgroup
 		// overrides this to 64 KiB.
 		r.Use(middleware.MaxBytes(1 << 20))
-		// Phase 7a BLOCKER-2 — default-deny for downstream caching. Every
+		// default-deny for downstream caching. Every
 		// route under /v1 starts with `Cache-Control: no-store, ...`;
 		// the 5 documented cacheable routes override this with their own
 		// CacheControl(...) wrapper, which runs INSIDE this middleware and
@@ -133,7 +133,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Post("/login", h.Login)
 			r.Post("/google", h.GoogleLogin)
 			r.Post("/verify-email", h.VerifyEmail)
-			// Phase 2 — rotating refresh tokens. Public: possession of the
+			// rotating refresh tokens. Public: possession of the
 			// raw secret IS the credential. Still covered by the auth-group
 			// 5 rps / burst 10 limit above.
 			r.Post("/refresh", h.RefreshToken)
@@ -152,7 +152,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(middleware.AdminAuth(signer, softDelete)).Post("/admin-logout", h.AdminLogout)
 		})
 
-		// Taxonomy — public reads. Phase 7: long Cache-Control TTL (1h)
+		// Taxonomy — public reads. long Cache-Control TTL (1h)
 		// because the taxonomy effectively never changes during a deploy
 		// window. stale-while-revalidate lets intermediaries serve from
 		// cache while they background-refresh.
@@ -181,7 +181,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		// Users (public reads, with optional auth for follow state).
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.OptionalAuth(signer, softDelete))
-			// Phase 7: public-profile response varies by the viewer's
+			// public-profile response varies by the viewer's
 			// follow state (follow_state, restricted), so we can't share
 			// a LRU entry across viewers and we can't mark it public
 			// without leaking one viewer's relationship to another via
@@ -196,18 +196,18 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Get("/users/{username}/following", h.GetUserFollowing)
 			r.Get("/check-ins/{id}", h.GetCheckin)
 
-			// Phase 6a — public collections discovery feed. OptionalAuth
+			// public collections discovery feed. OptionalAuth
 			// because the response shape is identical for anon and authed
 			// viewers; we add the middleware so a future "personalized
 			// discovery" overlay can plug in without re-routing.
 			r.Get("/collections/public", h.ListPublicCollections)
 
-			// Phase 6a — comment list is also a public-read surface.
+			// comment list is also a public-read surface.
 			// OptionalAuth for forward compatibility (we may add a
 			// "you_replied" or similar viewer-relative field).
 			r.Get("/check-ins/{id}/comments", h.ListComments)
 
-			// Phase 6a — collection detail is OptionalAuth so the
+			// collection detail is OptionalAuth so the
 			// discovery feed → detail-screen route works for non-owners
 			// of public collections (and for anonymous link visitors).
 			// Handler enforces the visibility gate: owner sees their
@@ -237,7 +237,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Post("/check-ins/{id}/photos", h.UploadCheckinPhoto)
 			r.Post("/check-ins/{id}/toast", h.ToggleToast)
 
-			// Uploads — Phase 3 presigned PUT flow.
+			// Uploads — presigned PUT flow.
 			// SEC-008: tight per-user limit on top of the global authed
 			// 60/120 cap. 2 rps / burst 4 prevents a single account from
 			// minting hundreds of presigns per second while still
@@ -249,7 +249,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 				r.Post("/uploads/photo-presign", h.PhotoPresign)
 			}
 
-			// Venues — Phase 4 Foursquare-backed search proxy. 503
+			// Venues — Foursquare-backed search proxy. 503
 			// VENUE_SEARCH_DISABLED when FOURSQUARE_API_KEY is unset.
 			//
 			// SEC-004: a tight per-user limit on top of the global authed
@@ -282,7 +282,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// Beverage feedback.
 			r.Post("/beverage-requests", h.SubmitBeverageRequest)
 
-			// Phase 6a — comments. POST is heavily spammable, so we
+			// comments. POST is heavily spammable, so we
 			// stack a tight per-user limit on top of the global authed
 			// 60/120: 3 rps / burst 6 caps comment-spam attempts without
 			// throttling legit conversation.
@@ -295,7 +295,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Delete("/comments/{id}", h.DeleteComment)
 		})
 
-		// Phase 5a — admin surface. Authed + role-gated per-route. Generous
+		// admin surface. Authed + role-gated per-route. Generous
 		// per-user rate limit (30/60) — admin tooling fires bursts of
 		// reads during triage but doesn't need the 60/120 of the regular
 		// authed surface. Stage 4: AdminAuth replaces Auth so the React
@@ -323,7 +323,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// transaction (see admin.go::insertModerationLog).
 			r.With(modOrAdmin).Get("/moderation-log", h.AdminListModerationLog)
 
-			// Phase 6a — comment moderation surface. Both endpoints
+			// comment moderation surface. Both endpoints
 			// (review list + per-row soft-delete) are moderator-or-admin.
 			r.With(modOrAdmin).Get("/comments", h.AdminListComments)
 			r.With(modOrAdmin).Post("/comments/{id}/moderate", h.AdminModerateComment)

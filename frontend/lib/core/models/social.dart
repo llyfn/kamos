@@ -17,22 +17,21 @@ abstract class FollowRequest with _$FollowRequest {
   }) = _FollowRequest;
 
   factory FollowRequest.fromJson(Map<String, dynamic> json) => FollowRequest(
-        userId: (json['user_id'] as String?) ?? '',
-        username: (json['username'] as String?) ?? '',
-        displayUsername:
-            (json['display_username'] as String?) ?? (json['username'] as String? ?? ''),
-        displayName: (json['display_name'] as String?) ?? '',
-        avatarUrl: json['avatar_url'] as String?,
-        bio: json['bio'] as String?,
-        createdAt: (json['created_at'] as String?) ?? '',
-      );
+    userId: (json['user_id'] as String?) ?? '',
+    username: (json['username'] as String?) ?? '',
+    displayUsername:
+        (json['display_username'] as String?) ??
+        (json['username'] as String? ?? ''),
+    displayName: (json['display_name'] as String?) ?? '',
+    avatarUrl: json['avatar_url'] as String?,
+    bio: json['bio'] as String?,
+    createdAt: (json['created_at'] as String?) ?? '',
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
 abstract class FollowResult with _$FollowResult {
-  const factory FollowResult({
-    @Default('') String status,
-  }) = _FollowResult;
+  const factory FollowResult({@Default('') String status}) = _FollowResult;
 
   factory FollowResult.fromJson(Map<String, dynamic> json) =>
       FollowResult(status: (json['status'] as String?) ?? '');
@@ -50,12 +49,13 @@ abstract class SocialUser with _$SocialUser {
   }) = _SocialUser;
 
   factory SocialUser.fromJson(Map<String, dynamic> json) => SocialUser(
-        id: (json['id'] as String?) ?? '',
-        username: (json['username'] as String?) ?? '',
-        displayUsername:
-            (json['display_username'] as String?) ?? (json['username'] as String? ?? ''),
-        displayName: (json['display_name'] as String?) ?? '',
-        avatarUrl: json['avatar_url'] as String?,
-        followedAt: (json['followed_at'] as String?) ?? '',
-      );
+    id: (json['id'] as String?) ?? '',
+    username: (json['username'] as String?) ?? '',
+    displayUsername:
+        (json['display_username'] as String?) ??
+        (json['username'] as String? ?? ''),
+    displayName: (json['display_name'] as String?) ?? '',
+    avatarUrl: json['avatar_url'] as String?,
+    followedAt: (json['followed_at'] as String?) ?? '',
+  );
 }

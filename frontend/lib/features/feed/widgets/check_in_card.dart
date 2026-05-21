@@ -20,11 +20,7 @@ import '../../../shared/widgets/kanpai_button.dart';
 import '../../../shared/widgets/stars_display.dart';
 
 class CheckInCard extends StatelessWidget {
-  const CheckInCard({
-    super.key,
-    required this.item,
-    required this.onToast,
-  });
+  const CheckInCard({super.key, required this.item, required this.onToast});
 
   final FeedItem item;
   final VoidCallback onToast;
@@ -105,7 +101,10 @@ class CheckInCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          [breweryName, if (region.isNotEmpty) region].join(' · '),
+                          [
+                            breweryName,
+                            if (region.isNotEmpty) region,
+                          ].join(' · '),
                           style: TextStyle(fontSize: 12, color: t.fg2),
                         ),
                         if (item.rating != null) ...[
@@ -135,11 +134,7 @@ class CheckInCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 _truncated(item.review!, 140, l.feedMore),
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.55,
-                  color: t.fg1,
-                ),
+                style: TextStyle(fontSize: 14, height: 1.55, color: t.fg1),
               ),
             ],
             if (item.tags.isNotEmpty) ...[
@@ -174,10 +169,7 @@ class CheckInCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 12),
-            Container(
-              height: 1,
-              color: t.border1,
-            ),
+            Container(height: 1, color: t.border1),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -189,8 +181,9 @@ class CheckInCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 _CommentBadge(
                   count: item.commentCount,
-                  semanticLabel:
-                      l.feedCardCommentsCountLabel(item.commentCount),
+                  semanticLabel: l.feedCardCommentsCountLabel(
+                    item.commentCount,
+                  ),
                   onTap: () => context.push('/check-ins/${item.id}'),
                 ),
               ],
@@ -294,8 +287,8 @@ class _PhotoTile extends StatelessWidget {
   }
 }
 
-/// Phase 6 — comment count badge mirroring the KanpaiButton silhouette.
-/// Renders the comment glyph + numeric count; tapping pushes to the check-in
+/// Comment count badge mirroring the KanpaiButton silhouette. Renders
+/// the comment glyph + numeric count; tapping pushes to the check-in
 /// detail.
 class _CommentBadge extends StatelessWidget {
   const _CommentBadge({

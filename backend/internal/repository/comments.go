@@ -1,4 +1,4 @@
-// Package repository — Phase 6a flat comments on check-ins.
+// Package repository — flat comments on check-ins.
 //
 // Schema lives in migration 009. The repository here mirrors the patterns
 // used by social.go / collections.go: cursor pagination on (created_at,
@@ -31,7 +31,7 @@ type CommentRepo struct{ db *pgxpool.Pool }
 // cheaper than the 23503 path.
 func (r *CommentRepo) Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error) {
 	// Ensure the parent check-in is alive (the FK cascades on hard-delete,
-	// but Phase 6a flips most check-ins to soft-deleted via moderation).
+	// but flips most check-ins to soft-deleted via moderation).
 	var alive bool
 	if err := r.db.QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM check_ins WHERE id = $1 AND deleted_at IS NULL);`,
@@ -100,13 +100,13 @@ func (r *CommentRepo) List(
 	// joined columns are non-null.
 	const q = `
 SELECT
-  c.id, c.check_in_id, c.body, c.created_at,
-  u.id, u.username, u.display_username, u.display_name, u.avatar_url
+ c.id, c.check_in_id, c.body, c.created_at,
+ u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.check_in_id = $1
-  AND c.deleted_at IS NULL
-  AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
+ AND c.deleted_at IS NULL
+ AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
 ORDER BY c.created_at DESC, c.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, checkInID, cursorTs, cursorID, limit+1)
@@ -167,8 +167,8 @@ func stringOrZero(s *string) string {
 func (r *CommentRepo) Get(ctx context.Context, id string) (*domain.Comment, error) {
 	const q = `
 SELECT
-  c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
-  u.id, u.username, u.display_username, u.display_name, u.avatar_url
+ c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
+ u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.id = $1;`
@@ -279,20 +279,20 @@ func (r *CommentRepo) ListForAdmin(
 	// Most comments have zero such rows — LEFT JOIN keeps them in.
 	const q = `
 SELECT
-  c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
-  u.id, u.username, u.display_username, u.display_name, u.avatar_url,
-  ml.notes, ml.moderator_id, ml.created_at AS moderated_at
+ c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
+ u.id, u.username, u.display_username, u.display_name, u.avatar_url,
+ ml.notes, ml.moderator_id, ml.created_at AS moderated_at
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 LEFT JOIN LATERAL (
-  SELECT notes, moderator_id, created_at
-  FROM moderation_log
-  WHERE target_type = 'comment' AND target_id = c.id
-  ORDER BY created_at DESC
-  LIMIT 1
+ SELECT notes, moderator_id, created_at
+ FROM moderation_log
+ WHERE target_type = 'comment' AND target_id = c.id
+ ORDER BY created_at DESC
+ LIMIT 1
 ) ml ON TRUE
 WHERE ($1::boolean IS FALSE OR c.deleted_at IS NOT NULL)
-  AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
+ AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2::timestamptz, $3::uuid))
 ORDER BY c.created_at DESC, c.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, q, onlyDeleted, cursorTs, cursorID, limit+1)

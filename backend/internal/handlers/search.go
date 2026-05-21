@@ -19,9 +19,6 @@ import (
 //
 // When the beverage sub-stream is exhausted on a typeless query, the page
 // rolls over to breweries and the next cursor carries `t=brewery`.
-//
-// TODO Phase 7 caching: revisit if we add cross-type ranking; for now this
-// keeps cursor semantics deterministic without introducing a unified score.
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
