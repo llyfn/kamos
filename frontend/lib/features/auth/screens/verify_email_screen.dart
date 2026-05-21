@@ -54,12 +54,14 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
           .read(authRepositoryProvider)
           .verifyEmail(widget.token);
       if (!mounted) return;
-      setState(() => _status = ok ? _VerifyStatus.success : _VerifyStatus.failure);
+      setState(
+        () => _status = ok ? _VerifyStatus.success : _VerifyStatus.failure,
+      );
       if (ok) {
         final l = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.verifyEmailSuccess)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.verifyEmailSuccess)));
         // Allow the snackbar to render briefly, then bounce. The router's
         // redirect logic will land the user on `/auth` if they are not
         // authenticated, and on `/` if they are.
@@ -123,8 +125,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(t.ai),
+                          valueColor: AlwaysStoppedAnimation<Color>(t.ai),
                           backgroundColor: t.gray200,
                         ),
                       ),

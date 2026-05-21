@@ -1,4 +1,4 @@
-// KAMOS — Single comment row (Phase 6).
+// KAMOS — Single comment row.
 //
 // Renders avatar + username + body + relative timestamp. The trailing delete
 // affordance is rendered only when the comment author's id matches the
@@ -17,11 +17,7 @@ import '../../../shared/widgets/kamos_avatar.dart';
 import '../../profile/providers/profile_providers.dart';
 
 class CommentTile extends ConsumerWidget {
-  const CommentTile({
-    super.key,
-    required this.comment,
-    required this.onDelete,
-  });
+  const CommentTile({super.key, required this.comment, required this.onDelete});
 
   final Comment comment;
 
@@ -79,11 +75,7 @@ class CommentTile extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   comment.body,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: t.fg1,
-                  ),
+                  style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
                 ),
               ],
             ),

@@ -27,5 +27,6 @@ class ApiToastBus extends Notifier<ApiToastKind?> {
   }
 }
 
-final apiToastBusProvider =
-    NotifierProvider<ApiToastBus, ApiToastKind?>(ApiToastBus.new);
+final apiToastBusProvider = NotifierProvider<ApiToastBus, ApiToastKind?>(
+  ApiToastBus.new,
+);

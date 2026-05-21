@@ -1,4 +1,4 @@
-// admin_beverage_requests.go — Phase 5a admin queue for user-submitted
+// admin_beverage_requests.go — admin queue for user-submitted
 // beverage feedback. Split out of admin.go in Stage 3.
 package handlers
 
@@ -17,9 +17,9 @@ import (
 // AdminListBeverageRequests — GET /v1/admin/beverage-requests
 //
 // Query params:
-//   - status: pending|approved|rejected (optional; default: all)
-//   - cursor: opaque cursor token
-//   - limit:  1..50, default 20
+// - status: pending|approved|rejected (optional; default: all)
+// - cursor: opaque cursor token
+// - limit: 1..50, default 20
 func (h *Handler) AdminListBeverageRequests(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
@@ -91,7 +91,7 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		h.writeErr(w, "AdminApproveBeverageRequest", err)
 		return
 	}
-	// Phase 7 — a new beverage just landed under this brewery. The brewery's
+	// a new beverage just landed under this brewery. The brewery's
 	// detail response shape doesn't actually change (the LRU caches the
 	// brewery row only, not the inline beverages page), so this is
 	// belt-and-braces: if the response ever embeds beverage_count or a

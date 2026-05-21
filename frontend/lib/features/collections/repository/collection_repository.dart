@@ -29,8 +29,8 @@ class CollectionRepository {
     return Collection.fromJson(res.data as Map<String, dynamic>);
   }
 
-  /// Phase 6 — updates only the `visibility` field. The server accepts a
-  /// partial PATCH; sending `visibility` alone leaves `name` untouched.
+  /// Updates only the `visibility` field. The server accepts a partial
+  /// PATCH; sending `visibility` alone leaves `name` untouched.
   Future<Collection> updateVisibility(
     String id,
     CollectionVisibility visibility,
@@ -59,8 +59,11 @@ class CollectionRepository {
     return (Collection.fromJson(data), entries);
   }
 
-  Future<void> addEntry(String collectionId, String beverageId,
-      {String? note}) async {
+  Future<void> addEntry(
+    String collectionId,
+    String beverageId, {
+    String? note,
+  }) async {
     await dio.post(
       '/v1/collections/$collectionId/entries',
       data: {

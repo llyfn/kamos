@@ -6,7 +6,6 @@ import '../../../core/models/page.dart';
 import '../../../core/models/social.dart';
 import '../repository/social_repository.dart';
 
-final followRequestsProvider =
-    FutureProvider<Page<FollowRequest>>((ref) async {
+final followRequestsProvider = FutureProvider<Page<FollowRequest>>((ref) async {
   return ref.read(socialRepositoryProvider).requests();
 });

@@ -400,12 +400,6 @@ abstract class AppLocalizations {
   /// **'Photo upload is not available — saved without photos.'**
   String get photoUploadDisabled;
 
-  /// No description provided for @photoUploadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Photo failed to upload. Tap to retry.'**
-  String get photoUploadFailed;
-
   /// No description provided for @checkInWhereLabel.
   ///
   /// In en, this message translates to:

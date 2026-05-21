@@ -63,14 +63,13 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 
 // GetBeverage — GET /v1/beverages/{id}. Includes aggregated flavor + recent.
 //
-// Phase 7: in-process LRU cache keyed on <id>:<locale>. Phase 7a MAJOR-4
-// fix: the cached value is now `domain.BeverageDetail` (a value, not a
+// in-process LRU cache keyed on <id>:<locale>. // fix: the cached value is now `domain.BeverageDetail` (a value, not a
 // pointer), so Get returns a struct copy and a future per-viewer overlay
 // can mutate the result without leaking across requests. The copy cost
 // is ~1 KB per call — invisible compared to the saved DB trio (Detail
 // + AggregatedFlavor + RecentCheckins).
 //
-// Phase 7a MAJOR-1 fix: misses are coalesced via singleflight (see
+// misses are coalesced via singleflight (see
 // LRU.GetOrLoad). On a hot key during a campaign spike, only one
 // loader runs while concurrent callers share its result.
 //
@@ -180,15 +179,15 @@ func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
 
 // GetBrewery — GET /v1/breweries/{id}. Includes beverage list (first page).
 //
-// Phase 7: only the brewery row itself is cached (LRU keyed on
+// only the brewery row itself is cached (LRU keyed on
 // <id>:<locale>). The inline beverages page is intentionally NOT cached
 // here — it's cursor-paginated and adding the cursor to the cache key
 // would balloon the entry count. The beverage list query is already fast
-// (<2ms p95 per Phase 1 metrics) and the brewery row is the expensive
+// (<2ms p95 per metrics) and the brewery row is the expensive
 // part (it carries the i18n description + beverage_count aggregate).
 //
-// Phase 7a MAJOR-4: BreweryDetail is now a value cache; Get returns a
-// struct copy. Phase 7a MAJOR-1: misses are coalesced via singleflight.
+// BreweryDetail is now a value cache; Get returns a
+// struct copy. misses are coalesced via singleflight.
 //
 // ETag still hashes the combined response, so byte-identical repeat
 // requests still short-circuit at the middleware layer.

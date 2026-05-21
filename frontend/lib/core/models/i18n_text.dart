@@ -10,15 +10,12 @@ part 'i18n_text.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
 abstract class I18nText with _$I18nText {
-  const factory I18nText({
-    required String en,
-    String? ja,
-    String? ko,
-  }) = _I18nText;
+  const factory I18nText({required String en, String? ja, String? ko}) =
+      _I18nText;
 
   factory I18nText.fromJson(Map<String, dynamic> json) => I18nText(
-        en: (json['en'] as String?) ?? '',
-        ja: json['ja'] as String?,
-        ko: json['ko'] as String?,
-      );
+    en: (json['en'] as String?) ?? '',
+    ja: json['ja'] as String?,
+    ko: json['ko'] as String?,
+  );
 }

@@ -1,4 +1,4 @@
-// admin_checkins.go — Phase 5a admin check-in moderation. Split out of
+// admin_checkins.go — admin check-in moderation. Split out of
 // admin.go in Stage 3.
 package handlers
 
@@ -13,9 +13,9 @@ import (
 // AdminModerateCheckin — POST /v1/admin/check-ins/{id}/moderate
 //
 // Soft-deletes the check-in. The optional `notes` body field is not yet
-// persisted (no audit table in Phase 5a) — it's logged for now.
+// persisted (no audit table historically) — it's logged for now.
 //
-// Phase 7 BLOCKER-1 fix: mirrors the owner-side DeleteCheckin shape — we
+// mirrors the owner-side DeleteCheckin shape — we
 // fetch the beverage_id BEFORE the moderate call so we can bust the
 // BeverageDetail cache after the trigger has recomputed avg_rating +
 // check_in_count. Without this, a moderator action could be invisible

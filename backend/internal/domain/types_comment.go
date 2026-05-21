@@ -6,7 +6,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Comments (Phase 6a — flat, on check-ins)
+// Comments (— flat, on check-ins)
 // ---------------------------------------------------------------------------
 
 // Comment is the wire shape returned by /v1/check-ins/{id}/comments and the

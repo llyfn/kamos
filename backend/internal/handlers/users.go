@@ -16,7 +16,7 @@ import (
 
 // GetMe — GET /v1/users/me.
 //
-// Phase 5a: response includes `role` (RBAC) and `deleted_at` so the admin
+// response includes `role` (RBAC) and `deleted_at` so the admin
 // client can branch on privileges + the Flutter app can surface
 // suspension state.
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {

@@ -57,10 +57,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       try {
                         await ref
                             .read(profileRepositoryProvider)
-                            .updateMe(
-                              displayName: _name.text,
-                              bio: _bio.text,
-                            );
+                            .updateMe(displayName: _name.text, bio: _bio.text);
                         ref.invalidate(meProvider);
                         if (context.mounted) context.pop();
                       } finally {
@@ -125,7 +122,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(height: 10),
                 _Label(l.authUsernameLabel),
                 TextField(
-                  controller: TextEditingController(text: me.user.displayUsername),
+                  controller: TextEditingController(
+                    text: me.user.displayUsername,
+                  ),
                   enabled: false,
                 ),
                 Padding(

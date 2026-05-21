@@ -1,5 +1,12 @@
 # KAMOS — Build Brief
 
+> **Historical document.** This is the Phase 0 brief used by the
+> kamos-build orchestrator during the initial scaffold. The stack and
+> phase plan captured below have since drifted. For the current
+> truth see [`SPEC.md`](../../SPEC.md) and
+> [`CLAUDE.md`](../../.claude/CLAUDE.md); the post-MVP roadmap lives
+> at `~/.claude/plans/mutable-juggling-cook.md`.
+
 > Orchestrator: `kamos-build`. Sources: `README.md`, `SPEC.md`, existing draft in `_workspace/01_design/`.
 > This brief is the orienting document for every agent spawned in this build.
 
@@ -14,8 +21,8 @@ KAMOS — *Untappd for Japanese craft spirits.* Mobile-first (Flutter, iOS + And
 | Layer | Choice |
 |---|---|
 | Mobile | Flutter (stable), Riverpod, `go_router`, `dio`, `flutter_secure_storage`, ARB i18n |
-| Backend | Go 1.24+, `chi` router, `pgx/v5` directly (no ORM), JWT (HS256), Google OAuth2 |
-| Database | PostgreSQL 15+, `pgcrypto` for `gen_random_uuid()` |
+| Backend | Go 1.26+, `chi` router, `pgx/v5` directly (no ORM), JWT (HS256 or RS256), Google OAuth2 |
+| Database | PostgreSQL 18+, `pgcrypto` for `gen_random_uuid()` |
 | Min platforms | iOS 13+, Android API 26+ |
 
 ## 3. Workspace layout

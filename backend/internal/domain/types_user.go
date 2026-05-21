@@ -65,15 +65,20 @@ type UserStats struct {
 type Me struct {
 	User
 	Stats UserStats `json:"stats"`
-	// Phase 5a: role surfaces RBAC state so the admin Flutter client can
-	// decide whether to show admin UI. Read from users.role on every /me
+	// Role surfaces RBAC state so the admin Flutter client can decide
+	// whether to show admin UI. Read from users.role on every /me
 	// request (no JWT claim) so a demotion takes effect immediately.
 	Role UserRole `json:"role"`
 	// DeletedAt surfaces soft-delete status. Pre-suspension this is null;
 	// after admin suspension or self-DELETE, the JWT is also revoked by
 	// the SoftDeleteCache, so this field is normally only seen by admin
 	// queues looking at lapsed soft-deleted accounts.
-	DeletedAt *time.Time `json:"deleted_at"`
+	//
+	// Stage 7 (M-11.3): omitempty so live users do not carry a literal
+	// `"deleted_at": null` on every /me poll. When set (rare — only the
+	// brief window between admin suspension and the next refresh failure)
+	// the field appears as an RFC3339 timestamp.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 }
 
 // RegisterRequest is the body shape for POST /v1/auth/register.

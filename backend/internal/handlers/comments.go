@@ -1,4 +1,4 @@
-// Phase 6a — flat comments on check-ins.
+// flat comments on check-ins.
 //
 // Routes (router.go does the mounting):
 //
@@ -23,7 +23,7 @@ import (
 //
 // OptionalAuth. Cursor pagination on (created_at, id) DESC.
 //
-// Phase 6a fix: this endpoint NOW enforces the SPEC §3 private-account
+// fix: this endpoint NOW enforces the SPEC §3 private-account
 // rule on the parent check-in. The check-in detail endpoint
 // (`GET /v1/check-ins/{id}`) returns 404 to a non-follower of a private
 // owner; the comment thread that hangs off the same check-in must do

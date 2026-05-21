@@ -2,24 +2,24 @@
 //
 // Three endpoints layered on top of the existing AuthService:
 //
-//   POST /v1/auth/admin-login   — email+password sign-in; role-gated;
-//                                 sets three cookies (access + refresh + csrf).
-//   POST /v1/auth/admin-refresh — reads kamos_admin_refresh cookie, rotates
-//                                 the refresh token, sets fresh cookies.
-//   POST /v1/auth/admin-logout  — revokes the current refresh token and
-//                                 clears all three cookies.
+//	POST /v1/auth/admin-login   — email+password sign-in; role-gated;
+//	                              sets three cookies (access + refresh + csrf).
+//	POST /v1/auth/admin-refresh — reads kamos_admin_refresh cookie, rotates
+//	                              the refresh token, sets fresh cookies.
+//	POST /v1/auth/admin-logout  — revokes the current refresh token and
+//	                              clears all three cookies.
 //
 // Cookie shape:
 //
-//   kamos_admin_access  HttpOnly, Secure, SameSite=Strict,
-//                       Path=/v1/admin, Max-Age=JWTTTL.
-//                       Value = access JWT.
-//   kamos_admin_refresh HttpOnly, Secure, SameSite=Strict,
-//                       Path=/v1/auth/admin-refresh, Max-Age=RefreshTTL.
-//                       Value = raw refresh secret (the hash is stored).
-//   kamos_admin_csrf    NOT HttpOnly (JS reads it), Secure, SameSite=Strict,
-//                       Path=/, Max-Age=JWTTTL.
-//                       Value = random 32-byte base64; double-submit pattern.
+//	kamos_admin_access  HttpOnly, Secure, SameSite=Strict,
+//	                    Path=/v1/admin, Max-Age=JWTTTL.
+//	                    Value = access JWT.
+//	kamos_admin_refresh HttpOnly, Secure, SameSite=Strict,
+//	                    Path=/v1/auth/admin-refresh, Max-Age=RefreshTTL.
+//	                    Value = raw refresh secret (the hash is stored).
+//	kamos_admin_csrf    NOT HttpOnly (JS reads it), Secure, SameSite=Strict,
+//	                    Path=/, Max-Age=JWTTTL.
+//	                    Value = random 32-byte base64; double-submit pattern.
 //
 // Secure cookies are gated on `cfg.Env == "production"` OR
 // `FORCE_SECURE_COOKIES=1` so dev (http://localhost) can sign in without

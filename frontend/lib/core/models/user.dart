@@ -18,16 +18,16 @@ extension UserRoleParse on UserRole {
   /// back to `UserRole.user` so older servers (or absent role keys) stay
   /// backward compatible.
   static UserRole fromWire(String? s) => switch (s) {
-        'admin' => UserRole.admin,
-        'moderator' => UserRole.moderator,
-        _ => UserRole.user,
-      };
+    'admin' => UserRole.admin,
+    'moderator' => UserRole.moderator,
+    _ => UserRole.user,
+  };
 
   String toWire() => switch (this) {
-        UserRole.admin => 'admin',
-        UserRole.moderator => 'moderator',
-        UserRole.user => 'user',
-      };
+    UserRole.admin => 'admin',
+    UserRole.moderator => 'moderator',
+    UserRole.user => 'user',
+  };
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -40,11 +40,11 @@ abstract class UserStats with _$UserStats {
   }) = _UserStats;
 
   factory UserStats.fromJson(Map<String, dynamic> json) => UserStats(
-        checkins: (json['checkins'] as int?) ?? 0,
-        unique: (json['unique'] as int?) ?? 0,
-        followers: (json['followers'] as int?) ?? 0,
-        following: (json['following'] as int?) ?? 0,
-      );
+    checkins: (json['checkins'] as int?) ?? 0,
+    unique: (json['unique'] as int?) ?? 0,
+    followers: (json['followers'] as int?) ?? 0,
+    following: (json['following'] as int?) ?? 0,
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -65,19 +65,20 @@ abstract class User with _$User {
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-        id: (json['id'] as String?) ?? '',
-        username: (json['username'] as String?) ?? '',
-        displayUsername:
-            (json['display_username'] as String?) ?? (json['username'] as String? ?? ''),
-        email: json['email'] as String?,
-        emailVerified: (json['email_verified'] as bool?) ?? false,
-        displayName: (json['display_name'] as String?) ?? '',
-        avatarUrl: json['avatar_url'] as String?,
-        bio: json['bio'] as String?,
-        locale: (json['locale'] as String?) ?? 'en',
-        privacyMode: (json['privacy_mode'] as String?) ?? 'public',
-        createdAt: (json['created_at'] as String?) ?? '',
-      );
+    id: (json['id'] as String?) ?? '',
+    username: (json['username'] as String?) ?? '',
+    displayUsername:
+        (json['display_username'] as String?) ??
+        (json['username'] as String? ?? ''),
+    email: json['email'] as String?,
+    emailVerified: (json['email_verified'] as bool?) ?? false,
+    displayName: (json['display_name'] as String?) ?? '',
+    avatarUrl: json['avatar_url'] as String?,
+    bio: json['bio'] as String?,
+    locale: (json['locale'] as String?) ?? 'en',
+    privacyMode: (json['privacy_mode'] as String?) ?? 'public',
+    createdAt: (json['created_at'] as String?) ?? '',
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -85,7 +86,7 @@ abstract class Me with _$Me {
   const factory Me({
     required User user,
     required UserStats stats,
-    // `role` is `required` in the OpenAPI `Me` schema (Phase 5a). The Flutter
+    // `role` is `required` in the OpenAPI `Me` schema. The Flutter
     // client itself is not the admin surface — that ships as a separate React
     // web app — but exposing the field future-proofs in-app affordances such
     // as "you have admin rights; open the admin console" links. Defaults to
@@ -94,12 +95,12 @@ abstract class Me with _$Me {
   }) = _Me;
 
   factory Me.fromJson(Map<String, dynamic> json) => Me(
-        user: User.fromJson(json),
-        stats: UserStats.fromJson(
-          (json['stats'] as Map<String, dynamic>?) ?? const {},
-        ),
-        role: UserRoleParse.fromWire(json['role'] as String?),
-      );
+    user: User.fromJson(json),
+    stats: UserStats.fromJson(
+      (json['stats'] as Map<String, dynamic>?) ?? const {},
+    ),
+    role: UserRoleParse.fromWire(json['role'] as String?),
+  );
 }
 
 @Freezed(fromJson: false, toJson: false)
@@ -112,11 +113,11 @@ abstract class PublicProfile with _$PublicProfile {
   }) = _PublicProfile;
 
   factory PublicProfile.fromJson(Map<String, dynamic> json) => PublicProfile(
-        user: User.fromJson(json),
-        stats: UserStats.fromJson(
-          (json['stats'] as Map<String, dynamic>?) ?? const {},
-        ),
-        followState: (json['follow_state'] as String?) ?? '',
-        restricted: (json['restricted'] as bool?) ?? false,
-      );
+    user: User.fromJson(json),
+    stats: UserStats.fromJson(
+      (json['stats'] as Map<String, dynamic>?) ?? const {},
+    ),
+    followState: (json['follow_state'] as String?) ?? '',
+    restricted: (json['restricted'] as bool?) ?? false,
+  );
 }

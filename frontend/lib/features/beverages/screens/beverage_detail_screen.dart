@@ -57,10 +57,12 @@ class _Body extends ConsumerWidget {
     final brewery = resolveI18n(b.brewery.name, locale);
     final region = b.region ?? b.brewery.region ?? '';
     final slug = categorySlugFromString(b.category.slug);
-    final categoryLabelText =
-        slug == null ? resolveI18n(b.category.labelI18n, locale)
-                     : categoryLabel(context, slug);
-    final sub = b.subcategory == null ? '' : resolveI18n(b.subcategory!, locale);
+    final categoryLabelText = slug == null
+        ? resolveI18n(b.category.labelI18n, locale)
+        : categoryLabel(context, slug);
+    final sub = b.subcategory == null
+        ? ''
+        : resolveI18n(b.subcategory!, locale);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -127,12 +129,14 @@ class _Body extends ConsumerWidget {
                   ),
                 ),
               const SizedBox(width: 8),
-              Text('· ${b.checkInCount}',
-                  style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 12,
-                    color: t.fg3,
-                  )),
+              Text(
+                '· ${b.checkInCount}',
+                style: TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 12,
+                  color: t.fg3,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -140,8 +144,7 @@ class _Body extends ConsumerWidget {
             children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: () =>
-                      context.push('/check-in', extra: b),
+                  onPressed: () => context.push('/check-in', extra: b),
                   style: FilledButton.styleFrom(
                     backgroundColor: t.ai,
                     shape: const StadiumBorder(),
@@ -171,9 +174,15 @@ class _Body extends ConsumerWidget {
               runSpacing: 12,
               children: [
                 if (b.abv != null)
-                  _Stat(label: l.beverageDetailAbv, value: '${b.abv!.toStringAsFixed(1)}%'),
+                  _Stat(
+                    label: l.beverageDetailAbv,
+                    value: '${b.abv!.toStringAsFixed(1)}%',
+                  ),
                 if (b.polishingRatio != null)
-                  _Stat(label: l.beverageDetailSeimai, value: '${b.polishingRatio}%'),
+                  _Stat(
+                    label: l.beverageDetailSeimai,
+                    value: '${b.polishingRatio}%',
+                  ),
                 if (region.isNotEmpty)
                   _Stat(label: l.beverageDetailRegion, value: region),
                 if (sub.isNotEmpty)
@@ -187,10 +196,12 @@ class _Body extends ConsumerWidget {
               spacing: 6,
               runSpacing: 6,
               children: detail.aggregatedFlavor
-                  .map((f) => KamosChip(
-                        label: resolveI18n(f.name, locale),
-                        kind: KamosChipKind.tag,
-                      ))
+                  .map(
+                    (f) => KamosChip(
+                      label: resolveI18n(f.name, locale),
+                      kind: KamosChipKind.tag,
+                    ),
+                  )
                   .toList(),
             ),
           ],
@@ -232,7 +243,9 @@ class _Body extends ConsumerWidget {
                                 Text(
                                   r.user.displayUsername,
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w600, fontSize: 13),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
                                 if (r.rating != null)
                                   Text(
@@ -249,7 +262,9 @@ class _Body extends ConsumerWidget {
                               Text(
                                 r.review!,
                                 style: const TextStyle(
-                                    fontSize: 13, height: 1.5),
+                                  fontSize: 13,
+                                  height: 1.5,
+                                ),
                               ),
                             ],
                           ],

@@ -1,4 +1,4 @@
-// KAMOS — Venue search providers (Phase 4).
+// KAMOS — Venue search providers.
 //
 // `venueSearchProvider` owns the in-flight search future and a 300ms
 // debounce. Callers push a query through `notifier.setQuery(...)`; the
@@ -74,12 +74,9 @@ class VenueSearchNotifier extends AsyncNotifier<List<FoursquarePlace>> {
   Future<void> _run(VenueSearchQuery q) async {
     final epoch = ++_epoch;
     try {
-      final results = await ref.read(venueRepositoryProvider).search(
-            query: q.text,
-            lat: q.lat,
-            lng: q.lng,
-            locale: q.locale,
-          );
+      final results = await ref
+          .read(venueRepositoryProvider)
+          .search(query: q.text, lat: q.lat, lng: q.lng, locale: q.locale);
       if (epoch != _epoch) return;
       state = AsyncValue.data(results);
     } catch (e, st) {
@@ -90,6 +87,7 @@ class VenueSearchNotifier extends AsyncNotifier<List<FoursquarePlace>> {
 }
 
 final venueSearchProvider =
-    AsyncNotifierProvider.autoDispose<VenueSearchNotifier, List<FoursquarePlace>>(
-  VenueSearchNotifier.new,
-);
+    AsyncNotifierProvider.autoDispose<
+      VenueSearchNotifier,
+      List<FoursquarePlace>
+    >(VenueSearchNotifier.new);

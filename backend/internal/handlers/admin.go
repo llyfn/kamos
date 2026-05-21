@@ -1,4 +1,4 @@
-// Phase 5a admin request bodies + validators.
+// admin request bodies + validators.
 //
 // Stage 3 split: the actual HTTP handlers now live in:
 //   - admin_beverage_requests.go (list, approve, reject)

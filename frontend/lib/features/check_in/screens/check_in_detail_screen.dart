@@ -1,4 +1,4 @@
-// KAMOS — Check-in detail screen (Phase 6).
+// KAMOS — Check-in detail screen.
 //
 // A minimal feed-card-style header (user, beverage, rating, review, flavor
 // tags, photos) plus the comments section beneath. Reachable from the feed
@@ -37,15 +37,16 @@ class CheckInDetailScreen extends ConsumerWidget {
         loading: () => Center(child: LoadingView(label: l.loadingLabel)),
         error: (_, _) => Center(
           child: ErrorView(
-            onRetry: () =>
-                ref.invalidate(checkInDetailProvider(checkInId)),
+            onRetry: () => ref.invalidate(checkInDetailProvider(checkInId)),
           ),
         ),
         data: (checkin) {
           final when = parseIsoDateOrNull(checkin.createdAt);
           final beverageName = resolveI18n(checkin.beverage.name, locale);
-          final breweryName =
-              resolveI18n(checkin.beverage.brewery.name, locale);
+          final breweryName = resolveI18n(
+            checkin.beverage.brewery.name,
+            locale,
+          );
           return ListView(
             children: [
               Padding(
@@ -85,8 +86,8 @@ class CheckInDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       InkWell(
-                        onTap: () => context
-                            .push('/beverages/${checkin.beverage.id}'),
+                        onTap: () =>
+                            context.push('/beverages/${checkin.beverage.id}'),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -94,7 +95,8 @@ class CheckInDetailScreen extends ConsumerWidget {
                               width: 52,
                               height: 68,
                               tone: labelToneFromCategory(
-                                  checkin.beverage.category.slug),
+                                checkin.beverage.category.slug,
+                              ),
                               imageUrl: checkin.beverage.labelImageUrl,
                             ),
                             const SizedBox(width: 12),
@@ -113,19 +115,24 @@ class CheckInDetailScreen extends ConsumerWidget {
                                   ),
                                   Text(
                                     breweryName,
-                                    style:
-                                        TextStyle(fontSize: 12, color: t.fg2),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: t.fg2,
+                                    ),
                                   ),
                                   if (checkin.rating != null) ...[
                                     const SizedBox(height: 6),
                                     Row(
                                       children: [
                                         StarsDisplay(
-                                            value: checkin.rating, size: 13),
+                                          value: checkin.rating,
+                                          size: 13,
+                                        ),
                                         const SizedBox(width: 6),
                                         Text(
                                           l.ratingValue(
-                                              checkin.rating!.toStringAsFixed(1)),
+                                            checkin.rating!.toStringAsFixed(1),
+                                          ),
                                           style: const TextStyle(
                                             fontFamily: 'JetBrainsMono',
                                             fontSize: 12,
@@ -146,7 +153,10 @@ class CheckInDetailScreen extends ConsumerWidget {
                         Text(
                           checkin.review!,
                           style: TextStyle(
-                              fontSize: 14, height: 1.55, color: t.fg1),
+                            fontSize: 14,
+                            height: 1.55,
+                            color: t.fg1,
+                          ),
                         ),
                       ],
                       if (checkin.tags.isNotEmpty) ...[

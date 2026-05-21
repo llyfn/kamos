@@ -14,8 +14,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 ///
 /// Note: `String.isNotEmpty` is not const-evaluable, so this is written as a
 /// const equality comparison instead.
-const bool kSentryConfigured =
-    String.fromEnvironment('KAMOS_SENTRY_DSN') != '';
+const bool kSentryConfigured = String.fromEnvironment('KAMOS_SENTRY_DSN') != '';
 
 /// Captures every provider build failure as a Sentry exception so we can see
 /// repository / decoder bugs in production without the user having to crash

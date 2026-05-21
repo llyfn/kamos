@@ -42,10 +42,7 @@ class KanpaiButton extends StatelessWidget {
               curve: Curves.easeOut,
               child: ColorFiltered(
                 colorFilter: active
-                    ? const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
-                      )
+                    ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
                     : ColorFilter.mode(t.fg2, BlendMode.srcIn),
                 child: Image.asset(
                   'assets/images/logo_white.png',

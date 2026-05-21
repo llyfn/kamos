@@ -65,7 +65,7 @@ RETURNING id, user_id, name, visibility::text, created_at, updated_at;`
 // `visibility = 'public'`. Returns ErrNotFound for soft-deleted or
 // non-existent rows.
 //
-// Phase 6a widened this function: it was previously owner-scoped at the
+// widened this function: it was previously owner-scoped at the
 // SQL level (WHERE c.user_id = $2), which caused a 404 on the
 // discover-tab → detail-screen route for non-owners on public
 // collections. Ownership-scoping moved up to the handler so the same

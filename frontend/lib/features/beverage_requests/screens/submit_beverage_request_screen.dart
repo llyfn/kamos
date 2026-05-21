@@ -1,4 +1,4 @@
-// KAMOS — "Suggest a beverage" form (Phase 5 user-side).
+// KAMOS — "Suggest a beverage" form (user-side).
 //
 // Posts the four-field payload to `POST /v1/beverage-requests`. The backend
 // queues the row for admin review and returns `202 { id }`; nothing else
@@ -6,10 +6,10 @@
 //
 // Validation rules (mirror the backend's loose validation — server only
 // checks payload is non-empty):
-//   * `name`, `brewery_name`: trimmed; required; ≤ 200 chars
-//   * `category_slug`: one of nihonshu | shochu | liqueur (SPEC §2.1)
-//   * `notes`: optional; ≤ 500 chars; trimmed (matches review cap, since
-//     this surface most resembles a check-in review than a profile bio)
+// * `name`, `brewery_name`: trimmed; required; ≤ 200 chars
+// * `category_slug`: one of nihonshu | shochu | liqueur (SPEC §2.1)
+// * `notes`: optional; ≤ 500 chars; trimmed (matches review cap, since
+// this surface most resembles a check-in review than a profile bio)
 //
 // Control-character rejection: a single regex strips ASCII control bytes
 // (newlines kept in `notes` for paragraph entry; stripped in name/brewery).
@@ -91,9 +91,7 @@ class _SubmitBeverageRequestScreenState
       categorySlug: categorySlugToWire(_category),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
     );
-    await ref
-        .read(submitBeverageRequestProvider.notifier)
-        .submit(req);
+    await ref.read(submitBeverageRequestProvider.notifier).submit(req);
     if (!mounted) return;
     final state = ref.read(submitBeverageRequestProvider);
     if (state.hasError) {
@@ -170,7 +168,8 @@ class _SubmitBeverageRequestScreenState
               inputFormatters: [
                 // Allow \n and \r for paragraph breaks; deny other controls.
                 FilteringTextInputFormatter.deny(
-                    RegExp(r'[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]')),
+                  RegExp(r'[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]'),
+                ),
               ],
               onChanged: (_) => setState(() {}),
             ),

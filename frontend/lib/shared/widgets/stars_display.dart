@@ -30,8 +30,8 @@ class StarsDisplay extends StatelessWidget {
         final kind = fill >= 1
             ? _StarKind.full
             : fill >= 0.5
-                ? _StarKind.half
-                : _StarKind.empty;
+            ? _StarKind.half
+            : _StarKind.empty;
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 0.5),
           child: CustomPaint(

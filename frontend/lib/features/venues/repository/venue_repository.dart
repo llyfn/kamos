@@ -1,4 +1,4 @@
-// KAMOS — VenueRepository (Phase 4).
+// KAMOS — VenueRepository.
 //
 // Wraps `GET /v1/venues/search`. The endpoint is a thin proxy to Foursquare
 // Places; the backend may answer 503 with one of two `code`s the UI must

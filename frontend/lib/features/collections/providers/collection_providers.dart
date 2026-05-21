@@ -12,5 +12,5 @@ final collectionsProvider = FutureProvider<Page<Collection>>((ref) async {
 
 final collectionDetailProvider = FutureProvider.autoDispose
     .family<(Collection, Page<CollectionEntry>), String>((ref, id) async {
-  return ref.read(collectionRepositoryProvider).detail(id);
-});
+      return ref.read(collectionRepositoryProvider).detail(id);
+    });

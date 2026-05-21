@@ -10,13 +10,13 @@ import (
 
 // Categories — GET /v1/categories.
 //
-// Phase 7: in-process LRU cache keyed on Accept-Language. The repository
+// in-process LRU cache keyed on Accept-Language. The repository
 // returns all locales in the i18n JSON column, so the locale axis of the
 // key is currently a forward-compat hedge — keeping it lets a future
 // "locale-narrowed taxonomy" pivot drop in without a wire change. TTL +
 // size live in cache.NewCaches.
 //
-// Phase 7a MAJOR-1: misses are coalesced via singleflight (GetOrLoad).
+// misses are coalesced via singleflight (GetOrLoad).
 //
 // Status: scaffold-for-Phase5 (admin needs server-validated taxonomy to
 // populate dropdowns). Endpoint is intentionally pre-wired; Flutter uses

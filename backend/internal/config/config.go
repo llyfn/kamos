@@ -85,7 +85,7 @@ type Config struct {
 	// this unset.
 	RateLimitDisabled bool
 
-	// Phase 3 — blob storage (Cloudflare R2 / any S3-compatible). Empty
+	// blob storage (Cloudflare R2 / any S3-compatible). Empty
 	// values mean the photo-upload feature is OFF; the presign endpoint
 	// returns 503 STORAGE_DISABLED. See DEPLOYMENT.md §3.
 	R2EndpointURL     string
@@ -94,12 +94,12 @@ type Config struct {
 	R2Bucket          string
 	R2PublicBaseURL   string
 
-	// Phase 3 — outbound mail via Resend. Empty values mean the mailer
+	// outbound mail via Resend. Empty values mean the mailer
 	// logs the verification link instead of sending an email (dev default).
 	ResendAPIKey string
 	EmailFrom    string
 
-	// Phase 4 — Foursquare Places API for the optional venue tag on
+	// Foursquare Places API for the optional venue tag on
 	// check-ins. Empty value means the feature is OFF: the search endpoint
 	// returns 503 VENUE_SEARCH_DISABLED; check-in venue.foursquare_id
 	// payloads still succeed (the upsert path does not need the API key).
@@ -164,7 +164,7 @@ func Load() (*Config, error) {
 		CacheRedisURL:     os.Getenv("CACHE_REDIS_URL"),
 	}
 
-	// Access-token TTL. Phase 2 (refresh-tokens): default lowered from 720h
+	// Access-token TTL. (refresh-tokens): default lowered from 720h
 	// (long-lived MVP) to 15m. The env var still wins for operators that need
 	// to pin a different value (e.g., integration tests force a known cadence).
 	ttlStr := getenv("JWT_TTL", "15m")

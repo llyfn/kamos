@@ -1,4 +1,4 @@
-// KAMOS — Comment model (Phase 6).
+// KAMOS — Comment model.
 //
 // Mirrors the OpenAPI `Comment` shape: a flat comment on a check-in. The
 // `user` field reuses `CheckinUser` (the slim public-profile snapshot shape

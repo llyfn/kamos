@@ -937,7 +937,7 @@ mixin _$FeedItem {
 
  String get id; CheckinUser get user; BeverageRef get beverage; double? get rating; String? get review; List<FlavorTag> get tags;// Stage 5: the server now hydrates photos[] directly on the feed.
 // The card uses photos.length for the count (no separate field).
- List<PhotoRef> get photos; VenueRef? get venue; int get toasts; bool get youToasted;// Phase 6 — server-aggregated comment count. Defaults to 0 so older
+ List<PhotoRef> get photos; VenueRef? get venue; int get toasts; bool get youToasted;// Server-aggregated comment count. Defaults to 0 so older
 // servers (or omitted-key responses) remain wire-compatible.
  int get commentCount; String get createdAt;
 /// Create a copy of FeedItem
@@ -1201,7 +1201,7 @@ class _FeedItem extends FeedItem {
 @override final  VenueRef? venue;
 @override@JsonKey() final  int toasts;
 @override@JsonKey() final  bool youToasted;
-// Phase 6 — server-aggregated comment count. Defaults to 0 so older
+// Server-aggregated comment count. Defaults to 0 so older
 // servers (or omitted-key responses) remain wire-compatible.
 @override@JsonKey() final  int commentCount;
 @override@JsonKey() final  String createdAt;

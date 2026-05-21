@@ -1,12 +1,12 @@
-// KAMOS — Beverage-request submission state (Phase 5 user-side).
+// KAMOS — Beverage-request submission state (user-side).
 //
 // `submitBeverageRequestProvider` owns the idle/loading/data/error machine
 // for a single submit attempt. The screen calls `notifier.submit(req)` and
 // watches the resulting `AsyncValue<void>`:
 //
-//   * `AsyncData(null)`  → success, screen shows toast and pops
-//   * `AsyncError(e, _)` → failure, screen shows inline error
-//   * `AsyncLoading()`   → submit button shows spinner, gated against re-tap
+// * `AsyncData(null)` → success, screen shows toast and pops
+// * `AsyncError(e, _)` → failure, screen shows inline error
+// * `AsyncLoading()` → submit button shows spinner, gated against re-tap
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,5 +30,5 @@ class SubmitBeverageRequestNotifier extends AsyncNotifier<void> {
 
 final submitBeverageRequestProvider =
     AsyncNotifierProvider.autoDispose<SubmitBeverageRequestNotifier, void>(
-  SubmitBeverageRequestNotifier.new,
-);
+      SubmitBeverageRequestNotifier.new,
+    );

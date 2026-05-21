@@ -1,4 +1,4 @@
-// KAMOS — PublicCollectionsRepository (Phase 6).
+// KAMOS — PublicCollectionsRepository.
 //
 // Wraps `GET /v1/collections/public?cursor=...`. The endpoint is OptionalAuth
 // (signed-out users can browse) and uses the standard cursor-pagination
@@ -33,5 +33,5 @@ class PublicCollectionsRepository {
 
 final publicCollectionsRepositoryProvider =
     Provider<PublicCollectionsRepository>(
-  (ref) => PublicCollectionsRepository(ref.read(dioProvider)),
-);
+      (ref) => PublicCollectionsRepository(ref.read(dioProvider)),
+    );

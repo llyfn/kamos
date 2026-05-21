@@ -14,9 +14,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Collection {
 
- String get id;// Phase 6a — owner_id is required on the wire (`Collection` schema in
-// openapi.yaml). Used to gate owner-only UI such as the visibility toggle
-// without an extra `/v1/users/me` lookup or a membership approximation.
+ String get id;// owner_id is required on the wire (`Collection` schema in
+// openapi.yaml). Used to gate owner-only UI such as the visibility
+// toggle without an extra `/v1/users/me` lookup or a membership
+// approximation.
  String get ownerId; String get name; int get entryCount; CollectionVisibility get visibility; String get createdAt; String get updatedAt;
 /// Create a copy of Collection
 /// with the given fields replaced by the non-null parameter values.
@@ -219,9 +220,10 @@ class _Collection implements Collection {
   
 
 @override final  String id;
-// Phase 6a — owner_id is required on the wire (`Collection` schema in
-// openapi.yaml). Used to gate owner-only UI such as the visibility toggle
-// without an extra `/v1/users/me` lookup or a membership approximation.
+// owner_id is required on the wire (`Collection` schema in
+// openapi.yaml). Used to gate owner-only UI such as the visibility
+// toggle without an extra `/v1/users/me` lookup or a membership
+// approximation.
 @override final  String ownerId;
 @override final  String name;
 @override@JsonKey() final  int entryCount;

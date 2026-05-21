@@ -18,9 +18,9 @@ abstract class CategoryLabel with _$CategoryLabel {
   }) = _CategoryLabel;
 
   factory CategoryLabel.fromJson(Map<String, dynamic> json) => CategoryLabel(
-        slug: (json['slug'] as String?) ?? '',
-        labelI18n: I18nText.fromJson(
-          (json['label_i18n'] as Map<String, dynamic>?) ?? const {'en': ''},
-        ),
-      );
+    slug: (json['slug'] as String?) ?? '',
+    labelI18n: I18nText.fromJson(
+      (json['label_i18n'] as Map<String, dynamic>?) ?? const {'en': ''},
+    ),
+  );
 }

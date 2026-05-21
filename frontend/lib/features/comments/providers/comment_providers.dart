@@ -1,4 +1,4 @@
-// KAMOS — Comment providers (Phase 6).
+// KAMOS — Comment providers.
 //
 // `commentsProvider` is a family-keyed `AsyncNotifierProvider` keyed on the
 // check-in id. The state is `CommentsState` (items + cursor + has-more +
@@ -37,13 +37,12 @@ class CommentsState {
     String? nextCursor,
     bool? hasMore,
     bool? isLoadingMore,
-  }) =>
-      CommentsState(
-        items: items ?? this.items,
-        nextCursor: nextCursor ?? this.nextCursor,
-        hasMore: hasMore ?? this.hasMore,
-        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      );
+  }) => CommentsState(
+    items: items ?? this.items,
+    nextCursor: nextCursor ?? this.nextCursor,
+    hasMore: hasMore ?? this.hasMore,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+  );
 }
 
 class CommentsNotifier extends AsyncNotifier<CommentsState> {
@@ -136,5 +135,5 @@ class CommentsNotifier extends AsyncNotifier<CommentsState> {
 
 final commentsProvider =
     AsyncNotifierProvider.family<CommentsNotifier, CommentsState, String>(
-  CommentsNotifier.new,
-);
+      CommentsNotifier.new,
+    );

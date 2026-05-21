@@ -1,4 +1,4 @@
-// KAMOS — Public collections providers (Phase 6).
+// KAMOS — Public collections providers.
 //
 // Cursor-paginated AsyncNotifier. `refresh()` resets and pulls the first page;
 // `loadMore()` is a no-op when there's nothing left or another fetch is in
@@ -27,17 +27,15 @@ class PublicCollectionsState {
     String? nextCursor,
     bool? hasMore,
     bool? isLoadingMore,
-  }) =>
-      PublicCollectionsState(
-        items: items ?? this.items,
-        nextCursor: nextCursor ?? this.nextCursor,
-        hasMore: hasMore ?? this.hasMore,
-        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      );
+  }) => PublicCollectionsState(
+    items: items ?? this.items,
+    nextCursor: nextCursor ?? this.nextCursor,
+    hasMore: hasMore ?? this.hasMore,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+  );
 }
 
-class PublicCollectionsNotifier
-    extends AsyncNotifier<PublicCollectionsState> {
+class PublicCollectionsNotifier extends AsyncNotifier<PublicCollectionsState> {
   @override
   Future<PublicCollectionsState> build() async {
     final page = await ref.read(publicCollectionsRepositoryProvider).list();
@@ -86,5 +84,5 @@ class PublicCollectionsNotifier
 
 final publicCollectionsProvider =
     AsyncNotifierProvider<PublicCollectionsNotifier, PublicCollectionsState>(
-  PublicCollectionsNotifier.new,
-);
+      PublicCollectionsNotifier.new,
+    );

@@ -3,7 +3,7 @@ package domain
 import "time"
 
 // ---------------------------------------------------------------------------
-// RBAC roles (Phase 5a)
+// RBAC roles
 // ---------------------------------------------------------------------------
 
 // UserRole mirrors the postgres user_role enum (migration 007). Three values

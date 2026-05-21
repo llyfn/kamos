@@ -1,4 +1,4 @@
-// KAMOS — BeverageRequest model (Phase 5 user-side, OpenAPI
+// KAMOS — BeverageRequest model (user-side, OpenAPI
 // `submitBeverageRequest`).
 //
 // The backend body shape is `{ "payload": { ... } }` — see openapi.yaml line
@@ -7,12 +7,12 @@
 // payload shape to four fields so admin review has consistent inputs to look
 // at:
 //
-//   {
-//     "name":          string,  // beverage name as the user typed it
-//     "brewery_name":  string,  // brewery/maker as the user typed it
-//     "category_slug": one of 'nihonshu' | 'shochu' | 'liqueur',
-//     "notes":         string?  // optional free-form, omitted when empty
-//   }
+// {
+// "name": string, // beverage name as the user typed it
+// "brewery_name": string, // brewery/maker as the user typed it
+// "category_slug": one of 'nihonshu' | 'shochu' | 'liqueur',
+// "notes": string? // optional free-form, omitted when empty
+// }
 //
 // `notes` is dropped from the JSON when null/empty so the admin tool can
 // rely on `notes` being present == user-supplied.

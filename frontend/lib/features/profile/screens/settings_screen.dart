@@ -118,22 +118,14 @@ class _AccountAndPrivacySections extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionTitle(l.settingsAccount),
-        _Row(
-          label: l.settingsEmail,
-          value: me.user.email ?? '',
-          onTap: () {},
-        ),
+        _Row(label: l.settingsEmail, value: me.user.email ?? '', onTap: () {}),
         _Row(
           label: l.settingsEmailVerification,
           value: me.user.emailVerified
               ? l.settingsEmailVerified
               : l.settingsEmailPending,
         ),
-        _Row(
-          label: l.settingsPassword,
-          value: '••••••••',
-          onTap: () {},
-        ),
+        _Row(label: l.settingsPassword, value: '••••••••', onTap: () {}),
         _SectionTitle(l.settingsPrivacy),
         SwitchListTile(
           title: Text(l.settingsPrivateAccount),
@@ -178,9 +170,7 @@ class _LanguageTile extends ConsumerWidget {
           ),
         );
         if (picked != null) {
-          await ref
-              .read(profileRepositoryProvider)
-              .updateMe(locale: picked);
+          await ref.read(profileRepositoryProvider).updateMe(locale: picked);
           ref.invalidate(meProvider);
         }
       },
@@ -283,8 +273,6 @@ class _LocaleTile extends StatelessWidget {
   final String code;
   final String label;
   @override
-  Widget build(BuildContext context) => ListTile(
-        title: Text(label),
-        onTap: () => Navigator.pop(context, code),
-      );
+  Widget build(BuildContext context) =>
+      ListTile(title: Text(label), onTap: () => Navigator.pop(context, code));
 }

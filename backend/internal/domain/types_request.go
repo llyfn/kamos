@@ -10,7 +10,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // BeverageRequest is the public body for POST /v1/beverage-requests. The
-// payload is intentionally free-form JSONB — Phase 5 admin moderation
+// payload is intentionally free-form JSONB — admin moderation
 // re-keys this into structured Beverage rows on approval.
 //
 // Stage 7 (M-11.5 / SEC-024): the payload is now constrained so a hostile

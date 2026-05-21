@@ -13,12 +13,12 @@ type Collection struct {
 	ID string `json:"id"`
 	// OwnerID is the row's `user_id`. Exposed on the wire so clients can gate
 	// owner-only UI (e.g. the visibility toggle on the detail screen) without
-	// a second `GET /v1/users/me` round trip. Added in Phase 6a alongside
+	// a second `GET /v1/users/me` round trip. Added historically alongside
 	// public-collection discovery.
 	OwnerID    string `json:"owner_id"`
 	Name       string `json:"name"`
 	EntryCount int    `json:"entry_count"`
-	// Visibility ('private' | 'public') — Phase 6a. Empty string on legacy
+	// Visibility ('private' | 'public') — . Empty string on legacy
 	// rows is treated by clients as 'private' (the Dart fromJson does the
 	// fallback); the server fills the column with 'private' by default.
 	Visibility string    `json:"visibility"`
@@ -72,7 +72,7 @@ func (r *CreateCollectionRequest) Validate() error {
 // UpdateCollectionRequest — PATCH /v1/collections/{id}.
 //
 // Both fields are optional in isolation; at least one must be present, and
-// `name`, when present, must satisfy the 1-50-char rule. Phase 6a added
+// `name`, when present, must satisfy the 1-50-char rule. added
 // `visibility` (public|private). Sending neither field is a 422 — it's
 // almost always a client bug, not a no-op intent.
 type UpdateCollectionRequest struct {

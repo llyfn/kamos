@@ -12,5 +12,5 @@ final meProvider = FutureProvider<Me>((ref) async {
 
 final publicProfileProvider = FutureProvider.autoDispose
     .family<PublicProfile, String>((ref, username) async {
-  return ref.read(profileRepositoryProvider).getProfile(username);
-});
+      return ref.read(profileRepositoryProvider).getProfile(username);
+    });

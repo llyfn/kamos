@@ -7,7 +7,7 @@
 // - Price (amount + currency + per-serving|per-bottle)
 // - Purchase type, serving style
 //
-// Photo upload (Phase 3): on submit, the check-in is created first; then each
+// Photo upload: on submit, the check-in is created first; then each
 // selected photo is uploaded sequentially through the 3-step presign → PUT →
 // attach flow on `CheckInRepository.uploadPhotoAndAttach`. Per-photo status
 // is tracked in `_photoStates`. If the storage provider is disabled, the
@@ -57,12 +57,11 @@ class PhotoUploadState {
     PhotoUploadStatus? status,
     double? progress,
     PhotoRef? photoRef,
-  }) =>
-      PhotoUploadState(
-        status: status ?? this.status,
-        progress: progress ?? this.progress,
-        photoRef: photoRef ?? this.photoRef,
-      );
+  }) => PhotoUploadState(
+    status: status ?? this.status,
+    progress: progress ?? this.progress,
+    photoRef: photoRef ?? this.photoRef,
+  );
 }
 
 class CheckInScreen extends ConsumerStatefulWidget {
@@ -126,7 +125,10 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     if (widget.initialPhotos.isNotEmpty) {
       _photos.addAll(widget.initialPhotos);
       _photoStates.addAll(
-        List.generate(widget.initialPhotos.length, (_) => const PhotoUploadState()),
+        List.generate(
+          widget.initialPhotos.length,
+          (_) => const PhotoUploadState(),
+        ),
       );
     }
     _venue = widget.initialVenue;
@@ -150,9 +152,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   Future<void> _addPhoto() async {
     if (_photos.length >= 4) {
       final l = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.checkInPhotoLimitReached)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.checkInPhotoLimitReached)));
       return;
     }
     try {
@@ -226,9 +228,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         allOk = false;
         if (!storageDisabledShown && mounted) {
           storageDisabledShown = true;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.photoUploadDisabled)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l.photoUploadDisabled)));
         }
         // Skip the remaining photos — storage is off for everyone.
         if (mounted) {
@@ -250,8 +252,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         }
         if (!mounted) return allOk;
         setState(() {
-          _photoStates[i] =
-              _photoStates[i].copyWith(status: PhotoUploadStatus.failed);
+          _photoStates[i] = _photoStates[i].copyWith(
+            status: PhotoUploadStatus.failed,
+          );
         });
       }
     }
@@ -266,38 +269,40 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     if (amount != null && amount > 0) {
       price = Price(amount: amount, currency: _currency, mode: _priceMode);
     }
-    final posted =
-        await ref.read(checkInControllerProvider.notifier).submit(
-              beverageId: widget.beverage.id,
-              rating: _rating,
-              review: _review.text.isEmpty ? null : _review.text,
-              tags: _tags.toList(),
-              price: price,
-              purchaseType: _purchase,
-              servingStyle: _serving,
-              venue: _venue?.toCheckinVenueJson(),
-            );
+    final posted = await ref
+        .read(checkInControllerProvider.notifier)
+        .submit(
+          beverageId: widget.beverage.id,
+          rating: _rating,
+          review: _review.text.isEmpty ? null : _review.text,
+          tags: _tags.toList(),
+          price: price,
+          purchaseType: _purchase,
+          servingStyle: _serving,
+          venue: _venue?.toCheckinVenueJson(),
+        );
     if (posted == null) {
       if (mounted) {
         final err = ref.read(checkInControllerProvider).error;
         if (err != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.checkInPostFailed)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l.checkInPostFailed)));
         }
       }
       return;
     }
     final uploadsOk = await _uploadSelectedPhotos(posted.id);
     if (!mounted) return;
-    if (!uploadsOk && _photoStates.any((s) => s.status == PhotoUploadStatus.failed)) {
+    if (!uploadsOk &&
+        _photoStates.any((s) => s.status == PhotoUploadStatus.failed)) {
       // At least one failed upload — keep the screen open so the user can
       // retry (per-tile retry button). The check-in itself is already saved.
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.checkInFirstToast)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.checkInFirstToast)));
     final onSubmitted = widget.onSubmitted;
     if (onSubmitted != null) {
       onSubmitted(posted);
@@ -340,28 +345,30 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       });
       // If all are done, complete the flow.
       if (_photoStates.every((s) => s.status == PhotoUploadStatus.done)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.checkInFirstToast)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.checkInFirstToast)));
         context.pop();
       }
     } on StorageDisabledException {
       if (!mounted) return;
       setState(() {
-        _photoStates[index] =
-            _photoStates[index].copyWith(status: PhotoUploadStatus.failed);
+        _photoStates[index] = _photoStates[index].copyWith(
+          status: PhotoUploadStatus.failed,
+        );
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.photoUploadDisabled)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.photoUploadDisabled)));
     } catch (e, st) {
       if (kSentryConfigured) {
         unawaitedSafe(Sentry.captureException(e, stackTrace: st));
       }
       if (!mounted) return;
       setState(() {
-        _photoStates[index] =
-            _photoStates[index].copyWith(status: PhotoUploadStatus.failed);
+        _photoStates[index] = _photoStates[index].copyWith(
+          status: PhotoUploadStatus.failed,
+        );
       });
     }
   }
@@ -454,7 +461,10 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(brewery, style: TextStyle(fontSize: 12, color: t.fg2)),
+                        Text(
+                          brewery,
+                          style: TextStyle(fontSize: 12, color: t.fg2),
+                        ),
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
@@ -565,18 +575,16 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               children: [
                 _SegmentedControl(
                   value: _currency,
-                  options: const [
-                    ('JPY', '¥'),
-                    ('KRW', '₩'),
-                    ('USD', '\$'),
-                  ],
+                  options: const [('JPY', '¥'), ('KRW', '₩'), ('USD', '\$')],
                   onChanged: (v) => setState(() => _currency = v),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _price,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(hintText: '1200'),
                   ),
                 ),
@@ -595,40 +603,46 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: [
-                ('on_premise', l.checkInPurchaseOnPremise),
-                ('retail', l.checkInPurchaseRetail),
-                ('gift', l.checkInPurchaseGift),
-                ('other', l.checkInPurchaseOther),
-              ]
-                  .map((o) => KamosChip(
-                        label: o.$2,
-                        selected: _purchase == o.$1,
-                        onTap: () => setState(() {
-                          _purchase = _purchase == o.$1 ? null : o.$1;
-                        }),
-                      ))
-                  .toList(),
+              children:
+                  [
+                        ('on_premise', l.checkInPurchaseOnPremise),
+                        ('retail', l.checkInPurchaseRetail),
+                        ('gift', l.checkInPurchaseGift),
+                        ('other', l.checkInPurchaseOther),
+                      ]
+                      .map(
+                        (o) => KamosChip(
+                          label: o.$2,
+                          selected: _purchase == o.$1,
+                          onTap: () => setState(() {
+                            _purchase = _purchase == o.$1 ? null : o.$1;
+                          }),
+                        ),
+                      )
+                      .toList(),
             ),
             _Section(text: l.checkInServingStyle),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: [
-                ('glass', l.checkInServingGlass),
-                ('carafe', l.checkInServingCarafe),
-                ('bottle', l.checkInServingBottle),
-                ('can', l.checkInServingCan),
-                ('other', l.checkInServingOther),
-              ]
-                  .map((o) => KamosChip(
-                        label: o.$2,
-                        selected: _serving == o.$1,
-                        onTap: () => setState(() {
-                          _serving = _serving == o.$1 ? null : o.$1;
-                        }),
-                      ))
-                  .toList(),
+              children:
+                  [
+                        ('glass', l.checkInServingGlass),
+                        ('carafe', l.checkInServingCarafe),
+                        ('bottle', l.checkInServingBottle),
+                        ('can', l.checkInServingCan),
+                        ('other', l.checkInServingOther),
+                      ]
+                      .map(
+                        (o) => KamosChip(
+                          label: o.$2,
+                          selected: _serving == o.$1,
+                          onTap: () => setState(() {
+                            _serving = _serving == o.$1 ? null : o.$1;
+                          }),
+                        ),
+                      )
+                      .toList(),
             ),
           ],
         ),
@@ -775,10 +789,7 @@ class _VenuePickerRow extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: picked == null
-                  ? Text(
-                      l.checkInWhereCta,
-                      style: TextStyle(color: t.fg2),
-                    )
+                  ? Text(l.checkInWhereCta, style: TextStyle(color: t.fg2))
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -856,8 +867,7 @@ class _PhotoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final uploadState = state;
-    final isUploading =
-        uploadState?.status == PhotoUploadStatus.uploading;
+    final isUploading = uploadState?.status == PhotoUploadStatus.uploading;
     final isDone = uploadState?.status == PhotoUploadStatus.done;
     final isFailed = uploadState?.status == PhotoUploadStatus.failed;
 
@@ -880,8 +890,8 @@ class _PhotoTile extends StatelessWidget {
                 isDone
                     ? Icons.check
                     : (isFailed
-                        ? Icons.error_outline
-                        : Icons.photo_camera_outlined),
+                          ? Icons.error_outline
+                          : Icons.photo_camera_outlined),
                 color: isDone
                     ? t.fg1
                     : (isFailed ? Colors.red : (filled ? t.fg2 : t.fgMuted)),
@@ -933,8 +943,11 @@ class _PhotoTile extends StatelessWidget {
                       color: Color(0xCC0F2350),
                       shape: BoxShape.circle,
                     ),
-                    child:
-                        const Icon(Icons.close, color: Colors.white, size: 14),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                   ),
                 ),
               ),

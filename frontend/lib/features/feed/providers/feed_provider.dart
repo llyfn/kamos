@@ -32,15 +32,14 @@ class FeedState {
     bool? isLoadingMore,
     String? error,
     bool clearError = false,
-  }) =>
-      FeedState(
-        items: items ?? this.items,
-        nextCursor: nextCursor ?? this.nextCursor,
-        hasMore: hasMore ?? this.hasMore,
-        isLoading: isLoading ?? this.isLoading,
-        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-        error: clearError ? null : (error ?? this.error),
-      );
+  }) => FeedState(
+    items: items ?? this.items,
+    nextCursor: nextCursor ?? this.nextCursor,
+    hasMore: hasMore ?? this.hasMore,
+    isLoading: isLoading ?? this.isLoading,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    error: clearError ? null : (error ?? this.error),
+  );
 }
 
 class FeedNotifier extends Notifier<FeedState> {
@@ -103,8 +102,9 @@ class FeedNotifier extends Notifier<FeedState> {
     state = state.copyWith(items: next);
 
     try {
-      final result =
-          await ref.read(feedRepositoryProvider).toggleToast(checkinId);
+      final result = await ref
+          .read(feedRepositoryProvider)
+          .toggleToast(checkinId);
       final settled = [...state.items];
       final stillIdx = settled.indexWhere((i) => i.id == checkinId);
       if (stillIdx != -1) {
@@ -132,5 +132,6 @@ class FeedNotifier extends Notifier<FeedState> {
   }
 }
 
-final feedProvider =
-    NotifierProvider<FeedNotifier, FeedState>(FeedNotifier.new);
+final feedProvider = NotifierProvider<FeedNotifier, FeedState>(
+  FeedNotifier.new,
+);

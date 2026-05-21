@@ -168,9 +168,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Photo upload is not available — saved without photos.';
 
   @override
-  String get photoUploadFailed => 'Photo failed to upload. Tap to retry.';
-
-  @override
   String get checkInWhereLabel => 'Where?';
 
   @override

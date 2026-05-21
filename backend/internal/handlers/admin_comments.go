@@ -1,4 +1,4 @@
-// admin_comments.go — Phase 6a admin comment moderation surface. Split out
+// admin_comments.go — admin comment moderation surface. Split out
 // of admin.go in Stage 3.
 package handlers
 
@@ -52,7 +52,7 @@ func (h *Handler) AdminListComments(w http.ResponseWriter, r *http.Request) {
 
 // AdminModerateComment — POST /v1/admin/comments/{id}/moderate.
 //
-// Phase 6a admin-only path for explicit comment moderation with notes. The
+// admin-only path for explicit comment moderation with notes. The
 // caller can equivalently DELETE /v1/comments/{id} (which we already gate
 // by RBAC) — this endpoint exists so the admin client has a stable
 // admin-specific endpoint for the moderation queue UI, with a notes

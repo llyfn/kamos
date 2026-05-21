@@ -20,8 +20,7 @@ class SocialRepository {
     await dio.delete('/v1/users/$username/follow');
   }
 
-  Future<Page<FollowRequest>> requests(
-      {String? cursor, int limit = 20}) async {
+  Future<Page<FollowRequest>> requests({String? cursor, int limit = 20}) async {
     final res = await dio.get(
       '/v1/follow-requests',
       queryParameters: {

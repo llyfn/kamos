@@ -1,23 +1,23 @@
 // KAMOS — Application router (go_router).
 //
 // Paths:
-//   /auth                          unauthenticated landing
-//   /auth/verify-email             token-based email verification landing
-//   /                              feed (shell root)
-//   /search                        discover
-//   /check-in                      modal (needs a Beverage extra)
-//   /collections                   lists root
-//   /collections/:id               detail
-//   /discover/public-collections   public collections discovery (Phase 6)
-//   /me                            self profile
-//   /me/edit                       edit profile
-//   /me/settings                   settings
-//   /inbox                         follow request inbox
-//   /users/:username               other user
-//   /check-ins/:id                 check-in detail (Phase 6 — comments)
-//   /beverages/:id                 beverage detail
-//   /breweries/:id                 brewery detail
-//   /beverage-requests/new         user-side "suggest a beverage" form
+// /auth unauthenticated landing
+// /auth/verify-email token-based email verification landing
+// / feed (shell root)
+// /search discover
+// /check-in modal (needs a Beverage extra)
+// /collections lists root
+// /collections/:id detail
+// /discover/public-collections public collections discovery
+// /me self profile
+// /me/edit edit profile
+// /me/settings settings
+// /inbox follow request inbox
+// /users/:username other user
+// /check-ins/:id check-in detail (— comments)
+// /beverages/:id beverage detail
+// /breweries/:id brewery detail
+// /beverage-requests/new user-side "suggest a beverage" form
 //
 // Unauthenticated users are redirected to `/auth`; authenticated users on
 // `/auth` are redirected to `/`. The `/auth/verify-email` route is exempt
@@ -66,15 +66,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/auth',
-        builder: (_, _) => const AuthScreen(),
-      ),
+      GoRoute(path: '/auth', builder: (_, _) => const AuthScreen()),
       GoRoute(
         path: '/auth/verify-email',
-        builder: (_, state) => VerifyEmailScreen(
-          token: state.uri.queryParameters['token'] ?? '',
-        ),
+        builder: (_, state) =>
+            VerifyEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
       ),
       ShellRoute(
         builder: (context, state, child) =>
@@ -102,22 +98,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/collections/:id',
-        builder: (_, state) => CollectionDetailScreen(
-          collectionId: state.pathParameters['id']!,
-        ),
+        builder: (_, state) =>
+            CollectionDetailScreen(collectionId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/discover/public-collections',
         builder: (_, _) => const PublicCollectionsScreen(),
       ),
-      GoRoute(
-        path: '/me/edit',
-        builder: (_, _) => const EditProfileScreen(),
-      ),
-      GoRoute(
-        path: '/me/settings',
-        builder: (_, _) => const SettingsScreen(),
-      ),
+      GoRoute(path: '/me/edit', builder: (_, _) => const EditProfileScreen()),
+      GoRoute(path: '/me/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/inbox', builder: (_, _) => const InboxScreen()),
       GoRoute(
         path: '/users/:username',
@@ -150,7 +139,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Re-evaluates the `redirect` whenever the auth state changes.
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(this._ref) {
-    _sub = _ref.listen<AuthState>(authStateProvider, (_, _) => notifyListeners());
+    _sub = _ref.listen<AuthState>(
+      authStateProvider,
+      (_, _) => notifyListeners(),
+    );
   }
   final Ref _ref;
   late final ProviderSubscription<AuthState> _sub;

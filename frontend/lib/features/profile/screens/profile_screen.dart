@@ -91,7 +91,9 @@ class _ProfileBody extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              user.displayName.isEmpty ? user.displayUsername : user.displayName,
+              user.displayName.isEmpty
+                  ? user.displayUsername
+                  : user.displayName,
               style: TextStyle(
                 fontFamily: 'ShipporiMincho',
                 fontSize: 24,
@@ -115,8 +117,7 @@ class _ProfileBody extends StatelessWidget {
             const SizedBox(height: 6),
             Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: t.bgTintMizu,
                   borderRadius: BorderRadius.circular(999),

@@ -76,74 +76,76 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         onNotification: _onScrollEnd,
         child: ListView(
           controller: _scroll,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.feedHeader,
-                        style: TextStyle(
-                          fontFamily: 'ShipporiMincho',
-                          fontSize: 26,
-                          fontWeight: FontWeight.w600,
-                          color: t.fg1,
-                          height: 1.1,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.feedHeader,
+                          style: TextStyle(
+                            fontFamily: 'ShipporiMincho',
+                            fontSize: 26,
+                            fontWeight: FontWeight.w600,
+                            color: t.fg1,
+                            height: 1.1,
+                          ),
                         ),
-                      ),
-                      Text(
-                        l.feedSubheader,
-                        style: TextStyle(fontSize: 12, color: t.fg3),
-                      ),
-                    ],
+                        Text(
+                          l.feedSubheader,
+                          style: TextStyle(fontSize: 12, color: t.fg3),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => context.push('/inbox'),
-                  icon: const Icon(Icons.notifications_none_outlined),
-                ),
-              ],
-            ),
-          ),
-          if (state.items.isEmpty)
-            EmptyView(
-              glyph: '醸',
-              title: l.feedEmptyTitle,
-              body: l.feedEmptyBody,
-            )
-          else ...[
-            for (final item in state.items)
-              CheckInCard(
-                item: item,
-                onToast: () =>
-                    ref.read(feedProvider.notifier).toggleToast(item.id),
+                  IconButton(
+                    onPressed: () => context.push('/inbox'),
+                    icon: const Icon(Icons.notifications_none_outlined),
+                  ),
+                ],
               ),
-            if (state.isLoadingMore)
-              LoadingView(label: l.actionLoadingMore)
-            else if (!state.hasMore)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 20, horizontal: 16),
-                child: Center(
-                  child: Text(
-                    '— ${l.actionEndOfFeed} —',
-                    style: TextStyle(
-                      fontFamily: 'NotoSansJP',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.3,
-                      color: t.fg3,
+            ),
+            if (state.items.isEmpty)
+              EmptyView(
+                glyph: '醸',
+                title: l.feedEmptyTitle,
+                body: l.feedEmptyBody,
+              )
+            else ...[
+              for (final item in state.items)
+                CheckInCard(
+                  item: item,
+                  onToast: () =>
+                      ref.read(feedProvider.notifier).toggleToast(item.id),
+                ),
+              if (state.isLoadingMore)
+                LoadingView(label: l.actionLoadingMore)
+              else if (!state.hasMore)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 20,
+                    horizontal: 16,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '— ${l.actionEndOfFeed} —',
+                      style: TextStyle(
+                        fontFamily: 'NotoSansJP',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.3,
+                        color: t.fg3,
+                      ),
                     ),
                   ),
                 ),
-              ),
+            ],
           ],
-        ],
         ),
       ),
     );

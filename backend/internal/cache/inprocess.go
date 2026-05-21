@@ -35,7 +35,7 @@ type InProcessBackend struct {
 	// sf coalesces concurrent misses on the same key, matching the
 	// existing typed LRU's stampede guard.
 	sf singleflight.Group
-	// hits/misses counters mirror the Phase 7a observers on the typed
+	// hits/misses counters mirror the observers on the typed
 	// LRU. Exposed for tests + Prometheus.
 	hits   atomic.Int64
 	misses atomic.Int64

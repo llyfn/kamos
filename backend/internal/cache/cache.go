@@ -1,15 +1,15 @@
-// Package cache is the Phase 7 in-process caching layer: a thin generic
+// Package cache is the in-process caching layer: a thin generic
 // wrapper around hashicorp/golang-lru/v2/expirable that adds named
 // instances + hit/miss observability counters.
 //
-// Phase 1 metrics established that reads on KAMOS are <4ms p95 — caching
+// metrics established that reads on KAMOS are <4ms p95 — caching
 // here is NOT a user-latency play. It's a SCALE play: cut DB load on the
 // hot taxonomy / beverage / brewery rows, keep Foursquare quota in line,
 // and absorb spikes from popular events without scaling Postgres.
 //
-// Design choice (per the Phase 7 roadmap entry): SKIP Redis. The default
+// Design choice (per the roadmap entry): SKIP Redis. The default
 // is in-process LRU + HTTP Cache-Control/ETag headers only. If a future
-// Phase 1 metric proves the need (e.g., multi-instance cache coherence
+// metric proves the need (e.g., multi-instance cache coherence
 // becomes a problem), a Redis tier can layer on top; today it would be
 // premature.
 //
@@ -48,8 +48,7 @@ type LRU[K comparable, V any] struct {
 	onHit  func(name string)
 	onMiss func(name string)
 
-	// sf coalesces concurrent misses on the same key. Phase 7a MAJOR-1 fix:
-	// without it, N concurrent requests on a hot key (e.g., the 5-minute
+	// sf coalesces concurrent misses on the same key. // without it, N concurrent requests on a hot key (e.g., the 5-minute
 	// BeverageDetail TTL expiring during a campaign-driven spike) each
 	// issue the same DB query trio. With it, one loader runs and the rest
 	// share the result. See GetOrLoad.
@@ -105,7 +104,7 @@ func (c *LRU[K, V]) Set(key K, value V) {
 // stores the result. Concurrent misses on the same key are coalesced via
 // singleflight — only one loader runs; the rest receive the same value.
 //
-// Phase 7a MAJOR-1 fix: closes the cache-stampede window on hot keys. The
+// closes the cache-stampede window on hot keys. The
 // extra cost on the happy path (cache hit) is one mutex acquire and one
 // map lookup inside singleflight, which is dwarfed by the saved DB
 // round-trip on the miss path.

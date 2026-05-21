@@ -230,17 +230,71 @@ ThemeData buildKamosTheme() {
       'sans-serif',
     ],
     textTheme: const TextTheme(
-      displayLarge: TextStyle(fontFamily: displayFamily, fontSize: 44, height: 1.1, fontWeight: FontWeight.w600),
-      headlineLarge: TextStyle(fontFamily: displayFamily, fontSize: 32, height: 1.25, fontWeight: FontWeight.w600),
-      headlineMedium: TextStyle(fontFamily: displayFamily, fontSize: 24, height: 1.25, fontWeight: FontWeight.w500),
-      headlineSmall: TextStyle(fontFamily: displayFamily, fontSize: 22, height: 1.25, fontWeight: FontWeight.w600),
-      titleLarge: TextStyle(fontFamily: bodyFamily, fontSize: 20, height: 1.3, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(fontFamily: bodyFamily, fontSize: 16, height: 1.55, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(fontFamily: bodyFamily, fontSize: 16, height: 1.55, fontWeight: FontWeight.w400),
-      bodyMedium: TextStyle(fontFamily: bodyFamily, fontSize: 14, height: 1.55, fontWeight: FontWeight.w400),
-      bodySmall: TextStyle(fontFamily: bodyFamily, fontSize: 12, height: 1.3, fontWeight: FontWeight.w400),
-      labelLarge: TextStyle(fontFamily: bodyFamily, fontSize: 14, fontWeight: FontWeight.w600),
-      labelSmall: TextStyle(fontFamily: bodyFamily, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.3),
+      displayLarge: TextStyle(
+        fontFamily: displayFamily,
+        fontSize: 44,
+        height: 1.1,
+        fontWeight: FontWeight.w600,
+      ),
+      headlineLarge: TextStyle(
+        fontFamily: displayFamily,
+        fontSize: 32,
+        height: 1.25,
+        fontWeight: FontWeight.w600,
+      ),
+      headlineMedium: TextStyle(
+        fontFamily: displayFamily,
+        fontSize: 24,
+        height: 1.25,
+        fontWeight: FontWeight.w500,
+      ),
+      headlineSmall: TextStyle(
+        fontFamily: displayFamily,
+        fontSize: 22,
+        height: 1.25,
+        fontWeight: FontWeight.w600,
+      ),
+      titleLarge: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 20,
+        height: 1.3,
+        fontWeight: FontWeight.w600,
+      ),
+      titleMedium: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 16,
+        height: 1.55,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyLarge: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 16,
+        height: 1.55,
+        fontWeight: FontWeight.w400,
+      ),
+      bodyMedium: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 14,
+        height: 1.55,
+        fontWeight: FontWeight.w400,
+      ),
+      bodySmall: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 12,
+        height: 1.3,
+        fontWeight: FontWeight.w400,
+      ),
+      labelLarge: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      labelSmall: TextStyle(
+        fontFamily: bodyFamily,
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.3,
+      ),
     ),
     extensions: const [KamosTokens.light],
   );
@@ -324,9 +378,7 @@ ThemeData buildKamosTheme() {
         fontSize: 14,
       ),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
 }

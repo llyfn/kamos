@@ -36,9 +36,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void initState() {
     super.initState();
     // Bootstrap the listing with no filter.
-    Future.microtask(
-      () => ref.read(beverageListProvider.notifier).refresh(),
-    );
+    Future.microtask(() => ref.read(beverageListProvider.notifier).refresh());
   }
 
   @override
@@ -180,136 +178,124 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: state.isLoading && state.items.isEmpty
                   ? Center(child: LoadingView(label: l.loadingLabel))
                   : state.error != null && state.items.isEmpty
-                      ? Center(
-                          child: ErrorView(
-                            message: l.errorGeneric,
-                            onRetry: () => ref
-                                .read(beverageListProvider.notifier)
-                                .refresh(),
-                          ),
-                        )
-                      : state.items.isEmpty
-                          ? EmptyView(
-                              glyph: '—',
-                              title: l.searchNoResultsTitle,
-                              body: l.searchNoResultsBody,
-                              // Only offer the "suggest a beverage" CTA when
-                              // the user has actually issued a search.
-                              // Cold-start (zero query + no filter) just shows
-                              // the empty copy — the catalog being empty is
-                              // not something the user can suggest their way
-                              // out of.
-                              action: (_q.text.isNotEmpty || _category != null)
-                                  ? TextButton(
-                                      onPressed: () => context
-                                          .push('/beverage-requests/new'),
-                                      child:
-                                          Text(l.searchSuggestMissingCta),
-                                    )
-                                  : null,
+                  ? Center(
+                      child: ErrorView(
+                        message: l.errorGeneric,
+                        onRetry: () =>
+                            ref.read(beverageListProvider.notifier).refresh(),
+                      ),
+                    )
+                  : state.items.isEmpty
+                  ? EmptyView(
+                      glyph: '—',
+                      title: l.searchNoResultsTitle,
+                      body: l.searchNoResultsBody,
+                      // Only offer the "suggest a beverage" CTA when
+                      // the user has actually issued a search.
+                      // Cold-start (zero query + no filter) just shows
+                      // the empty copy — the catalog being empty is
+                      // not something the user can suggest their way
+                      // out of.
+                      action: (_q.text.isNotEmpty || _category != null)
+                          ? TextButton(
+                              onPressed: () =>
+                                  context.push('/beverage-requests/new'),
+                              child: Text(l.searchSuggestMissingCta),
                             )
-                          : NotificationListener<ScrollNotification>(
-                              onNotification: (s) {
-                                if (s.metrics.pixels >=
-                                    s.metrics.maxScrollExtent - 600) {
-                                  ref
-                                      .read(beverageListProvider.notifier)
-                                      .loadMore();
-                                }
-                                return false;
-                              },
-                              child: ListView.separated(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: state.items.length + 1,
-                                separatorBuilder: (_, _) =>
-                                    const SizedBox(height: 10),
-                                itemBuilder: (_, i) {
-                                  if (i == state.items.length) {
-                                    return PagingFooter(
-                                      isLoading: state.isLoadingMore,
-                                      hasMore: state.hasMore,
-                                    );
-                                  }
-                                  final b = state.items[i];
-                                  final slug = categorySlugFromString(
-                                      b.category.slug);
-                                  final catLabel = slug == null
-                                      ? resolveI18n(
-                                          b.category.labelI18n, locale)
-                                      : categoryLabel(context, slug);
-                                  return KamosCard(
-                                    onTap: () => context
-                                        .push('/beverages/${b.id}'),
-                                    child: Row(
-                                      children: [
-                                        KamosLabel(
-                                          width: 52,
-                                          height: 68,
-                                          tone: labelToneFromCategory(
-                                              b.category.slug),
-                                          imageUrl: b.labelImageUrl,
+                          : null,
+                    )
+                  : NotificationListener<ScrollNotification>(
+                      onNotification: (s) {
+                        if (s.metrics.pixels >=
+                            s.metrics.maxScrollExtent - 600) {
+                          ref.read(beverageListProvider.notifier).loadMore();
+                        }
+                        return false;
+                      },
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: state.items.length + 1,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (_, i) {
+                          if (i == state.items.length) {
+                            return PagingFooter(
+                              isLoading: state.isLoadingMore,
+                              hasMore: state.hasMore,
+                            );
+                          }
+                          final b = state.items[i];
+                          final slug = categorySlugFromString(b.category.slug);
+                          final catLabel = slug == null
+                              ? resolveI18n(b.category.labelI18n, locale)
+                              : categoryLabel(context, slug);
+                          return KamosCard(
+                            onTap: () => context.push('/beverages/${b.id}'),
+                            child: Row(
+                              children: [
+                                KamosLabel(
+                                  width: 52,
+                                  height: 68,
+                                  tone: labelToneFromCategory(b.category.slug),
+                                  imageUrl: b.labelImageUrl,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        resolveI18n(b.name, locale),
+                                        style: const TextStyle(
+                                          fontFamily: 'ShipporiMincho',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                resolveI18n(b.name, locale),
-                                                style: const TextStyle(
-                                                  fontFamily:
-                                                      'ShipporiMincho',
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              Text(
-                                                resolveI18n(
-                                                    b.brewery.name, locale),
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: t.fg2),
-                                              ),
-                                              Text(
-                                                catLabel,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: t.fg3,
-                                                ),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  StarsDisplay(
-                                                      value: b.avgRating,
-                                                      size: 12),
-                                                  const SizedBox(width: 6),
-                                                  if (b.avgRating != null)
-                                                    Text(
-                                                      l.ratingValue(b
-                                                          .avgRating!
-                                                          .toStringAsFixed(1)),
-                                                      style: const TextStyle(
-                                                        fontFamily:
-                                                            'JetBrainsMono',
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ],
+                                      ),
+                                      Text(
+                                        resolveI18n(b.brewery.name, locale),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: t.fg2,
+                                        ),
+                                      ),
+                                      Text(
+                                        catLabel,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: t.fg3,
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          StarsDisplay(
+                                            value: b.avgRating,
+                                            size: 12,
                                           ),
-                                        ),
-                                        Icon(Icons.chevron_right,
-                                            color: t.fgMuted),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
+                                          const SizedBox(width: 6),
+                                          if (b.avgRating != null)
+                                            Text(
+                                              l.ratingValue(
+                                                b.avgRating!.toStringAsFixed(1),
+                                              ),
+                                              style: const TextStyle(
+                                                fontFamily: 'JetBrainsMono',
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right, color: t.fgMuted),
+                              ],
                             ),
+                          );
+                        },
+                      ),
+                    ),
             ),
           ],
         ),

@@ -1,4 +1,4 @@
-// KAMOS — BeverageRequestRepository (Phase 5 user-side).
+// KAMOS — BeverageRequestRepository (user-side).
 //
 // Wraps `POST /v1/beverage-requests`. The endpoint expects a freeform
 // `payload` object and returns `202 { id }` on success — the Flutter UI does

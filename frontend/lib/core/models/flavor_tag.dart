@@ -18,11 +18,11 @@ abstract class FlavorTag with _$FlavorTag {
   }) = _FlavorTag;
 
   factory FlavorTag.fromJson(Map<String, dynamic> json) => FlavorTag(
-        id: (json['id'] as String?) ?? '',
-        slug: (json['slug'] as String?) ?? '',
-        dimension: (json['dimension'] as String?) ?? '',
-        name: I18nText.fromJson(
-          (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
-        ),
-      );
+    id: (json['id'] as String?) ?? '',
+    slug: (json['slug'] as String?) ?? '',
+    dimension: (json['dimension'] as String?) ?? '',
+    name: I18nText.fromJson(
+      (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
+    ),
+  );
 }

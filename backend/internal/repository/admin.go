@@ -1,4 +1,4 @@
-// Package repository — admin queries (Phase 5a).
+// Package repository — admin queries.
 //
 // Admin-only access to:
 //   - beverage_addition_requests (list / approve / reject)
@@ -219,7 +219,7 @@ WHERE id = $1;`
 		return "", fmt.Errorf("ApproveBeverageRequest update request: %w", err)
 	}
 
-	// Phase 6a audit: every admin moderation action is logged. The new
+	// Audit: every admin moderation action is logged. The new
 	// beverage_id is recorded in metadata so the admin UI can deep-link
 	// from the audit row to the produced canonical beverage.
 	if err := insertModerationLog(ctx, tx,
@@ -239,9 +239,8 @@ WHERE id = $1;`
 }
 
 // RejectBeverageRequest marks the request rejected with the given notes.
-// 409 CONFLICT if the row is not in 'pending' state.
-//
-// Phase 6a: writes a moderation_log row in the same transaction.
+// 409 CONFLICT if the row is not in 'pending' state. Writes a
+// moderation_log row in the same transaction.
 func (r *AdminRepo) RejectBeverageRequest(ctx context.Context, requestID, reviewerID, notes string) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -295,8 +294,8 @@ RETURNING id;`
 // ============================================================================
 
 // ModerateCheckin soft-deletes a check-in regardless of owner, attributing
-// the action to the moderator. Phase 6a: writes a moderation_log row in the
-// same transaction so the structured slog line is mirrored to a queryable
+// the action to the moderator. Writes a moderation_log row in the same
+// transaction so the structured slog line is mirrored to a queryable
 // audit table. `notes` is optional — pass nil to omit.
 func (r *AdminRepo) ModerateCheckin(ctx context.Context, checkinID, moderatorID string, notes *string) error {
 	tx, err := r.db.Begin(ctx)
@@ -391,8 +390,8 @@ LIMIT $5;`
 	return out, rows.Err()
 }
 
-// UpdateUserRole rewrites the role column. Validates against the enum. Phase
-// 6a: writes a moderation_log row in the same transaction with metadata
+// UpdateUserRole rewrites the role column. Validates against the enum.
+// Writes a moderation_log row in the same transaction with metadata
 // {"old_role","new_role"} so the audit UI can show before/after.
 func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID string, role domain.UserRole) error {
 	if !role.Valid() {
@@ -443,10 +442,9 @@ func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID stri
 
 // SuspendUser is admin-initiated soft-delete: marks deleted_at and starts
 // the 30-day username hold. Returns ErrNotFound when the user doesn't
-// exist or was already suspended.
-//
-// Phase 6a: writes a moderation_log row in the same transaction with
-// metadata {"username_release_at": "..."} for post-hoc audit.
+// exist or was already suspended. Writes a moderation_log row in the
+// same transaction with metadata {"username_release_at": "..."} for
+// post-hoc audit.
 func (r *AdminRepo) SuspendUser(ctx context.Context, userID, moderatorID string) error {
 	// Role is reset to 'user' BEFORE soft-deleting so that future un-suspend
 	// tooling (post-MVP) cannot auto-restore admin/moderator privileges. The

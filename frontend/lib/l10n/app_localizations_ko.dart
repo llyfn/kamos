@@ -167,9 +167,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get photoUploadDisabled => '사진 업로드를 사용할 수 없습니다 — 사진 없이 저장했습니다.';
 
   @override
-  String get photoUploadFailed => '사진을 업로드하지 못했습니다. 탭하여 다시 시도하세요.';
-
-  @override
   String get checkInWhereLabel => '어디서?';
 
   @override
