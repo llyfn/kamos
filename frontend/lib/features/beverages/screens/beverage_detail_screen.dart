@@ -10,6 +10,7 @@ import '../../../core/i18n/beverage_name.dart';
 import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_chip.dart';
@@ -24,19 +25,14 @@ class BeverageDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
     final asyncDetail = ref.watch(beverageDetailProvider(beverageId));
 
     return Scaffold(
       appBar: AppBar(),
-      body: asyncDetail.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(
-            message: l.errorGeneric,
-            onRetry: () => ref.invalidate(beverageDetailProvider(beverageId)),
-          ),
-        ),
+      body: AsyncWidget(
+        value: asyncDetail,
+        center: true,
+        onRetry: () => ref.invalidate(beverageDetailProvider(beverageId)),
         data: (detail) => _Body(detail: detail),
       ),
     );

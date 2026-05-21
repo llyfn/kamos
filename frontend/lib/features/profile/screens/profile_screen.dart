@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/models/user.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/profile_providers.dart';
@@ -19,17 +20,12 @@ class MeProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
     final async = ref.watch(meProvider);
     return Scaffold(
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(
-            message: l.errorGeneric,
-            onRetry: () => ref.invalidate(meProvider),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(meProvider),
         data: (me) => _ProfileBody(user: me.user, stats: me.stats, isMe: true),
       ),
     );
@@ -42,18 +38,13 @@ class OtherProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
     final async = ref.watch(publicProfileProvider(username));
     return Scaffold(
       appBar: AppBar(),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(
-            message: l.errorGeneric,
-            onRetry: () => ref.invalidate(publicProfileProvider(username)),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(publicProfileProvider(username)),
         data: (p) => _ProfileBody(user: p.user, stats: p.stats, isMe: false),
       ),
     );

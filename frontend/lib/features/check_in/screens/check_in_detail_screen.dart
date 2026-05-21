@@ -12,11 +12,11 @@ import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/elapsed_time.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
-import '../../../shared/widgets/state_views.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../comments/widgets/comments_section.dart';
 import '../providers/checkin_providers.dart';
@@ -33,13 +33,10 @@ class CheckInDetailScreen extends ConsumerWidget {
     final async = ref.watch(checkInDetailProvider(checkInId));
     return Scaffold(
       appBar: AppBar(),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (_, _) => Center(
-          child: ErrorView(
-            onRetry: () => ref.invalidate(checkInDetailProvider(checkInId)),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(checkInDetailProvider(checkInId)),
         data: (checkin) {
           final when = parseIsoDateOrNull(checkin.createdAt);
           final beverageName = resolveI18n(checkin.beverage.name, locale);

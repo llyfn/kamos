@@ -13,8 +13,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/widgets/state_views.dart';
 import '../../../core/api/api_exceptions.dart';
+import '../../../shared/widgets/async_widget.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../providers/comment_providers.dart';
 import 'comment_composer.dart';
 import 'comment_tile.dart';
@@ -49,13 +50,11 @@ class CommentsSection extends ConsumerWidget {
             ),
           ),
         ),
-        async.when(
-          loading: () => LoadingView(label: l.loadingLabel),
-          error: (_, _) => ErrorView(
-            message: l.commentsLoadFailed,
-            onRetry: () =>
-                ref.read(commentsProvider(checkInId).notifier).refresh(),
-          ),
+        AsyncWidget(
+          value: async,
+          errorMessage: l.commentsLoadFailed,
+          onRetry: () =>
+              ref.read(commentsProvider(checkInId).notifier).refresh(),
           data: (s) {
             if (s.items.isEmpty) {
               return Padding(

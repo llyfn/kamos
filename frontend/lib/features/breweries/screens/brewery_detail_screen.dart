@@ -9,6 +9,7 @@ import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
 import '../../../core/i18n/category_labels.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -28,13 +29,10 @@ class BreweryDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(
-          child: ErrorView(
-            onRetry: () => ref.invalidate(breweryDetailProvider(breweryId)),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(breweryDetailProvider(breweryId)),
         data: (detail) {
           final brewery = detail.brewery;
           final name = resolveI18n(brewery.name, locale);

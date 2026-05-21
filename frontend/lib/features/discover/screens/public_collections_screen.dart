@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -67,14 +68,10 @@ class _PublicCollectionsScreenState
           ),
         ),
       ),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (_, _) => Center(
-          child: ErrorView(
-            onRetry: () =>
-                ref.read(publicCollectionsProvider.notifier).refresh(),
-          ),
-        ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.read(publicCollectionsProvider.notifier).refresh(),
         data: (state) {
           if (state.items.isEmpty) {
             return EmptyView(glyph: '集', title: l.publicCollectionsEmpty);

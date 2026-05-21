@@ -8,8 +8,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
-import '../../../shared/widgets/state_views.dart';
 import '../providers/profile_providers.dart';
 import '../repository/profile_repository.dart';
 
@@ -83,9 +83,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
         ],
       ),
-      body: async.when(
-        loading: () => Center(child: LoadingView(label: l.loadingLabel)),
-        error: (e, _) => Center(child: ErrorView(message: l.errorGeneric)),
+      body: AsyncWidget(
+        value: async,
+        center: true,
         data: (me) {
           if (!_hydrated) {
             _name.text = me.user.displayName;
