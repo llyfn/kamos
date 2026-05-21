@@ -4,42 +4,41 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
-import '../../../core/api/cache_extras.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/page.dart';
 
 class FeedRepository {
-  FeedRepository({required this.dio});
-  final Dio dio;
+  FeedRepository({required Dio dio}) : _api = KamosApi(dio);
+
+  final KamosApi _api;
 
   /// Fetches a page of the feed.
   ///
-  /// When [forceRefresh] is `true` the request is sent with the
-  /// [kBypassCache] extras, which makes `dio_cache_interceptor` skip its
-  /// in-memory cache for this call. Wired into the feed's pull-to-refresh
-  /// gesture so a user-initiated refresh always round-trips to the origin.
+  /// When [forceRefresh] is `true` [KamosApi.feed] decorates the outgoing
+  /// request with the `kBypassCache` extras, which makes
+  /// `dio_cache_interceptor` skip its in-memory cache for this call. Wired
+  /// into the feed's pull-to-refresh gesture so a user-initiated refresh
+  /// always round-trips to the origin.
   Future<Page<FeedItem>> getFeed({
     String? cursor,
     int limit = 20,
     bool forceRefresh = false,
   }) async {
-    final res = await dio.get(
-      '/v1/feed',
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-        'limit': limit,
-      },
-      options: forceRefresh ? Options(extra: {...kBypassCache}) : null,
+    final data = await _api.feed.getFeed(
+      cursor: cursor,
+      limit: limit,
+      forceRefresh: forceRefresh,
     );
     return Page.fromJson(
-      res.data as Map<String, dynamic>,
+      data,
       (raw) => FeedItem.fromJson(raw as Map<String, dynamic>),
     );
   }
 
   Future<ToastState> toggleToast(String checkinId) async {
-    final res = await dio.post('/v1/check-ins/$checkinId/toast');
-    return ToastState.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.checkins.toggleToast(checkinId);
+    return ToastState.fromJson(data);
   }
 }
 
