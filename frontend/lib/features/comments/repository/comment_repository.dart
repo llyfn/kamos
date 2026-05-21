@@ -16,25 +16,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/comment.dart';
 import '../../../core/models/page.dart' as models;
 import '../exceptions.dart';
 
 class CommentRepository {
-  CommentRepository(this._dio);
-  final Dio _dio;
+  CommentRepository(Dio dio) : _api = KamosApi(dio);
+  final KamosApi _api;
 
   Future<models.Page<Comment>> list(String checkInId, {String? cursor}) async {
-    final res = await _dio.get(
-      '/v1/check-ins/$checkInId/comments',
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-      },
-    );
-    final data = res.data;
-    if (data is! Map<String, dynamic>) {
-      return const models.Page<Comment>(items: [], hasMore: false);
-    }
+    final data = await _api.comments.list(checkInId, cursor: cursor);
     return models.Page<Comment>.fromJson(
       data,
       (e) => Comment.fromJson(e as Map<String, dynamic>),
@@ -61,11 +53,11 @@ class CommentRepository {
       throw const CommentInvalidBodyException();
     }
     try {
-      final res = await _dio.post(
-        '/v1/check-ins/$checkInId/comments',
-        data: {'body': body},
+      final data = await _api.comments.create(
+        checkInId: checkInId,
+        body: body,
       );
-      return Comment.fromJson(res.data as Map<String, dynamic>);
+      return Comment.fromJson(data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 429) {
         throw const CommentRateLimitedException();
@@ -76,7 +68,7 @@ class CommentRepository {
 
   Future<void> deleteOwn(String commentId) async {
     try {
-      await _dio.delete('/v1/comments/$commentId');
+      await _api.comments.deleteOne(commentId);
     } on DioException catch (e) {
       final status = e.response?.statusCode ?? 0;
       String code = '';

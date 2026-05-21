@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/brewery.dart';
 import '../../../core/models/page.dart';
@@ -31,8 +32,8 @@ class SearchResultItem {
 }
 
 class SearchRepository {
-  SearchRepository({required this.dio});
-  final Dio dio;
+  SearchRepository({required Dio dio}) : _api = KamosApi(dio);
+  final KamosApi _api;
 
   Future<Page<SearchResultItem>> search({
     required String q,
@@ -40,17 +41,14 @@ class SearchRepository {
     String? cursor,
     int limit = 20,
   }) async {
-    final res = await dio.get(
-      '/v1/search',
-      queryParameters: {
-        'q': q,
-        if (type != null && type.isNotEmpty) 'type': type,
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-        'limit': limit,
-      },
+    final data = await _api.search.query(
+      q: q,
+      type: type,
+      cursor: cursor,
+      limit: limit,
     );
     return Page.fromJson(
-      res.data as Map<String, dynamic>,
+      data,
       (raw) => SearchResultItem.fromJson(raw as Map<String, dynamic>),
     );
   }

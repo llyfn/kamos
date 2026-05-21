@@ -4,29 +4,31 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/kamos_api.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/page.dart';
 
 class CollectionRepository {
-  CollectionRepository({required this.dio});
-  final Dio dio;
+  CollectionRepository({required Dio dio}) : _api = KamosApi(dio);
+
+  final KamosApi _api;
 
   Future<Page<Collection>> list() async {
-    final res = await dio.get('/v1/collections');
+    final data = await _api.collections.list();
     return Page.fromJson(
-      res.data as Map<String, dynamic>,
+      data,
       (raw) => Collection.fromJson(raw as Map<String, dynamic>),
     );
   }
 
   Future<Collection> create(String name) async {
-    final res = await dio.post('/v1/collections', data: {'name': name});
-    return Collection.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.collections.create(name);
+    return Collection.fromJson(data);
   }
 
   Future<Collection> rename(String id, String name) async {
-    final res = await dio.patch('/v1/collections/$id', data: {'name': name});
-    return Collection.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.collections.patch(id, {'name': name});
+    return Collection.fromJson(data);
   }
 
   /// Updates only the `visibility` field. The server accepts a partial
@@ -35,21 +37,17 @@ class CollectionRepository {
     String id,
     CollectionVisibility visibility,
   ) async {
-    final res = await dio.patch(
-      '/v1/collections/$id',
-      data: {'visibility': visibility.toWire()},
-    );
-    return Collection.fromJson(res.data as Map<String, dynamic>);
+    final data = await _api.collections.patch(id, {
+      'visibility': visibility.toWire(),
+    });
+    return Collection.fromJson(data);
   }
 
-  Future<void> delete(String id) async {
-    await dio.delete('/v1/collections/$id');
-  }
+  Future<void> delete(String id) => _api.collections.delete(id);
 
   /// Returns the collection plus its first page of entries.
   Future<(Collection, Page<CollectionEntry>)> detail(String id) async {
-    final res = await dio.get('/v1/collections/$id');
-    final data = res.data as Map<String, dynamic>;
+    final data = await _api.collections.detail(id);
     final entries = data['entries'] is Map<String, dynamic>
         ? Page.fromJson(
             data['entries'] as Map<String, dynamic>,
@@ -63,19 +61,10 @@ class CollectionRepository {
     String collectionId,
     String beverageId, {
     String? note,
-  }) async {
-    await dio.post(
-      '/v1/collections/$collectionId/entries',
-      data: {
-        'beverage_id': beverageId,
-        if (note != null && note.isNotEmpty) 'note': note,
-      },
-    );
-  }
+  }) => _api.collections.addEntry(collectionId, beverageId, note: note);
 
-  Future<void> removeEntry(String collectionId, String beverageId) async {
-    await dio.delete('/v1/collections/$collectionId/entries/$beverageId');
-  }
+  Future<void> removeEntry(String collectionId, String beverageId) =>
+      _api.collections.removeEntry(collectionId, beverageId);
 }
 
 final collectionRepositoryProvider = Provider<CollectionRepository>(
