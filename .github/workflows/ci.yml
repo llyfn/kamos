@@ -162,7 +162,7 @@ jobs:
   # Integration smoke in CI is advisory: the job applies migrations against
   # a local Postgres but does not start the API server, so smoke.sh has
   # nothing to hit. The hard smoke gate is the post-deploy step in
-  # .github/workflows/deploy-dev.yml, which exercises the live dev API.
+  # .github/workflows/deploy.yml, which exercises the live API.
   # Fixing CI to spin up its own server is tracked separately.
   integration-smoke:
     name: Integration smoke (advisory; real gate is post-deploy)

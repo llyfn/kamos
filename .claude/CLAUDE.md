@@ -29,22 +29,22 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 - **Locales:** `en`, `ja`, `ko` (full coverage in MVP)
 - **Min platforms:** iOS 13+, Android API 26+
 
-## Dev environment
+## Hosted environment
 
-The hosted dev environment auto-deploys on every merge to `main`.
+A single hosted environment auto-deploys on every merge to `main`. There is no dev/prod split right now; one will be introduced once reliability requirements demand it.
 
 | What | Where |
 |---|---|
-| API | `https://dev-api.kamos.app` (Fly.io app `kamos-dev`, NRT/Tokyo, two processes) |
-| Admin SPA | `https://dev-admin.kamos.app` (Cloudflare Pages project `kamos-admin-dev`) |
-| DB | Fly Postgres `kamos-dev-db` (Pg18, NRT) |
-| Cache L2 | Upstash Redis (NRT, `rediss://`) |
-| Photos | Cloudflare R2 bucket `kamos-checkin-photos-dev` |
-| Image registry | `ghcr.io/<owner>/kamos-api:<sha>` + `:dev-latest` |
+| API | `https://api.kamos.app` (Fly.io app `kamos`, NRT/Tokyo, two processes) |
+| Admin SPA | `https://admin.kamos.app` (Cloudflare Pages project `kamos-admin`) |
+| DB | Fly Postgres `kamos-db` (Pg18, NRT) |
+| Cache L2 | Upstash Redis (NRT, `rediss://`) — optional |
+| Photos | Cloudflare R2 bucket `kamos-checkin-photos` |
+| Image registry | `ghcr.io/<owner>/kamos-api:<sha>` + `:latest` |
 
-CI: `.github/workflows/ci.yml` (`go vet` required; lint/style gates advisory pending Stage 8). CD: `.github/workflows/deploy-dev.yml` (workflow_run on CI green → build → push GHCR → migrate → `flyctl deploy --image` → post-deploy smoke against the live dev API). App config: `fly.toml`. Runbook: `docs/runbooks/staging-deploy.md`.
+CI: `.github/workflows/ci.yml` (`go vet` required; lint/style gates advisory pending Stage 8). CD: `.github/workflows/deploy.yml` (workflow_run on CI green → build → push GHCR → migrate → `flyctl deploy --image` → post-deploy smoke against the live API). App config: `fly.toml`. Runbook: `docs/runbooks/deploy.md`.
 
-Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://dev-api.kamos.app`. TestFlight / Play Internal pipelines are not in place yet.
+Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://api.kamos.app`. TestFlight / Play Internal pipelines are not in place yet.
 
 ## Repository layout
 
@@ -76,7 +76,7 @@ design/                      # Design system: tokens.json (source of truth), bra
 docs/                        # Long-form documentation
   db/                        #   schema.md, indexes.md, query_patterns.md
   history/                   #   00_brief.md + archived per-phase QA + review reports
-  runbooks/                  #   staging-deploy.md, secret-rotation.md, incident-response.md
+  runbooks/                  #   deploy.md, secret-rotation.md, incident-response.md
 scripts/                     # Operational scripts (smoke.sh, e2e/, gen-tokens.sh)
 docker-compose.yml           # Postgres + API for local dev
 Makefile                     # One-line dev tasks
