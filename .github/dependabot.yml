@@ -1,0 +1,91 @@
+# Dependabot — keeps dependencies + GitHub Actions current.
+#
+# Strategy: one grouped PR per ecosystem per week for minor + patch bumps
+# (low-risk, batch-mergeable after CI is green). MAJOR bumps are left
+# ungrouped so each lands as its own PR — they may carry breaking changes
+# that deserve isolated review (e.g. the golangci-lint-action v7→v9 jump).
+#
+# Commit prefixes/scopes match .github/commitlint.config.cjs (types from
+# @commitlint/config-conventional; `deps` + `ci` are in the scope enum).
+version: 2
+updates:
+  # ── GitHub Actions (ci.yml + deploy.yml) ──────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        update-types: ["minor", "patch"]
+
+  # ── Go backend (backend/go.mod) ───────────────────────────────────────
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "backend"]
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      go-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # ── Admin SPA (admin/package.json) ────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /admin
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "admin"]
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      admin-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # ── Flutter app (frontend/pubspec.yaml) ───────────────────────────────
+  - package-ecosystem: pub
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "frontend"]
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      flutter-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # ── Container base images ─────────────────────────────────────────────
+  # backend/Dockerfile (golang:1.26-alpine, alpine:3.20)
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "backend"]
+    commit-message:
+      prefix: chore
+      include: scope
+  # docker-compose.yml (postgres:18-alpine, local dev)
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "repo"]
+    commit-message:
+      prefix: chore
+      include: scope
