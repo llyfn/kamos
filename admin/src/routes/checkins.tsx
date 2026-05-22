@@ -1,8 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 import { RoleGuard } from '@/components/guard';
 import { useToast } from '@/components/toast';
 import { useModerateCheckin } from '@/hooks/admin/mutations';
-import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
 
 export const Route = createFileRoute('/checkins')({
   component: GuardedCheckinsPage,

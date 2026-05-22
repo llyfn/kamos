@@ -8,9 +8,9 @@
 // no body) and retry. On second failure we redirect to /login —
 // session is gone.
 
+import createClient, { type Middleware } from 'openapi-fetch';
 import { attachCsrf, getCsrfToken } from '@/lib/session';
 import type { paths } from '@/types/api';
-import createClient, { type Middleware } from 'openapi-fetch';
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
@@ -80,7 +80,6 @@ const sessionMiddleware: Middleware = {
 export const api = createClient<paths>({ baseUrl: API_BASE, credentials: 'include' });
 api.use(sessionMiddleware);
 
+export type { paths } from '@/types/api';
 // Re-export attachCsrf for ad-hoc fetch() callers (non-openapi-fetch paths).
 export { attachCsrf };
-
-export type { paths } from '@/types/api';

@@ -1,7 +1,7 @@
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { logout as sessionLogout } from '@/lib/session';
 import type { components } from '@/types/api';
-import { useQuery } from '@tanstack/react-query';
 
 export type Role = components['schemas']['UserRole'];
 export type Me = components['schemas']['Me'];

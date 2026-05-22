@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react';
 import { type Role, useAuth } from '@/lib/auth';
 import { logout as sessionLogout } from '@/lib/session';
-import type { ReactNode } from 'react';
 
 interface RoleGuardProps {
   requires: Role[];

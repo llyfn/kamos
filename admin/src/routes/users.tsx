@@ -1,14 +1,14 @@
-import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
 import { useSuspendUser, useUpdateUserRole } from '@/hooks/admin/mutations';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { components } from '@/types/api';
-import { useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
 
 type AdminUser = components['schemas']['AdminUser'];
 type Role = components['schemas']['UserRole'];
