@@ -13,6 +13,8 @@ If anything here conflicts with `SPEC.md` or `.claude/CLAUDE.md`, those document
 
 ## Branching & commits
 
+`main` is protected. Land every change on a feature branch and merge it via a pull request — no direct pushes to `main`.
+
 We use **Conventional Commits** (`<type>(<scope>): <subject>`) with a fixed scope enum. The full list of allowed types and scopes lives in `.github/commitlint.config.cjs`.
 
 **Common types:** `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `ci`, `build`, `perf`, `style`.
@@ -47,11 +49,7 @@ fix(frontend): clear toast count on logout
 chore(ci): add tooling baseline + CI workflow
 ```
 
-Body is plain Markdown. End AI-pair-programmed commits with:
-
-```
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
+Body is plain Markdown. Do not add `Co-Authored-By` trailers.
 
 ### Local commit hooks
 
