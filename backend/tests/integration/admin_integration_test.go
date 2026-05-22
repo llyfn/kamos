@@ -122,10 +122,11 @@ func TestAdmin_ApproveBeverageRequest(t *testing.T) {
 	userTok, _ := mustRegister(t, srv, "submitter", "sub@example.com", "password-123")
 	submitBody := map[string]any{
 		"payload": map[string]any{
-			"name_en":      "Test Junmai",
-			"name_ja":      "テスト純米",
-			"brewery_name": "Test Brewery",
-			"abv":          15.5,
+			"name":          "Test Junmai",
+			"name_ja":       "テスト純米",
+			"brewery_name":  "Test Brewery",
+			"category_slug": "nihonshu",
+			"abv":           15.5,
 		},
 	}
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/beverage-requests", userTok, submitBody)
@@ -214,7 +215,7 @@ func TestAdmin_RejectBeverageRequest(t *testing.T) {
 
 	userTok, _ := mustRegister(t, srv, "rej_submitter", "rs@example.com", "password-123")
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/beverage-requests", userTok, map[string]any{
-		"payload": map[string]any{"name_en": "Bad Submission"},
+		"payload": map[string]any{"name": "Bad Submission", "brewery_name": "X Brewery", "category_slug": "nihonshu"},
 	})
 	if code != http.StatusAccepted {
 		t.Fatalf("submit: %d body=%s", code, raw)

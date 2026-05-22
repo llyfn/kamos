@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
-    "ignore": ["dist", "node_modules", "src/types/api.d.ts", "src/routeTree.gen.ts"]
+    "ignore": ["dist", "node_modules", "src/types/api.d.ts", "src/routeTree.gen.ts", "src/lib/tokens.ts"]
   },
   "formatter": {
     "enabled": true,

@@ -512,8 +512,9 @@ func TestSubmitBeverageRequest(t *testing.T) {
 	tok, _ := mustRegister(t, srv, "requester", "requester@example.com", "password11")
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/beverage-requests", tok, map[string]any{
 		"payload": map[string]string{
-			"name":    "New Sake",
-			"brewery": "Some Brewery",
+			"name":          "New Sake",
+			"brewery_name":  "Some Brewery",
+			"category_slug": "nihonshu",
 		},
 	})
 	if code != http.StatusAccepted {
