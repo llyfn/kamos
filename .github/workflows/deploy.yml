@@ -1,17 +1,16 @@
 name: Deploy
 
 # Auto-deploys main to the kamos Fly.io app after CI passes.
-# - Builds backend/Dockerfile, pushes to GHCR with both <sha> and latest tags.
-# - Applies migrations via a one-shot postgres:18-alpine container.
-# - Runs `flyctl deploy --image` so the deployed artifact is the exact image we tagged.
-# - Smoke-tests https://api.kamos.app/ end-to-end — this is the real smoke gate
-#   (the CI integration-smoke job is advisory because it doesn't start the API).
+# Builds on Fly's remote builder (pushes to registry.fly.io, authed natively
+# by FLY_API_TOKEN) and deploys — no external registry, no private-image auth.
+# Then stages APP_VERSION and runs a lightweight liveness check.
 #
-# Required GitHub `production` environment secrets:
-#   FLY_API_TOKEN — `flyctl auth token` output
-#   DATABASE_URL  — admin Postgres connection string (sslmode=require)
+# Migrations are NOT run here — they're a manual operator step (the DB is a
+# separate Fly app on a private network the deploy-scoped token can't reach).
+# See docs/runbooks/deploy.md §2.
 #
-# GITHUB_TOKEN with packages:write is enough for GHCR push.
+# Required GitHub `production` environment secret:
+#   FLY_API_TOKEN — a deploy token for the `kamos` app (`flyctl tokens create deploy -a kamos`)
 
 on:
   workflow_run:
@@ -26,7 +25,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   deploy:
@@ -40,71 +38,32 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Resolve image tag
-        id: tag
-        run: |
-          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
-          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/kamos-api" >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build and push image
-        uses: docker/build-push-action@v7
-        with:
-          context: backend
-          file: backend/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.tag.outputs.image }}:${{ steps.tag.outputs.sha }}
-            ${{ steps.tag.outputs.image }}:latest
-          cache-from: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache
-          cache-to: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache,mode=max
-
-      # NOTE: migrations are applied MANUALLY, not in CD. The DB is a separate
-      # Fly app (kamos-db) on a private network reachable only via a flyctl
-      # proxy tunnel, and FLY_API_TOKEN is a deploy token scoped to the `kamos`
-      # app — it can't see kamos-db. Rather than broaden the token or fight
-      # WireGuard-in-CI, an operator applies schema changes before merging, per
-      # docs/runbooks/deploy.md §2:
-      #   flyctl proxy 15432:5432 -a kamos-db &
-      #   PSQL_URL=postgres://…@127.0.0.1:15432/kamos scripts/migrate.sh
-      # Migrations are append-only + idempotent (schema_migrations table), so a
-      # deploy whose schema is already current is safe.
+      - name: Resolve SHA
+        id: sha
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
 
       - uses: superfly/flyctl-actions/setup-flyctl@1.6
 
-      - name: Deploy to Fly
+      # working-directory: backend so the Dockerfile's build context is this
+      # dir (it does `COPY go.mod go.sum ./`); fly.toml lives here too.
+      - name: Deploy to Fly (remote build)
+        working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl deploy --app kamos \
-            --config backend/fly.toml \
-            --image ${{ steps.tag.outputs.image }}:${{ steps.tag.outputs.sha }} \
-            --strategy rolling \
-            --wait-timeout 300
+        run: flyctl deploy --remote-only --strategy rolling --wait-timeout 300
 
       - name: Set APP_VERSION secret
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl secrets set APP_VERSION=${{ steps.tag.outputs.sha }} -a kamos --stage
-          # --stage avoids triggering a second deploy; the value applies on next restart.
+          flyctl secrets set APP_VERSION=${{ steps.sha.outputs.sha }} -a kamos --stage
+          # --stage avoids triggering a second deploy; applies on next restart.
 
-      # Lightweight liveness check against the live API. The comprehensive
-      # integration suite already ran pre-deploy in ci.yml; here we only
-      # confirm the new release boots, reaches the DB, and serves. (The full
-      # scripts/smoke.sh needs a pre-seeded DB and is a manual `make smoke`.)
-      #
-      # Hits the always-available Fly host, not api.kamos.app: the custom
-      # domain depends on external DNS (cert is "Not verified" until the
-      # registrar records point at Fly), and the deploy gate must not be
-      # coupled to DNS propagation. Switch BASE to https://api.kamos.app
-      # once `flyctl certs show api.kamos.app -a kamos` reports verified.
+      # Lightweight liveness check. The comprehensive integration suite already
+      # ran pre-deploy in ci.yml; here we only confirm the new release boots,
+      # reaches the DB, and serves. Hits the always-available Fly host, not
+      # api.kamos.app (whose cert is "Not verified" pending external DNS), so
+      # the gate isn't coupled to DNS. Switch BASE once certs show verified.
       - name: Post-deploy liveness
         env:
           BASE: https://kamos.fly.dev
