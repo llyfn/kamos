@@ -83,6 +83,7 @@ func RequestID(next http.Handler) http.Handler {
 func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//nolint:contextcheck // panic-recovery defer reads r.Context() for the request id; no new context is introduced.
 			defer func() {
 				if rec := recover(); rec != nil {
 					log.Error("panic",

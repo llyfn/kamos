@@ -79,6 +79,7 @@ func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cacheKey := id + ":" + localeKey(r)
 
+	//nolint:contextcheck // loader runs synchronously inside the request; it captures r.Context() (GetOrLoad's signature takes no ctx).
 	loader := func() (domain.BeverageDetail, error) {
 		bv, err := h.Repos.Beverages.Detail(r.Context(), id)
 		if err != nil {
@@ -195,6 +196,7 @@ func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cacheKey := id + ":" + localeKey(r)
 
+	//nolint:contextcheck // loader runs synchronously inside the request; it captures r.Context() (GetOrLoad's signature takes no ctx).
 	loader := func() (domain.Brewery, error) {
 		fetched, err := h.Repos.Breweries.Detail(r.Context(), id)
 		if err != nil {

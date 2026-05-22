@@ -31,7 +31,9 @@ linters:
     - funlen
   settings:
     gocyclo:
-      min-complexity: 15
+      # 15 flags inherently-branchy but linear funcs (main, config.Load,
+      # request Validate). 20 still catches genuine tangle.
+      min-complexity: 20
     funlen:
       lines: 100
       statements: 60
@@ -45,7 +47,10 @@ linters:
     revive:
       rules:
         - name: var-naming
-        - name: exported
+        # `exported` (doc-comment-on-every-exported-symbol) is intentionally
+        # omitted: this is an all-`internal/` codebase that nothing outside
+        # the module can import, so godoc completeness on DTOs and Validate
+        # methods is low-value noise. The rules below still catch real issues.
         - name: error-strings
         - name: error-return
         - name: error-naming
@@ -61,6 +66,9 @@ linters:
           - gocyclo
           - errcheck
           - gosec
+          # Test requests built with http.NewRequest/httptest don't need
+          # context propagation.
+          - noctx
       - linters:
           - errcheck
         text: "Error return value of `fmt\\.F?print(f|ln)?` is not checked"

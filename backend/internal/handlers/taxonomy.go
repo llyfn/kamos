@@ -23,6 +23,7 @@ import (
 // the local `kCategoryStrings` constant in MVP.
 func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 	key := localeKey(r)
+	//nolint:contextcheck // loader runs synchronously inside the request; captures r.Context() (GetOrLoad takes no ctx).
 	loader := func() ([]domain.CategoryLabel, error) {
 		return h.Repos.Taxonomy.Categories(r.Context())
 	}
@@ -47,6 +48,7 @@ func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 // rationale; same shape, same TTL bucket.
 func (h *Handler) FlavorTags(w http.ResponseWriter, r *http.Request) {
 	key := localeKey(r)
+	//nolint:contextcheck // loader runs synchronously inside the request; captures r.Context() (GetOrLoad takes no ctx).
 	loader := func() ([]domain.FlavorTag, error) {
 		return h.Repos.Taxonomy.FlavorTags(r.Context())
 	}

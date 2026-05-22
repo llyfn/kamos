@@ -50,6 +50,8 @@ import (
 // roleResolver is derived from the handler's Repos.DB when non-nil. Passing
 // it explicitly keeps server.New testable with stub repos (a nil resolver
 // fails closed on every admin route).
+//
+//nolint:funlen // route table: a flat list of r.Get/r.Post registrations; grouping into sub-funcs hurts at-a-glance routing.
 func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache, h *handlers.Handler) http.Handler {
 	var roleResolver *middleware.RoleResolver
 	if h != nil && h.Repos != nil && h.Repos.DB != nil {

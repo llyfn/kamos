@@ -15,6 +15,8 @@ type FeedRepo struct{ db *pgxpool.Pool }
 // Page returns the feed page per query_patterns.md §3. Tags + photo counts
 // are folded into the response. `limit` is the requested page size; the
 // repository fetches limit+1 and the handler computes has_more.
+//
+//nolint:funlen // single keyset-pagination query + scan loop; splitting the SQL builder from the scan would hurt readability.
 func (r *FeedRepo) Page(ctx context.Context, viewerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.FeedItem, error) {
 	// Stage 5 (PERF-001/002/024): toast_count + comment_count come from
 	// denormalized counter columns on check_ins (migration 011). Photos

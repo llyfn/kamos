@@ -100,11 +100,13 @@ func (inv *Invalidator) runOnce(ctx context.Context) error {
 	inv.mu.Lock()
 	if inv.closed {
 		inv.mu.Unlock()
+		//nolint:contextcheck // teardown: no request ctx here; this is a background listener closing its hijacked conn.
 		_ = conn.Close(context.Background())
 		return context.Canceled
 	}
 	inv.conn = conn
 	inv.mu.Unlock()
+	//nolint:contextcheck // teardown closure: conn.Close must run on a fresh ctx even when the loop ctx is already done.
 	defer func() {
 		inv.mu.Lock()
 		inv.conn = nil

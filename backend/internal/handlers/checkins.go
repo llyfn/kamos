@@ -94,7 +94,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateCheckin reload", err)
 		return
 	}
-	h.invalidateBeverageDetail(req.BeverageID)
+	h.invalidateBeverageDetail(r.Context(), req.BeverageID)
 	observability.IncCheckinsCreated(r.Context())
 	httperr.WriteJSON(w, http.StatusCreated, out)
 }
@@ -105,14 +105,17 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 // Cache-Control header, but in-process readers see fresh data
 // immediately. Stage 4: also fire a pg_notify so peer replicas bust
 // their copies; the notify is fire-and-forget (silent on nil DB).
-func (h *Handler) invalidateBeverageDetail(beverageID string) {
+func (h *Handler) invalidateBeverageDetail(ctx context.Context, beverageID string) {
 	if beverageID == "" {
 		return
 	}
 	if h.Caches != nil {
 		h.Caches.BeverageDetail.InvalidatePrefix(beverageID + ":")
 	}
-	cache.NotifyInvalidation(context.Background(), h.DB, h.Log, "beverage:"+beverageID)
+	// WithoutCancel keeps the request's trace context but detaches
+	// cancellation: a client disconnect right after commit must not skip
+	// the peer-replica invalidation, or readers on other replicas go stale.
+	cache.NotifyInvalidation(context.WithoutCancel(ctx), h.DB, h.Log, "beverage:"+beverageID)
 }
 
 // GetCheckin — GET /v1/check-ins/{id}.
@@ -211,7 +214,7 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UpdateCheckin reload", err)
 		return
 	}
-	h.invalidateBeverageDetail(out.Beverage.ID)
+	h.invalidateBeverageDetail(r.Context(), out.Beverage.ID)
 	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
@@ -308,7 +311,7 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "DeleteCheckin", err)
 		return
 	}
-	h.invalidateBeverageDetail(bevID)
+	h.invalidateBeverageDetail(r.Context(), bevID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
