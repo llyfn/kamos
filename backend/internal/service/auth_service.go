@@ -315,6 +315,8 @@ func (s *AuthService) googleLoginExistingPath(ctx context.Context, user *domain.
 // googleLoginCreatePath handles the first-login branch. Returns one of
 // ErrUsernameHeld, ErrEmailTaken, ErrValidation (USERNAME_REQUIRED) when
 // the candidate username can't be derived.
+//
+//nolint:gocyclo // first-login branch: username derivation + availability + create + collection seed; tracked for extraction with integration coverage.
 func (s *AuthService) googleLoginCreatePath(ctx context.Context, req domain.GoogleLoginRequest, payload *auth.GooglePayload) (*AuthResult, error) {
 	uname := ""
 	if req.Username != nil && *req.Username != "" {

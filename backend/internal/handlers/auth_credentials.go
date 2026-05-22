@@ -156,6 +156,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 //
 // For first-login the client may provide a `username` to claim, or we derive
 // one from the email local part. If the derived username clashes, we 409.
+//
+//nolint:gocyclo,funlen // OAuth login branches over verify/lookup/derive-username/availability/create paths; tracked for extraction once integration coverage guards the refactor.
 func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	var req domain.GoogleLoginRequest
 	if err := decodeJSON(r, &req); err != nil {

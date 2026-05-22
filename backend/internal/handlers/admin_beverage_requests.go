@@ -101,7 +101,9 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		if h.Caches != nil {
 			h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
 		}
-		cache.NotifyInvalidation(context.Background(), h.DB, h.Log, "brewery:"+body.BreweryID)
+		// WithoutCancel: keep the request trace context but don't let a client
+		// disconnect skip the peer-replica invalidation. See invalidateBeverageDetail.
+		cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "brewery:"+body.BreweryID)
 	}
 	httperr.WriteJSON(w, http.StatusOK, map[string]string{
 		"request_id":  requestID,

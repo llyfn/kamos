@@ -26,6 +26,7 @@ import (
 	"github.com/kamos/api/internal/storage"
 )
 
+//nolint:funlen // process wiring: sequential init of config, pools, observability, server; reads top-to-bottom.
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(log)

@@ -51,7 +51,7 @@ func (h *Handler) AdminModerateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminModerateCheckin", err)
 		return
 	}
-	h.invalidateBeverageDetail(bevID)
+	h.invalidateBeverageDetail(r.Context(), bevID)
 	h.Log.Info("admin moderation",
 		"action", "checkin_delete",
 		"check_in_id", checkinID,
