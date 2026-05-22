@@ -1,6 +1,6 @@
 # KAMOS — Deployment
 
-Local-development and staging deployment notes for the KAMOS MVP. Production hardening (TLS, managed Postgres, S3 photo storage, real SMTP, monitoring) is out of scope for this document and tracked separately.
+Environment-variable reference and local-development notes for KAMOS. The live hosted environment runs on Fly.io (single environment, auto-deployed on merge to `main`); its operational runbook is [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md). Deeper production hardening (managed Postgres with PITR, CDN, log shipping) is tracked in §12.
 
 ## 1. Prerequisites
 
@@ -47,7 +47,7 @@ Copy `backend/.env.example` to `.env` at the repo root (or wherever your runner 
 | `RATE_LIMIT_DISABLED` | Set to `1` to bypass rate limits (local stress / unusual tooling only). Production MUST leave this unset. | optional |
 | `R2_ENDPOINT_URL` | Cloudflare R2 gateway URL (e.g. `https://<account-id>.r2.cloudflarestorage.com`). | optional — empty disables photo uploads |
 | `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | R2 access key pair. | optional |
-| `R2_BUCKET` | Bucket holding check-in photos (e.g. `kamos-checkin-photos-staging`). Empty disables the feature: `POST /v1/uploads/photo-presign` returns `503 STORAGE_DISABLED`. | optional |
+| `R2_BUCKET` | Bucket holding check-in photos (e.g. `kamos-checkin-photos`). Empty disables the feature: `POST /v1/uploads/photo-presign` returns `503 STORAGE_DISABLED`. | optional |
 | `R2_PUBLIC_BASE_URL` | Public URL used in `photo_url` on responses — the bucket's free `https://<bucket>.r2.dev` URL, or a custom domain if configured. | optional |
 | `RESEND_API_KEY` | Resend API key for verification email. Empty → LogMailer (link logged at INFO). | optional |
 | `EMAIL_FROM` | `From:` address used by ResendMailer (e.g. `no-reply@kamos.app`). Required when `RESEND_API_KEY` is set. | optional |
