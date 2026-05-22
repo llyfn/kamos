@@ -18,13 +18,16 @@ type CORSConfig struct {
 // allowlist. Sets the following headers on matched requests:
 //
 //   - Access-Control-Allow-Origin: <echo of matched Origin>
+//   - Access-Control-Allow-Credentials: true
 //   - Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS
 //   - Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-Id
 //   - Access-Control-Max-Age: 600
 //   - Vary: Origin
 //
-// Does NOT set Access-Control-Allow-Credentials yet — cookies arrive in
-// Stage 4 along with the admin HttpOnly-cookie auth shift.
+// Allow-Credentials is required because the admin SPA calls the API with
+// credentials:'include' for its HttpOnly cookie auth (Stage 4). Echoing the
+// exact matched origin (never "*") is what lets a credentialed cross-origin
+// request succeed; the allowlist is exact-match (SEC-002), so this is safe.
 //
 // Unmatched origins fall through with no CORS headers; the browser will
 // fail the request locally. Mount AFTER RequestID/Recover/AccessLog so
@@ -44,6 +47,7 @@ func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
 			origin := r.Header.Get("Origin")
 			if origin != "" && isAllowed(normalized, origin) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Vary", "Origin")
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id")

@@ -345,6 +345,10 @@ func TestCORSAllowlist(t *testing.T) {
 		if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
 			t.Errorf("Allow-Origin echo: got %q want %q", got, "http://localhost:5173")
 		}
+		// Credentialed cross-origin (admin cookie auth) requires this header.
+		if got := rr.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+			t.Errorf("Allow-Credentials: got %q want %q", got, "true")
+		}
 		if got := rr.Header().Get("Vary"); got != "Origin" {
 			t.Errorf("Vary: got %q", got)
 		}
@@ -356,6 +360,9 @@ func TestCORSAllowlist(t *testing.T) {
 		h.ServeHTTP(rr, req)
 		if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "" {
 			t.Errorf("Allow-Origin should not be set for unknown origin, got %q", got)
+		}
+		if got := rr.Header().Get("Access-Control-Allow-Credentials"); got != "" {
+			t.Errorf("Allow-Credentials should not be set for unknown origin, got %q", got)
 		}
 	})
 	t.Run("preflight short-circuit", func(t *testing.T) {
