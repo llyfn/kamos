@@ -1068,6 +1068,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Current operator's identity for the React admin client. Authenticated
+         *     via the kamos_admin_access cookie (Path=/v1/admin); /v1/users/me is
+         *     Bearer-only and unreachable by the cookie. Moderator or admin role.
+         */
+        get: operations["adminMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users": {
         parameters: {
             query?: never;
@@ -3659,6 +3680,28 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             422: components["responses"]["Validation"];
+        };
+    };
+    adminMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description current operator */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     adminListUsers: {

@@ -37,7 +37,7 @@ function setupApi(opts: {
   queue: { items: unknown[]; next_cursor: string | null; has_more: boolean };
 }) {
   apiGet.mockImplementation((path: string) => {
-    if (path === '/v1/users/me') {
+    if (path === '/v1/admin/me') {
       return Promise.resolve({
         data: { role: opts.me?.role ?? 'admin' },
       });
