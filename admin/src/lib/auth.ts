@@ -10,7 +10,10 @@ export function useAuth() {
   const query = useQuery({
     queryKey: ['me'],
     queryFn: async (): Promise<Me> => {
-      const { data, error } = await api.GET('/v1/users/me');
+      // /v1/admin/me, not /v1/users/me: the admin authenticates via the
+      // kamos_admin_access cookie (Path=/v1/admin), and /v1/users/me is
+      // Bearer-only. See backend router + functions/v1 same-origin proxy.
+      const { data, error } = await api.GET('/v1/admin/me');
       if (error || !data) throw new Error('unauthorized');
       return data;
     },

@@ -13,7 +13,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootLayout() {
   // Stage 4 — auth state lives in HttpOnly cookies, so we derive the
-  // "logged in" flag from the /v1/users/me query rather than reading
+  // "logged in" flag from the /v1/admin/me query rather than reading
   // localStorage. The query loading state collapses to "not logged in"
   // for the header rendering — the only consequence is a brief blank-
   // nav flash on first paint, which is fine for an admin tool.

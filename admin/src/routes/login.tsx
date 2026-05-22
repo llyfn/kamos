@@ -23,7 +23,7 @@ function LoginPage() {
       // Confirm the session works + role is appropriate. The admin-login
       // endpoint already role-gates server-side, but we double-check
       // here so the client surfaces the same copy as Stage <4.
-      const { data: me, error: meError } = await api.GET('/v1/users/me');
+      const { data: me, error: meError } = await api.GET('/v1/admin/me');
       if (meError || !me) {
         setError('Could not fetch profile');
         return;

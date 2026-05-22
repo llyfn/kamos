@@ -5,3 +5,6 @@ dist
 *.tsbuildinfo
 .vite
 coverage
+
+# Cloudflare Wrangler local state
+.wrangler/

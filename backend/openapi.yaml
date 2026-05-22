@@ -1610,6 +1610,23 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/Validation" }
 
+  /v1/admin/me:
+    get:
+      tags: [admin]
+      operationId: adminMe
+      description: |
+        Current operator's identity for the React admin client. Authenticated
+        via the kamos_admin_access cookie (Path=/v1/admin); /v1/users/me is
+        Bearer-only and unreachable by the cookie. Moderator or admin role.
+      responses:
+        "200":
+          description: current operator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /v1/admin/users:
     get:
       tags: [admin]

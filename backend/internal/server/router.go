@@ -314,6 +314,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// Moderator-or-admin endpoints — triage, listing, soft-delete of
 			// individual rows.
 			modOrAdmin := roleResolver.RequireRole(domain.RoleModerator, domain.RoleAdmin)
+			// Cookie-authable identity endpoint for the React admin client.
+			// /v1/users/me is Bearer-only (mobile); the admin holds its JWT in
+			// the kamos_admin_access cookie (Path=/v1/admin), so the SPA reads
+			// its own identity here. Reuses GetMe — AdminAuth populates the same
+			// context user as Auth.
+			r.With(modOrAdmin).Get("/me", h.GetMe)
 			r.With(modOrAdmin).Get("/beverage-requests", h.AdminListBeverageRequests)
 			r.With(modOrAdmin).Post("/beverage-requests/{id}/reject", h.AdminRejectBeverageRequest)
 			r.With(modOrAdmin).Post("/check-ins/{id}/moderate", h.AdminModerateCheckin)
