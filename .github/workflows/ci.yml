@@ -67,9 +67,11 @@ jobs:
         run: go vet ./...
       # golangci-lint: 184 outstanding findings tracked for Stage 8 cleanup
       # (contextcheck, noctx, revive, gosec, staticcheck). Remains advisory
-      # until that PR lands.
+      # until that PR lands. golangci-lint-action@v7 is required because
+      # the binary pinned at v2.12.2 isn't supported by v6 of the action.
       - name: golangci-lint (advisory until Stage 8)
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
+        continue-on-error: true
         with:
           version: v2.12.2
           working-directory: backend
