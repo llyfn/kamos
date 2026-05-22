@@ -52,10 +52,13 @@ Cross-references:
    Get the `kamos-api` DSN and OTLP gateway URL + Basic auth header.
 
 7. **GitHub `production` environment**:
-   Repo → Settings → Environments → `production` → add secrets:
-   - `FLY_API_TOKEN` (from `flyctl auth token`)
-   - `DATABASE_URL` — admin DSN with `sslmode=require`
-   - `GITHUB_TOKEN` already auto-provided for GHCR
+   Repo → Settings → Environments → `production` → add secret:
+   - `FLY_API_TOKEN` — a deploy token for the `kamos` app
+     (`flyctl tokens create deploy -a kamos`)
+
+   That's the only secret CD needs: it builds on Fly's remote builder
+   (no external registry) and doesn't touch the DB (migrations are manual,
+   §2).
 
 ## 2. Initial schema + secrets
 
@@ -116,8 +119,9 @@ gh workflow run deploy.yml --ref main
 gh run watch
 ```
 
-This builds + pushes `ghcr.io/<owner>/kamos-api:<sha>`, calls
-`flyctl deploy --image`, stages `APP_VERSION`, then runs a lightweight
+This builds the image on Fly's remote builder (pushed to `registry.fly.io`,
+authed natively by `FLY_API_TOKEN` — no external registry), runs
+`flyctl deploy --remote-only`, stages `APP_VERSION`, then runs a lightweight
 liveness check (`/healthz` + `/v1/categories`) against `https://kamos.fly.dev`.
 It does **not** run migrations (see §2) — apply those manually beforehand.
 
@@ -151,14 +155,10 @@ If only 1 machine is running, increase: `flyctl scale count server=2 -a kamos`.
 
 ```sh
 flyctl releases list -a kamos
-# Roll the deployment back to a previous Fly release (binary only — does
-# NOT roll back migrations; KAMOS migrations are append-only by policy).
+# Roll back to a previous Fly release (binary only — does NOT roll back
+# migrations; KAMOS migrations are append-only by policy). Fly keeps the
+# prior images in registry.fly.io, so this restores the exact artifact.
 flyctl releases rollback <version> -a kamos
-
-# Or re-deploy a specific GHCR tag:
-flyctl deploy -a kamos \
-  --image ghcr.io/<owner>/kamos-api:<previous-sha> \
-  --strategy rolling
 ```
 
 **Migrations are not rolled back.** If a deploy introduced a schema change

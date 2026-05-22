@@ -72,38 +72,28 @@ Every change must pass the matrix for the layers it touches.
 |---|---|
 | Migrations | `psql` apply against a fresh test DB; verify with `\d+`. Append-only. |
 | Go (`backend/`) | `go build ./...` and `go test ./... -short`. Integration suite (`go test -tags=integration`) if behaviour-affecting. |
-| Flutter (`frontend/`) | `flutter analyze --no-fatal-infos --no-fatal-warnings` and `flutter test`. |
+| Flutter (`frontend/`) | `flutter analyze` (clean — zero findings) and `flutter test`. |
 | OpenAPI (`backend/openapi.yaml`) | Spec must validate; response shapes match handlers. Re-run admin `npm run codegen` if shapes changed. |
 | i18n (`frontend/l10n/*.arb`) | All three locales (`en`, `ja`, `ko`) must have matching keys. |
-| Admin (`admin/`) | `npm run build` (TypeScript + Vite). `npx biome check src/` is advisory until Stage 8. |
+| Admin (`admin/`) | `npm run build` (TypeScript + Vite) and `npx biome check src/` (clean). |
 | Multi-layer | Add an integration check; consider invoking the `qa-inspect` skill. |
 
 If any verification fails, the change is not done. Report what failed.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every PR to `main` and every push to `main`. Jobs:
+`.github/workflows/ci.yml` runs on every PR to `main` and every push to `main`. A `paths-filter` (`changes`) job skips work irrelevant to the diff; on `main` everything runs. **All gates below are required** — a red job blocks merge (and blocks the deploy, which is gated on CI success).
 
-1. **`backend-go`** — `go build` + `go vet` + `golangci-lint` (advisory) + `go test -short`.
-2. **`frontend-flutter`** — `flutter pub get` + `flutter analyze` (no-fatal) + `flutter test`.
-3. **`sql-lint`** — `sqlfluff lint migrations/` (advisory).
-4. **`admin-build`** — `npm ci` + `biome check` (advisory) + `npm run build`.
-5. **`integration-smoke`** — Docker Postgres + `make db-migrate` + `scripts/smoke.sh` (advisory, `main` only).
+1. **`backend-go`** — `go build` + `go vet` + `golangci-lint` + `go test -short`.
+2. **`frontend-flutter`** — `flutter pub get` + `flutter analyze` + `flutter test`.
+3. **`sql-lint`** — `sqlfluff lint migrations/`.
+4. **`tokens-codegen`** — regenerate `admin/src/lib/tokens.ts` from `design/tokens.json` and fail on drift.
+5. **`admin-build`** — `npm ci` + `biome check src/` + `npm run build`.
+6. **`integration-test`** — Postgres 18 service + `make db-migrate` + `go test -tags=integration ./tests/integration/...` (the API runs in-process via `httptest`; seeds/truncates its own data). Runs on backend/migrations changes and on `main`.
 
-A `paths-filter` step skips jobs that aren't relevant to the diff. On `main` everything runs.
+`paths-filter` calls the GitHub PR API on `pull_request` events, so the workflow grants `permissions: pull-requests: read` — without it, every PR fails the `changes` job.
 
-### Advisory vs required (Stage 2)
-
-The following are intentionally **advisory** in CI for now:
-
-- `go vet` findings — three pre-existing test-helper warnings; Stage 8 cleans up.
-- `golangci-lint` findings — Stage 8 of the refactor plan owns the cleanup sweep.
-- `flutter analyze` strict-lint findings — same, demoted to `info` severity in `frontend/analysis_options.yaml`.
-- `biome check` warnings/errors on the admin client — Stage 8 cleanup.
-- `sqlfluff` findings on migrations — purely stylistic.
-- `integration-smoke` — runs on `main` only; environment-dependent.
-
-A future PR (Stage 8) will flip these from advisory to required once the existing findings are resolved. The list of currently-demoted strict Flutter lints is documented inline in `frontend/analysis_options.yaml`.
+The previous "advisory until Stage 8" backlog is **cleared**: every linter (golangci-lint, flutter analyze, biome, sqlfluff) is clean and required. The old `integration-smoke` job (a curl `scripts/smoke.sh` run that needed a pre-seeded DB) was replaced by the self-contained Go `integration-test` job above; `scripts/smoke.sh` remains a manual `make smoke` tool.
 
 ## Design tokens
 
@@ -196,7 +186,7 @@ Before requesting review:
 
 - [ ] Link to the relevant SPEC section (or note that the change is internal).
 - [ ] Run the verification matrix for every layer touched.
-- [ ] CI is green (or every red job is documented as advisory and pre-existing).
+- [ ] CI is green — every gate is required.
 - [ ] No secrets in the diff (`.env`, credentials, API keys).
 - [ ] Commit messages match the Conventional Commits format.
 - [ ] If the change is multi-layer, add or update the relevant integration tests.
