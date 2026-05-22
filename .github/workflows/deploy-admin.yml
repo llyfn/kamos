@@ -43,7 +43,9 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          # Wrangler v4 requires Node >= 22; use the current Active LTS (24).
+          # (The admin-build CI job still runs on 20.)
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: admin/package-lock.json
 
