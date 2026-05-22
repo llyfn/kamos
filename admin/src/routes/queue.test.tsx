@@ -1,7 +1,7 @@
+import { ToastProvider } from '@/components/toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '@/components/toast';
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -81,9 +81,7 @@ describe('/queue', () => {
     // Two Approve buttons (one per row).
     expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(2);
     await waitFor(() =>
-      expect(
-        apiGet.mock.calls.some((c) => c[0] === '/v1/admin/beverage-requests'),
-      ).toBe(true),
+      expect(apiGet.mock.calls.some((c) => c[0] === '/v1/admin/beverage-requests')).toBe(true),
     );
   });
 

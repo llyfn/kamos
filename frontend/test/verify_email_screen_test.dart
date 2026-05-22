@@ -2,7 +2,6 @@
 // Covers render → loading → mocked-success path. Uses ProviderScope.overrides
 // to swap in a fake AuthRepository.
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,9 +25,6 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   // Everything else is unused by this test.
-  @override
-  Dio get dio => throw UnimplementedError();
-
   @override
   SecureStorageService get storage => throw UnimplementedError();
 

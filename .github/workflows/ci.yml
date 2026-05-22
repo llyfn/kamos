@@ -65,11 +65,12 @@ jobs:
         run: go build ./...
       - name: go vet
         run: go vet ./...
-      # golangci-lint: 184 outstanding findings tracked for Stage 8 cleanup
-      # (contextcheck, noctx, revive, gosec, staticcheck). Remains advisory
-      # until that PR lands. golangci-lint-action@v7 is required because
-      # the binary pinned at v2.12.2 isn't supported by v6 of the action.
-      - name: golangci-lint (advisory until Stage 8)
+      # golangci-lint: ~160 outstanding behavioral findings (contextcheck,
+      # noctx, revive, gocyclo) require real refactoring across many files.
+      # Smaller categories (gosec, errcheck, staticcheck, gocritic, unparam,
+      # ST1018, SA4001) were addressed inline; the remaining work is its
+      # own focused PR.
+      - name: golangci-lint (advisory)
         uses: golangci/golangci-lint-action@v7
         continue-on-error: true
         with:
@@ -95,22 +96,16 @@ jobs:
           cache: true
       - name: flutter pub get
         run: flutter pub get
-      # flutter analyze: 38 outstanding infos + warnings (directives_ordering,
-      # inference_failure_*, etc.) tracked for Stage 8 cleanup. Remains
-      # advisory until that PR lands.
-      - name: flutter analyze (advisory until Stage 8)
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: flutter analyze
+        run: flutter analyze
       - name: flutter test
         run: flutter test
 
-  # SQL lint: existing migrations have CP03/LT02 noise tracked for Stage 8.
-  # Remains advisory until that cleanup PR.
   sql-lint:
-    name: SQL Lint (advisory until Stage 8)
+    name: SQL Lint
     needs: changes
     if: needs.changes.outputs.migrations == 'true' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -155,9 +150,8 @@ jobs:
           cache-dependency-path: admin/package-lock.json
       - name: npm ci
         run: npm ci
-      # biome: 24 outstanding import-sort errors tracked for Stage 8.
-      - name: biome check (advisory until Stage 8)
-        run: npx biome check src/ || true
+      - name: biome check
+        run: npx biome check src/
       - name: npm run build
         run: npm run build
 

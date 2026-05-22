@@ -13,9 +13,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage_request.dart';
-import '../../../core/api/api_exceptions.dart';
 
 /// Wraps the `beverage-requests` tag of [KamosApi] (submit, queue
 /// listing) and lifts `DioException` into the

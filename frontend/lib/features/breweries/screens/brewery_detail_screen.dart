@@ -12,8 +12,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_label.dart';
-import '../../../shared/widgets/state_views.dart';
 import '../../../shared/widgets/stars_display.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../providers/brewery_providers.dart';
 
 class BreweryDetailScreen extends ConsumerWidget {

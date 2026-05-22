@@ -18,15 +18,15 @@
 BEGIN;
 
 ALTER TABLE comments
-  DROP CONSTRAINT comments_user_id_fkey;
+DROP CONSTRAINT comments_user_id_fkey;
 
 ALTER TABLE comments
-  ALTER COLUMN user_id DROP NOT NULL;
+ALTER COLUMN user_id DROP NOT NULL;
 
 ALTER TABLE comments
-  ADD CONSTRAINT comments_user_id_fkey
-  FOREIGN KEY (user_id)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
+ADD CONSTRAINT comments_user_id_fkey
+FOREIGN KEY (user_id)
+REFERENCES users (id)
+ON DELETE SET NULL;
 
 COMMIT;

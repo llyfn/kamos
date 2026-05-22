@@ -33,9 +33,7 @@ describe('<RoleGuard />', () => {
     apiGet.mockResolvedValueOnce({ data: { role: 'user' } });
     renderGuard(['admin', 'moderator']);
     expect(await screen.findByText('Insufficient privileges')).toBeInTheDocument();
-    expect(
-      screen.getByText(/admin or moderator role required/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/admin or moderator role required/i)).toBeInTheDocument();
     expect(screen.queryByText('protected child')).not.toBeInTheDocument();
   });
 

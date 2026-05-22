@@ -82,8 +82,8 @@ void main() {
     });
 
     test('threads cursor into the query string', () async {
-      final adapter = _Adapter(status: 200, body: const {
-        'items': [],
+      final adapter = _Adapter(status: 200, body: const <String, Object?>{
+        'items': <Map<String, dynamic>>[],
         'has_more': false,
       });
       final repo = CommentRepository(_dio(adapter));
@@ -94,8 +94,8 @@ void main() {
     });
 
     test('empty page tail is parsed as hasMore=false', () async {
-      final adapter = _Adapter(status: 200, body: const {
-        'items': [],
+      final adapter = _Adapter(status: 200, body: const <String, Object?>{
+        'items': <Map<String, dynamic>>[],
         'has_more': false,
       });
       final repo = CommentRepository(_dio(adapter));
@@ -132,7 +132,7 @@ void main() {
 
     test('>500 chars throws CommentTooLongException without a request',
         () async {
-      final adapter = _Adapter(status: 200, body: const {});
+      final adapter = _Adapter(status: 200, body: const <String, Object?>{});
       final repo = CommentRepository(_dio(adapter));
       final tooLong = List<String>.filled(501, 'x').join();
 
@@ -146,7 +146,7 @@ void main() {
     test(
         'body with a control character throws CommentInvalidBodyException '
         'without a request', () async {
-      final adapter = _Adapter(status: 200, body: const {});
+      final adapter = _Adapter(status: 200, body: const <String, Object?>{});
       final repo = CommentRepository(_dio(adapter));
 
       await expectLater(

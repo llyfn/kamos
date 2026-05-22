@@ -46,7 +46,7 @@ BEGIN;
 -- so a forward seek `WHERE (check_in_count, created_at, id) < ($1, $2, $3)`
 -- can walk the index in order.
 CREATE INDEX idx_beverages_popularity_keyset
-  ON beverages (check_in_count DESC, created_at DESC, id DESC);
+ON beverages (check_in_count DESC, created_at DESC, id DESC);
 
 -- ---------------------------------------------------------------------------
 -- 2. Follows accepted keyset.
@@ -58,8 +58,8 @@ CREATE INDEX idx_beverages_popularity_keyset
 -- keeps the index lean — pending rows are rare and read by a
 -- separate inbox-specific path.
 CREATE INDEX idx_follows_followed_accepted_keyset
-  ON follows (followed_id, accepted_at DESC, follower_id DESC)
-  WHERE status = 'accepted';
+ON follows (followed_id, accepted_at DESC, follower_id DESC)
+WHERE status = 'accepted';
 
 -- ---------------------------------------------------------------------------
 -- 3. Drop the unused global check-in index.

@@ -104,8 +104,8 @@ void main() {
     });
 
     test('forwards cursor as a query parameter when provided', () async {
-      final adapter = _Adapter(body: const {
-        'items': [],
+      final adapter = _Adapter(body: const <String, Object?>{
+        'items': <Map<String, dynamic>>[],
         'next_cursor': null,
         'has_more': false,
       });

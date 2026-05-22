@@ -16,6 +16,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
+      // biome-ignore lint/a11y/useSemanticElements: native <dialog> would change focus/scroll semantics; revisit when this modal pattern is consolidated
       role="dialog"
       aria-modal="true"
     >

@@ -199,7 +199,8 @@ func (rt rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	// Rewrite scheme+host to the test server. Path + query are preserved
 	// so the client's own URL assembly is what gets exercised.
 	clone := *req
-	clone.URL = &(*req.URL)
+	urlCopy := *req.URL
+	clone.URL = &urlCopy
 	clone.URL.Scheme = "http"
 	idx := strings.Index(rt.base, "://")
 	if idx >= 0 {

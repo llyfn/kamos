@@ -1,13 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
-import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
 import { useModerateComment } from '@/hooks/admin/mutations';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 
 type AdminComment = components['schemas']['AdminComment'];
 

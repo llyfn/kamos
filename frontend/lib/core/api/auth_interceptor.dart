@@ -26,9 +26,9 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
+import '../storage/secure_storage.dart';
 import 'api_exception.dart';
 import 'api_toast.dart';
-import '../storage/secure_storage.dart';
 
 /// Callback type for performing the refresh exchange. The interceptor does
 /// not depend on `AuthRepository` directly — `api_client.dart` injects a

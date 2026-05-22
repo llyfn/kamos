@@ -1,3 +1,9 @@
+// The test fixtures here deliberately embed raw bidi-override codepoints
+// (U+202A, U+202E, U+2066, U+2069) to verify that SanitizeText rejects them.
+// staticcheck's ST1018 suggests escape sequences for readability, but the
+// whole point of these tests is that the raw bytes hit the sanitizer.
+//
+//nolint:staticcheck // ST1018: intentional raw bidi codepoints in test fixtures
 package domain
 
 import (

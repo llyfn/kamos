@@ -16,36 +16,36 @@
 BEGIN;
 
 CREATE TABLE comments (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  check_in_id  UUID NOT NULL REFERENCES check_ins(id) ON DELETE CASCADE,
-  user_id      UUID NOT NULL REFERENCES users(id),
-  body         TEXT NOT NULL,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at   TIMESTAMPTZ,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  check_in_id UUID NOT NULL REFERENCES check_ins (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users (id),
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at TIMESTAMPTZ,
 
   CONSTRAINT comments_body_length
-    CHECK (char_length(body) BETWEEN 1 AND 500),
+  CHECK (char_length(body) BETWEEN 1 AND 500),
 
   -- Reject NUL byte + all C0 control chars except tab (0x09) and LF (0x0a).
   -- Same defensive shape as the venue value-constraint pattern from
   -- migration 006. The application validator (domain.CreateCommentRequest)
   -- is the primary line of defense; this is the DB-level backstop.
   CONSTRAINT comments_body_no_control
-    CHECK (body !~ E'[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]')
+  CHECK (body !~ E'[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]')
 );
 
 -- Most-recent-first list by (check_in, created_at, id); cursor pagination
 -- pattern matches feed/profile keyset indexes from 001. Partial filter
 -- keeps the index lean by skipping soft-deleted rows.
 CREATE INDEX idx_comments_checkin_recent
-  ON comments (check_in_id, created_at DESC, id DESC)
-  WHERE deleted_at IS NULL;
+ON comments (check_in_id, created_at DESC, id DESC)
+WHERE deleted_at IS NULL;
 
 -- Per-author audit (rare: admin queries / abuse triage). Not partial so it
 -- covers soft-deleted rows too — they're the ones an admin most often wants
 -- to inspect.
 CREATE INDEX idx_comments_user_created
-  ON comments (user_id, created_at DESC);
+ON comments (user_id, created_at DESC);
 
 -- Note: we intentionally do NOT add a counter-cache column on check_ins.
 -- The feed-projection query in repository/feed.go uses a correlated

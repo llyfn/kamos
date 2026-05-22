@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @theme {
   --color-bg: #f7f7f5;
@@ -7,7 +7,7 @@
   --color-fg: #1a1a1a;
   --color-muted: #6b6b6b;
   --color-accent: #7c2d12;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
 }
 
 html,

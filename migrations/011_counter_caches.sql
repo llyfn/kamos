@@ -29,14 +29,14 @@ BEGIN;
 --    grief.
 -- ---------------------------------------------------------------------------
 ALTER TABLE check_ins
-  ADD COLUMN toast_count   INT NOT NULL DEFAULT 0,
-  ADD COLUMN comment_count INT NOT NULL DEFAULT 0;
+ADD COLUMN toast_count INT NOT NULL DEFAULT 0,
+ADD COLUMN comment_count INT NOT NULL DEFAULT 0;
 
 ALTER TABLE breweries
-  ADD COLUMN beverage_count INT NOT NULL DEFAULT 0;
+ADD COLUMN beverage_count INT NOT NULL DEFAULT 0;
 
 ALTER TABLE collections
-  ADD COLUMN entry_count INT NOT NULL DEFAULT 0;
+ADD COLUMN entry_count INT NOT NULL DEFAULT 0;
 
 -- ---------------------------------------------------------------------------
 -- 2. Sanity CHECK constraints — counts can never go negative. If a future
@@ -45,14 +45,14 @@ ALTER TABLE collections
 --    silently wrong feed count weeks later.
 -- ---------------------------------------------------------------------------
 ALTER TABLE check_ins
-  ADD CONSTRAINT check_ins_toast_count_nonneg   CHECK (toast_count   >= 0),
-  ADD CONSTRAINT check_ins_comment_count_nonneg CHECK (comment_count >= 0);
+ADD CONSTRAINT check_ins_toast_count_nonneg CHECK (toast_count >= 0),
+ADD CONSTRAINT check_ins_comment_count_nonneg CHECK (comment_count >= 0);
 
 ALTER TABLE breweries
-  ADD CONSTRAINT breweries_beverage_count_nonneg CHECK (beverage_count >= 0);
+ADD CONSTRAINT breweries_beverage_count_nonneg CHECK (beverage_count >= 0);
 
 ALTER TABLE collections
-  ADD CONSTRAINT collections_entry_count_nonneg CHECK (entry_count >= 0);
+ADD CONSTRAINT collections_entry_count_nonneg CHECK (entry_count >= 0);
 
 -- ---------------------------------------------------------------------------
 -- 3. Backfill each counter from the source-of-truth aggregate. One UPDATE
@@ -65,31 +65,37 @@ ALTER TABLE collections
 UPDATE check_ins ci
 SET toast_count = sub.cnt
 FROM (
-  SELECT check_in_id, COUNT(*)::int AS cnt
+  SELECT
+    check_in_id,
+    COUNT(*)::INT AS cnt
   FROM toasts
   GROUP BY check_in_id
-) sub
+) AS sub
 WHERE ci.id = sub.check_in_id;
 
 -- comment_count: COUNT of live (non-soft-deleted) comments per check-in.
 UPDATE check_ins ci
 SET comment_count = sub.cnt
 FROM (
-  SELECT check_in_id, COUNT(*)::int AS cnt
+  SELECT
+    check_in_id,
+    COUNT(*)::INT AS cnt
   FROM comments
   WHERE deleted_at IS NULL
   GROUP BY check_in_id
-) sub
+) AS sub
 WHERE ci.id = sub.check_in_id;
 
 -- beverage_count: COUNT of beverages per brewery.
 UPDATE breweries br
 SET beverage_count = sub.cnt
 FROM (
-  SELECT brewery_id, COUNT(*)::int AS cnt
+  SELECT
+    brewery_id,
+    COUNT(*)::INT AS cnt
   FROM beverages
   GROUP BY brewery_id
-) sub
+) AS sub
 WHERE br.id = sub.brewery_id;
 
 -- entry_count: COUNT of collection_entries per live collection.
@@ -99,10 +105,12 @@ WHERE br.id = sub.brewery_id;
 UPDATE collections c
 SET entry_count = sub.cnt
 FROM (
-  SELECT collection_id, COUNT(*)::int AS cnt
+  SELECT
+    collection_id,
+    COUNT(*)::INT AS cnt
   FROM collection_entries
   GROUP BY collection_id
-) sub
+) AS sub
 WHERE c.id = sub.collection_id;
 
 -- ---------------------------------------------------------------------------
@@ -112,7 +120,7 @@ WHERE c.id = sub.collection_id;
 -- ---------------------------------------------------------------------------
 
 -- toast_count: ±1 on INSERT/DELETE of a toasts row.
-CREATE OR REPLACE FUNCTION trg_toasts_count_sync()
+CREATE OR REPLACE FUNCTION TRG_TOASTS_COUNT_SYNC()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -129,15 +137,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_toasts_count
-  AFTER INSERT OR DELETE ON toasts
-  FOR EACH ROW EXECUTE FUNCTION trg_toasts_count_sync();
+AFTER INSERT OR DELETE ON toasts
+FOR EACH ROW EXECUTE FUNCTION TRG_TOASTS_COUNT_SYNC();
 
 -- comment_count: ±1 on INSERT/DELETE; also tracks UPDATE of deleted_at
 -- so that soft-delete decrements and un-delete (admin restore) re-increments.
 -- The trigger fires AFTER UPDATE OF deleted_at — Postgres optimizes column-
 -- scoped UPDATE triggers so an unrelated body edit (we don't currently
 -- allow that, but defensive) doesn't pay the trigger cost.
-CREATE OR REPLACE FUNCTION trg_comments_count_sync()
+CREATE OR REPLACE FUNCTION TRG_COMMENTS_COUNT_SYNC()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -169,15 +177,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_comments_count
-  AFTER INSERT OR DELETE ON comments
-  FOR EACH ROW EXECUTE FUNCTION trg_comments_count_sync();
+AFTER INSERT OR DELETE ON comments
+FOR EACH ROW EXECUTE FUNCTION TRG_COMMENTS_COUNT_SYNC();
 
 CREATE TRIGGER trg_comments_count_update
-  AFTER UPDATE OF deleted_at ON comments
-  FOR EACH ROW EXECUTE FUNCTION trg_comments_count_sync();
+AFTER UPDATE OF deleted_at ON comments
+FOR EACH ROW EXECUTE FUNCTION TRG_COMMENTS_COUNT_SYNC();
 
 -- beverage_count: ±1 on INSERT/DELETE of a beverages row.
-CREATE OR REPLACE FUNCTION trg_beverages_count_sync()
+CREATE OR REPLACE FUNCTION TRG_BEVERAGES_COUNT_SYNC()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -194,11 +202,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_beverages_count
-  AFTER INSERT OR DELETE ON beverages
-  FOR EACH ROW EXECUTE FUNCTION trg_beverages_count_sync();
+AFTER INSERT OR DELETE ON beverages
+FOR EACH ROW EXECUTE FUNCTION TRG_BEVERAGES_COUNT_SYNC();
 
 -- entry_count: ±1 on INSERT/DELETE of a collection_entries row.
-CREATE OR REPLACE FUNCTION trg_collection_entries_count_sync()
+CREATE OR REPLACE FUNCTION TRG_COLLECTION_ENTRIES_COUNT_SYNC()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -215,7 +223,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_collection_entries_count
-  AFTER INSERT OR DELETE ON collection_entries
-  FOR EACH ROW EXECUTE FUNCTION trg_collection_entries_count_sync();
+AFTER INSERT OR DELETE ON collection_entries
+FOR EACH ROW EXECUTE FUNCTION TRG_COLLECTION_ENTRIES_COUNT_SYNC();
 
 COMMIT;

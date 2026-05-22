@@ -23,14 +23,14 @@ BEGIN;
 CREATE TYPE collection_visibility AS ENUM ('private', 'public');
 
 ALTER TABLE collections
-  ADD COLUMN visibility collection_visibility NOT NULL DEFAULT 'private';
+ADD COLUMN visibility collection_visibility NOT NULL DEFAULT 'private';
 
 -- Discovery feed: most-recent-first cursor on (created_at, id), partial on
 -- the discoverable rows only. Mirrors the same shape as
 -- idx_check_ins_created_global (migration 001).
 CREATE INDEX idx_collections_public_recent
-  ON collections (created_at DESC, id DESC)
-  WHERE visibility = 'public' AND deleted_at IS NULL;
+ON collections (created_at DESC, id DESC)
+WHERE visibility = 'public' AND deleted_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- Moderation log — every admin moderation action writes a row.
@@ -64,25 +64,25 @@ CREATE TYPE moderation_action_type AS ENUM (
 );
 
 CREATE TABLE moderation_log (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  moderator_id    UUID REFERENCES users(id) ON DELETE SET NULL,
-  target_type     moderation_target_type NOT NULL,
-  target_id       UUID NOT NULL,
-  action          moderation_action_type NOT NULL,
-  notes           TEXT,
-  metadata        JSONB,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  moderator_id uuid REFERENCES users (id) ON DELETE SET NULL,
+  target_type moderation_target_type NOT NULL,
+  target_id uuid NOT NULL,
+  action moderation_action_type NOT NULL,
+  notes text,
+  metadata jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
 
   CONSTRAINT moderation_log_notes_length
-    CHECK (notes IS NULL OR char_length(notes) <= 1000)
+  CHECK (notes IS NULL OR char_length(notes) <= 1000)
 );
 
 -- "Show me every action ever taken on this row" — admin UI surface.
 CREATE INDEX idx_moderation_log_target
-  ON moderation_log (target_type, target_id, created_at DESC);
+ON moderation_log (target_type, target_id, created_at DESC);
 
 -- "Show me everything this moderator did" — audit / abuse-of-power surface.
 CREATE INDEX idx_moderation_log_moderator
-  ON moderation_log (moderator_id, created_at DESC);
+ON moderation_log (moderator_id, created_at DESC);
 
 COMMIT;

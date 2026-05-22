@@ -18,20 +18,20 @@ BEGIN;
 CREATE TYPE photo_upload_status AS ENUM ('pending', 'uploaded', 'attached', 'orphaned');
 
 CREATE TABLE photo_uploads (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  blob_key        TEXT NOT NULL UNIQUE,
-  content_type    TEXT NOT NULL,
-  byte_size       INTEGER NOT NULL CHECK (byte_size > 0 AND byte_size <= 10 * 1024 * 1024),
-  status          photo_upload_status NOT NULL DEFAULT 'pending',
-  check_in_id     UUID REFERENCES check_ins(id) ON DELETE SET NULL,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  attached_at     TIMESTAMPTZ,
-  orphaned_at     TIMESTAMPTZ
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  blob_key text NOT NULL UNIQUE,
+  content_type text NOT NULL,
+  byte_size integer NOT NULL CHECK (byte_size > 0 AND byte_size <= 10 * 1024 * 1024),
+  status photo_upload_status NOT NULL DEFAULT 'pending',
+  check_in_id uuid REFERENCES check_ins (id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  attached_at timestamptz,
+  orphaned_at timestamptz
 );
 
-CREATE INDEX idx_photo_uploads_user ON photo_uploads(user_id);
-CREATE INDEX idx_photo_uploads_orphan_candidates ON photo_uploads(created_at)
-  WHERE status IN ('pending', 'uploaded');
+CREATE INDEX idx_photo_uploads_user ON photo_uploads (user_id);
+CREATE INDEX idx_photo_uploads_orphan_candidates ON photo_uploads (created_at)
+WHERE status IN ('pending', 'uploaded');
 
 COMMIT;

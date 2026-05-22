@@ -84,7 +84,7 @@ func TestETagIfNoneMatchReturns304(t *testing.T) {
 }
 
 func TestETagChangesWhenBodyChanges(t *testing.T) {
-	var body string = `{"v":1}`
+	var body = `{"v":1}`
 	h := ETag(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(body))
 	}))
@@ -208,7 +208,7 @@ func TestNoStoreThenCacheControlOverrides(t *testing.T) {
 func TestCacheControlSurvives304(t *testing.T) {
 	value := "public, max-age=60"
 	h := CacheControl(value)(ETag(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"id":%d}`, 42)))
+		_, _ = fmt.Fprintf(w, `{"id":%d}`, 42)
 	})))
 	srv := httptest.NewServer(h)
 	defer srv.Close()
