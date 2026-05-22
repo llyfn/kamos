@@ -8,7 +8,7 @@ requirements warrant it.
 Cross-references:
 - [`DEPLOYMENT.md`](../../DEPLOYMENT.md) — env-var reference + feature-flag list.
 - [`ARCHITECTURE.md`](../../ARCHITECTURE.md) — process topology, multi-replica cache invalidation.
-- [`fly.toml`](../../fly.toml) — committed app definition (two processes, NRT).
+- [`backend/fly.toml`](../../backend/fly.toml) — committed app definition (two processes, NRT). Lives inside `backend/` because that's the Dockerfile's build context.
 - [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) — the CD pipeline.
 
 ## 1. Provision (one-time, manual)

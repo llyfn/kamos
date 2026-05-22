@@ -42,7 +42,7 @@ A single hosted environment auto-deploys on every merge to `main`. There is no d
 | Photos | Cloudflare R2 bucket `kamos-checkin-photos` |
 | Image registry | `ghcr.io/<owner>/kamos-api:<sha>` + `:latest` |
 
-CI: `.github/workflows/ci.yml` (`go vet` required; lint/style gates advisory pending Stage 8). CD: `.github/workflows/deploy.yml` (workflow_run on CI green → build → push GHCR → migrate → `flyctl deploy --image` → post-deploy smoke against the live API). App config: `fly.toml`. Runbook: `docs/runbooks/deploy.md`.
+CI: `.github/workflows/ci.yml` (`go vet` required; lint/style gates advisory pending Stage 8). CD: `.github/workflows/deploy.yml` (workflow_run on CI green → build → push GHCR → migrate → `flyctl deploy --image` → post-deploy smoke against the live API). App config: `backend/fly.toml`. Runbook: `docs/runbooks/deploy.md`.
 
 Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://api.kamos.app`. TestFlight / Play Internal pipelines are not in place yet.
 
