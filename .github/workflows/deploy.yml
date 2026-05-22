@@ -61,9 +61,8 @@ jobs:
 
       # Lightweight liveness check. The comprehensive integration suite already
       # ran pre-deploy in ci.yml; here we only confirm the new release boots,
-      # reaches the DB, and serves. Hits the always-available Fly host, not
-      # api.kamos.app (whose cert is "Not verified" pending external DNS), so
-      # the gate isn't coupled to DNS. Switch BASE once certs show verified.
+      # reaches the DB, and serves. Uses the Fly-provided host (no custom
+      # domain — see docs/runbooks/deploy.md).
       - name: Post-deploy liveness
         env:
           BASE: https://kamos.fly.dev
