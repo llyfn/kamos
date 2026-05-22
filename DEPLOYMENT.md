@@ -193,7 +193,7 @@ Phase 0–7 of the post-MVP roadmap shipped end-to-end. Every external-vendor in
 | Verification + change-email outbound mail (Resend) | 3 | `RESEND_API_KEY` + `EMAIL_FROM` | LogMailer logs the rendered template + link at INFO. Cookbook §C3. |
 | OTel + Sentry (Go + Flutter) | 1 | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` + `SENTRY_DSN` | SDKs never initialize; no spans/events emitted. Cookbook §C4. |
 | Venue tag (Foursquare Places API) | 4 | `FOURSQUARE_API_KEY` | `GET /v1/venues/search` → `503 VENUE_SEARCH_DISABLED`. Check-in `venue.foursquare_id` upsert works without the key. Cookbook §C5. |
-| Admin web client hosting (Cloudflare Pages) | 5 | Pages project + `VITE_API_BASE_URL` | Admin client compiles locally; deployment uses any static host. Cookbook §C6. |
+| Admin web client hosting (Cloudflare Pages) | 5 | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (GitHub `production` env) | Admin client still compiles + runs locally; CI-gated `deploy-admin.yml` pushes `dist/` to the `kamos-admin` Pages project via Wrangler. Cookbook §C6. |
 
 The QA punch lists per phase live at `docs/history/qa/qa_report_phase{0..7}*.md` (per-layer + final). The historical MVP report is `docs/history/qa/qa_report_final.md`.
 
@@ -266,7 +266,7 @@ Vendor credentials still owed by the operator (flip-the-switch only):
 - [ ] Resend API key + verified `EMAIL_FROM` domain — cookbook §C3
 - [ ] Sentry DSNs + OTLP endpoint/headers — cookbook §C4
 - [ ] Foursquare Places API key — cookbook §C5
-- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6 — wired by [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) §1.4
+- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6 — wired by [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) §1.4 + §8; deployed by [`.github/workflows/deploy-admin.yml`](.github/workflows/deploy-admin.yml) (Wrangler, CI-gated). Operator owes `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in the GitHub `production` environment.
 
 Infra outside the codebase:
 
