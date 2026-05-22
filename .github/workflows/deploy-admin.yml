@@ -1,0 +1,75 @@
+name: Deploy Admin
+
+# Auto-deploys the admin SPA to Cloudflare Pages after CI passes.
+# Builds admin/ (Vite bakes in admin/.env.production -> VITE_API_BASE_URL),
+# then uploads dist/ with Wrangler (Direct Upload). Symmetric with deploy.yml.
+#
+# The Pages project name is pinned to `kamos-admin`, so the production URL is
+# the predictable https://kamos-admin.pages.dev. Set the API's
+# CORS_ALLOWED_ORIGINS to include that exact origin (docs/runbooks/deploy.md §8).
+#
+# Required GitHub `production` environment secrets:
+#   CLOUDFLARE_API_TOKEN  — token scoped "Account > Cloudflare Pages: Edit"
+#   CLOUDFLARE_ACCOUNT_ID — the Cloudflare account ID
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-admin
+  cancel-in-progress: false   # never abort a half-done deploy
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # On workflow_dispatch the event has no `workflow_run.conclusion`;
+    # on the workflow_run trigger we gate on it being 'success'.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: admin/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: npm run build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@latest pages deploy dist --project-name=kamos-admin --branch=main
+
+      # Lightweight liveness check: confirm the new upload serves over the
+      # Pages edge. Pages propagation is usually seconds; retry a few times.
+      - name: Post-deploy liveness
+        env:
+          BASE: https://kamos-admin.pages.dev
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            if curl -fsS -I "$BASE" | grep -qi "^HTTP/.* 200"; then
+              echo "admin SPA live"; exit 0
+            fi
+            echo "waiting for Pages edge ($i)…"; sleep 5
+          done
+          echo "admin SPA did not return 200 in time"; exit 1

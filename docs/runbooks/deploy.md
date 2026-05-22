@@ -9,7 +9,8 @@ Cross-references:
 - [`DEPLOYMENT.md`](../../DEPLOYMENT.md) — env-var reference + feature-flag list.
 - [`ARCHITECTURE.md`](../../ARCHITECTURE.md) — process topology, multi-replica cache invalidation.
 - [`backend/fly.toml`](../../backend/fly.toml) — committed app definition (two processes, NRT). Lives inside `backend/` because that's the Dockerfile's build context.
-- [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) — the CD pipeline.
+- [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) — the backend CD pipeline.
+- [`.github/workflows/deploy-admin.yml`](../../.github/workflows/deploy-admin.yml) — the admin SPA CD pipeline (Cloudflare Pages via Wrangler).
 
 ## 1. Provision (one-time, manual)
 
@@ -34,14 +35,20 @@ Cross-references:
    - Token scope: Object Read + Write on that bucket only
    - Enable the bucket's free public `r2.dev` URL → `R2_PUBLIC_BASE_URL`
 
-4. **Cloudflare Pages** project `kamos-admin`:
-   - Connect to the GitHub repo, build dir `admin/`, build command `npm run build`,
-     output dir `dist`
-   - Env vars (dashboard): `VITE_API_BASE_URL=https://kamos.fly.dev`
-   - Served at the free `<project>.pages.dev` URL
+4. **Cloudflare Pages** project `kamos-admin` (deployed by GitHub Actions via
+   Wrangler, not the dashboard Git integration — see §8):
+   - Create an API token scoped **Account → Cloudflare Pages: Edit**; note the
+     account ID.
+   - Pre-create the project so the first non-interactive deploy doesn't prompt:
+     ```sh
+     npx wrangler pages project create kamos-admin --production-branch=main
+     ```
+   - No dashboard env var is needed: `admin/.env.production`
+     (`VITE_API_BASE_URL=https://kamos.fly.dev`) is baked in at build time by CI.
+   - Served at the free `kamos-admin.pages.dev` URL.
 
 > **Custom domains are deferred.** The API is served at `https://kamos.fly.dev`
-> (Fly-provided, TLS included), the admin at `<project>.pages.dev`, and photos
+> (Fly-provided, TLS included), the admin at `kamos-admin.pages.dev`, and photos
 > via the bucket's `r2.dev` URL — all free, no external DNS. To add custom
 > domains later: register `kamos.app`, put its DNS on a provider, then
 > `flyctl certs add api.kamos.app -a kamos` (+ the AAAA/A records it prints),
@@ -52,13 +59,17 @@ Cross-references:
    Get the `kamos-api` DSN and OTLP gateway URL + Basic auth header.
 
 7. **GitHub `production` environment**:
-   Repo → Settings → Environments → `production` → add secret:
+   Repo → Settings → Environments → `production` → add secrets:
    - `FLY_API_TOKEN` — a deploy token for the `kamos` app
-     (`flyctl tokens create deploy -a kamos`)
+     (`flyctl tokens create deploy -a kamos`). Used by `deploy.yml`.
+   - `CLOUDFLARE_API_TOKEN` — token scoped **Cloudflare Pages: Edit**. Used by
+     `deploy-admin.yml`.
+   - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID. Used by
+     `deploy-admin.yml`.
 
-   That's the only secret CD needs: it builds on Fly's remote builder
-   (no external registry) and doesn't touch the DB (migrations are manual,
-   §2).
+   The backend CD builds on Fly's remote builder (no external registry) and
+   doesn't touch the DB (migrations are manual, §2). The admin CD builds
+   `admin/` and uploads `dist/` to Pages with Wrangler.
 
 ## 2. Initial schema + secrets
 
@@ -185,11 +196,34 @@ would log "lock not acquired, skipping" instead of double-running jobs.
 
 ## 8. Admin SPA
 
-Cloudflare Pages auto-deploys on every push to `main`. Verify:
+The admin SPA deploys via [`deploy-admin.yml`](../../.github/workflows/deploy-admin.yml):
+on CI green (or `workflow_dispatch`) it builds `admin/` and uploads `dist/` to
+the `kamos-admin` Pages project with Wrangler — gated on CI, same trigger model
+as the backend `deploy.yml`. The build bakes in `admin/.env.production`
+(`VITE_API_BASE_URL=https://kamos.fly.dev`).
+
+The SPA ships `admin/public/_redirects` (`/* /index.html 200`) so client-side
+TanStack Router deep-links resolve instead of 404ing on a hard refresh.
+
+Before the first deploy, set the API's CORS allowlist to the (fixed) Pages origin:
 
 ```sh
-curl -I https://<project>.pages.dev
-# Should serve from Cloudflare; HTTP/2 200.
+flyctl secrets set -a kamos \
+  CORS_ALLOWED_ORIGINS=https://kamos-admin.pages.dev,http://localhost:5174
+```
+
+First deploy / re-deploy:
+
+```sh
+gh workflow run deploy-admin.yml --ref main
+gh run watch
+```
+
+Verify:
+
+```sh
+curl -I https://kamos-admin.pages.dev             # HTTP/2 200
+curl -I https://kamos-admin.pages.dev/users/123   # 200 (index.html), not 404 — SPA fallback
 
 # CSRF + cookie flow (the failure-prone surface):
 # log in via the admin UI, confirm Set-Cookie has kamos_admin_csrf with
@@ -197,11 +231,8 @@ curl -I https://<project>.pages.dev
 # and that mutating requests echo X-CSRF-Token matching that cookie value.
 ```
 
-The API's `CORS_ALLOWED_ORIGINS` must include the exact `<project>.pages.dev`
-origin for the admin to call it (cross-origin Pages → Fly).
-
 If admin can't reach the API, verify `CORS_ALLOWED_ORIGINS` on Fly contains
-the exact `https://<project>.pages.dev` origin (no trailing slash).
+the exact `https://kamos-admin.pages.dev` origin (no trailing slash).
 
 ## 9. Post-deploy housekeeping
 
