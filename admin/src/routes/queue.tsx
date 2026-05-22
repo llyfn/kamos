@@ -1,17 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { RoleGuard } from '@/components/guard';
 import { JsonTree } from '@/components/json-tree';
 import { Modal } from '@/components/modal';
-import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
-import {
-  useApproveBeverageRequest,
-  useRejectBeverageRequest,
-} from '@/hooks/admin/mutations';
+import { useApproveBeverageRequest, useRejectBeverageRequest } from '@/hooks/admin/mutations';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 
 type Request = components['schemas']['AdminBeverageRequest'];
 
@@ -101,9 +98,7 @@ function Row({ request }: { request: Request }) {
           </button>
         </td>
       </tr>
-      {modal === 'approve' && (
-        <ApproveModal request={request} onClose={() => setModal(null)} />
-      )}
+      {modal === 'approve' && <ApproveModal request={request} onClose={() => setModal(null)} />}
       {modal === 'reject' && <RejectModal request={request} onClose={() => setModal(null)} />}
     </>
   );

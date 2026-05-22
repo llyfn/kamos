@@ -19,9 +19,9 @@ BEGIN;
 CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 
 ALTER TABLE users
-  ADD COLUMN role user_role NOT NULL DEFAULT 'user';
+ADD COLUMN role user_role NOT NULL DEFAULT 'user';
 
 CREATE INDEX idx_users_deleted_at_recent ON users (deleted_at)
-  WHERE deleted_at IS NOT NULL;
+WHERE deleted_at IS NOT NULL;
 
 COMMIT;

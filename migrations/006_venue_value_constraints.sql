@@ -12,6 +12,8 @@ ALTER TABLE venues ADD CONSTRAINT venues_address_length CHECK (address IS NULL O
 ALTER TABLE venues ADD CONSTRAINT venues_country_length CHECK (country IS NULL OR char_length(country) <= 100);
 ALTER TABLE venues ADD CONSTRAINT venues_prefecture_length CHECK (prefecture IS NULL OR char_length(prefecture) <= 100);
 ALTER TABLE venues ADD CONSTRAINT venues_locality_length CHECK (locality IS NULL OR char_length(locality) <= 100);
-ALTER TABLE venues ADD CONSTRAINT venues_foursquare_id_length CHECK (foursquare_id IS NULL OR char_length(foursquare_id) BETWEEN 1 AND 100);
+ALTER TABLE venues ADD CONSTRAINT venues_foursquare_id_length CHECK (
+  foursquare_id IS NULL OR char_length(foursquare_id) BETWEEN 1 AND 100
+);
 DROP INDEX IF EXISTS idx_venues_name_tsv;
 COMMIT;

@@ -10,12 +10,12 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:kamos/core/api/auth_interceptor.dart';
-import 'package:kamos/core/api/api_toast.dart';
-import 'package:kamos/core/storage/secure_storage.dart';
 // ignore: depend_on_referenced_packages
 import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kamos/core/api/api_toast.dart';
+import 'package:kamos/core/api/auth_interceptor.dart';
+import 'package:kamos/core/storage/secure_storage.dart';
 
 class _InMemorySecureStorage extends FlutterSecureStoragePlatform {
   final Map<String, String> _values = {};

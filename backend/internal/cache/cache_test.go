@@ -106,6 +106,7 @@ func TestLRUConcurrentReadWrite(t *testing.T) {
 func TestLRUGetOrLoadCoalescesConcurrentMisses(t *testing.T) {
 	c := NewLRU[string, int]("sf-test", 16, time.Minute)
 	var loaderCalls atomic.Int64
+	//nolint:unparam // GetOrLoad requires the (V, error) signature; the test happens not to error.
 	loader := func() (int, error) {
 		loaderCalls.Add(1)
 		// Hold the loader open long enough that the other goroutines

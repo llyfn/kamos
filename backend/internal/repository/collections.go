@@ -182,8 +182,8 @@ LIMIT $3;`
 	for rows.Next() {
 		var row domain.CollectionWithOwner
 		if err := rows.Scan(
-			&row.Collection.ID, &row.Collection.OwnerID, &row.Collection.Name, &row.Collection.Visibility,
-			&row.Collection.CreatedAt, &row.Collection.UpdatedAt, &row.Collection.EntryCount,
+			&row.ID, &row.OwnerID, &row.Name, &row.Visibility,
+			&row.CreatedAt, &row.UpdatedAt, &row.EntryCount,
 			&row.Owner.ID, &row.Owner.Username, &row.Owner.DisplayUsername,
 			&row.Owner.DisplayName, &row.Owner.AvatarURL,
 		); err != nil {

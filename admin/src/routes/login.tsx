@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
 import { api } from '@/lib/api';
 import { LoginError, login as sessionLogin } from '@/lib/session';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,

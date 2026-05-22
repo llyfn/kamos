@@ -15,8 +15,8 @@ import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
-import '../../../shared/widgets/state_views.dart';
 import '../../../shared/widgets/stars_display.dart';
+import '../../../shared/widgets/state_views.dart';
 import '../providers/beverage_providers.dart';
 
 class BeverageDetailScreen extends ConsumerWidget {

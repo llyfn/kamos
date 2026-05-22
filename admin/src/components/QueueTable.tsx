@@ -85,9 +85,7 @@ export function QueueTable<T>(props: QueueTableProps<T>) {
               </tr>
             )}
             {items.map((item, i) => (
-              <RowKeyed key={(rowKey ?? defaultRowKey)(item, i)}>
-                {renderRow(item, i)}
-              </RowKeyed>
+              <RowKeyed key={(rowKey ?? defaultRowKey)(item, i)}>{renderRow(item, i)}</RowKeyed>
             ))}
           </tbody>
         </table>

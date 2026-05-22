@@ -16,10 +16,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/comment.dart';
 import '../../../core/models/page.dart' as models;
-import '../../../core/api/api_exceptions.dart';
 
 /// Wraps the `comments` tag of [KamosApi] (list / create / delete) and
 /// lifts `DioException`s into the typed comment exceptions in

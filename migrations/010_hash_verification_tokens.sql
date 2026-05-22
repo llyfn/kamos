@@ -26,7 +26,7 @@
 BEGIN;
 
 ALTER TABLE email_verifications
-  ADD COLUMN token_hash BYTEA;
+ADD COLUMN token_hash BYTEA;
 
 -- Backfill existing rows so the column is non-null before we drop the
 -- plaintext source.
@@ -36,7 +36,7 @@ WHERE token_hash IS NULL;
 
 -- Now require it.
 ALTER TABLE email_verifications
-  ALTER COLUMN token_hash SET NOT NULL;
+ALTER COLUMN token_hash SET NOT NULL;
 
 -- Unique among UNUSED verification rows. We don't filter on expires_at
 -- in the predicate because NOW() is not IMMUTABLE and Postgres refuses
@@ -46,8 +46,8 @@ ALTER TABLE email_verifications
 -- read. Token entropy is 256 bits so a clash on an expired-but-unused
 -- row is astronomically unlikely.
 CREATE UNIQUE INDEX idx_email_verifications_token_hash
-  ON email_verifications (token_hash)
-  WHERE used_at IS NULL;
+ON email_verifications (token_hash)
+WHERE used_at IS NULL;
 
 -- Drop the unique index on the plaintext column (idx_email_verifications_token
 -- created in migration 001) so the column drop below succeeds without an
@@ -57,6 +57,6 @@ DROP INDEX IF EXISTS idx_email_verifications_token;
 -- Drop the plaintext column. Any application read path that referenced
 -- it must move to token_hash before this migration is applied.
 ALTER TABLE email_verifications
-  DROP COLUMN token;
+DROP COLUMN token;
 
 COMMIT;

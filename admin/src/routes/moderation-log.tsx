@@ -1,11 +1,11 @@
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
+import { RoleGuard } from '@/components/guard';
+import { JsonTree } from '@/components/json-tree';
+import { api } from '@/lib/api';
+import type { components } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
-import { RoleGuard } from '@/components/guard';
-import { JsonTree } from '@/components/json-tree';
-import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
-import { api } from '@/lib/api';
-import type { components } from '@/types/api';
 
 type Entry = components['schemas']['ModerationLogEntry'];
 

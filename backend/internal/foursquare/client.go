@@ -197,8 +197,9 @@ func (c *Client) fetchWithRetry(ctx context.Context, opts SearchOptions) ([]Plac
 	}
 	// PERF-019: uniform jitter in [retryBackoff, 2*retryBackoff) so a
 	// stampede of clients hitting the same outage doesn't align their
-	// retries on the same millisecond.
-	jitter := time.Duration(rand.Int64N(int64(retryBackoff)))
+	// retries on the same millisecond. math/rand/v2 is fine here —
+	// timing jitter, not a security primitive.
+	jitter := time.Duration(rand.Int64N(int64(retryBackoff))) // #nosec G404
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -245,7 +246,7 @@ func (c *Client) fetchOnce(ctx context.Context, opts SearchOptions) ([]Place, er
 	if err != nil {
 		return nil, fmt.Errorf("fetchOnce: http do: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch {
 	case resp.StatusCode == http.StatusOK:
@@ -312,7 +313,7 @@ func cacheKey(opts SearchOptions) string {
 	sb.WriteString(strings.ToLower(strings.TrimSpace(opts.Query)))
 	sb.WriteByte('|')
 	if opts.Lat != nil && opts.Lng != nil {
-		sb.WriteString(fmt.Sprintf("%.3f,%.3f", *opts.Lat, *opts.Lng))
+		fmt.Fprintf(&sb, "%.3f,%.3f", *opts.Lat, *opts.Lng)
 	}
 	sb.WriteByte('|')
 	sb.WriteString(opts.Locale)

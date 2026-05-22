@@ -12,10 +12,6 @@ import '../../../core/models/brewery.dart';
 import '../../../core/models/page.dart';
 
 class SearchResultItem {
-  SearchResultItem({required this.type, this.beverage, this.brewery});
-  final String type;
-  final Beverage? beverage;
-  final Brewery? brewery;
 
   factory SearchResultItem.fromJson(Map<String, dynamic> json) {
     final type = (json['type'] as String?) ?? '';
@@ -29,6 +25,10 @@ class SearchResultItem {
           : null,
     );
   }
+  SearchResultItem({required this.type, this.beverage, this.brewery});
+  final String type;
+  final Beverage? beverage;
+  final Brewery? brewery;
 }
 
 /// Wraps the `search` tag of [KamosApi] (beverages, breweries, users)

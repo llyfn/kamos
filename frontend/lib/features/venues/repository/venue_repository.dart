@@ -12,6 +12,8 @@
 // Check-in venue attachment does NOT live in this repository — it goes
 // through `CheckInRepository.create` as the `venue` field on the POST body.
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,10 +21,10 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/venue.dart';
 import '../../../core/observability/sentry_observer.dart';
-import '../../../core/api/api_exceptions.dart';
 
 /// Wraps the `venues` tag of [KamosApi] (Foursquare-backed venue
 /// search) and lifts `DioException` into [VenueSearchDisabledException] /
@@ -54,13 +56,13 @@ class VenueRepository {
         // Don't swallow silently; route to Sentry so we can see it. The user
         // still gets an empty result rather than a hard error.
         if (kSentryConfigured) {
-          Sentry.captureMessage(
+          unawaited(Sentry.captureMessage(
             'venues/search: unexpected response shape',
             level: SentryLevel.warning,
             withScope: (scope) {
               scope.setContexts('response', {'runtimeType': 'empty'});
             },
-          );
+          ));
         } else {
           debugPrint('venues/search: unexpected response shape (empty)');
         }

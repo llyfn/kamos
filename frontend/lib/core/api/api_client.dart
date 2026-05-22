@@ -18,10 +18,10 @@ import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/providers/auth_state.dart';
 import '../auth/jwt_claims.dart';
 import '../models/auth.dart';
 import '../storage/secure_storage.dart';
-import '../../features/auth/providers/auth_state.dart';
 import 'api_config.dart';
 import 'api_toast.dart';
 import 'auth_interceptor.dart';
@@ -171,7 +171,7 @@ final dioProvider = Provider<Dio>((ref) {
     storage: storage,
     refreshExchange: (refreshToken) async {
       try {
-        final res = await refreshDio.post(
+        final res = await refreshDio.post<Map<String, dynamic>>(
           '/v1/auth/refresh',
           data: {'refresh_token': refreshToken},
         );

@@ -34,7 +34,7 @@ func (h *Handler) ListPublicCollections(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(row domain.CollectionWithOwner) cursor.Cursor {
-		return cursor.Cursor{CreatedAt: row.Collection.CreatedAt, ID: row.Collection.ID}
+		return cursor.Cursor{CreatedAt: row.CreatedAt, ID: row.ID}
 	})
 	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.CollectionWithOwner]{
 		Items: page, NextCursor: next, HasMore: hasMore,

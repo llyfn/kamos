@@ -11,9 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/models/venue.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../core/api/api_exceptions.dart';
 import '../providers/venue_providers.dart';
 
 /// Sheet renders at most this many; results past ~30 lose discoverability

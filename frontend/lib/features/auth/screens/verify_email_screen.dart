@@ -65,7 +65,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
         // Allow the snackbar to render briefly, then bounce. The router's
         // redirect logic will land the user on `/auth` if they are not
         // authenticated, and on `/` if they are.
-        await Future.delayed(const Duration(milliseconds: 600));
+        await Future<void>.delayed(const Duration(milliseconds: 600));
         if (!mounted) return;
         final redirect = widget.onSuccessRedirect;
         if (redirect != null) {

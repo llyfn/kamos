@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
 import { RoleGuard } from '@/components/guard';
 import { useToast } from '@/components/toast';
 import { useModerateCheckin } from '@/hooks/admin/mutations';
+import { createFileRoute } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 
 export const Route = createFileRoute('/checkins')({
   component: GuardedCheckinsPage,
@@ -43,8 +43,8 @@ function CheckinsPage() {
     <div className="max-w-xl">
       <h1 className="text-xl font-semibold mb-2">Check-in moderation</h1>
       <p className="text-sm text-[color:var(--color-muted)] mb-4">
-        Soft-delete a check-in by its UUID. A dedicated queue lands in Phase 6 along
-        with comments moderation.
+        Soft-delete a check-in by its UUID. A dedicated queue lands in Phase 6 along with comments
+        moderation.
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-3 text-sm">
         <label className="flex flex-col gap-1">

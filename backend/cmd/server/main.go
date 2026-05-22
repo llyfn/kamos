@@ -49,7 +49,8 @@ func main() {
 	otelShutdown, err := observability.InitOTel(initCtx, cfg)
 	if err != nil {
 		log.Error("otel init", "err", err)
-		os.Exit(1)
+		initCancel() // gocritic can't see this — it pattern-matches `defer + os.Exit`.
+		os.Exit(1)   //nolint:gocritic // initCancel() called explicitly above.
 	}
 	if cfg.OTLPEndpoint == "" {
 		log.Info("otel disabled (OTEL_EXPORTER_OTLP_ENDPOINT unset)")

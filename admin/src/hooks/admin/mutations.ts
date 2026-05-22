@@ -6,9 +6,9 @@
 // raw openapi-fetch shape — no business logic, just an error->Error
 // adapter, success-side invalidation, and a uniform error message format.
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 type Approval = components['schemas']['AdminBeverageRequestApproval'];
 type Role = components['schemas']['UserRole'];
@@ -18,10 +18,10 @@ export function useApproveBeverageRequest(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: Approval) => {
-      const { data, error, response } = await api.POST(
-        '/v1/admin/beverage-requests/{id}/approve',
-        { params: { path: { id } }, body },
-      );
+      const { data, error, response } = await api.POST('/v1/admin/beverage-requests/{id}/approve', {
+        params: { path: { id } },
+        body,
+      });
       if (error || !data) throw new Error(`approve_failed_${response.status}`);
       return data;
     },
@@ -36,10 +36,10 @@ export function useRejectBeverageRequest(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (notes: string) => {
-      const { data, error, response } = await api.POST(
-        '/v1/admin/beverage-requests/{id}/reject',
-        { params: { path: { id } }, body: { notes } },
-      );
+      const { data, error, response } = await api.POST('/v1/admin/beverage-requests/{id}/reject', {
+        params: { path: { id } },
+        body: { notes },
+      });
       if (error || !data) throw new Error(`reject_failed_${response.status}`);
       return data;
     },
@@ -54,12 +54,12 @@ export function useModerateCheckin(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (notes: string | null) => {
-      const body = notes && notes.trim() ? { notes: notes.trim() } : undefined;
+      const body = notes?.trim() ? { notes: notes.trim() } : undefined;
       const init = body ? { body } : {};
-      const { error, response } = await api.POST(
-        '/v1/admin/check-ins/{id}/moderate',
-        { params: { path: { id } }, ...init },
-      );
+      const { error, response } = await api.POST('/v1/admin/check-ins/{id}/moderate', {
+        params: { path: { id } },
+        ...init,
+      });
       if (error || response.status !== 204) {
         throw new Error(`moderate_failed_${response.status}`);
       }
@@ -75,12 +75,12 @@ export function useModerateComment(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (notes: string | null) => {
-      const body = notes && notes.trim() ? { notes: notes.trim() } : undefined;
+      const body = notes?.trim() ? { notes: notes.trim() } : undefined;
       const init = body ? { body } : {};
-      const { error, response } = await api.POST(
-        '/v1/admin/comments/{id}/moderate',
-        { params: { path: { id } }, ...init },
-      );
+      const { error, response } = await api.POST('/v1/admin/comments/{id}/moderate', {
+        params: { path: { id } },
+        ...init,
+      });
       if (error || response.status !== 204) {
         throw new Error(`moderate_failed_${response.status}`);
       }

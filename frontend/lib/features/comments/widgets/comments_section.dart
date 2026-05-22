@@ -12,8 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../core/api/api_exceptions.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/comment_providers.dart';

@@ -75,9 +75,9 @@ void main() {
         };
       },
       appRunner: () => runApp(
-        ProviderScope(
-          observers: const [SentryProviderObserver()],
-          child: const KamosApp(),
+        const ProviderScope(
+          observers: [SentryProviderObserver()],
+          child: KamosApp(),
         ),
       ),
     ),

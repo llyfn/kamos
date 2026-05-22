@@ -1,14 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
+import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
-import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
 import { useSuspendUser, useUpdateUserRole } from '@/hooks/admin/mutations';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { components } from '@/types/api';
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { type FormEvent, useState } from 'react';
 
 type AdminUser = components['schemas']['AdminUser'];
 type Role = components['schemas']['UserRole'];
@@ -224,8 +224,8 @@ function SuspendModal({ user, onClose }: { user: AdminUser; onClose: () => void 
   return (
     <Modal open onClose={onClose} title={`Suspend ${user.display_username}?`}>
       <p className="text-sm mb-3">
-        This soft-deletes the account, holds the username for 30 days, and immediately
-        revokes the user's outstanding access tokens.
+        This soft-deletes the account, holds the username for 30 days, and immediately revokes the
+        user's outstanding access tokens.
       </p>
       {error && <p className="text-red-700 text-xs mb-2">{error}</p>}
       <div className="flex justify-end gap-2">

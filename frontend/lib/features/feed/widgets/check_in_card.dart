@@ -277,7 +277,7 @@ class _PhotoTile extends StatelessWidget {
         fit: BoxFit.cover,
         memCacheWidth: memCacheWidth,
         placeholder: (context, _) => Container(color: t.gray100),
-        errorWidget: (context, _, __) => Container(
+        errorWidget: (context, _, _) => Container(
           color: t.gray100,
           alignment: Alignment.center,
           child: Icon(Icons.broken_image_outlined, size: 20, color: t.fgMuted),

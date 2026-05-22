@@ -164,14 +164,12 @@ func (h *Handler) AdminLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.Services != nil && h.Services.Auth != nil {
 		_ = h.Services.Auth.Logout(r.Context(), uid, raw)
-	} else {
+	} else if raw != "" {
 		// Legacy fallback (tests that don't construct services).
-		if raw != "" {
-			hash := auth.HashRefreshToken(raw)
-			if row, err := h.Repos.RefreshTokens.LookupByHash(r.Context(), hash); err == nil {
-				if row.UserID == uid {
-					_ = h.Repos.RefreshTokens.MarkRevoked(r.Context(), row.ID)
-				}
+		hash := auth.HashRefreshToken(raw)
+		if row, err := h.Repos.RefreshTokens.LookupByHash(r.Context(), hash); err == nil {
+			if row.UserID == uid {
+				_ = h.Repos.RefreshTokens.MarkRevoked(r.Context(), row.ID)
 			}
 		}
 	}
@@ -186,6 +184,11 @@ func (h *Handler) setAdminCookies(w http.ResponseWriter, access, refresh, csrf s
 	secure := h.adminCookieSecure()
 	accessTTL := int(h.Cfg.JWTTTL.Seconds())
 	refreshTTL := int(h.refreshTTL().Seconds())
+	// #nosec G124 — `Secure: secure` is intentional: prod sets true,
+	// dev (http://localhost) sets false so the cookie survives the
+	// non-TLS dev flow. SameSite=Strict + HttpOnly are set on the auth
+	// cookies; the CSRF cookie is intentionally HttpOnly=false so the
+	// admin SPA can read it for the double-submit pattern.
 	http.SetCookie(w, &http.Cookie{
 		Name:     adminAccessCookie,
 		Value:    access,
@@ -195,6 +198,7 @@ func (h *Handler) setAdminCookies(w http.ResponseWriter, access, refresh, csrf s
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   accessTTL,
 	})
+	// #nosec G124 — see comment above.
 	http.SetCookie(w, &http.Cookie{
 		Name:     adminRefreshCookie,
 		Value:    refresh,
@@ -204,6 +208,7 @@ func (h *Handler) setAdminCookies(w http.ResponseWriter, access, refresh, csrf s
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   refreshTTL,
 	})
+	// #nosec G124 — CSRF cookie is intentionally HttpOnly=false (double-submit pattern).
 	http.SetCookie(w, &http.Cookie{
 		Name:     adminCSRFCookie,
 		Value:    csrf,
@@ -220,6 +225,7 @@ func (h *Handler) setAdminCookies(w http.ResponseWriter, access, refresh, csrf s
 func (h *Handler) clearAdminCookies(w http.ResponseWriter) {
 	secure := h.adminCookieSecure()
 	expired := time.Unix(0, 0)
+	// #nosec G124 — Secure + SameSite are assigned below before each SetCookie.
 	for _, c := range []*http.Cookie{
 		{Name: adminAccessCookie, Path: adminAccessPath, HttpOnly: true},
 		{Name: adminRefreshCookie, Path: adminRefreshPath, HttpOnly: true},

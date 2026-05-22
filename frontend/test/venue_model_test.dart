@@ -40,7 +40,7 @@ void main() {
   group('FoursquarePlace.toCheckinVenueJson', () {
     test('drops empty/null fields but always emits foursquare_id and name',
         () {
-      final p = const FoursquarePlace(
+      const p = FoursquarePlace(
         foursquareId: 'fsq-1',
         name: 'Daikoku',
         lat: 35.0,
