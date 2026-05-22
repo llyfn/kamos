@@ -65,37 +65,18 @@ jobs:
           cache-from: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache
           cache-to: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache,mode=max
 
-      - uses: superfly/flyctl-actions/setup-flyctl@1.6
+      # NOTE: migrations are applied MANUALLY, not in CD. The DB is a separate
+      # Fly app (kamos-db) on a private network reachable only via a flyctl
+      # proxy tunnel, and FLY_API_TOKEN is a deploy token scoped to the `kamos`
+      # app — it can't see kamos-db. Rather than broaden the token or fight
+      # WireGuard-in-CI, an operator applies schema changes before merging, per
+      # docs/runbooks/deploy.md §2:
+      #   flyctl proxy 15432:5432 -a kamos-db &
+      #   PSQL_URL=postgres://…@127.0.0.1:15432/kamos scripts/migrate.sh
+      # Migrations are append-only + idempotent (schema_migrations table), so a
+      # deploy whose schema is already current is safe.
 
-      # DATABASE_URL uses Fly's private flycast host, which only resolves
-      # inside Fly's network. This runner is outside it, so we tunnel via
-      # `flyctl proxy` (which also wakes the autostart DB machine) and point
-      # psql at the local end. --network host lets the pg18 container reach
-      # the tunnel on the runner's loopback.
-      - name: Apply migrations (idempotent, over Fly proxy)
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          # Wake the DB first: a fully-stopped Fly machine has no internal
-          # DNS entry, so `flyctl proxy` can't reach it to trigger autostart.
-          # `machine start` is a control-plane call that works regardless.
-          flyctl machines list -a kamos-db --json | jq -r '.[].id' \
-            | xargs -r -n1 flyctl machine start -a kamos-db
-          flyctl proxy 15432:5432 -a kamos-db &
-          proxy_pid=$!
-          trap 'kill "$proxy_pid" 2>/dev/null || true' EXIT
-          for i in $(seq 1 30); do
-            (echo > /dev/tcp/127.0.0.1/15432) 2>/dev/null && break
-            echo "waiting for db tunnel ($i)…"; sleep 1
-          done
-          local_url=$(printf '%s' "$DATABASE_URL" | sed -E 's#@[^/]+/#@127.0.0.1:15432/#')
-          docker run --rm --network host \
-            -v "$PWD/migrations:/m:ro" \
-            -v "$PWD/scripts/migrate.sh:/migrate.sh:ro" \
-            -e PSQL_URL="$local_url" \
-            postgres:18-alpine \
-            sh /migrate.sh /m
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
 
       - name: Deploy to Fly
         env:

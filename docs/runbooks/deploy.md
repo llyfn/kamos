@@ -56,15 +56,28 @@ Cross-references:
 
 ## 2. Initial schema + secrets
 
+The DB (`kamos-db`) sits on Fly's private network, so reach it through a
+`flyctl proxy` tunnel from a workstation that has org access. `migrate.sh`
+is idempotent (tracks applied files in `schema_migrations`), so it's safe
+to re-run.
+
 ```sh
-# Migrate the freshly-attached Postgres
-PSQL_URL='postgres://...?sslmode=require' make db-migrate
+# Tunnel to the private DB, then apply migrations idempotently
+flyctl proxy 15432:5432 -a kamos-db &
+PSQL_URL='postgres://kamos:<pass>@127.0.0.1:15432/kamos?sslmode=disable' \
+  scripts/migrate.sh migrations
 psql "$PSQL_URL" -c '\d+ users' | head -40   # sanity
 
 # Generate secrets
 openssl rand -base64 48   # JWT_SECRET
 openssl rand -base64 48   # CURSOR_SECRET
 ```
+
+**Migrations are NOT applied by CD.** `FLY_API_TOKEN` is a deploy token
+scoped to the `kamos` app and can't reach `kamos-db`, and the CI runner is
+off the private network. Apply any new migration with the tunnel command
+above **before merging** the schema change. Append-only + idempotent means
+a deploy that lands before/after the migration is safe either way.
 
 ```sh
 flyctl secrets set -a kamos \
@@ -100,10 +113,10 @@ gh workflow run deploy.yml --ref main
 gh run watch
 ```
 
-This pushes a fresh image to `ghcr.io/<owner>/kamos-api:<sha>`, applies
-migrations, calls `flyctl deploy --image`, then runs `scripts/smoke.sh`
-against `https://api.kamos.app`. Expected smoke output:
-`=== Phase 6 FINAL smoke PASSED (18/18) ===`.
+This builds + pushes `ghcr.io/<owner>/kamos-api:<sha>`, calls
+`flyctl deploy --image`, stages `APP_VERSION`, then runs a lightweight
+liveness check (`/healthz` + `/v1/categories`) against `https://kamos.fly.dev`.
+It does **not** run migrations (see §2) — apply those manually beforehand.
 
 Subsequent deploys happen automatically on every merge to `main` once CI passes.
 
