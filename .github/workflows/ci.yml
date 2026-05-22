@@ -11,6 +11,14 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimal read-only scopes for every job. pull-requests:read is required by
+# dorny/paths-filter, which calls the PR listFiles API on pull_request events
+# (on push it diffs git locally). Without it, PRs — including every Dependabot
+# PR — fail the changes job with "Resource not accessible by integration".
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   changes:
     name: Detect changed paths
