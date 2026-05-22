@@ -1,4 +1,4 @@
-# Fly.io app definition — KAMOS dev environment.
+# Fly.io app definition — KAMOS hosted environment.
 #
 # Single image, two processes:
 #   - server: chi HTTP listener on :8080, N replicas (min 2 to exercise the
@@ -10,12 +10,12 @@
 # persistent Postgres LISTEN connection (internal/cache/invalidator.go) that
 # would not survive scale-to-zero.
 #
-# Image is built externally (by .github/workflows/deploy-dev.yml) and pushed
+# Image is built externally (by .github/workflows/deploy.yml) and pushed
 # to GHCR; `flyctl deploy --image ghcr.io/<owner>/kamos-api:<sha>` consumes it.
 # `[build]` is still declared so `flyctl deploy` without --image (manual ops)
 # falls back to the remote builder against backend/Dockerfile.
 
-app = "kamos-dev"
+app = "kamos"
 primary_region = "nrt"
 
 [build]

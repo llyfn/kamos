@@ -1,15 +1,15 @@
-name: Deploy dev
+name: Deploy
 
-# Auto-deploys main to the kamos-dev Fly.io app after CI passes.
-# - Builds backend/Dockerfile, pushes to GHCR with both <sha> and dev-latest tags.
-# - Applies migrations against the dev DB via a one-shot postgres:18-alpine container.
+# Auto-deploys main to the kamos Fly.io app after CI passes.
+# - Builds backend/Dockerfile, pushes to GHCR with both <sha> and latest tags.
+# - Applies migrations via a one-shot postgres:18-alpine container.
 # - Runs `flyctl deploy --image` so the deployed artifact is the exact image we tagged.
-# - Smoke-tests https://dev-api.kamos.app/ end-to-end — this is the real smoke gate
+# - Smoke-tests https://api.kamos.app/ end-to-end — this is the real smoke gate
 #   (the CI integration-smoke job is advisory because it doesn't start the API).
 #
-# Required GitHub secrets (set on the `dev` environment):
-#   FLY_API_TOKEN     — `flyctl auth token` output
-#   DEV_DATABASE_URL  — admin Postgres connection string (sslmode=require)
+# Required GitHub `production` environment secrets:
+#   FLY_API_TOKEN — `flyctl auth token` output
+#   DATABASE_URL  — admin Postgres connection string (sslmode=require)
 #
 # GITHUB_TOKEN with packages:write is enough for GHCR push.
 
@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-dev
+  group: deploy
   cancel-in-progress: false   # never abort a half-done deploy
 
 permissions:
@@ -34,7 +34,7 @@ jobs:
     # on the workflow_run trigger we gate on it being 'success'.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    environment: dev
+    environment: production
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,13 +61,13 @@ jobs:
           push: true
           tags: |
             ${{ steps.tag.outputs.image }}:${{ steps.tag.outputs.sha }}
-            ${{ steps.tag.outputs.image }}:dev-latest
+            ${{ steps.tag.outputs.image }}:latest
           cache-from: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache
           cache-to: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache,mode=max
 
       - name: Apply migrations
         env:
-          PSQL_URL: ${{ secrets.DEV_DATABASE_URL }}
+          PSQL_URL: ${{ secrets.DATABASE_URL }}
         run: |
           docker run --rm \
             -v "$PWD/migrations:/m:ro" \
@@ -81,7 +81,7 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl deploy --app kamos-dev \
+          flyctl deploy --app kamos \
             --image ${{ steps.tag.outputs.image }}:${{ steps.tag.outputs.sha }} \
             --strategy rolling \
             --wait-timeout 300
@@ -90,10 +90,10 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          flyctl secrets set APP_VERSION=${{ steps.tag.outputs.sha }} -a kamos-dev --stage
+          flyctl secrets set APP_VERSION=${{ steps.tag.outputs.sha }} -a kamos --stage
           # --stage avoids triggering a second deploy; the value applies on next restart.
 
       - name: Post-deploy smoke
         env:
-          API_BASE_URL: https://dev-api.kamos.app
+          API_BASE_URL: https://api.kamos.app
         run: scripts/smoke.sh

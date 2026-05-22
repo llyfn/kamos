@@ -266,15 +266,15 @@ Vendor credentials still owed by the operator (flip-the-switch only):
 - [ ] Resend API key + verified `EMAIL_FROM` domain — cookbook §C3
 - [ ] Sentry DSNs + OTLP endpoint/headers — cookbook §C4
 - [ ] Foursquare Places API key — cookbook §C5
-- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6 — wired by [`docs/runbooks/staging-deploy.md`](docs/runbooks/staging-deploy.md) §1.4
+- [ ] Cloudflare Pages project for admin client hosting — cookbook §C6 — wired by [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) §1.4
 
 Infra outside the codebase:
 
-- [x] **Dev environment on Fly.io (NRT)** — `kamos-dev` app + Fly Postgres 18 + Upstash Redis; auto-deploy via [`.github/workflows/deploy-dev.yml`](.github/workflows/deploy-dev.yml); runbook at [`docs/runbooks/staging-deploy.md`](docs/runbooks/staging-deploy.md).
-- [ ] Production: managed Postgres 18 (RDS / Cloud SQL / Neon) with PITR
+- [x] **Hosted environment on Fly.io (NRT)** — `kamos` app + Fly Postgres 18 + (optional) Upstash Redis; auto-deploy via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml); runbook at [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md). Single environment for now; a dev/prod split is deferred until reliability requirements warrant it.
+- [ ] Managed Postgres 18 (RDS / Cloud SQL / Neon) with PITR (Fly Postgres is self-managed snapshots only)
 - [ ] `JWT_SECRET` from a secret manager, not env file
-- [ ] TLS termination (load balancer or reverse proxy) — dev: Fly edge handles TLS via `flyctl certs`
+- [x] TLS termination — Fly edge handles TLS via `flyctl certs`
 - [ ] `sslmode=require` in `DATABASE_URL`
 - [ ] CDN for beverage label images
 - [ ] Structured log shipping (slog → Loki / Datadog)
-- [x] **`APP_VERSION` populated per deploy** — dev pipeline stages `APP_VERSION=<git-sha>` on every `flyctl deploy` (see `deploy-dev.yml`).
+- [x] **`APP_VERSION` populated per deploy** — pipeline stages `APP_VERSION=<git-sha>` on every `flyctl deploy` (see `deploy.yml`).
