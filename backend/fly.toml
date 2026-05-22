@@ -10,16 +10,20 @@
 # persistent Postgres LISTEN connection (internal/cache/invalidator.go) that
 # would not survive scale-to-zero.
 #
+# This file lives inside backend/ because the Dockerfile's build context is
+# this directory (it does `COPY go.mod go.sum ./`). Manual operators run
+# `cd backend && flyctl deploy`; CI passes `--config backend/fly.toml`.
+#
 # Image is built externally (by .github/workflows/deploy.yml) and pushed
 # to GHCR; `flyctl deploy --image ghcr.io/<owner>/kamos-api:<sha>` consumes it.
 # `[build]` is still declared so `flyctl deploy` without --image (manual ops)
-# falls back to the remote builder against backend/Dockerfile.
+# falls back to the remote builder against this directory.
 
 app = "kamos"
 primary_region = "nrt"
 
 [build]
-  dockerfile = "backend/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [processes]
   server = "/usr/local/bin/server"

@@ -82,6 +82,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl deploy --app kamos \
+            --config backend/fly.toml \
             --image ${{ steps.tag.outputs.image }}:${{ steps.tag.outputs.sha }} \
             --strategy rolling \
             --wait-timeout 300
