@@ -65,15 +65,16 @@ jobs:
           cache-from: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache
           cache-to: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache,mode=max
 
-      - name: Apply migrations
+      - name: Apply migrations (idempotent)
         env:
           PSQL_URL: ${{ secrets.DATABASE_URL }}
         run: |
           docker run --rm \
             -v "$PWD/migrations:/m:ro" \
+            -v "$PWD/scripts/migrate.sh:/migrate.sh:ro" \
             -e PSQL_URL \
             postgres:18-alpine \
-            sh -c 'set -e; for f in /m/*.sql; do echo "→ $(basename "$f")"; psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$f"; done'
+            sh /migrate.sh /m
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -94,7 +95,26 @@ jobs:
           flyctl secrets set APP_VERSION=${{ steps.tag.outputs.sha }} -a kamos --stage
           # --stage avoids triggering a second deploy; the value applies on next restart.
 
-      - name: Post-deploy smoke
+      # Lightweight liveness check against the live API. The comprehensive
+      # integration suite already ran pre-deploy in ci.yml; here we only
+      # confirm the new release boots, reaches the DB, and serves. (The full
+      # scripts/smoke.sh needs a pre-seeded DB and is a manual `make smoke`.)
+      #
+      # Hits the always-available Fly host, not api.kamos.app: the custom
+      # domain depends on external DNS (cert is "Not verified" until the
+      # registrar records point at Fly), and the deploy gate must not be
+      # coupled to DNS propagation. Switch BASE to https://api.kamos.app
+      # once `flyctl certs show api.kamos.app -a kamos` reports verified.
+      - name: Post-deploy liveness
         env:
-          API_BASE_URL: https://api.kamos.app
-        run: scripts/smoke.sh
+          BASE: https://kamos.fly.dev
+        run: |
+          set -e
+          for i in $(seq 1 18); do
+            if curl -fsS "$BASE/healthz" >/dev/null 2>&1; then break; fi
+            echo "waiting for API ($i)…"; sleep 5
+          done
+          curl -fsS "$BASE/healthz" | grep -q '"status":"ok"'
+          # Public read path exercises router → handler → DB → serialization.
+          curl -fsS "$BASE/v1/categories" | grep -q "Nihonshu"
+          echo "post-deploy liveness OK"
