@@ -65,18 +65,37 @@ jobs:
           cache-from: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache
           cache-to: type=registry,ref=${{ steps.tag.outputs.image }}:buildcache,mode=max
 
-      - name: Apply migrations (idempotent)
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
+
+      # DATABASE_URL uses Fly's private flycast host, which only resolves
+      # inside Fly's network. This runner is outside it, so we tunnel via
+      # `flyctl proxy` (which also wakes the autostart DB machine) and point
+      # psql at the local end. --network host lets the pg18 container reach
+      # the tunnel on the runner's loopback.
+      - name: Apply migrations (idempotent, over Fly proxy)
         env:
-          PSQL_URL: ${{ secrets.DATABASE_URL }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          docker run --rm \
+          # Wake the DB first: a fully-stopped Fly machine has no internal
+          # DNS entry, so `flyctl proxy` can't reach it to trigger autostart.
+          # `machine start` is a control-plane call that works regardless.
+          flyctl machines list -a kamos-db --json | jq -r '.[].id' \
+            | xargs -r -n1 flyctl machine start -a kamos-db
+          flyctl proxy 15432:5432 -a kamos-db &
+          proxy_pid=$!
+          trap 'kill "$proxy_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            (echo > /dev/tcp/127.0.0.1/15432) 2>/dev/null && break
+            echo "waiting for db tunnel ($i)…"; sleep 1
+          done
+          local_url=$(printf '%s' "$DATABASE_URL" | sed -E 's#@[^/]+/#@127.0.0.1:15432/#')
+          docker run --rm --network host \
             -v "$PWD/migrations:/m:ro" \
             -v "$PWD/scripts/migrate.sh:/migrate.sh:ro" \
-            -e PSQL_URL \
+            -e PSQL_URL="$local_url" \
             postgres:18-alpine \
             sh /migrate.sh /m
-
-      - uses: superfly/flyctl-actions/setup-flyctl@1.6
 
       - name: Deploy to Fly
         env:
