@@ -45,9 +45,11 @@ Hosted environment (auto-deploys on every merge to `main`):
 
 | What | Where |
 |---|---|
-| API | `https://api.kamos.app` (Fly.io, NRT) |
-| Admin SPA | `https://admin.kamos.app` (Cloudflare Pages) |
-| Mobile | `flutter run --dart-define=KAMOS_API_BASE_URL=https://api.kamos.app` |
+| API | `https://kamos.fly.dev` (Fly.io, NRT) |
+| Admin SPA | Cloudflare Pages default `*.pages.dev` URL |
+| Mobile | `flutter run --dart-define=KAMOS_API_BASE_URL=https://kamos.fly.dev` |
+
+Custom domains (`api.kamos.app` etc.) are deferred — the project uses the free Fly/Pages-provided URLs for now.
 
 Operator runbook: [docs/runbooks/deploy.md](docs/runbooks/deploy.md). Full env-var reference: [DEPLOYMENT.md](DEPLOYMENT.md).
 

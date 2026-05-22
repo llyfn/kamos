@@ -32,17 +32,20 @@ Cross-references:
 3. **Cloudflare R2** bucket + scoped API token:
    - Bucket: `kamos-checkin-photos`
    - Token scope: Object Read + Write on that bucket only
-   - Optional: custom domain `photos.kamos.app` → `R2_PUBLIC_BASE_URL`
+   - Enable the bucket's free public `r2.dev` URL → `R2_PUBLIC_BASE_URL`
 
 4. **Cloudflare Pages** project `kamos-admin`:
    - Connect to the GitHub repo, build dir `admin/`, build command `npm run build`,
      output dir `dist`
-   - Env vars (dashboard): `VITE_API_BASE_URL=https://api.kamos.app`
-   - Custom domain `admin.kamos.app`
+   - Env vars (dashboard): `VITE_API_BASE_URL=https://kamos.fly.dev`
+   - Served at the free `<project>.pages.dev` URL
 
-5. **DNS**:
-   - `api.kamos.app` → Fly app (TLS issued by Fly): `flyctl certs add api.kamos.app -a kamos`
-   - `admin.kamos.app` → Cloudflare Pages (TLS auto)
+> **Custom domains are deferred.** The API is served at `https://kamos.fly.dev`
+> (Fly-provided, TLS included), the admin at `<project>.pages.dev`, and photos
+> via the bucket's `r2.dev` URL — all free, no external DNS. To add custom
+> domains later: register `kamos.app`, put its DNS on a provider, then
+> `flyctl certs add api.kamos.app -a kamos` (+ the AAAA/A records it prints),
+> point `admin.kamos.app` at Pages, and flip the URLs in §2 + `deploy.yml`.
 
 6. **Sentry + Grafana Cloud** — already provisioned (see
    [`reference_observability_vendors.md`](../../.claude/memory/reference_observability_vendors.md)).
@@ -85,15 +88,15 @@ flyctl secrets set -a kamos \
   APP_VERSION=initial \
   JWT_SECRET=... \
   CURSOR_SECRET=... \
-  APP_BASE_URL=https://api.kamos.app \
-  CORS_ALLOWED_ORIGINS=https://admin.kamos.app \
+  APP_BASE_URL=https://kamos.fly.dev \
+  CORS_ALLOWED_ORIGINS=https://<project>.pages.dev,http://localhost:5174 \
   CACHE_BACKEND=redis \
   CACHE_REDIS_URL='rediss://...' \
   R2_ENDPOINT_URL='https://<account>.r2.cloudflarestorage.com' \
   R2_ACCESS_KEY_ID=... \
   R2_SECRET_ACCESS_KEY=... \
   R2_BUCKET=kamos-checkin-photos \
-  R2_PUBLIC_BASE_URL=https://photos.kamos.app \
+  R2_PUBLIC_BASE_URL=https://<bucket>.r2.dev \
   SENTRY_DSN='https://...@sentry.io/...' \
   OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp-gateway-prod-ap-northeast-0.grafana.net' \
   OTEL_EXPORTER_OTLP_HEADERS='Authorization=Basic <base64-of-instanceID:apikey>'
@@ -165,7 +168,7 @@ are append-only ([`DEPLOYMENT.md §5`](../../DEPLOYMENT.md#5-database)).
 
 Run the smoke script after a rollback:
 ```sh
-API_BASE_URL=https://api.kamos.app scripts/smoke.sh
+API_BASE_URL=https://kamos.fly.dev scripts/smoke.sh
 ```
 
 ## 7. Worker liveness
@@ -185,7 +188,7 @@ would log "lock not acquired, skipping" instead of double-running jobs.
 Cloudflare Pages auto-deploys on every push to `main`. Verify:
 
 ```sh
-curl -I https://admin.kamos.app
+curl -I https://<project>.pages.dev
 # Should serve from Cloudflare; HTTP/2 200.
 
 # CSRF + cookie flow (the failure-prone surface):
@@ -194,8 +197,11 @@ curl -I https://admin.kamos.app
 # and that mutating requests echo X-CSRF-Token matching that cookie value.
 ```
 
+The API's `CORS_ALLOWED_ORIGINS` must include the exact `<project>.pages.dev`
+origin for the admin to call it (cross-origin Pages → Fly).
+
 If admin can't reach the API, verify `CORS_ALLOWED_ORIGINS` on Fly contains
-`https://admin.kamos.app` exactly (no trailing slash).
+the exact `https://<project>.pages.dev` origin (no trailing slash).
 
 ## 9. Post-deploy housekeeping
 

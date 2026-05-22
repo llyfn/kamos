@@ -33,18 +33,20 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 
 A single hosted environment auto-deploys on every merge to `main`. There is no dev/prod split right now; one will be introduced once reliability requirements demand it.
 
+Custom domains (`api.kamos.app` etc.) are deferred — we use the free Fly/Pages/r2.dev URLs for now.
+
 | What | Where |
 |---|---|
-| API | `https://api.kamos.app` (Fly.io app `kamos`, NRT/Tokyo, two processes) |
-| Admin SPA | `https://admin.kamos.app` (Cloudflare Pages project `kamos-admin`) |
+| API | `https://kamos.fly.dev` (Fly.io app `kamos`, NRT/Tokyo, two processes) |
+| Admin SPA | Cloudflare Pages default `*.pages.dev` URL |
 | DB | Fly Postgres `kamos-db` (Pg18, NRT) |
 | Cache L2 | Upstash Redis (NRT, `rediss://`) — optional |
-| Photos | Cloudflare R2 bucket `kamos-checkin-photos` |
-| Image registry | `ghcr.io/<owner>/kamos-api:<sha>` + `:latest` |
+| Photos | Cloudflare R2 bucket `kamos-checkin-photos` (r2.dev public URL) |
+| Image registry | `registry.fly.io/kamos` (Fly remote builder) |
 
-CI: `.github/workflows/ci.yml` (`go vet` required; lint/style gates advisory pending Stage 8). CD: `.github/workflows/deploy.yml` (workflow_run on CI green → build → push GHCR → migrate → `flyctl deploy --image` → post-deploy smoke against the live API). App config: `backend/fly.toml`. Runbook: `docs/runbooks/deploy.md`.
+CI: `.github/workflows/ci.yml` — all gates required (Go build/vet/golangci-lint/test, integration suite, Flutter analyze/test, admin biome/build, sqlfluff, token-drift). CD: `.github/workflows/deploy.yml` (workflow_run on CI green → `flyctl deploy --remote-only` → stage `APP_VERSION` → liveness check on `kamos.fly.dev`). Migrations are NOT in CD — apply manually via `flyctl proxy` + `scripts/migrate.sh` (runbook §2). App config: `backend/fly.toml`. Runbook: `docs/runbooks/deploy.md`.
 
-Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://api.kamos.app`. TestFlight / Play Internal pipelines are not in place yet.
+Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://kamos.fly.dev`. TestFlight / Play Internal pipelines are not in place yet.
 
 ## Repository layout
 
