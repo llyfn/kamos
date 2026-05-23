@@ -36,51 +36,66 @@ This document explains every index in `migrations/001_initial.sql` and `migratio
 
 ### breweries
 
-No specific index is created in `001_initial.sql` other than the implicit PK. The GIN index on `name_i18n` is documented below under "Beverage search & discovery" — it lives on the `beverages` and `breweries` tables.
+The implicit PK plus the FTS index documented under "breweries (search)" cover all current read paths. Migration 014 added `breweries.deleted_at` and a tiny partial helper index for the admin "trash" view:
+
+| Index | Purpose |
+|---|---|
+| `idx_breweries_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` keeps the index tiny — almost every row in the catalog is live. |
 
 Add when needed (deferred):
-- `idx_breweries_prefecture` — only if browse-by-prefecture becomes a feature.
+- `idx_breweries_prefecture` — only if browse-by-prefecture becomes a feature. Still deferred as of 014.
 
 ### beverages
 
 | Index | Purpose | SPEC |
 |---|---|---|
-| `idx_beverages_brewery` | "All beverages from a brewery" — BreweryScreen. | §7 |
-| `idx_beverages_category` | "Browse by category" — SearchScreen filter chips. | §7 |
-| `idx_beverages_name_gin` | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the default `jsonb_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. For substring search, we **also** maintain a `tsvector` on `(name_i18n->>'en' || ' ' || name_i18n->>'ja' || ' ' || COALESCE(name_i18n->>'ko', ''))` — see the next row. | §7 |
-| `idx_beverages_name_tsv` (functional GIN) | `tsvector` over the concatenation of all three locales' names. Supports the discover-screen search query. Postgres FTS handles per-locale stemming poorly for Japanese/Korean — for MVP we use `'simple'` configuration (no stemming) which still gives prefix and lexeme matching. | §7 |
-| `idx_beverages_avg_rating_desc` (partial) | "Top-rated beverages in a category" sort. `WHERE check_in_count >= 3` filters out cold-start rows. | §7 |
+| `idx_beverages_brewery` (partial, rebuilt 014) | "All beverages from a brewery" — BreweryScreen. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_category` (partial, rebuilt 014) | "Browse by category" — SearchScreen filter chips. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_name_gin` (partial, rebuilt 014) | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the `jsonb_path_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. For substring search, we **also** maintain a `tsvector` on `(name_i18n->>'en' || ' ' || name_i18n->>'ja' || ' ' || COALESCE(name_i18n->>'ko', ''))` — see the next row. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_name_tsv` (functional GIN, partial, rebuilt 014) | `tsvector` over the concatenation of all three locales' names. Supports the discover-screen search query and the admin catalog `?q=` filter (via `websearch_to_tsquery('simple', $1)` to hit this index). Postgres FTS handles per-locale stemming poorly for Japanese/Korean — for MVP we use `'simple'` configuration (no stemming) which still gives prefix and lexeme matching. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_avg_rating_desc` (partial, rebuilt 014) | "Top-rated beverages in a category" sort. `WHERE deleted_at IS NULL AND check_in_count >= 3` — the existing `>= 3` filter is kept, and `deleted_at IS NULL` is added so soft-deleted catalog entries fall out of the top-rated list. | §7 |
+| `idx_beverages_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` — tiny. |
 
-Definitions added in `001_initial.sql`:
+Canonical definitions live in `migrations/014_catalog_soft_delete.sql`. After 014, the index DDL is:
 
 ```sql
-CREATE INDEX idx_beverages_brewery       ON beverages (brewery_id);
-CREATE INDEX idx_beverages_category      ON beverages (category_id);
-CREATE INDEX idx_beverages_name_gin      ON beverages USING GIN (name_i18n jsonb_path_ops);
-CREATE INDEX idx_beverages_name_tsv      ON beverages USING GIN (
-  to_tsvector('simple',
-    coalesce(name_i18n->>'en','') || ' ' ||
-    coalesce(name_i18n->>'ja','') || ' ' ||
-    coalesce(name_i18n->>'ko','')
-  )
-);
+CREATE INDEX idx_beverages_brewery
+  ON beverages (brewery_id)
+  WHERE deleted_at IS NULL;
+CREATE INDEX idx_beverages_category
+  ON beverages (category_id)
+  WHERE deleted_at IS NULL;
+CREATE INDEX idx_beverages_name_gin
+  ON beverages USING gin (name_i18n jsonb_path_ops)
+  WHERE deleted_at IS NULL;
+CREATE INDEX idx_beverages_name_tsv
+  ON beverages USING gin (
+    to_tsvector('simple',
+      coalesce(name_i18n->>'en','') || ' ' ||
+      coalesce(name_i18n->>'ja','') || ' ' ||
+      coalesce(name_i18n->>'ko','')))
+  WHERE deleted_at IS NULL;
 CREATE INDEX idx_beverages_avg_rating_desc
   ON beverages (category_id, avg_rating DESC NULLS LAST)
-  WHERE check_in_count >= 3;
+  WHERE deleted_at IS NULL AND check_in_count >= 3;
+CREATE INDEX idx_beverages_deleted_at
+  ON beverages (deleted_at)
+  WHERE deleted_at IS NOT NULL;
 ```
 
-> Note: the SQL bodies above are the canonical definitions — they were added inline to `001_initial.sql` after the table is created. (Search this file for `CREATE INDEX idx_beverages_` to confirm.)
+> Note: 014 DROPs the original (non-partial) indexes and recreates them with the `WHERE deleted_at IS NULL` predicate. During apply there is a brief window where these indexes are absent and public reads may seq-scan; acceptable for the current single-region hosted env per `docs/runbooks/deploy.md`.
 
 ### breweries (search)
 
+After 014 the brewery FTS index is also partial:
+
 ```sql
-CREATE INDEX idx_breweries_name_tsv ON breweries USING GIN (
+CREATE INDEX idx_breweries_name_tsv ON breweries USING gin (
   to_tsvector('simple',
     coalesce(name_i18n->>'en','') || ' ' ||
     coalesce(name_i18n->>'ja','') || ' ' ||
-    coalesce(name_i18n->>'ko','')
-  )
-);
+    coalesce(name_i18n->>'ko','')))
+WHERE deleted_at IS NULL;
 ```
 
 ### flavor_tags
