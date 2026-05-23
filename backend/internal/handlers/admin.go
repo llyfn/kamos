@@ -96,18 +96,26 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 // is almost certainly bad data.
 
 // AdminBeverageCreate is the body for POST /v1/admin/beverages.
+//
+// Exactly one of `category_id` (UUID) or `category_slug` (one of
+// `nihonshu` / `shochu` / `liqueur`) must be supplied. The admin SPA
+// has no way to surface category UUIDs cleanly — `/v1/taxonomy/categories`
+// only returns slug + label — so `category_slug` is the ergonomic path;
+// `category_id` stays for any direct DB-aware caller. If both are sent
+// `category_id` wins and `category_slug` is ignored.
 type AdminBeverageCreate struct {
-	BreweryID      string           `json:"brewery_id"`
-	CategoryID     string           `json:"category_id"`
-	NameI18n       domain.I18nText  `json:"name_i18n"`
+	BreweryID       string           `json:"brewery_id"`
+	CategoryID      *string          `json:"category_id,omitempty"`
+	CategorySlug    *string          `json:"category_slug,omitempty"`
+	NameI18n        domain.I18nText  `json:"name_i18n"`
 	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"`
-	ABV             *float64        `json:"abv,omitempty"`
-	PolishingRatio  *int            `json:"polishing_ratio,omitempty"`
-	FlavorProfile   []string        `json:"flavor_profile,omitempty"`
-	Prefecture      *string         `json:"prefecture,omitempty"`
-	Region          *string         `json:"region,omitempty"`
+	ABV             *float64         `json:"abv,omitempty"`
+	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
+	FlavorProfile   []string         `json:"flavor_profile,omitempty"`
+	Prefecture      *string          `json:"prefecture,omitempty"`
+	Region          *string          `json:"region,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
-	LabelImageURL   *string         `json:"label_image_url,omitempty"`
+	LabelImageURL   *string          `json:"label_image_url,omitempty"`
 }
 
 // Validate enforces SPEC §2.2 catalog field rules. See validateBeverageFields
@@ -117,8 +125,10 @@ func (r *AdminBeverageCreate) Validate() error {
 	if r.BreweryID == "" {
 		return wrapV("brewery_id is required")
 	}
-	if r.CategoryID == "" {
-		return wrapV("category_id is required")
+	hasID := r.CategoryID != nil && *r.CategoryID != ""
+	hasSlug := r.CategorySlug != nil && *r.CategorySlug != ""
+	if !hasID && !hasSlug {
+		return wrapV("category_id or category_slug is required")
 	}
 	if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
 		return wrapV("name_i18n.en and name_i18n.ja are required")
@@ -157,9 +167,14 @@ func (r *AdminBeverageCreate) Validate() error {
 // AdminBeverageUpdate is the body for PATCH /v1/admin/beverages/{id}.
 // Every field is a pointer; nil means "leave unchanged". A non-nil but
 // all-empty I18nText on subcategory/description clears the column.
+//
+// At most one of `category_id` / `category_slug` may be supplied. If both
+// are sent, `category_id` wins. If only `category_slug` is supplied the
+// handler resolves it to a UUID before the UPDATE runs.
 type AdminBeverageUpdate struct {
 	BreweryID       *string          `json:"brewery_id,omitempty"`
 	CategoryID      *string          `json:"category_id,omitempty"`
+	CategorySlug    *string          `json:"category_slug,omitempty"`
 	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
 	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"`
 	ABV             *float64         `json:"abv,omitempty"`

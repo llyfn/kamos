@@ -12,10 +12,11 @@ import (
 )
 
 func TestAdminBeverageCreateValidate(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
 	base := func() AdminBeverageCreate {
 		return AdminBeverageCreate{
 			BreweryID:  "b-1",
-			CategoryID: "c-1",
+			CategoryID: strPtr("c-1"),
 			NameI18n:   domain.I18nText{EN: "X", JA: "Xj"},
 		}
 	}
@@ -27,7 +28,25 @@ func TestAdminBeverageCreateValidate(t *testing.T) {
 	}{
 		{"baseline", func(r *AdminBeverageCreate) {}, "", true},
 		{"missing brewery", func(r *AdminBeverageCreate) { r.BreweryID = "" }, "brewery_id", false},
-		{"missing category", func(r *AdminBeverageCreate) { r.CategoryID = "" }, "category_id", false},
+		{"missing category id and slug", func(r *AdminBeverageCreate) {
+			r.CategoryID = nil
+			r.CategorySlug = nil
+		}, "category_id or category_slug", false},
+		{"slug only ok", func(r *AdminBeverageCreate) {
+			r.CategoryID = nil
+			r.CategorySlug = strPtr("nihonshu")
+		}, "", true},
+		{"both id and slug ok", func(r *AdminBeverageCreate) {
+			r.CategorySlug = strPtr("shochu")
+		}, "", true},
+		{"empty id falls back to slug", func(r *AdminBeverageCreate) {
+			r.CategoryID = strPtr("")
+			r.CategorySlug = strPtr("liqueur")
+		}, "", true},
+		{"both empty rejected", func(r *AdminBeverageCreate) {
+			r.CategoryID = strPtr("")
+			r.CategorySlug = strPtr("")
+		}, "category_id or category_slug", false},
 		{"missing name.en", func(r *AdminBeverageCreate) { r.NameI18n.EN = "" }, "name_i18n", false},
 		{"missing name.ja", func(r *AdminBeverageCreate) { r.NameI18n.JA = "" }, "name_i18n", false},
 		{"abv negative", func(r *AdminBeverageCreate) { v := -0.1; r.ABV = &v }, "abv", false},

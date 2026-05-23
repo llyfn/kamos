@@ -395,6 +395,19 @@ func (r *BeverageRepo) ResolveFlavorTagIDs(ctx context.Context, slugs []string) 
 	return ids, rows.Err()
 }
 
+// CategoryIDForSlug resolves a beverage_categories.slug → id. Returns
+// domain.ErrNotFound when the slug is unknown (the admin handler converts
+// that into a 422 INVALID_CATEGORY_SLUG response). Backed by the unique
+// index idx_beverage_categories_slug.
+func (r *BeverageRepo) CategoryIDForSlug(ctx context.Context, slug string) (string, error) {
+	const q = `SELECT id FROM beverage_categories WHERE slug = $1;`
+	var id string
+	if err := r.db.QueryRow(ctx, q, slug).Scan(&id); err != nil {
+		return "", wrapNoRows("BeverageRepo.CategoryIDForSlug", err)
+	}
+	return id, nil
+}
+
 // SubmitAdditionRequest writes a row to beverage_addition_requests.
 func (r *BeverageRepo) SubmitAdditionRequest(ctx context.Context, userID *string, payload []byte) (string, error) {
 	const q = `INSERT INTO beverage_addition_requests (user_id, payload) VALUES ($1, $2::jsonb) RETURNING id;`
