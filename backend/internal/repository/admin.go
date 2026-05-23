@@ -26,6 +26,25 @@ import (
 // AdminRepo wraps administrative SQL.
 type AdminRepo struct{ db *pgxpool.Pool }
 
+// LogAction writes a single moderation_log audit row inside the supplied tx.
+// Exported so the Stage 8 admin catalog handlers can stamp their mutations
+// without going through a service shim. Existing package-internal write
+// paths use insertModerationLog (a thin wrapper that drops the receiver) so
+// the per-aggregate helpers in this file don't need a *AdminRepo just to
+// audit.
+func (r *AdminRepo) LogAction(
+	ctx context.Context,
+	tx pgx.Tx,
+	moderatorID string,
+	targetType string,
+	targetID string,
+	action string,
+	notes *string,
+	metadata map[string]any,
+) error {
+	return insertModerationLog(ctx, tx, moderatorID, targetType, targetID, action, notes, metadata)
+}
+
 // insertModerationLog writes a single audit row inside the supplied tx. Phase
 // 6a contract: every admin write path that changes user-visible state writes
 // one of these. Callers carry their moderator id explicitly so the audit row

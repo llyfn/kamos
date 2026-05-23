@@ -177,9 +177,11 @@ func (r *BreweryRepo) AdminDetail(ctx context.Context, id string) (*AdminBrewery
 	return out, nil
 }
 
-// Create inserts a brewery row and returns the freshly-scanned row.
-// Caller is responsible for SanitizeText + range checks.
-func (r *BreweryRepo) Create(ctx context.Context, in BreweryCreateInput) (*AdminBreweryRow, error) {
+// Create inserts a brewery row inside the supplied tx and returns the
+// freshly-scanned row. The handler bundles a moderation_log audit row
+// into the same tx for atomic commit. Caller is responsible for
+// SanitizeText + range checks.
+func (r *BreweryRepo) Create(ctx context.Context, tx pgx.Tx, in BreweryCreateInput) (*AdminBreweryRow, error) {
 	nameJSON, err := jsonMarshalI18n(in.Name)
 	if err != nil {
 		return nil, err
@@ -194,7 +196,7 @@ INSERT INTO breweries (name_i18n, prefecture, region, founded_year, website, des
 VALUES ($1::jsonb, $2, $3, $4, $5, $6::jsonb)
 RETURNING id, name_i18n, prefecture, region, founded_year, website,
           description_i18n, created_at, beverage_count, deleted_at;`
-	row := r.db.QueryRow(ctx, q,
+	row := tx.QueryRow(ctx, q,
 		string(nameJSON), in.Prefecture, in.Region, in.FoundedYear, in.Website, descArg,
 	)
 	out, err := scanAdminBrewery(row)
@@ -207,7 +209,9 @@ RETURNING id, name_i18n, prefecture, region, founded_year, website,
 // Update applies a partial change to a brewery and returns the updated
 // row. Only fields whose input pointers are non-nil are touched. The
 // row must be live (deleted_at IS NULL) — restoring goes through Restore.
-func (r *BreweryRepo) Update(ctx context.Context, id string, in BreweryUpdateInput) (*AdminBreweryRow, error) {
+// Runs inside the supplied tx so the moderation_log audit row commits
+// atomically with the change.
+func (r *BreweryRepo) Update(ctx context.Context, tx pgx.Tx, id string, in BreweryUpdateInput) (*AdminBreweryRow, error) {
 	// Dynamic SET builder. Keeps SQL readable; arg numbering is generated
 	// alongside the column list so we never miss-index a placeholder.
 	var (
@@ -252,8 +256,16 @@ func (r *BreweryRepo) Update(ctx context.Context, id string, in BreweryUpdateInp
 		}
 	}
 	if len(sets) == 0 {
-		// No-op: return the existing row unchanged (handler can short-circuit).
-		return r.AdminDetail(ctx, id)
+		// No-op: return the existing row unchanged. We re-fetch via the
+		// tx so a concurrent admin update visible inside the tx is also
+		// visible to the caller.
+		const reselect = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+		row := tx.QueryRow(ctx, reselect, id)
+		out, err := scanAdminBrewery(row)
+		if err != nil {
+			return nil, wrapNoRows("BreweryRepo.Update reselect", err)
+		}
+		return out, nil
 	}
 	args = append(args, id)
 	sql := fmt.Sprintf(`
@@ -263,7 +275,7 @@ RETURNING id, name_i18n, prefecture, region, founded_year, website,
           description_i18n, created_at, beverage_count, deleted_at;`,
 		strings.Join(sets, ", "), len(args))
 
-	row := r.db.QueryRow(ctx, sql, args...)
+	row := tx.QueryRow(ctx, sql, args...)
 	out, err := scanAdminBrewery(row)
 	if err != nil {
 		return nil, wrapNoRows("BreweryRepo.Update", err)
