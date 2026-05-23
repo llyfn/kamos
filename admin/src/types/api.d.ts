@@ -1096,7 +1096,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description List users. Moderator or admin role. */
+        /**
+         * @description List users. Moderator or admin role. Stage 8: the three
+         *     exact-match params (`username`, `email`, `id`) short-circuit
+         *     the cursor and return at most one row; `has_more` is always
+         *     false in that case. Precedence on overlap is id > username
+         *     > email. `username` and `email` match via LOWER() to hit the
+         *     case-insensitive partial unique indexes.
+         */
         get: operations["adminListUsers"];
         put?: never;
         post?: never;
@@ -1141,6 +1148,150 @@ export interface paths {
          *     outstanding JWTs are rejected immediately.
          */
         post: operations["adminSuspendUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/beverages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List beverages for admin tooling. Optional FTS (`q`,
+         *     websearch_to_tsquery against idx_beverages_name_tsv), exact
+         *     filters (`brewery_id`, `category_id`, `category_slug`, `id`).
+         *     `id` short-circuits the cursor. `include_deleted=1` surfaces
+         *     soft-deleted rows for the admin "trash" view.
+         */
+        get: operations["adminListBeverages"];
+        put?: never;
+        /**
+         * @description Insert a canonical beverage. Admin only. category_slug is
+         *     derived server-side from category_id by the existing trigger,
+         *     so the client supplies category_id only.
+         */
+        post: operations["adminCreateBeverage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/beverages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Return one beverage (including soft-deleted rows so the admin
+         *     can surface the Restore action).
+         */
+        get: operations["adminGetBeverage"];
+        put?: never;
+        post?: never;
+        /**
+         * @description Soft-delete a beverage (sets deleted_at = NOW()). Existing
+         *     check-ins and collection entries keep their FK reference; the
+         *     row stays in the DB and can be restored. The public catalog
+         *     endpoints filter deleted_at IS NULL.
+         */
+        delete: operations["adminSoftDeleteBeverage"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Partial-update a beverage. Only fields present in the body are
+         *     changed. To clear a nullable column (subcategory_i18n,
+         *     description_i18n, label_image_url), send the field with all-
+         *     empty i18n locales or an empty string.
+         */
+        patch: operations["adminUpdateBeverage"];
+        trace?: never;
+    };
+    "/v1/admin/beverages/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Clear deleted_at on a tombstoned beverage; the row reappears
+         *     in the public catalog on the next read.
+         */
+        post: operations["adminRestoreBeverage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/breweries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List breweries for admin tooling. Optional FTS (`q`,
+         *     websearch_to_tsquery against idx_breweries_name_tsv) or exact
+         *     UUID lookup (`id`). `include_deleted=1` surfaces soft-deleted
+         *     rows.
+         */
+        get: operations["adminListBreweries"];
+        put?: never;
+        /** @description Insert a canonical brewery. Admin only. */
+        post: operations["adminCreateBrewery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/breweries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return one brewery (including soft-deleted rows). */
+        get: operations["adminGetBrewery"];
+        put?: never;
+        post?: never;
+        /**
+         * @description Soft-delete a brewery (sets deleted_at = NOW()). Fails with
+         *     409 BREWERY_HAS_LIVE_BEVERAGES when at least one beverage
+         *     still references the brewery with deleted_at IS NULL — admin
+         *     must soft-delete or reassign the dependent beverages first.
+         */
+        delete: operations["adminSoftDeleteBrewery"];
+        options?: never;
+        head?: never;
+        /** @description Partial-update a brewery. */
+        patch: operations["adminUpdateBrewery"];
+        trace?: never;
+    };
+    "/v1/admin/breweries/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Clear deleted_at on a tombstoned brewery. */
+        post: operations["adminRestoreBrewery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1827,6 +1978,108 @@ export interface components {
             role: components["schemas"]["UserRole"];
         };
         /**
+         * @description Admin variant of Beverage. Same shape as the public Beverage
+         *     response, plus the nullable `deleted_at` so the admin UI can
+         *     render the tombstone badge / Restore action.
+         */
+        AdminBeverage: components["schemas"]["Beverage"] & {
+            /** Format: date-time */
+            deleted_at: string | null;
+        };
+        /**
+         * @description Payload for POST /v1/admin/beverages. `category_slug` is set
+         *     server-side by the trigger from `category_id`; clients send
+         *     `category_id` only. `name_i18n.en` and `name_i18n.ja` are
+         *     required; `ko` optional.
+         */
+        AdminBeverageCreate: {
+            /** Format: uuid */
+            brewery_id: string;
+            /** Format: uuid */
+            category_id: string;
+            name_i18n: components["schemas"]["I18nText"];
+            subcategory_i18n?: components["schemas"]["I18nText"] | null;
+            /** Format: float */
+            abv?: number | null;
+            /** @description nihonshu only — server CHECK rejects non-null values for other categories */
+            polishing_ratio?: number | null;
+            flavor_profile?: string[];
+            prefecture?: string | null;
+            region?: string | null;
+            description_i18n?: components["schemas"]["I18nText"] | null;
+            /**
+             * Format: uri
+             * @description must start with https://
+             */
+            label_image_url?: string | null;
+        };
+        /**
+         * @description Partial-update body for PATCH /v1/admin/beverages/{id}. Every
+         *     field is optional; omitted fields are left unchanged. To clear
+         *     a nullable column, send the field with an all-empty I18nText
+         *     (for `subcategory_i18n` / `description_i18n`) or an empty
+         *     string (for `label_image_url`).
+         */
+        AdminBeverageUpdate: {
+            /** Format: uuid */
+            brewery_id?: string;
+            /** Format: uuid */
+            category_id?: string;
+            name_i18n?: components["schemas"]["I18nText"];
+            subcategory_i18n?: components["schemas"]["I18nText"] | null;
+            /** Format: float */
+            abv?: number | null;
+            polishing_ratio?: number | null;
+            flavor_profile?: string[];
+            prefecture?: string | null;
+            region?: string | null;
+            description_i18n?: components["schemas"]["I18nText"] | null;
+            /** Format: uri */
+            label_image_url?: string | null;
+        };
+        AdminBeverageList: {
+            items: components["schemas"]["AdminBeverage"][];
+            next_cursor?: string | null;
+            has_more: boolean;
+        };
+        /** @description Admin variant of Brewery, exposing the nullable `deleted_at`. */
+        AdminBrewery: components["schemas"]["Brewery"] & {
+            /** Format: date-time */
+            deleted_at: string | null;
+        };
+        /**
+         * @description Payload for POST /v1/admin/breweries. `name_i18n.en` and
+         *     `name_i18n.ja` are required; `ko` optional. `founded_year`
+         *     must be between 800 and 2100 to match the DB CHECK.
+         */
+        AdminBreweryCreate: {
+            name_i18n: components["schemas"]["I18nText"];
+            prefecture?: string | null;
+            region?: string | null;
+            founded_year?: number | null;
+            /** Format: uri */
+            website?: string | null;
+            description_i18n?: components["schemas"]["I18nText"] | null;
+        };
+        /**
+         * @description Partial-update body for PATCH /v1/admin/breweries/{id}. Every
+         *     field is optional; omitted fields are left unchanged.
+         */
+        AdminBreweryUpdate: {
+            name_i18n?: components["schemas"]["I18nText"];
+            prefecture?: string | null;
+            region?: string | null;
+            founded_year?: number | null;
+            /** Format: uri */
+            website?: string | null;
+            description_i18n?: components["schemas"]["I18nText"] | null;
+        };
+        AdminBreweryList: {
+            items: components["schemas"]["AdminBrewery"][];
+            next_cursor?: string | null;
+            has_more: boolean;
+        };
+        /**
          * @description Stage 7 (M-8.1). One row of the audit trail for an admin action.
          *     Mirrors migration 008's `moderation_log` columns. `notes` is the
          *     free-form moderator reason (may be null); `metadata` is JSONB
@@ -1842,9 +2095,9 @@ export interface components {
              */
             moderator_id?: string | null;
             /** @enum {string} */
-            action: "soft_delete" | "role_change" | "suspend" | "approve" | "reject";
+            action: "soft_delete" | "role_change" | "suspend" | "approve" | "reject" | "create" | "update" | "restore";
             /** @enum {string} */
-            target_type: "check_in" | "comment" | "user" | "beverage_request";
+            target_type: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "brewery";
             /** Format: uuid */
             target_id: string;
             notes?: string | null;
@@ -3652,7 +3905,7 @@ export interface operations {
     adminListModerationLog: {
         parameters: {
             query?: {
-                target_type?: "check_in" | "comment" | "user" | "beverage_request";
+                target_type?: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "brewery";
                 target_id?: string;
                 moderator_id?: string;
                 cursor?: string;
@@ -3709,6 +3962,12 @@ export interface operations {
             query?: {
                 role?: "user" | "moderator" | "admin";
                 include_deleted?: "0" | "1";
+                /** @description case-insensitive exact match */
+                username?: string;
+                /** @description case-insensitive exact match */
+                email?: string;
+                /** @description UUID exact match */
+                id?: string;
                 cursor?: string;
                 limit?: number;
             };
@@ -3787,6 +4046,334 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminListBeverages: {
+        parameters: {
+            query?: {
+                q?: string;
+                brewery_id?: string;
+                category_id?: string;
+                category_slug?: "nihonshu" | "shochu" | "liqueur";
+                id?: string;
+                include_deleted?: "0" | "1";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of beverages */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBeverageList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateBeverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBeverageCreate"];
+            };
+        };
+        responses: {
+            /** @description created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBeverage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminGetBeverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description beverage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBeverage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminSoftDeleteBeverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description soft-deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminUpdateBeverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBeverageUpdate"];
+            };
+        };
+        responses: {
+            /** @description updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBeverage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminRestoreBeverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description restored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBeverage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminListBreweries: {
+        parameters: {
+            query?: {
+                q?: string;
+                id?: string;
+                include_deleted?: "0" | "1";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of breweries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBreweryList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateBrewery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBreweryCreate"];
+            };
+        };
+        responses: {
+            /** @description created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBrewery"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminGetBrewery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description brewery */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBrewery"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminSoftDeleteBrewery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description soft-deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description brewery still has live beverages (code BREWERY_HAS_LIVE_BEVERAGES) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    adminUpdateBrewery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBreweryUpdate"];
+            };
+        };
+        responses: {
+            /** @description updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBrewery"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminRestoreBrewery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description restored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBrewery"];
+                };
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
