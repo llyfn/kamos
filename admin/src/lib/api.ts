@@ -64,7 +64,12 @@ const sessionMiddleware: Middleware = {
 
     const ok = await tryRefresh();
     if (!ok) {
-      if (typeof window !== 'undefined') window.location.assign('/login');
+      // Redirect to login on a dead session — but not when already there,
+      // or the useAuth /v1/admin/me probe that runs on every page (incl.
+      // /login, via __root) would 401 -> assign('/login') -> reload, forever.
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
       return response;
     }
     const retry = new Request(request, { credentials: 'include' });
