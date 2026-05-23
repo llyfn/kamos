@@ -58,6 +58,13 @@ KAMOS lets users discover, rate, and log Japanese alcoholic beverages — primar
 
 > **Recommended:** Admin-curated database for MVP. Users can *request* additions via a form (a simple feedback mechanism), but cannot directly add or edit canonical entries. This keeps data quality high and avoids moderation overhead at launch. User-contribution with moderation can be introduced post-MVP.
 
+**Admin curation tooling.** Admins manage the canonical catalog directly from the admin SPA at `/beverages` and `/breweries`: create, update, soft-delete, restore, and search (FTS on name across en/ja/ko, plus exact lookup by UUID, brewery, or category slug). The user-submission queue at `/v1/admin/beverage-requests` remains the path for non-admin contributors (post-MVP Phase 5).
+
+- Catalog soft-delete uses `deleted_at TIMESTAMPTZ`. Public reads filter `deleted_at IS NULL`; user-history reads (feed, check-ins, collections) intentionally surface tombstoned catalog rows so historical context is preserved.
+- Brewery soft-delete returns `409 BREWERY_HAS_LIVE_BEVERAGES` while any live beverage still references the brewery — admins must tombstone or reassign the children first.
+- Every catalog mutation writes a row to `moderation_log` inside the same transaction as the write. `target_type` covers `beverage` and `brewery`; `action` covers `create`, `update`, `soft_delete`, and `restore`.
+- Admin user lookup is exact-match only on indexed columns: `id` (UUID), `username` (case-insensitive), `email` (case-insensitive).
+
 ---
 
 ## 3. User Accounts
