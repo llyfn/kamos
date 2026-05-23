@@ -18,8 +18,17 @@ import (
 // Query params:
 // - role: user|moderator|admin (optional)
 // - include_deleted: 1 to include soft-deleted (default false)
+// - username: exact-match lookup (case-insensitive via LOWER)
+// - email:    exact-match lookup (case-insensitive via LOWER)
+// - id:       exact-match lookup by UUID
 // - cursor: opaque cursor token
 // - limit: 1..50, default 20
+//
+// Stage 8 (admin catalog + search): when any of `username`, `email`, `id`
+// is set, the query collapses to a single indexed lookup and the cursor
+// is ignored (has_more = false). Only one exact-match field may be set
+// at a time; if multiple are supplied, the precedence is id > username
+// > email (matches the repo's fast-path order).
 func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
@@ -34,9 +43,15 @@ func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	includeDeleted := r.URL.Query().Get("include_deleted") == "1"
+	usernameExact := optString(r.URL.Query().Get("username"))
+	emailExact := optString(r.URL.Query().Get("email"))
+	idExact := optString(r.URL.Query().Get("id"))
 	items, err := h.Repos.Admin.ListUsers(r.Context(), repository.ListUsersParams{
 		RoleFilter:     roleFilter,
 		IncludeDeleted: includeDeleted,
+		UsernameExact:  usernameExact,
+		EmailExact:     emailExact,
+		IDExact:        idExact,
 		CursorTs:       optTimestamp(c),
 		CursorID:       optString(c.ID),
 		Limit:          limit,
