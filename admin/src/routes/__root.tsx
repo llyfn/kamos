@@ -38,6 +38,20 @@ function RootLayout() {
                     Queue
                   </Link>
                   <Link
+                    to="/beverages"
+                    className="hover:underline"
+                    activeProps={{ className: 'underline' }}
+                  >
+                    Beverages
+                  </Link>
+                  <Link
+                    to="/breweries"
+                    className="hover:underline"
+                    activeProps={{ className: 'underline' }}
+                  >
+                    Breweries
+                  </Link>
+                  <Link
                     to="/users"
                     className="hover:underline"
                     activeProps={{ className: 'underline' }}
