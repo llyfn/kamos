@@ -214,12 +214,20 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 // Set Q to filter by full-text match. q (lexeme) and category_slug
 // are optional. The triple keyset is backed by
 // idx_beverages_popularity_keyset (migration 012).
+//
+// Stage 8 (admin catalog soft-delete, migration 014): rows with
+// deleted_at set are filtered out on the public read path. The
+// partial indexes (idx_beverages_* WHERE deleted_at IS NULL) keep
+// the planner using index scans without the predicate slowing down
+// the hot path.
 func (r *BeverageRepo) List(ctx context.Context, p BeverageListParams) ([]domain.Beverage, error) {
 	if p.Limit <= 0 {
 		p.Limit = 20
 	}
 	q := beverageListSelect + `
 WHERE TRUE
+  AND b.deleted_at IS NULL
+  AND br.deleted_at IS NULL
   AND ($1::text IS NULL OR
        to_tsvector('simple',
          coalesce(b.name_i18n->>'en','') || ' ' ||
@@ -253,8 +261,12 @@ LIMIT $6;`
 }
 
 // Detail returns one beverage by id along with brewery + category info.
+//
+// Stage 8: rows with deleted_at set are treated as not found on the public
+// read path. The admin GET handler uses AdminDetail to surface soft-deleted
+// rows so an admin can restore them.
 func (r *BeverageRepo) Detail(ctx context.Context, id string) (*domain.Beverage, error) {
-	q := beverageSelect + ` WHERE b.id = $1;`
+	q := beverageSelect + ` WHERE b.id = $1 AND b.deleted_at IS NULL AND br.deleted_at IS NULL;`
 	row := r.db.QueryRow(ctx, q, id)
 	bv, err := scanBeverage(row)
 	if err != nil {
@@ -267,10 +279,12 @@ func (r *BeverageRepo) Detail(ctx context.Context, id string) (*domain.Beverage,
 	return &d, nil
 }
 
-// Exists is a cheap presence check.
+// Exists is a cheap presence check. Stage 8: soft-deleted rows return
+// false so callers (check-in create, collection add-entry) cannot
+// reference a tombstoned beverage.
 func (r *BeverageRepo) Exists(ctx context.Context, id string) (bool, error) {
 	var exists bool
-	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM beverages WHERE id = $1);`, id).Scan(&exists); err != nil {
+	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM beverages WHERE id = $1 AND deleted_at IS NULL);`, id).Scan(&exists); err != nil {
 		return false, fmt.Errorf("BeverageRepo.Exists: %w", err)
 	}
 	return exists, nil
@@ -404,11 +418,16 @@ func (r *BreweryRepo) List(ctx context.Context, q *string, cursorTs *time.Time, 
 	// subquery per row. The ordering switches from id-only (which is
 	// pseudo-random for v7 UUIDs) to (created_at DESC, id DESC) so
 	// the list paginates in a meaningful order.
+	//
+	// Stage 8 (admin catalog soft-delete, migration 014): rows with
+	// deleted_at set are excluded from the public catalog. The partial
+	// idx_breweries_name_tsv keeps FTS index-friendly.
 	const sql = `
 SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
        b.beverage_count
 FROM breweries b
-WHERE ($1::text IS NULL OR
+WHERE b.deleted_at IS NULL
+  AND ($1::text IS NULL OR
        to_tsvector('simple',
          coalesce(b.name_i18n->>'en','') || ' ' ||
          coalesce(b.name_i18n->>'ja','') || ' ' ||
@@ -429,7 +448,7 @@ func (r *BreweryRepo) Detail(ctx context.Context, id string) (*domain.Brewery, e
 	const sql = `
 SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
        b.beverage_count
-FROM breweries b WHERE b.id = $1;`
+FROM breweries b WHERE b.id = $1 AND b.deleted_at IS NULL;`
 	row := r.db.QueryRow(ctx, sql, id)
 	out, err := scanBreweryWithCount(row)
 	if err != nil {
@@ -441,12 +460,16 @@ FROM breweries b WHERE b.id = $1;`
 // Beverages lists beverages by brewery, cursor-paginated on
 // (created_at, id) so a brewery detail page shows newest first
 // instead of the v7-UUID-pseudo-random id order.
+//
+// Stage 8: public path filters soft-deleted rows on both joined tables.
 func (r *BreweryRepo) Beverages(ctx context.Context, breweryID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Beverage, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	q := beverageListSelect + `
 WHERE b.brewery_id = $1
+  AND b.deleted_at IS NULL
+  AND br.deleted_at IS NULL
   AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
 ORDER BY b.created_at DESC, b.id DESC
 LIMIT $4;`
