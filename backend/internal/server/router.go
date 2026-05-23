@@ -341,6 +341,25 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(adminOnly).Post("/beverage-requests/{id}/approve", h.AdminApproveBeverageRequest)
 			r.With(adminOnly).Post("/users/{id}/suspend", h.AdminSuspendUser)
 			r.With(adminOnly).Post("/users/{id}/role", h.AdminUpdateUserRole)
+
+			// Stage 8 — direct catalog CRUD. Admin-only (stronger
+			// privilege than moderating user submissions): a moderator
+			// can triage the beverage-request queue but cannot write
+			// canonical entries. Tighten now; product can relax GET to
+			// modOrAdmin later if needed.
+			r.With(adminOnly).Get("/beverages", h.AdminListBeverages)
+			r.With(adminOnly).Get("/beverages/{id}", h.AdminGetBeverage)
+			r.With(adminOnly).Post("/beverages", h.AdminCreateBeverage)
+			r.With(adminOnly).Patch("/beverages/{id}", h.AdminUpdateBeverage)
+			r.With(adminOnly).Delete("/beverages/{id}", h.AdminSoftDeleteBeverage)
+			r.With(adminOnly).Post("/beverages/{id}/restore", h.AdminRestoreBeverage)
+
+			r.With(adminOnly).Get("/breweries", h.AdminListBreweries)
+			r.With(adminOnly).Get("/breweries/{id}", h.AdminGetBrewery)
+			r.With(adminOnly).Post("/breweries", h.AdminCreateBrewery)
+			r.With(adminOnly).Patch("/breweries/{id}", h.AdminUpdateBrewery)
+			r.With(adminOnly).Delete("/breweries/{id}", h.AdminSoftDeleteBrewery)
+			r.With(adminOnly).Post("/breweries/{id}/restore", h.AdminRestoreBrewery)
 		})
 	})
 
