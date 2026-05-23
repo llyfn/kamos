@@ -25,8 +25,12 @@ func (r *SearchRepo) SearchBeverages(ctx context.Context, q string, cursorID *st
 	if limit <= 0 {
 		limit = 20
 	}
+	// Stage 8 (admin catalog soft-delete): exclude tombstoned rows from
+	// /v1/search the same way List/Detail do.
 	const bq = beverageListSelect + `
-WHERE to_tsvector('simple',
+WHERE b.deleted_at IS NULL
+  AND br.deleted_at IS NULL
+  AND to_tsvector('simple',
         coalesce(b.name_i18n->>'en','') || ' ' ||
         coalesce(b.name_i18n->>'ja','') || ' ' ||
         coalesce(b.name_i18n->>'ko','')
@@ -60,10 +64,12 @@ func (r *SearchRepo) SearchBreweries(ctx context.Context, q string, cursorID *st
 	if limit <= 0 {
 		limit = 20
 	}
+	// Stage 8: exclude tombstoned rows from public search.
 	const brq = `
 SELECT id, name_i18n, prefecture, region, founded_year, website, description_i18n, created_at
 FROM breweries
-WHERE to_tsvector('simple',
+WHERE deleted_at IS NULL
+  AND to_tsvector('simple',
         coalesce(name_i18n->>'en','') || ' ' ||
         coalesce(name_i18n->>'ja','') || ' ' ||
         coalesce(name_i18n->>'ko','')

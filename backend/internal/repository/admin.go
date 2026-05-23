@@ -26,6 +26,25 @@ import (
 // AdminRepo wraps administrative SQL.
 type AdminRepo struct{ db *pgxpool.Pool }
 
+// LogAction writes a single moderation_log audit row inside the supplied tx.
+// Exported so the Stage 8 admin catalog handlers can stamp their mutations
+// without going through a service shim. Existing package-internal write
+// paths use insertModerationLog (a thin wrapper that drops the receiver) so
+// the per-aggregate helpers in this file don't need a *AdminRepo just to
+// audit.
+func (r *AdminRepo) LogAction(
+	ctx context.Context,
+	tx pgx.Tx,
+	moderatorID string,
+	targetType string,
+	targetID string,
+	action string,
+	notes *string,
+	metadata map[string]any,
+) error {
+	return insertModerationLog(ctx, tx, moderatorID, targetType, targetID, action, notes, metadata)
+}
+
 // insertModerationLog writes a single audit row inside the supplied tx. Phase
 // 6a contract: every admin write path that changes user-visible state writes
 // one of these. Callers carry their moderator id explicitly so the audit row
@@ -350,9 +369,19 @@ type AdminUserRow struct {
 
 // ListUsersParams supports cursor pagination on (created_at, id) plus
 // filters for role and "include soft-deleted".
+//
+// Stage 8 (admin catalog CRUD): three exact-match fields short-circuit
+// the cursor to a single indexed lookup. UsernameExact and EmailExact
+// case-fold to LOWER() to hit idx_users_username_live /
+// idx_users_email_live; IDExact walks the PK. When any of the three is
+// set, the rest of the filter set is ignored and at most one row comes
+// back (has_more = false at the handler).
 type ListUsersParams struct {
 	RoleFilter     string
 	IncludeDeleted bool
+	UsernameExact  *string
+	EmailExact     *string
+	IDExact        *string
 	CursorTs       *time.Time
 	CursorID       *string
 	Limit          int
@@ -364,6 +393,22 @@ func (r *AdminRepo) ListUsers(ctx context.Context, p ListUsersParams) ([]AdminUs
 	if p.Limit <= 0 {
 		p.Limit = 20
 	}
+
+	// Fast paths: any exact-match field collapses to a single PK / unique
+	// hit. We honor IncludeDeleted on the fast path too so an admin
+	// looking up a tombstoned account by id can still find it.
+	if p.IDExact != nil && *p.IDExact != "" {
+		return r.listUsersExact(ctx, "id = $1::uuid", *p.IDExact, p.IncludeDeleted)
+	}
+	if p.UsernameExact != nil && *p.UsernameExact != "" {
+		// LOWER(username) hits idx_users_username_live (case-insensitive
+		// unique partial index from migration 006).
+		return r.listUsersExact(ctx, "LOWER(username) = LOWER($1)", *p.UsernameExact, p.IncludeDeleted)
+	}
+	if p.EmailExact != nil && *p.EmailExact != "" {
+		return r.listUsersExact(ctx, "LOWER(email) = LOWER($1)", *p.EmailExact, p.IncludeDeleted)
+	}
+
 	const q = `
 SELECT id, username, display_username, email, email_verified,
        role::text, created_at, deleted_at
@@ -384,6 +429,38 @@ LIMIT $5;`
 		if err := rows.Scan(&u.ID, &u.Username, &u.DisplayUsername,
 			&u.Email, &u.EmailVerified, &u.Role, &u.CreatedAt, &u.DeletedAt); err != nil {
 			return nil, fmt.Errorf("AdminRepo.ListUsers scan: %w", err)
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// listUsersExact is the shared implementation for the three exact-match
+// fast paths. `whereExpr` is interpolated as the WHERE predicate (always
+// a literal column reference + $1, never user-controlled). The arg is
+// always $1; includeDeleted toggles the deleted_at filter.
+func (r *AdminRepo) listUsersExact(ctx context.Context, whereExpr, arg string, includeDeleted bool) ([]AdminUserRow, error) {
+	live := ""
+	if !includeDeleted {
+		live = " AND deleted_at IS NULL"
+	}
+	q := `
+SELECT id, username, display_username, email, email_verified,
+       role::text, created_at, deleted_at
+FROM users
+WHERE ` + whereExpr + live + `
+LIMIT 1;`
+	rows, err := r.db.Query(ctx, q, arg)
+	if err != nil {
+		return nil, fmt.Errorf("AdminRepo.ListUsers exact: %w", err)
+	}
+	defer rows.Close()
+	out := make([]AdminUserRow, 0, 1)
+	for rows.Next() {
+		var u AdminUserRow
+		if err := rows.Scan(&u.ID, &u.Username, &u.DisplayUsername,
+			&u.Email, &u.EmailVerified, &u.Role, &u.CreatedAt, &u.DeletedAt); err != nil {
+			return nil, fmt.Errorf("AdminRepo.ListUsers exact scan: %w", err)
 		}
 		out = append(out, u)
 	}

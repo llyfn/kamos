@@ -84,6 +84,9 @@ func WriteFrom(w http.ResponseWriter, log *slog.Logger, op string, err error) {
 		errors.Is(err, domain.ErrBeverageNotFound),
 		errors.Is(err, domain.ErrCheckinNotFound):
 		WriteNotFound(w)
+	case errors.Is(err, domain.ErrBreweryHasLiveBeverages):
+		WriteError(w, http.StatusConflict, "BREWERY_HAS_LIVE_BEVERAGES",
+			"brewery has live beverages — soft-delete or reassign them first")
 	case errors.Is(err, domain.ErrConflict),
 		errors.Is(err, domain.ErrUsernameHeld),
 		errors.Is(err, domain.ErrEmailTaken):

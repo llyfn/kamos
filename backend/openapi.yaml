@@ -1575,7 +1575,7 @@ paths:
         - in: query
           name: target_type
           required: false
-          schema: { type: string, enum: [check_in, comment, user, beverage_request] }
+          schema: { type: string, enum: [check_in, comment, user, beverage_request, beverage, brewery] }
         - in: query
           name: target_id
           required: false
@@ -1632,7 +1632,12 @@ paths:
       tags: [admin]
       operationId: adminListUsers
       description: |
-        List users. Moderator or admin role.
+        List users. Moderator or admin role. Stage 8: the three
+        exact-match params (`username`, `email`, `id`) short-circuit
+        the cursor and return at most one row; `has_more` is always
+        false in that case. Precedence on overlap is id > username
+        > email. `username` and `email` match via LOWER() to hit the
+        case-insensitive partial unique indexes.
       parameters:
         - in: query
           name: role
@@ -1642,6 +1647,21 @@ paths:
           name: include_deleted
           required: false
           schema: { type: string, enum: ["0", "1"] }
+        - in: query
+          name: username
+          required: false
+          schema: { type: string }
+          description: case-insensitive exact match
+        - in: query
+          name: email
+          required: false
+          schema: { type: string }
+          description: case-insensitive exact match
+        - in: query
+          name: id
+          required: false
+          schema: { type: string, format: uuid }
+          description: UUID exact match
         - in: query
           name: cursor
           required: false
@@ -1715,6 +1735,327 @@ paths:
       responses:
         "204":
           description: suspended
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # =========================================================================
+  # Stage 8 — admin direct catalog CRUD (beverages + breweries).
+  # Admin role required on every endpoint. Each mutation bundles a
+  # moderation_log audit row in the same transaction.
+  # =========================================================================
+
+  /v1/admin/beverages:
+    get:
+      tags: [admin]
+      operationId: adminListBeverages
+      description: |
+        List beverages for admin tooling. Optional FTS (`q`,
+        websearch_to_tsquery against idx_beverages_name_tsv), exact
+        filters (`brewery_id`, `category_id`, `category_slug`, `id`).
+        `id` short-circuits the cursor. `include_deleted=1` surfaces
+        soft-deleted rows for the admin "trash" view.
+      parameters:
+        - in: query
+          name: q
+          required: false
+          schema: { type: string }
+        - in: query
+          name: brewery_id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: category_id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: category_slug
+          required: false
+          schema: { type: string, enum: [nihonshu, shochu, liqueur] }
+        - in: query
+          name: id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: include_deleted
+          required: false
+          schema: { type: string, enum: ["0", "1"] }
+        - in: query
+          name: cursor
+          required: false
+          schema: { type: string }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of beverages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBeverageList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: adminCreateBeverage
+      description: |
+        Insert a canonical beverage. Admin only. The client may supply
+        either `category_id` (UUID) or `category_slug` (one of
+        `nihonshu` / `shochu` / `liqueur`); the denormalized
+        `beverages.category_slug` column is then set server-side by
+        the existing trigger from the resolved `category_id`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBeverageCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBeverage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/beverages/{id}:
+    get:
+      tags: [admin]
+      operationId: adminGetBeverage
+      description: |
+        Return one beverage (including soft-deleted rows so the admin
+        can surface the Restore action).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: beverage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBeverage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [admin]
+      operationId: adminUpdateBeverage
+      description: |
+        Partial-update a beverage. Only fields present in the body are
+        changed. To clear a nullable column (subcategory_i18n,
+        description_i18n, label_image_url), send the field with all-
+        empty i18n locales or an empty string.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBeverageUpdate" }
+      responses:
+        "200":
+          description: updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBeverage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
+    delete:
+      tags: [admin]
+      operationId: adminSoftDeleteBeverage
+      description: |
+        Soft-delete a beverage (sets deleted_at = NOW()). Existing
+        check-ins and collection entries keep their FK reference; the
+        row stays in the DB and can be restored. The public catalog
+        endpoints filter deleted_at IS NULL.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: soft-deleted
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/admin/beverages/{id}/restore:
+    post:
+      tags: [admin]
+      operationId: adminRestoreBeverage
+      description: |
+        Clear deleted_at on a tombstoned beverage; the row reappears
+        in the public catalog on the next read.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBeverage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/admin/breweries:
+    get:
+      tags: [admin]
+      operationId: adminListBreweries
+      description: |
+        List breweries for admin tooling. Optional FTS (`q`,
+        websearch_to_tsquery against idx_breweries_name_tsv) or exact
+        UUID lookup (`id`). `include_deleted=1` surfaces soft-deleted
+        rows.
+      parameters:
+        - in: query
+          name: q
+          required: false
+          schema: { type: string }
+        - in: query
+          name: id
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: include_deleted
+          required: false
+          schema: { type: string, enum: ["0", "1"] }
+        - in: query
+          name: cursor
+          required: false
+          schema: { type: string }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of breweries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBreweryList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: adminCreateBrewery
+      description: |
+        Insert a canonical brewery. Admin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBreweryCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBrewery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/breweries/{id}:
+    get:
+      tags: [admin]
+      operationId: adminGetBrewery
+      description: |
+        Return one brewery (including soft-deleted rows).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: brewery
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBrewery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [admin]
+      operationId: adminUpdateBrewery
+      description: |
+        Partial-update a brewery.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminBreweryUpdate" }
+      responses:
+        "200":
+          description: updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBrewery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
+    delete:
+      tags: [admin]
+      operationId: adminSoftDeleteBrewery
+      description: |
+        Soft-delete a brewery (sets deleted_at = NOW()). Fails with
+        409 BREWERY_HAS_LIVE_BEVERAGES when at least one beverage
+        still references the brewery with deleted_at IS NULL — admin
+        must soft-delete or reassign the dependent beverages first.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: soft-deleted
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: brewery still has live beverages (code BREWERY_HAS_LIVE_BEVERAGES)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/admin/breweries/{id}/restore:
+    post:
+      tags: [admin]
+      operationId: adminRestoreBrewery
+      description: |
+        Clear deleted_at on a tombstoned brewery.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminBrewery" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -2646,6 +2987,215 @@ components:
       properties:
         role: { $ref: "#/components/schemas/UserRole" }
 
+    # =======================================================================
+    # Stage 8 — admin catalog CRUD (beverages + breweries)
+    # =======================================================================
+
+    AdminBeverage:
+      description: |
+        Admin variant of Beverage. Same shape as the public Beverage
+        response, plus the nullable `deleted_at` so the admin UI can
+        render the tombstone badge / Restore action.
+      allOf:
+        - $ref: "#/components/schemas/Beverage"
+        - type: object
+          required: [deleted_at]
+          properties:
+            deleted_at:
+              type: string
+              format: date-time
+              nullable: true
+
+    AdminBeverageCreate:
+      type: object
+      description: |
+        Payload for POST /v1/admin/beverages. Exactly one of
+        `category_id` (UUID) or `category_slug` (one of
+        `nihonshu` / `shochu` / `liqueur`) is required — the admin SPA
+        works in slugs since `/v1/taxonomy/categories` returns only
+        slug + label. If both are sent, `category_id` wins. The
+        denormalized `beverages.category_slug` column is set server-side
+        by the existing trigger from the resolved `category_id`.
+        `name_i18n.en` and `name_i18n.ja` are required; `ko` is optional.
+        An unknown `category_slug` returns
+        `422 INVALID_CATEGORY_SLUG`.
+      required: [brewery_id, name_i18n]
+      properties:
+        brewery_id: { type: string, format: uuid }
+        category_id:
+          type: string
+          format: uuid
+          description: required if category_slug is not supplied
+        category_slug:
+          type: string
+          enum: [nihonshu, shochu, liqueur]
+          description: required if category_id is not supplied
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        subcategory_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+        abv:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0
+          maximum: 60
+        polishing_ratio:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: nihonshu only — server CHECK rejects non-null values for other categories
+        flavor_profile:
+          type: array
+          items: { type: string }
+        prefecture: { type: string, nullable: true, maxLength: 100 }
+        region: { type: string, nullable: true, maxLength: 100 }
+        description_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+        label_image_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 512
+          description: must start with https://
+
+    AdminBeverageUpdate:
+      type: object
+      description: |
+        Partial-update body for PATCH /v1/admin/beverages/{id}. Every
+        field is optional; omitted fields are left unchanged. To clear
+        a nullable column, send the field with an all-empty I18nText
+        (for `subcategory_i18n` / `description_i18n`) or an empty
+        string (for `label_image_url`).
+
+        At most one of `category_id` / `category_slug` may be supplied.
+        If both are sent, `category_id` wins. An unknown
+        `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
+      properties:
+        brewery_id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid }
+        category_slug:
+          type: string
+          enum: [nihonshu, shochu, liqueur]
+          description: alternative to category_id; resolved server-side
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        subcategory_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+        abv:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0
+          maximum: 60
+        polishing_ratio:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+        flavor_profile:
+          type: array
+          items: { type: string }
+        prefecture: { type: string, nullable: true, maxLength: 100 }
+        region: { type: string, nullable: true, maxLength: 100 }
+        description_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+        label_image_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 512
+
+    AdminBeverageList:
+      type: object
+      required: [items, has_more]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminBeverage" }
+        next_cursor: { type: string, nullable: true }
+        has_more: { type: boolean }
+
+    AdminBrewery:
+      description: |
+        Admin variant of Brewery, exposing the nullable `deleted_at`.
+      allOf:
+        - $ref: "#/components/schemas/Brewery"
+        - type: object
+          required: [deleted_at]
+          properties:
+            deleted_at:
+              type: string
+              format: date-time
+              nullable: true
+
+    AdminBreweryCreate:
+      type: object
+      description: |
+        Payload for POST /v1/admin/breweries. `name_i18n.en` and
+        `name_i18n.ja` are required; `ko` optional. `founded_year`
+        must be between 800 and 2100 to match the DB CHECK.
+      required: [name_i18n]
+      properties:
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        prefecture: { type: string, nullable: true, maxLength: 100 }
+        region: { type: string, nullable: true, maxLength: 100 }
+        founded_year:
+          type: integer
+          nullable: true
+          minimum: 800
+          maximum: 2100
+        website:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 512
+        description_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+
+    AdminBreweryUpdate:
+      type: object
+      description: |
+        Partial-update body for PATCH /v1/admin/breweries/{id}. Every
+        field is optional; omitted fields are left unchanged.
+      properties:
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        prefecture: { type: string, nullable: true, maxLength: 100 }
+        region: { type: string, nullable: true, maxLength: 100 }
+        founded_year:
+          type: integer
+          nullable: true
+          minimum: 800
+          maximum: 2100
+        website:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 512
+        description_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
+
+    AdminBreweryList:
+      type: object
+      required: [items, has_more]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AdminBrewery" }
+        next_cursor: { type: string, nullable: true }
+        has_more: { type: boolean }
+
     ModerationLogEntry:
       type: object
       description: |
@@ -2662,8 +3212,8 @@ components:
           format: uuid
           nullable: true
           description: null when the moderator was hard-purged
-        action: { type: string, enum: [soft_delete, role_change, suspend, approve, reject] }
-        target_type: { type: string, enum: [check_in, comment, user, beverage_request] }
+        action: { type: string, enum: [soft_delete, role_change, suspend, approve, reject, create, update, restore] }
+        target_type: { type: string, enum: [check_in, comment, user, beverage_request, beverage, brewery] }
         target_id: { type: string, format: uuid }
         notes:
           type: string

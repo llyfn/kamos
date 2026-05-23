@@ -9,7 +9,14 @@ import type { components } from '@/types/api';
 
 type Entry = components['schemas']['ModerationLogEntry'];
 
-type TargetType = '' | 'check_in' | 'comment' | 'user' | 'beverage_request';
+type TargetType =
+  | ''
+  | 'check_in'
+  | 'comment'
+  | 'user'
+  | 'beverage_request'
+  | 'beverage'
+  | 'brewery';
 
 interface Filters {
   target_type: TargetType;
@@ -18,6 +25,37 @@ interface Filters {
 }
 
 const EMPTY_FILTERS: Filters = { target_type: '', target_id: '', moderator_id: '' };
+
+// Action + target-type display labels. Kept inline rather than i18n because
+// the admin UI is English-only (see CLAUDE.md "Admin i18n" risk note).
+const ACTION_LABELS: Record<Entry['action'], string> = {
+  soft_delete: 'soft delete',
+  role_change: 'role change',
+  suspend: 'suspend',
+  approve: 'approve',
+  reject: 'reject',
+  create: 'create',
+  update: 'update',
+  restore: 'restore',
+};
+const TARGET_LABELS: Record<Entry['target_type'], string> = {
+  check_in: 'check-in',
+  comment: 'comment',
+  user: 'user',
+  beverage_request: 'beverage request',
+  beverage: 'beverage',
+  brewery: 'brewery',
+};
+const ACTION_BADGE_TONE: Record<Entry['action'], string> = {
+  soft_delete: 'bg-red-100 text-red-800',
+  role_change: 'bg-amber-100 text-amber-800',
+  suspend: 'bg-red-100 text-red-800',
+  approve: 'bg-emerald-100 text-emerald-800',
+  reject: 'bg-red-100 text-red-800',
+  create: 'bg-sky-100 text-sky-800',
+  update: 'bg-amber-100 text-amber-800',
+  restore: 'bg-emerald-100 text-emerald-800',
+};
 
 const COLUMNS: QueueTableColumn[] = [
   { key: 'when', label: 'When' },
@@ -52,7 +90,7 @@ function ModerationLogPage() {
     queryKey: ['admin', 'moderation-log', applied, cursor],
     queryFn: async () => {
       const query: {
-        target_type?: 'check_in' | 'comment' | 'user' | 'beverage_request';
+        target_type?: 'check_in' | 'comment' | 'user' | 'beverage_request' | 'beverage' | 'brewery';
         target_id?: string;
         moderator_id?: string;
         cursor?: string;
@@ -101,6 +139,8 @@ function ModerationLogPage() {
             <option value="comment">comment</option>
             <option value="user">user</option>
             <option value="beverage_request">beverage_request</option>
+            <option value="beverage">beverage</option>
+            <option value="brewery">brewery</option>
           </select>
         </label>
         <label className="flex flex-col gap-1">
@@ -167,9 +207,15 @@ function EntryRow({ entry }: { entry: Entry }) {
       <td className="p-2 align-top font-mono text-xs">
         {entry.moderator_id ? `${entry.moderator_id.slice(0, 8)}…` : '(deleted)'}
       </td>
-      <td className="p-2 align-top">{entry.action}</td>
       <td className="p-2 align-top">
-        <div>{entry.target_type}</div>
+        <span
+          className={`px-2 py-0.5 rounded text-xs ${ACTION_BADGE_TONE[entry.action] ?? 'bg-gray-100 text-gray-800'}`}
+        >
+          {ACTION_LABELS[entry.action] ?? entry.action}
+        </span>
+      </td>
+      <td className="p-2 align-top">
+        <div>{TARGET_LABELS[entry.target_type] ?? entry.target_type}</div>
         <div className="font-mono text-xs text-[color:var(--color-muted)]">
           {entry.target_id.slice(0, 8)}…
         </div>

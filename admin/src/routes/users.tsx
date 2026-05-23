@@ -13,6 +13,14 @@ import type { components } from '@/types/api';
 type AdminUser = components['schemas']['AdminUser'];
 type Role = components['schemas']['UserRole'];
 
+interface ExactFilters {
+  username: string;
+  email: string;
+  id: string;
+}
+
+const EMPTY_EXACT: ExactFilters = { username: '', email: '', id: '' };
+
 export const Route = createFileRoute('/users')({
   component: GuardedUsersPage,
 });
@@ -40,26 +48,107 @@ function UsersPage() {
   const [roleFilter, setRoleFilter] = useState<Role | ''>('');
   const [includeDeleted, setIncludeDeleted] = useState(false);
 
+  // Exact-match search: `draft` is what the operator is editing, `applied`
+  // is what the query actually uses. Apply (or Enter) copies draft→applied
+  // + resets cursor. Reset clears everything including the role filter.
+  const [draft, setDraft] = useState<ExactFilters>(EMPTY_EXACT);
+  const [applied, setApplied] = useState<ExactFilters>(EMPTY_EXACT);
+  const exactActive = Boolean(applied.username || applied.email || applied.id);
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['admin', 'users', cursor, roleFilter, includeDeleted],
+    queryKey: ['admin', 'users', cursor, roleFilter, includeDeleted, applied],
     queryFn: async () => {
       const query: {
         cursor?: string;
         role?: Role;
         include_deleted?: '0' | '1';
+        username?: string;
+        email?: string;
+        id?: string;
       } = {};
-      if (cursor) query.cursor = cursor;
+      if (cursor && !exactActive) query.cursor = cursor;
       if (roleFilter) query.role = roleFilter;
       if (includeDeleted) query.include_deleted = '1';
+      if (applied.username) query.username = applied.username;
+      if (applied.email) query.email = applied.email;
+      if (applied.id) query.id = applied.id;
       const { data: page, error } = await api.GET('/v1/admin/users', { params: { query } });
       if (error || !page) throw new Error('failed_to_load_users');
       return page;
     },
   });
 
+  function onApply(e: FormEvent) {
+    e.preventDefault();
+    setApplied({
+      username: draft.username.trim(),
+      email: draft.email.trim(),
+      id: draft.id.trim(),
+    });
+    setCursor(null);
+  }
+
+  function onReset() {
+    setDraft(EMPTY_EXACT);
+    setApplied(EMPTY_EXACT);
+    setRoleFilter('');
+    setCursor(null);
+  }
+
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Users</h1>
+
+      <form
+        onSubmit={onApply}
+        className="flex flex-wrap gap-3 items-end text-sm mb-3 border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] p-3"
+      >
+        <label className="flex flex-col gap-1">
+          <span className="text-[color:var(--color-muted)]">Username (exact)</span>
+          <input
+            type="text"
+            value={draft.username}
+            onChange={(e) => setDraft({ ...draft, username: e.target.value })}
+            placeholder="case-insensitive"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 w-56"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[color:var(--color-muted)]">Email (exact)</span>
+          <input
+            type="text"
+            value={draft.email}
+            onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+            placeholder="case-insensitive"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 w-64"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[color:var(--color-muted)]">UUID (exact)</span>
+          <input
+            type="text"
+            value={draft.id}
+            onChange={(e) => setDraft({ ...draft, id: e.target.value })}
+            placeholder="user uuid"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-72"
+          />
+        </label>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="px-3 py-1 bg-[color:var(--color-accent)] text-white rounded"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-3 py-1 border border-[color:var(--color-border)] rounded"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
 
       <div className="flex gap-3 items-center text-sm mb-3">
         <label className="flex items-center gap-1">
@@ -97,8 +186,14 @@ function UsersPage() {
         <QueueTable<AdminUser>
           columns={COLUMNS}
           items={data.items}
-          page={{ hasMore: data.has_more, nextCursor: data.next_cursor ?? null }}
-          cursor={cursor}
+          // Hide the cursor pager when an exact-match filter is set: the
+          // server returns at most one row and the pager is meaningless.
+          page={
+            exactActive
+              ? { hasMore: false, nextCursor: null }
+              : { hasMore: data.has_more, nextCursor: data.next_cursor ?? null }
+          }
+          cursor={exactActive ? null : cursor}
           onCursorChange={setCursor}
           rowKey={(u) => u.id}
           emptyLabel="No users."

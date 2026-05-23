@@ -82,6 +82,288 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 	return nil
 }
 
+// ============================================================================
+// Stage 8 — admin catalog CRUD request bodies
+// ============================================================================
+//
+// Both beverage + brewery use the same validation strategy: every text
+// field flows through domain.SanitizeText so the bidi-override /
+// control-char guards apply to admin-curated catalog data exactly the
+// way they apply to user-submitted check-in reviews. Numeric ranges
+// (abv 0–60, polishing_ratio 0–100, founded_year 800–2100) are tighter
+// than the DB CHECK constraints — the schema accepts abv up to 70 but
+// the admin tooling caps direct writes at 60 since anything above 60%
+// is almost certainly bad data.
+
+// AdminBeverageCreate is the body for POST /v1/admin/beverages.
+//
+// Exactly one of `category_id` (UUID) or `category_slug` (one of
+// `nihonshu` / `shochu` / `liqueur`) must be supplied. The admin SPA
+// has no way to surface category UUIDs cleanly — `/v1/taxonomy/categories`
+// only returns slug + label — so `category_slug` is the ergonomic path;
+// `category_id` stays for any direct DB-aware caller. If both are sent
+// `category_id` wins and `category_slug` is ignored.
+type AdminBeverageCreate struct {
+	BreweryID       string           `json:"brewery_id"`
+	CategoryID      *string          `json:"category_id,omitempty"`
+	CategorySlug    *string          `json:"category_slug,omitempty"`
+	NameI18n        domain.I18nText  `json:"name_i18n"`
+	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"`
+	ABV             *float64         `json:"abv,omitempty"`
+	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
+	FlavorProfile   []string         `json:"flavor_profile,omitempty"`
+	Prefecture      *string          `json:"prefecture,omitempty"`
+	Region          *string          `json:"region,omitempty"`
+	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+	LabelImageURL   *string          `json:"label_image_url,omitempty"`
+}
+
+// Validate enforces SPEC §2.2 catalog field rules. The field-level
+// sanitization + range checks are shared with Update via
+// validateBeverageFields.
+func (r *AdminBeverageCreate) Validate() error {
+	if r.BreweryID == "" {
+		return wrapV("brewery_id is required")
+	}
+	hasID := r.CategoryID != nil && *r.CategoryID != ""
+	hasSlug := r.CategorySlug != nil && *r.CategorySlug != ""
+	if !hasID && !hasSlug {
+		return wrapV("category_id or category_slug is required")
+	}
+	if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
+		return wrapV("name_i18n.en and name_i18n.ja are required")
+	}
+	return validateBeverageFields(
+		&r.NameI18n, r.SubcategoryI18n, r.DescriptionI18n,
+		r.ABV, r.PolishingRatio,
+		r.Prefecture, r.Region, r.LabelImageURL,
+	)
+}
+
+// AdminBeverageUpdate is the body for PATCH /v1/admin/beverages/{id}.
+// Every field is a pointer; nil means "leave unchanged". A non-nil but
+// all-empty I18nText on subcategory/description clears the column.
+//
+// At most one of `category_id` / `category_slug` may be supplied. If both
+// are sent, `category_id` wins. If only `category_slug` is supplied the
+// handler resolves it to a UUID before the UPDATE runs.
+type AdminBeverageUpdate struct {
+	BreweryID       *string          `json:"brewery_id,omitempty"`
+	CategoryID      *string          `json:"category_id,omitempty"`
+	CategorySlug    *string          `json:"category_slug,omitempty"`
+	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
+	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"`
+	ABV             *float64         `json:"abv,omitempty"`
+	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
+	FlavorProfile   *[]string        `json:"flavor_profile,omitempty"`
+	Prefecture      *string          `json:"prefecture,omitempty"`
+	Region          *string          `json:"region,omitempty"`
+	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+	LabelImageURL   *string          `json:"label_image_url,omitempty"`
+}
+
+func (r *AdminBeverageUpdate) Validate() error {
+	if r.NameI18n != nil && (r.NameI18n.EN == "" || r.NameI18n.JA == "") {
+		return wrapV("name_i18n.en and name_i18n.ja are required")
+	}
+	return validateBeverageFields(
+		r.NameI18n, r.SubcategoryI18n, r.DescriptionI18n,
+		r.ABV, r.PolishingRatio,
+		r.Prefecture, r.Region, r.LabelImageURL,
+	)
+}
+
+// validateBeverageFields runs the field-level sanitization + range
+// checks that are common to AdminBeverageCreate.Validate and
+// AdminBeverageUpdate.Validate. Nil arguments are skipped; non-nil
+// arguments may be mutated in place by sanitization helpers.
+func validateBeverageFields(
+	name *domain.I18nText,
+	subcategory *domain.I18nText,
+	description *domain.I18nText,
+	abv *float64,
+	polishingRatio *int,
+	prefecture, region, labelImageURL *string,
+) error {
+	if name != nil {
+		if err := sanitizeI18n("name_i18n", name, 200); err != nil {
+			return err
+		}
+	}
+	if subcategory != nil {
+		if err := sanitizeI18n("subcategory_i18n", subcategory, 200); err != nil {
+			return err
+		}
+	}
+	if description != nil {
+		if err := sanitizeI18n("description_i18n", description, 2000); err != nil {
+			return err
+		}
+	}
+	if abv != nil && (*abv < 0 || *abv > 60) {
+		return wrapV("abv must be between 0 and 60")
+	}
+	if polishingRatio != nil && (*polishingRatio < 0 || *polishingRatio > 100) {
+		return wrapV("polishing_ratio must be between 0 and 100")
+	}
+	if err := sanitizeOptional("prefecture", prefecture); err != nil {
+		return err
+	}
+	if err := sanitizeOptional("region", region); err != nil {
+		return err
+	}
+	return validateLabelImageURL(labelImageURL)
+}
+
+// AdminBreweryCreate is the body for POST /v1/admin/breweries.
+type AdminBreweryCreate struct {
+	NameI18n        domain.I18nText  `json:"name_i18n"`
+	Prefecture      *string          `json:"prefecture,omitempty"`
+	Region          *string          `json:"region,omitempty"`
+	FoundedYear     *int             `json:"founded_year,omitempty"`
+	Website         *string          `json:"website,omitempty"`
+	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+}
+
+func (r *AdminBreweryCreate) Validate() error {
+	if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
+		return wrapV("name_i18n.en and name_i18n.ja are required")
+	}
+	if err := sanitizeI18n("name_i18n", &r.NameI18n, 200); err != nil {
+		return err
+	}
+	if r.DescriptionI18n != nil {
+		if err := sanitizeI18n("description_i18n", r.DescriptionI18n, 2000); err != nil {
+			return err
+		}
+	}
+	if err := sanitizeOptional("prefecture", r.Prefecture); err != nil {
+		return err
+	}
+	if err := sanitizeOptional("region", r.Region); err != nil {
+		return err
+	}
+	if r.FoundedYear != nil && (*r.FoundedYear < 800 || *r.FoundedYear > 2100) {
+		return wrapV("founded_year must be between 800 and 2100")
+	}
+	if err := validateWebsite(r.Website); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AdminBreweryUpdate is the body for PATCH /v1/admin/breweries/{id}.
+type AdminBreweryUpdate struct {
+	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
+	Prefecture      *string          `json:"prefecture,omitempty"`
+	Region          *string          `json:"region,omitempty"`
+	FoundedYear     *int             `json:"founded_year,omitempty"`
+	Website         *string          `json:"website,omitempty"`
+	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+}
+
+func (r *AdminBreweryUpdate) Validate() error {
+	if r.NameI18n != nil {
+		if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
+			return wrapV("name_i18n.en and name_i18n.ja are required")
+		}
+		if err := sanitizeI18n("name_i18n", r.NameI18n, 200); err != nil {
+			return err
+		}
+	}
+	if r.DescriptionI18n != nil {
+		if err := sanitizeI18n("description_i18n", r.DescriptionI18n, 2000); err != nil {
+			return err
+		}
+	}
+	if err := sanitizeOptional("prefecture", r.Prefecture); err != nil {
+		return err
+	}
+	if err := sanitizeOptional("region", r.Region); err != nil {
+		return err
+	}
+	if r.FoundedYear != nil && (*r.FoundedYear < 800 || *r.FoundedYear > 2100) {
+		return wrapV("founded_year must be between 800 and 2100")
+	}
+	if err := validateWebsite(r.Website); err != nil {
+		return err
+	}
+	return nil
+}
+
+// sanitizeI18n runs each non-empty locale through SanitizeText. The struct
+// pointer is mutated in place so the handler sees the normalized (DEL-
+// stripped) text. allowEmpty=true on each locale because en/ja required
+// checks already ran on the caller side.
+func sanitizeI18n(field string, t *domain.I18nText, maxLen int) error {
+	en, err := domain.SanitizeText(field+".en", t.EN, true, maxLen)
+	if err != nil {
+		return err
+	}
+	ja, err := domain.SanitizeText(field+".ja", t.JA, true, maxLen)
+	if err != nil {
+		return err
+	}
+	ko, err := domain.SanitizeText(field+".ko", t.KO, true, maxLen)
+	if err != nil {
+		return err
+	}
+	t.EN = en
+	t.JA = ja
+	t.KO = ko
+	return nil
+}
+
+// sanitizeOptional runs an optional single-line catalog string (prefecture /
+// region) through SanitizeText with the canonical 100-char cap. Nil pointer
+// is a no-op; non-nil is always sanitized.
+func sanitizeOptional(field string, p *string) error {
+	if p == nil {
+		return nil
+	}
+	v, err := domain.SanitizeText(field, *p, false, 100)
+	if err != nil {
+		return err
+	}
+	*p = v
+	return nil
+}
+
+// validateLabelImageURL enforces https + length cap. Nil = no change /
+// no value. Empty pointer (= empty string) clears the column.
+func validateLabelImageURL(p *string) error {
+	if p == nil {
+		return nil
+	}
+	if *p == "" {
+		return nil
+	}
+	if len(*p) > 512 {
+		return wrapV("label_image_url must be ≤ 512 characters")
+	}
+	if !strings.HasPrefix(*p, "https://") {
+		return wrapV("label_image_url must start with https://")
+	}
+	return nil
+}
+
+// validateWebsite mirrors validateLabelImageURL.
+func validateWebsite(p *string) error {
+	if p == nil {
+		return nil
+	}
+	if *p == "" {
+		return nil
+	}
+	if len(*p) > 512 {
+		return wrapV("website must be ≤ 512 characters")
+	}
+	if !strings.HasPrefix(*p, "https://") && !strings.HasPrefix(*p, "http://") {
+		return wrapV("website must be a URL")
+	}
+	return nil
+}
+
 // wrapV mirrors domain.wrapValidation, kept local so admin.go can validate
 // without exporting the domain helper. The handler.writeErr path picks up
 // the domain.ErrValidation sentinel via errors.Is.

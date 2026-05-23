@@ -138,13 +138,15 @@ No `is_default` column lives on `collections` — SPEC §6.1 explicitly says the
 
 ### 8. Soft-delete filtering policy
 
-Three tables soft-delete: `users`, `check_ins`, `collections`. Every list query against these MUST include `WHERE deleted_at IS NULL`. The partial indexes on all three make this nearly free. The conventions are codified in `query_patterns.md`.
+Five tables soft-delete: `users`, `check_ins`, `collections`, `beverages` (014), `breweries` (014). Every list query against these MUST include `WHERE deleted_at IS NULL` unless it is an admin "include_deleted" path. The partial indexes on all five make this nearly free. The conventions are codified in `query_patterns.md`.
 
 `collection_entries` does **not** soft-delete; removing a beverage from a collection is a hard delete (`DELETE FROM collection_entries`). The motivation: collection contents are transient by nature; users freely add/remove. Soft-delete adds friction without value.
 
 `toasts` does not soft-delete; un-toasting is a hard `DELETE`.
 
 `follows` does not soft-delete; unfollowing is a hard `DELETE`.
+
+**Catalog soft-delete (014).** `beverages.deleted_at` and `breweries.deleted_at` are nullable timestamps that the admin SPA sets on "delete" and clears on "restore". Both columns are filtered by every public read path (matches the `users.deleted_at` convention). All hot-path indexes on these tables are partial `WHERE deleted_at IS NULL`, and a small partial helper index `WHERE deleted_at IS NOT NULL` (`idx_{beverages,breweries}_deleted_at`) accelerates the admin "trash" view. The brewery soft-delete handler runs a preflight that returns `409 BREWERY_HAS_LIVE_BEVERAGES` if any live beverage still references the brewery — `beverages.brewery_id` is `ON DELETE RESTRICT`, so this preserves referential integrity without surprising the user.
 
 ### 9. Category enum: lookup table, not Postgres `ENUM` type
 
@@ -179,8 +181,8 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `users` | Accounts. | `deleted_at` + `username_release_at` | Lowercase username regex, en/ja/ko locale, public/private privacy, at least one auth method present. |
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
-| `breweries` | Maker catalog. | — | `name_i18n` requires en+ja. Founded year sanity-checked. |
-| `beverages` | Catalog rows. | — | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. |
+| `breweries` | Maker catalog. | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. |
+| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. |
 | `flavor_tags` | Admin taxonomy (SPEC §4.3). | — | 5 fixed dimensions. |
 | `beverage_flavor_tags` | Aggregate tags per beverage. | — | Composite PK. |
 | `check_ins` | User logs. | `deleted_at` | Rating 0.5..5.0 in 0.5 steps, review ≤500, price coherence. Beverage immutable post-create (SPEC §4.4) — enforced at app layer. |

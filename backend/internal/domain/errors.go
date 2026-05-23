@@ -51,4 +51,11 @@ var (
 	// The caller treats this as TOKEN_INVALID — exactly one successor
 	// lands per predecessor (SEC-010).
 	ErrRefreshTokenRaceLost = errors.New("refresh_token_race_lost")
+	// ErrBreweryHasLiveBeverages is returned by BreweryRepo.SoftDelete when
+	// at least one beverage still references the brewery (deleted_at IS NULL).
+	// FK is ON DELETE RESTRICT so even though soft-delete only flips the
+	// brewery's deleted_at, leaving live children would orphan them from
+	// /v1/breweries lookups. The admin must soft-delete or reassign the
+	// dependent beverages first. Maps to 409 BREWERY_HAS_LIVE_BEVERAGES.
+	ErrBreweryHasLiveBeverages = errors.New("brewery_has_live_beverages")
 )
