@@ -129,10 +129,7 @@ func (h *Handler) AdminCreateBeverage(w http.ResponseWriter, r *http.Request) {
 	// The new beverage's brewery cache no longer reflects the freshly-
 	// added child; bust it so the brewery detail page reflects the new
 	// count on next read.
-	if body.BreweryID != "" && h.Caches != nil {
-		h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
-	}
-	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "brewery:"+body.BreweryID)
+	h.invalidateBrewery(r.Context(), body.BreweryID)
 	httperr.WriteJSON(w, http.StatusCreated, out)
 }
 
@@ -165,6 +162,14 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeCategoryErr(w, "AdminUpdateBeverage", err)
 		return
 	}
+	// Capture the current brewery_id before the update so we can bust the
+	// brewery's detail cache afterwards. If body.BreweryID points to a
+	// different brewery the new owner's cache is invalidated too.
+	prev, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
+	if err != nil {
+		h.writeErr(w, "AdminUpdateBeverage prefetch", err)
+		return
+	}
 	if err := h.updateBeverageTx(r.Context(), uid, id, resolved, body); err != nil {
 		h.writeErr(w, "AdminUpdateBeverage", err)
 		return
@@ -173,6 +178,10 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.Caches.BeverageDetail.InvalidatePrefix(id + ":")
 	}
 	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "beverage:"+id)
+	h.invalidateBrewery(r.Context(), prev.Brewery.ID)
+	if body.BreweryID != nil && *body.BreweryID != "" && *body.BreweryID != prev.Brewery.ID {
+		h.invalidateBrewery(r.Context(), *body.BreweryID)
+	}
 
 	out, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
 	if err != nil {
@@ -193,6 +202,13 @@ func (h *Handler) AdminSoftDeleteBeverage(w http.ResponseWriter, r *http.Request
 		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing beverage id")
 		return
 	}
+	// Capture the brewery_id before soft-delete so we can bust the
+	// brewery's detail cache (its beverage_count drops by one).
+	prev, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
+	if err != nil {
+		h.writeErr(w, "AdminSoftDeleteBeverage prefetch", err)
+		return
+	}
 	if err := h.softDeleteBeverageTx(r.Context(), uid, id); err != nil {
 		h.writeErr(w, "AdminSoftDeleteBeverage", err)
 		return
@@ -201,6 +217,7 @@ func (h *Handler) AdminSoftDeleteBeverage(w http.ResponseWriter, r *http.Request
 		h.Caches.BeverageDetail.InvalidatePrefix(id + ":")
 	}
 	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "beverage:"+id)
+	h.invalidateBrewery(r.Context(), prev.Brewery.ID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -229,6 +246,10 @@ func (h *Handler) AdminRestoreBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminRestoreBeverage refetch", err)
 		return
 	}
+	// The restored beverage is live again under its brewery; bust the
+	// brewery's detail cache so beverage_count + listings reflect the
+	// revival on the next read.
+	h.invalidateBrewery(r.Context(), out.Brewery.ID)
 	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
@@ -329,6 +350,23 @@ func (h *Handler) restoreBeverageTx(ctx context.Context, adminID, id string) err
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// invalidateBrewery busts the per-brewery LRU entry and notifies peer
+// replicas. Used by Create / Update / SoftDelete / Restore so the
+// brewery detail page (and any cached aggregate that includes
+// beverage_count) reflects the change on the next read. No-op when
+// id is empty.
+func (h *Handler) invalidateBrewery(ctx context.Context, id string) {
+	if id == "" {
+		return
+	}
+	if h.Caches != nil {
+		h.Caches.BreweryDetail.InvalidatePrefix(id + ":")
+	}
+	// WithoutCancel: a client disconnect must not skip the peer-replica
+	// invalidation. Mirrors invalidateBeverageDetail's pattern.
+	cache.NotifyInvalidation(context.WithoutCancel(ctx), h.DB, h.Log, "brewery:"+id)
 }
 
 // ---- category resolution ----
