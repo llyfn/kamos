@@ -99,7 +99,9 @@ The API process is stateless and lock-free: no in-process scheduler, no per-repl
 
 **Mobile (Flutter)** — Bearer JWT via `Authorization: Bearer …` header. Access tokens are short-lived (`JWT_TTL`, default 15m); refresh tokens are long-lived but revocable (`REFRESH_TTL`, default 30d) and rotate atomically inside a single Postgres transaction on every `POST /v1/auth/refresh`, with family revocation on detected reuse. JWT + refresh-token live in `flutter_secure_storage` per SPEC §6.9; iOS Keychain accessibility is `first_unlock_this_device` (post-Stage 0 hotfix), Android uses `EncryptedSharedPreferences`.
 
-**Admin (React)** — `HttpOnly` + `Secure` + `SameSite=Strict` cookies for access + refresh, so the browser never exposes the token to JavaScript. CSRF protection uses a double-submit token: `X-CSRF-Token` request header is compared (constant-time) against the `kamos_admin_csrf` cookie value on every mutating request. All admin mutations require the header.
+**Admin (React)** — `HttpOnly` + `Secure` + `SameSite=Strict` cookies for access + refresh, so the browser never exposes the token to JavaScript. CSRF protection uses a double-submit token: `X-CSRF-Token` request header is compared (constant-time) against the `kamos_admin_csrf` cookie value on every mutating request. All admin mutations require the header. Identity endpoint is `GET /v1/admin/me` (cookie-authable; `/v1/users/me` is Bearer-only).
+
+`SameSite=Strict` requires same-site. Pages (`kamos-admin.pages.dev`) and Fly (`kamos.fly.dev`) are not, so `admin/functions/v1/[[path]].ts` is a Cloudflare Pages Function that proxies `/v1/*` to the API, making cookies first-party on `pages.dev`. `admin/vite.config.ts` does the equivalent locally (`/v1` → `KAMOS_DEV_API`, default `http://localhost:8080`).
 
 **SEC-006 soft-delete cache** — when a user is soft-deleted, their tokens must stop validating immediately for the full 30-day username-hold window. `internal/auth/` keeps an in-process LRU of soft-deleted user IDs (replenished from Postgres on miss); token verification rejects on hit. This avoids a per-request DB roundtrip while still honouring the SPEC invariant.
 
