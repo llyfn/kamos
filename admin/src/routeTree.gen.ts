@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as CommentsRouteImport } from './routes/comments'
 import { Route as CheckinsRouteImport } from './routes/checkins'
 import { Route as BreweriesRouteImport } from './routes/breweries'
+import { Route as BeveragesRouteImport } from './routes/beverages'
 import { Route as IndexRouteImport } from './routes/index'
 
 const UsersRoute = UsersRouteImport.update({
@@ -53,6 +54,11 @@ const BreweriesRoute = BreweriesRouteImport.update({
   path: '/breweries',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BeveragesRoute = BeveragesRouteImport.update({
+  id: '/beverages',
+  path: '/beverages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -61,6 +67,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/beverages': typeof BeveragesRoute
   '/breweries': typeof BreweriesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/beverages': typeof BeveragesRoute
   '/breweries': typeof BreweriesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/beverages': typeof BeveragesRoute
   '/breweries': typeof BreweriesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/beverages'
     | '/breweries'
     | '/checkins'
     | '/comments'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/beverages'
     | '/breweries'
     | '/checkins'
     | '/comments'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/beverages'
     | '/breweries'
     | '/checkins'
     | '/comments'
@@ -125,6 +137,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BeveragesRoute: typeof BeveragesRoute
   BreweriesRoute: typeof BreweriesRoute
   CheckinsRoute: typeof CheckinsRoute
   CommentsRoute: typeof CommentsRoute
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BreweriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/beverages': {
+      id: '/beverages'
+      path: '/beverages'
+      fullPath: '/beverages'
+      preLoaderRoute: typeof BeveragesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -197,6 +217,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BeveragesRoute: BeveragesRoute,
   BreweriesRoute: BreweriesRoute,
   CheckinsRoute: CheckinsRoute,
   CommentsRoute: CommentsRoute,
