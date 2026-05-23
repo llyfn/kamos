@@ -1171,9 +1171,11 @@ export interface paths {
         get: operations["adminListBeverages"];
         put?: never;
         /**
-         * @description Insert a canonical beverage. Admin only. category_slug is
-         *     derived server-side from category_id by the existing trigger,
-         *     so the client supplies category_id only.
+         * @description Insert a canonical beverage. Admin only. The client may supply
+         *     either `category_id` (UUID) or `category_slug` (one of
+         *     `nihonshu` / `shochu` / `liqueur`); the denormalized
+         *     `beverages.category_slug` column is then set server-side by
+         *     the existing trigger from the resolved `category_id`.
          */
         post: operations["adminCreateBeverage"];
         delete?: never;
@@ -1987,16 +1989,30 @@ export interface components {
             deleted_at: string | null;
         };
         /**
-         * @description Payload for POST /v1/admin/beverages. `category_slug` is set
-         *     server-side by the trigger from `category_id`; clients send
-         *     `category_id` only. `name_i18n.en` and `name_i18n.ja` are
-         *     required; `ko` optional.
+         * @description Payload for POST /v1/admin/beverages. Exactly one of
+         *     `category_id` (UUID) or `category_slug` (one of
+         *     `nihonshu` / `shochu` / `liqueur`) is required — the admin SPA
+         *     works in slugs since `/v1/taxonomy/categories` returns only
+         *     slug + label. If both are sent, `category_id` wins. The
+         *     denormalized `beverages.category_slug` column is set server-side
+         *     by the existing trigger from the resolved `category_id`.
+         *     `name_i18n.en` and `name_i18n.ja` are required; `ko` is optional.
+         *     An unknown `category_slug` returns
+         *     `422 INVALID_CATEGORY_SLUG`.
          */
         AdminBeverageCreate: {
             /** Format: uuid */
             brewery_id: string;
-            /** Format: uuid */
-            category_id: string;
+            /**
+             * Format: uuid
+             * @description required if category_slug is not supplied
+             */
+            category_id?: string;
+            /**
+             * @description required if category_id is not supplied
+             * @enum {string}
+             */
+            category_slug?: "nihonshu" | "shochu" | "liqueur";
             name_i18n: components["schemas"]["I18nText"];
             subcategory_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: float */
@@ -2019,12 +2035,21 @@ export interface components {
          *     a nullable column, send the field with an all-empty I18nText
          *     (for `subcategory_i18n` / `description_i18n`) or an empty
          *     string (for `label_image_url`).
+         *
+         *     At most one of `category_id` / `category_slug` may be supplied.
+         *     If both are sent, `category_id` wins. An unknown
+         *     `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
          */
         AdminBeverageUpdate: {
             /** Format: uuid */
             brewery_id?: string;
             /** Format: uuid */
             category_id?: string;
+            /**
+             * @description alternative to category_id; resolved server-side
+             * @enum {string}
+             */
+            category_slug?: "nihonshu" | "shochu" | "liqueur";
             name_i18n?: components["schemas"]["I18nText"];
             subcategory_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: float */

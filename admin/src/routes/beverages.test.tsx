@@ -141,13 +141,8 @@ describe('/beverages', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
 
     const dialog = await screen.findByRole('dialog');
-    // The Beverage form requires a category UUID to submit; the loaded
-    // initial state has the slug pre-selected but the UUID input is blank.
-    // Paste a UUID so the body passes client-side validation.
-    const catIdInput = await screen.findByPlaceholderText('paste category UUID');
-    fireEvent.change(catIdInput, {
-      target: { value: '00000000-0000-0000-0000-0000000000aa' },
-    });
+    // The initial state pre-selects the slug from the loaded beverage,
+    // so the form is already submittable without any extra input.
 
     const submit = Array.from(dialog.querySelectorAll('button')).find(
       (b) => b.getAttribute('type') === 'submit',
@@ -162,6 +157,8 @@ describe('/beverages', () => {
     expect(path).toBe('/v1/admin/beverages/{id}');
     expect(init.params.path.id).toBe(sampleBeverage.id);
     expect(init.body.brewery_id).toBe(sampleBrewery.id);
+    expect(init.body.category_slug).toBe('nihonshu');
+    expect(init.body.category_id).toBeUndefined();
   });
 
   it('soft-delete flow DELETEs to /v1/admin/beverages/{id}', async () => {

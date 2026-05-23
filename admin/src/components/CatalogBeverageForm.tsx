@@ -2,7 +2,7 @@
 // backend/internal/handlers/admin.go (AdminBeverageCreate/Update):
 //
 //   * name_i18n.en + name_i18n.ja required, ko optional, each ≤ 200
-//   * brewery_id + category_id required (UUIDs)
+//   * brewery_id required (UUID); category driven by category_slug
 //   * abv: 0–60 (step 0.1), nullable
 //   * polishing_ratio: 0–100 integer, NIHONSHU ONLY (server CHECK)
 //   * flavor_profile: array of slugs, ≤ 8 chips
@@ -10,9 +10,11 @@
 //   * description_i18n: each locale ≤ 2000
 //   * label_image_url: https only, ≤ 512
 //
-// The brewery picker hits the same /v1/admin/breweries typeahead used
-// by the filter bar. The category list and flavor-tag list come from
-// the public taxonomy endpoints (cached forever in the browser).
+// The form drives `category_slug`; the server resolves it to the
+// canonical category row. The brewery picker hits the same
+// /v1/admin/breweries typeahead used by the filter bar. The category
+// list and flavor-tag list come from the public taxonomy endpoints
+// (cached forever in the browser).
 
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, type KeyboardEvent, useState } from 'react';
@@ -26,8 +28,8 @@ type CategoryLabel = components['schemas']['CategoryLabel'];
 type CategorySlug = CategoryLabel['slug'];
 
 // Fallback taxonomy if /v1/categories is unreachable. Slugs match the SPEC
-// §2.1 canonical strings; the server validates the UUID we send, not the
-// slug, but the slug drives the polishing_ratio toggle.
+// §2.1 canonical strings. The slug drives both the submission body and
+// the polishing_ratio toggle.
 const FALLBACK_CATEGORIES: CategoryLabel[] = [
   { slug: 'nihonshu', label_i18n: { en: 'Nihonshu (Sake)', ja: '日本酒', ko: '니혼슈 (사케)' } },
   { slug: 'shochu', label_i18n: { en: 'Shochu', ja: '焼酎', ko: '쇼츄' } },
@@ -45,7 +47,6 @@ interface CatalogBeverageFormProps {
 
 interface FormState {
   brewery: BreweryPickerValue | null;
-  category_id: string;
   category_slug: CategorySlug | '';
   name_en: string;
   name_ja: string;
@@ -62,12 +63,11 @@ interface FormState {
   label_image_url: string;
 }
 
-// The initial-edit AdminBeverage carries category.slug but not category_id.
-// We resolve category_id from the loaded taxonomy by matching the slug.
+// The initial-edit AdminBeverage carries category.slug, which is also
+// what the server now accepts on create/update — no UUID lookup needed.
 function initialState(b: AdminBeverage | null | undefined): FormState {
   return {
     brewery: b ? { id: b.brewery.id, label: preferredName(b.brewery.name) } : null,
-    category_id: '',
     category_slug: b?.category.slug ?? '',
     name_en: b?.name.en ?? '',
     name_ja: b?.name.ja ?? '',
@@ -85,10 +85,6 @@ function initialState(b: AdminBeverage | null | undefined): FormState {
   };
 }
 
-interface CategoryWithId extends CategoryLabel {
-  id?: string;
-}
-
 export function CatalogBeverageForm({
   initial,
   submitting = false,
@@ -100,12 +96,9 @@ export function CatalogBeverageForm({
   const [form, setForm] = useState<FormState>(() => initialState(initial));
   const [localError, setLocalError] = useState<string | null>(null);
 
-  // Categories — the public /v1/categories returns slugs + locale labels but
-  // not UUIDs. The admin create endpoint needs the UUID. For Stage 8 the
-  // categories table is seeded once with three immutable rows; the IDs are
-  // resolved from the existing brewery/beverage detail responses or, if
-  // available later, from a future admin taxonomy endpoint. Until then we
-  // accept that the operator must paste the category UUID directly.
+  // Categories — the public /v1/categories returns slugs + locale labels.
+  // The admin create/update endpoints accept `category_slug` directly, so
+  // the dropdown is the single source of truth.
   const categoriesQuery = useQuery({
     queryKey: ['taxonomy', 'categories'],
     queryFn: async () => {
@@ -126,7 +119,7 @@ export function CatalogBeverageForm({
     staleTime: 60 * 60 * 1000,
   });
 
-  const categories: CategoryWithId[] = categoriesQuery.data ?? FALLBACK_CATEGORIES;
+  const categories: CategoryLabel[] = categoriesQuery.data ?? FALLBACK_CATEGORIES;
   const flavorSlugs: string[] = (flavorTagsQuery.data ?? []).map((t) => t.slug);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -176,8 +169,8 @@ export function CatalogBeverageForm({
       setLocalError('Brewery is required.');
       return;
     }
-    if (!form.category_id.trim()) {
-      setLocalError('Category ID is required.');
+    if (!form.category_slug) {
+      setLocalError('Category is required.');
       return;
     }
     const en = form.name_en.trim();
@@ -190,7 +183,7 @@ export function CatalogBeverageForm({
 
     const body: Body = {
       brewery_id: form.brewery.id,
-      category_id: form.category_id.trim(),
+      category_slug: form.category_slug,
       name_i18n: ko ? { en, ja, ko } : { en, ja },
     };
     if (form.abv.trim()) {
@@ -287,13 +280,6 @@ export function CatalogBeverageForm({
           ))}
         </select>
       </label>
-      <TextField
-        label="Category ID (UUID) *"
-        value={form.category_id}
-        onChange={(v) => set('category_id', v)}
-        placeholder="paste category UUID"
-        required
-      />
 
       <TextField
         label="ABV % (optional, 0–60)"
