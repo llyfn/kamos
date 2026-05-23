@@ -64,7 +64,7 @@ func TestAdminBeverageCreateValidate(t *testing.T) {
 			r.LabelImageURL = &v
 		}, "label_image_url", false},
 		{"bidi-override in name", func(r *AdminBeverageCreate) {
-			r.NameI18n.EN = "hi‮evil"
+			r.NameI18n.EN = "hi\u202eevil"
 		}, "bidi-override", false},
 		{"control char in prefecture", func(r *AdminBeverageCreate) {
 			v := "Hyogo\x01"
@@ -148,7 +148,7 @@ func TestAdminBreweryCreateValidate(t *testing.T) {
 			r.Website = &v
 		}, "website", false},
 		{"bidi-override in name", func(r *AdminBreweryCreate) {
-			r.NameI18n.EN = "kura⁧evil"
+			r.NameI18n.EN = "kura\u2067evil"
 		}, "bidi-override", false},
 	}
 	for _, tc := range cases {

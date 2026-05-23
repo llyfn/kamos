@@ -576,67 +576,9 @@ RETURNING id;`
 // (the handler re-fetches via AdminDetail to surface the canonical row).
 // Rejects when the target row is soft-deleted — restore goes through Restore.
 func (r *BeverageRepo) Update(ctx context.Context, tx pgx.Tx, id string, in BeverageUpdateInput) error {
-	var (
-		sets []string
-		args []any
-	)
-	add := func(col string, val any) {
-		args = append(args, val)
-		sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
-	}
-	if in.BreweryID != nil {
-		add("brewery_id", *in.BreweryID)
-	}
-	if in.CategoryID != nil {
-		// category_slug is auto-synced by trg_beverages_sync_category_slug.
-		add("category_id", *in.CategoryID)
-	}
-	if in.Name != nil {
-		nameJSON, err := jsonMarshalI18n(*in.Name)
-		if err != nil {
-			return err
-		}
-		add("name_i18n", string(nameJSON))
-	}
-	if in.Subcategory != nil {
-		if in.Subcategory.EN == "" && in.Subcategory.JA == "" && in.Subcategory.KO == "" {
-			add("subcategory_i18n", nil)
-		} else {
-			b, err := jsonMarshalI18n(*in.Subcategory)
-			if err != nil {
-				return err
-			}
-			add("subcategory_i18n", string(b))
-		}
-	}
-	if in.ABV != nil {
-		add("abv", *in.ABV)
-	}
-	if in.PolishingRatio != nil {
-		add("polishing_ratio", *in.PolishingRatio)
-	}
-	if in.FlavorProfile != nil {
-		add("flavor_profile", *in.FlavorProfile)
-	}
-	if in.Prefecture != nil {
-		add("prefecture", *in.Prefecture)
-	}
-	if in.Region != nil {
-		add("region", *in.Region)
-	}
-	if in.Description != nil {
-		if in.Description.EN == "" && in.Description.JA == "" && in.Description.KO == "" {
-			add("description_i18n", nil)
-		} else {
-			b, err := jsonMarshalI18n(*in.Description)
-			if err != nil {
-				return err
-			}
-			add("description_i18n", string(b))
-		}
-	}
-	if in.LabelImageURL != nil {
-		add("label_image_url", *in.LabelImageURL)
+	sets, args, err := buildBeverageUpdateSets(in)
+	if err != nil {
+		return err
 	}
 	if len(sets) == 0 {
 		// No-op.
@@ -656,6 +598,77 @@ RETURNING id;`, strings.Join(sets, ", "), len(args))
 		return fmt.Errorf("BeverageRepo.Update: %w", err)
 	}
 	return nil
+}
+
+// buildBeverageUpdateSets translates a partial BeverageUpdateInput into
+// the SET-clause fragments + positional args that UPDATE beverages can
+// consume. Each non-nil field on the input contributes one clause; an
+// all-empty i18n value clears the column.
+func buildBeverageUpdateSets(in BeverageUpdateInput) ([]string, []any, error) {
+	var (
+		sets []string
+		args []any
+	)
+	add := func(col string, val any) {
+		args = append(args, val)
+		sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
+	}
+	addI18n := func(col string, val *domain.I18nText) error {
+		if val.EN == "" && val.JA == "" && val.KO == "" {
+			add(col, nil)
+			return nil
+		}
+		b, err := jsonMarshalI18n(*val)
+		if err != nil {
+			return err
+		}
+		add(col, string(b))
+		return nil
+	}
+
+	if in.BreweryID != nil {
+		add("brewery_id", *in.BreweryID)
+	}
+	if in.CategoryID != nil {
+		// category_slug is auto-synced by trg_beverages_sync_category_slug.
+		add("category_id", *in.CategoryID)
+	}
+	if in.Name != nil {
+		nameJSON, err := jsonMarshalI18n(*in.Name)
+		if err != nil {
+			return nil, nil, err
+		}
+		add("name_i18n", string(nameJSON))
+	}
+	if in.Subcategory != nil {
+		if err := addI18n("subcategory_i18n", in.Subcategory); err != nil {
+			return nil, nil, err
+		}
+	}
+	if in.ABV != nil {
+		add("abv", *in.ABV)
+	}
+	if in.PolishingRatio != nil {
+		add("polishing_ratio", *in.PolishingRatio)
+	}
+	if in.FlavorProfile != nil {
+		add("flavor_profile", *in.FlavorProfile)
+	}
+	if in.Prefecture != nil {
+		add("prefecture", *in.Prefecture)
+	}
+	if in.Region != nil {
+		add("region", *in.Region)
+	}
+	if in.Description != nil {
+		if err := addI18n("description_i18n", in.Description); err != nil {
+			return nil, nil, err
+		}
+	}
+	if in.LabelImageURL != nil {
+		add("label_image_url", *in.LabelImageURL)
+	}
+	return sets, args, nil
 }
 
 // SoftDelete sets deleted_at = NOW() on a beverage. No preflight — a

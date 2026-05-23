@@ -2,12 +2,12 @@
 //
 // Stage 8 (admin catalog CRUD). Six endpoints, all admin-only:
 //
-//   GET    /v1/admin/breweries
-//   GET    /v1/admin/breweries/{id}
-//   POST   /v1/admin/breweries
-//   PATCH  /v1/admin/breweries/{id}
-//   DELETE /v1/admin/breweries/{id}
-//   POST   /v1/admin/breweries/{id}/restore
+//	GET    /v1/admin/breweries
+//	GET    /v1/admin/breweries/{id}
+//	POST   /v1/admin/breweries
+//	PATCH  /v1/admin/breweries/{id}
+//	DELETE /v1/admin/breweries/{id}
+//	POST   /v1/admin/breweries/{id}/restore
 //
 // Every mutation runs inside a single pgx.Tx that bundles the moderation
 // _log audit row, so the change + audit commit atomically. DELETE returns

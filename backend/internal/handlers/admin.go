@@ -118,9 +118,9 @@ type AdminBeverageCreate struct {
 	LabelImageURL   *string          `json:"label_image_url,omitempty"`
 }
 
-// Validate enforces SPEC §2.2 catalog field rules. See validateBeverageFields
-// for the shared body — Update calls the same predicate against its partial
-// inputs.
+// Validate enforces SPEC §2.2 catalog field rules. The field-level
+// sanitization + range checks are shared with Update via
+// validateBeverageFields.
 func (r *AdminBeverageCreate) Validate() error {
 	if r.BreweryID == "" {
 		return wrapV("brewery_id is required")
@@ -133,35 +133,11 @@ func (r *AdminBeverageCreate) Validate() error {
 	if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
 		return wrapV("name_i18n.en and name_i18n.ja are required")
 	}
-	if err := sanitizeI18n("name_i18n", &r.NameI18n, 200); err != nil {
-		return err
-	}
-	if r.SubcategoryI18n != nil {
-		if err := sanitizeI18n("subcategory_i18n", r.SubcategoryI18n, 200); err != nil {
-			return err
-		}
-	}
-	if r.DescriptionI18n != nil {
-		if err := sanitizeI18n("description_i18n", r.DescriptionI18n, 2000); err != nil {
-			return err
-		}
-	}
-	if r.ABV != nil && (*r.ABV < 0 || *r.ABV > 60) {
-		return wrapV("abv must be between 0 and 60")
-	}
-	if r.PolishingRatio != nil && (*r.PolishingRatio < 0 || *r.PolishingRatio > 100) {
-		return wrapV("polishing_ratio must be between 0 and 100")
-	}
-	if err := sanitizeOptional("prefecture", r.Prefecture, 100); err != nil {
-		return err
-	}
-	if err := sanitizeOptional("region", r.Region, 100); err != nil {
-		return err
-	}
-	if err := validateLabelImageURL(r.LabelImageURL); err != nil {
-		return err
-	}
-	return nil
+	return validateBeverageFields(
+		&r.NameI18n, r.SubcategoryI18n, r.DescriptionI18n,
+		r.ABV, r.PolishingRatio,
+		r.Prefecture, r.Region, r.LabelImageURL,
+	)
 }
 
 // AdminBeverageUpdate is the body for PATCH /v1/admin/beverages/{id}.
@@ -187,40 +163,56 @@ type AdminBeverageUpdate struct {
 }
 
 func (r *AdminBeverageUpdate) Validate() error {
-	if r.NameI18n != nil {
-		if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
-			return wrapV("name_i18n.en and name_i18n.ja are required")
-		}
-		if err := sanitizeI18n("name_i18n", r.NameI18n, 200); err != nil {
+	if r.NameI18n != nil && (r.NameI18n.EN == "" || r.NameI18n.JA == "") {
+		return wrapV("name_i18n.en and name_i18n.ja are required")
+	}
+	return validateBeverageFields(
+		r.NameI18n, r.SubcategoryI18n, r.DescriptionI18n,
+		r.ABV, r.PolishingRatio,
+		r.Prefecture, r.Region, r.LabelImageURL,
+	)
+}
+
+// validateBeverageFields runs the field-level sanitization + range
+// checks that are common to AdminBeverageCreate.Validate and
+// AdminBeverageUpdate.Validate. Nil arguments are skipped; non-nil
+// arguments may be mutated in place by sanitization helpers.
+func validateBeverageFields(
+	name *domain.I18nText,
+	subcategory *domain.I18nText,
+	description *domain.I18nText,
+	abv *float64,
+	polishingRatio *int,
+	prefecture, region, labelImageURL *string,
+) error {
+	if name != nil {
+		if err := sanitizeI18n("name_i18n", name, 200); err != nil {
 			return err
 		}
 	}
-	if r.SubcategoryI18n != nil {
-		if err := sanitizeI18n("subcategory_i18n", r.SubcategoryI18n, 200); err != nil {
+	if subcategory != nil {
+		if err := sanitizeI18n("subcategory_i18n", subcategory, 200); err != nil {
 			return err
 		}
 	}
-	if r.DescriptionI18n != nil {
-		if err := sanitizeI18n("description_i18n", r.DescriptionI18n, 2000); err != nil {
+	if description != nil {
+		if err := sanitizeI18n("description_i18n", description, 2000); err != nil {
 			return err
 		}
 	}
-	if r.ABV != nil && (*r.ABV < 0 || *r.ABV > 60) {
+	if abv != nil && (*abv < 0 || *abv > 60) {
 		return wrapV("abv must be between 0 and 60")
 	}
-	if r.PolishingRatio != nil && (*r.PolishingRatio < 0 || *r.PolishingRatio > 100) {
+	if polishingRatio != nil && (*polishingRatio < 0 || *polishingRatio > 100) {
 		return wrapV("polishing_ratio must be between 0 and 100")
 	}
-	if err := sanitizeOptional("prefecture", r.Prefecture, 100); err != nil {
+	if err := sanitizeOptional("prefecture", prefecture); err != nil {
 		return err
 	}
-	if err := sanitizeOptional("region", r.Region, 100); err != nil {
+	if err := sanitizeOptional("region", region); err != nil {
 		return err
 	}
-	if err := validateLabelImageURL(r.LabelImageURL); err != nil {
-		return err
-	}
-	return nil
+	return validateLabelImageURL(labelImageURL)
 }
 
 // AdminBreweryCreate is the body for POST /v1/admin/breweries.
@@ -245,10 +237,10 @@ func (r *AdminBreweryCreate) Validate() error {
 			return err
 		}
 	}
-	if err := sanitizeOptional("prefecture", r.Prefecture, 100); err != nil {
+	if err := sanitizeOptional("prefecture", r.Prefecture); err != nil {
 		return err
 	}
-	if err := sanitizeOptional("region", r.Region, 100); err != nil {
+	if err := sanitizeOptional("region", r.Region); err != nil {
 		return err
 	}
 	if r.FoundedYear != nil && (*r.FoundedYear < 800 || *r.FoundedYear > 2100) {
@@ -284,10 +276,10 @@ func (r *AdminBreweryUpdate) Validate() error {
 			return err
 		}
 	}
-	if err := sanitizeOptional("prefecture", r.Prefecture, 100); err != nil {
+	if err := sanitizeOptional("prefecture", r.Prefecture); err != nil {
 		return err
 	}
-	if err := sanitizeOptional("region", r.Region, 100); err != nil {
+	if err := sanitizeOptional("region", r.Region); err != nil {
 		return err
 	}
 	if r.FoundedYear != nil && (*r.FoundedYear < 800 || *r.FoundedYear > 2100) {
@@ -322,15 +314,14 @@ func sanitizeI18n(field string, t *domain.I18nText, maxLen int) error {
 	return nil
 }
 
-// sanitizeOptional runs an optional single-line string through SanitizeText.
-// Nil pointer is a no-op (the field is being left unchanged); non-nil is
-// always sanitized — empty string is allowed as a "clear" signal where the
-// caller permits it.
-func sanitizeOptional(field string, p *string, maxLen int) error {
+// sanitizeOptional runs an optional single-line catalog string (prefecture /
+// region) through SanitizeText with the canonical 100-char cap. Nil pointer
+// is a no-op; non-nil is always sanitized.
+func sanitizeOptional(field string, p *string) error {
 	if p == nil {
 		return nil
 	}
-	v, err := domain.SanitizeText(field, *p, false, maxLen)
+	v, err := domain.SanitizeText(field, *p, false, 100)
 	if err != nil {
 		return err
 	}

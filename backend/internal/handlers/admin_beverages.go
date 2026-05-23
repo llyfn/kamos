@@ -2,12 +2,12 @@
 //
 // Stage 8 (admin catalog CRUD). Six endpoints, all admin-only:
 //
-//   GET    /v1/admin/beverages
-//   GET    /v1/admin/beverages/{id}
-//   POST   /v1/admin/beverages
-//   PATCH  /v1/admin/beverages/{id}
-//   DELETE /v1/admin/beverages/{id}
-//   POST   /v1/admin/beverages/{id}/restore
+//	GET    /v1/admin/beverages
+//	GET    /v1/admin/beverages/{id}
+//	POST   /v1/admin/beverages
+//	PATCH  /v1/admin/beverages/{id}
+//	DELETE /v1/admin/beverages/{id}
+//	POST   /v1/admin/beverages/{id}/restore
 //
 // Direct admin write access supplements the existing user-submission
 // queue (/v1/admin/beverage-requests). Every mutation bundles its
