@@ -111,7 +111,7 @@ The API is stateless and scales horizontally. The worker is single-replica. Cach
 Two clients, two auth surfaces:
 
 - **Mobile (Flutter)** — Bearer JWT in `Authorization: Bearer …`. JWT + refresh token in `flutter_secure_storage` per SPEC §6.9; iOS Keychain accessibility is `first_unlock_this_device` (Stage 0 hotfix). Refresh tokens rotate atomically in a single transaction; family revocation on detected reuse.
-- **Admin (React)** — `HttpOnly` + `Secure` + `SameSite=Strict` cookies for access + refresh. CSRF protection is double-submit token: `X-CSRF-Token` header compared (constant-time) against the `kamos_admin_csrf` cookie. Required on every mutating admin request.
+- **Admin (React)** — `HttpOnly` + `Secure` + `SameSite=Strict` cookies for access + refresh. CSRF protection is double-submit token: `X-CSRF-Token` header compared (constant-time) against the `kamos_admin_csrf` cookie. Required on every mutating admin request. Identity endpoint is `GET /v1/admin/me` (cookie-authable; `/v1/users/me` is Bearer-only). Pages↔Fly is cross-site; same-site is restored by the Pages Function proxy at `admin/functions/v1/[[path]].ts` (and `vite.config.ts` locally). See `ARCHITECTURE.md §5`.
 - **SEC-006 soft-delete cache** — `internal/auth/` keeps an in-process LRU of soft-deleted user IDs so token verification rejects them immediately for the 30-day username-hold window, without a per-request DB roundtrip.
 
 ## Project invariants (from SPEC)
@@ -144,7 +144,7 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 
 **Auth storage on Flutter** — JWT lives in `flutter_secure_storage`, never in `SharedPreferences`. iOS Keychain accessibility = `first_unlock_this_device` (Stage 0). This is a security blocker, not a preference.
 
-**Admin auth** — admin mutating requests require both the HttpOnly cookie (`kamos_admin_*`) AND a matching `X-CSRF-Token` header. Missing or mismatched header → `403 CSRF_MISMATCH`. Cookies are `HttpOnly` + `Secure` + `SameSite=Strict`.
+**Admin auth** — admin mutating requests require both the HttpOnly cookie (`kamos_admin_*`) AND a matching `X-CSRF-Token` header. Missing or mismatched header → `403 CSRF_MISMATCH`. Cookies are `HttpOnly` + `Secure` + `SameSite=Strict` — do not flip to `SameSite=None`; the Pages Function proxy is what keeps Strict viable across Pages↔Fly.
 
 **Text input sanitization** — every user-provided string field flows through `domain.SanitizeText(field, value, allowEmpty, maxLen)`. The helper rejects control characters and bidi-override codepoints, enforces UTF-8 length, and returns a typed validation error.
 

@@ -197,20 +197,19 @@ would log "lock not acquired, skipping" instead of double-running jobs.
 ## 8. Admin SPA
 
 The admin SPA deploys via [`deploy-admin.yml`](../../.github/workflows/deploy-admin.yml):
-on CI green (or `workflow_dispatch`) it builds `admin/` and uploads `dist/` to
-the `kamos-admin` Pages project with Wrangler — gated on CI, same trigger model
-as the backend `deploy.yml`. The build bakes in `admin/.env.production`
-(`VITE_API_BASE_URL=https://kamos.fly.dev`).
+on CI green (or `workflow_dispatch`) it builds `admin/` and uploads `dist/`
+plus `admin/functions/` to the `kamos-admin` Pages project with Wrangler.
+`admin/.env.production` ships empty so the SPA calls relative `/v1/*`, which
+`admin/functions/v1/[[path]].ts` proxies to `https://kamos.fly.dev/v1/*`
+(architecture rationale: [`ARCHITECTURE.md §5`](../../ARCHITECTURE.md#5-auth-topology)).
+Consequence: `CORS_ALLOWED_ORIGINS` does **not** need the Pages origin —
+keep `http://localhost:5174` only for the non-proxied local-dev flow.
 
 The SPA ships `admin/public/_redirects` (`/* /index.html 200`) so client-side
-TanStack Router deep-links resolve instead of 404ing on a hard refresh.
+TanStack Router deep-links don't 404 on a hard refresh.
 
-Before the first deploy, set the API's CORS allowlist to the (fixed) Pages origin:
-
-```sh
-flyctl secrets set -a kamos \
-  CORS_ALLOWED_ORIGINS=https://kamos-admin.pages.dev,http://localhost:5174
-```
+Identity endpoint for the SPA is `GET /v1/admin/me` (cookie-authable;
+`/v1/users/me` is Bearer-only).
 
 First deploy / re-deploy:
 
