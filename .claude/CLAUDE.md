@@ -27,7 +27,7 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 - **Mobile:** Flutter (stable channel), Riverpod, `go_router`, `dio`, `flutter_secure_storage`
 - **Admin:** React 19 + Vite 6 + TypeScript (`admin/`)
 - **Locales:** `en`, `ja`, `ko` (full coverage in MVP)
-- **Min platforms:** iOS 13+, Android API 26+
+- **Min platforms:** iOS 15+, Android API 26+
 
 ## Hosted environment
 

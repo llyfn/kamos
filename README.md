@@ -18,7 +18,7 @@ Named after *醸す (kamosu)*, the Japanese verb for brewing and fermenting, KAM
 
 | Layer | Tech |
 |---|---|
-| Mobile | Flutter (iOS 13+, Android API 26+), Riverpod, `go_router`, `dio`, `flutter_secure_storage` |
+| Mobile | Flutter (iOS 15+, Android API 26+), Riverpod, `go_router`, `dio`, `flutter_secure_storage` |
 | API | Go 1.26+, `chi` router, `pgx/v5` (no ORM), JWT (HS256), Google OAuth2 |
 | Database | PostgreSQL 18+ with `pgcrypto` |
 | Cache | Per-replica LRU (always); optional Redis 7+ (multi-replica L2) |

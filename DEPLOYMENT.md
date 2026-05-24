@@ -165,7 +165,7 @@ flutter run --dart-define=KAMOS_API_BASE_URL=https://api.example.com
 
 iOS notes:
 - `ios/Runner/Info.plist` already declares EN / JA / KO locales and camera/photo permission strings.
-- Min iOS: 13.
+- Min iOS: 15.
 
 Android notes:
 - `minSdk = 26` in `android/app/build.gradle.kts`.
