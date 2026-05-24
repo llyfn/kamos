@@ -151,11 +151,8 @@ function ApproveModal({ request, onClose }: { request: Request; onClose: () => v
 // reviewer can crib values manually. Brewery is intentionally not
 // prefilled — `brewery_name` is the user's free-text guess, not a
 // UUID, so the reviewer picks the canonical brewery via BreweryPicker.
-function requestPayloadToInitial(
-  payload: Record<string, unknown>,
-): CatalogBeverageFormPartial {
-  const str = (k: string) =>
-    typeof payload[k] === 'string' ? (payload[k] as string) : '';
+function requestPayloadToInitial(payload: Record<string, unknown>): CatalogBeverageFormPartial {
+  const str = (k: string) => (typeof payload[k] === 'string' ? (payload[k] as string) : '');
   const num = (k: string): string => {
     const v = payload[k];
     if (typeof v === 'number') return String(v);
@@ -164,9 +161,7 @@ function requestPayloadToInitial(
   };
   const rawSlug = str('category_slug');
   const slug =
-    rawSlug === 'nihonshu' || rawSlug === 'shochu' || rawSlug === 'liqueur'
-      ? rawSlug
-      : '';
+    rawSlug === 'nihonshu' || rawSlug === 'shochu' || rawSlug === 'liqueur' ? rawSlug : '';
   return {
     category_slug: slug,
     name_en: str('name'),
@@ -231,4 +226,3 @@ function RejectModal({ request, onClose }: { request: Request; onClose: () => vo
     </Modal>
   );
 }
-
