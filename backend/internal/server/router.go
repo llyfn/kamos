@@ -103,6 +103,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 	r.Get("/health", healthHandler)
 	r.Get("/healthz", healthHandler)
 
+	// Email-verification landing page. Top-level (NOT under /v1) so the
+	// click-through URL the user sees in their inbox stays short, and
+	// public — possession of the token IS the credential. Rate-limited by
+	// the global IP limiter above (when enabled).
+	r.Get("/verify", h.VerifyEmailPage)
+
 	// Prometheus scrape endpoint. The bundle of counters
 	// includes cache_requests_total{cache,outcome} fed by the cache
 	// package's hit/miss observers. Mount unauthenticated: production
