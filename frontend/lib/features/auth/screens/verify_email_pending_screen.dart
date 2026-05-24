@@ -95,6 +95,12 @@ class _VerifyEmailPendingScreenState
   }
 
   Future<void> _onBackToSignIn() async {
+    // Stop the background poll before navigating away — otherwise the
+    // 5s tick can fire one wasted `meProvider` invalidation in the
+    // window between logout completing and the State being torn down.
+    // Null-out so `dispose` does not try to cancel a second time.
+    _pollTimer?.cancel();
+    _pollTimer = null;
     // Log the user out so the auth screen renders in its signed-out
     // state and the user can re-sign-up with a corrected email.
     await ref.read(authStateProvider.notifier).logout();

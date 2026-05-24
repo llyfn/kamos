@@ -311,14 +311,18 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     // own activity: the home Feed, /v1/users/me stats, the
     // user-check-ins list shown on the Me profile, and the beverage
     // detail page's recent-check-ins block.
-    // Capture the user id BEFORE invalidating `meProvider` — otherwise
+    // Capture the username BEFORE invalidating `meProvider` — otherwise
     // the synchronous read after invalidation returns a loading state
-    // and we'd skip the userCheckins invalidation.
-    final meId = ref.read(meProvider).asData?.value.user.id;
+    // and we'd skip the userCheckins invalidation. The family key is the
+    // username (not the user id) because that is what the Me profile
+    // screen watches via `userCheckinsProvider(user.username)`; passing
+    // the id here would invalidate a different cache slot than the one
+    // the profile actually reads.
+    final meUsername = ref.read(meProvider).asData?.value.user.username;
     ref.invalidate(feedProvider);
     ref.invalidate(meProvider);
-    if (meId != null && meId.isNotEmpty) {
-      ref.invalidate(userCheckinsProvider(meId));
+    if (meUsername != null && meUsername.isNotEmpty) {
+      ref.invalidate(userCheckinsProvider(meUsername));
     }
     ref.invalidate(beverageDetailProvider(widget.beverage.id));
     final onSubmitted = widget.onSubmitted;
