@@ -51,7 +51,11 @@ class _Body extends ConsumerWidget {
     final b = detail.beverage;
     final name = resolveI18n(b.name, locale);
     final brewery = resolveI18n(b.brewery.name, locale);
-    final region = b.region ?? b.brewery.region ?? '';
+    // Migration 016: per-beverage prefecture/region are gone; derive from the
+    // nested brewery.prefecture. Display the prefecture name (most specific).
+    final region = b.brewery.prefecture == null
+        ? ''
+        : resolveI18n(b.brewery.prefecture!.name, locale);
     final slug = categorySlugFromString(b.category.slug);
     final categoryLabelText = slug == null
         ? resolveI18n(b.category.labelI18n, locale)

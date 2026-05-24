@@ -3,10 +3,16 @@
 // Optional fields are nullable. Per QA MINOR #2, some servers may emit
 // `omitempty` (absent) vs `nullable: true` (present-and-null); we treat both
 // as `null` here.
+//
+// Migration 016: `prefecture` is now a nested `Prefecture` object (which
+// itself embeds its `Region`). The previous free-text `prefecture` / `region`
+// string fields are gone — the brewery's region is derivable via
+// `brewery.prefecture?.region`.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'i18n_text.dart';
+import 'prefecture.dart';
 
 part 'brewery.freezed.dart';
 
@@ -15,8 +21,7 @@ abstract class Brewery with _$Brewery {
   const factory Brewery({
     required String id,
     required I18nText name,
-    String? prefecture,
-    String? region,
+    Prefecture? prefecture,
     int? foundedYear,
     String? website,
     I18nText? description,
@@ -32,8 +37,9 @@ abstract class Brewery with _$Brewery {
     name: I18nText.fromJson(
       (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
     ),
-    prefecture: json['prefecture'] as String?,
-    region: json['region'] as String?,
+    prefecture: json['prefecture'] is Map<String, dynamic>
+        ? Prefecture.fromJson(json['prefecture'] as Map<String, dynamic>)
+        : null,
     foundedYear: (json['founded_year'] as num?)?.toInt(),
     website: json['website'] as String?,
     description: json['description'] is Map<String, dynamic>
@@ -49,7 +55,7 @@ abstract class BreweryRef with _$BreweryRef {
   const factory BreweryRef({
     required String id,
     required I18nText name,
-    String? region,
+    Prefecture? prefecture,
   }) = _BreweryRef;
 
   factory BreweryRef.fromJson(Map<String, dynamic> json) => BreweryRef(
@@ -57,6 +63,8 @@ abstract class BreweryRef with _$BreweryRef {
     name: I18nText.fromJson(
       (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
     ),
-    region: json['region'] as String?,
+    prefecture: json['prefecture'] is Map<String, dynamic>
+        ? Prefecture.fromJson(json['prefecture'] as Map<String, dynamic>)
+        : null,
   );
 }
