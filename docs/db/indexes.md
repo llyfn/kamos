@@ -36,14 +36,18 @@ This document explains every index in `migrations/001_initial.sql` and `migratio
 
 ### breweries
 
-The implicit PK plus the FTS index documented under "breweries (search)" cover all current read paths. Migration 014 added `breweries.deleted_at` and a tiny partial helper index for the admin "trash" view:
+The implicit PK plus the FTS index documented under "breweries (search)" cover all current read paths. Migration 014 added `breweries.deleted_at` and a tiny partial helper index for the admin "trash" view. Migration 016 added the prefecture FK and its partial index:
 
 | Index | Purpose |
 |---|---|
 | `idx_breweries_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` keeps the index tiny — almost every row in the catalog is live. |
+| `idx_breweries_prefecture_id` (partial, 016) | Admin filtering by prefecture and brewery-detail prefecture/region joins on the public read path. `WHERE deleted_at IS NULL` keeps the index dense. |
 
-Add when needed (deferred):
-- `idx_breweries_prefecture` — only if browse-by-prefecture becomes a feature. Still deferred as of 014.
+```sql
+CREATE INDEX idx_breweries_prefecture_id
+  ON breweries (prefecture_id)
+  WHERE deleted_at IS NULL;
+```
 
 ### beverages
 
@@ -190,6 +194,20 @@ CREATE INDEX idx_collections_user_live
   WHERE deleted_at IS NULL;
 ```
 
+### regions / prefectures (016)
+
+Both tables are seed-only — read-heavy, write-effectively-never. Default PK + UNIQUE on `slug` covers slug lookups; one extra index on `prefectures.region_id` covers the grouped-dropdown query.
+
+| Index | Purpose |
+|---|---|
+| `regions_slug_key` (unique, implicit) | Slug lookup from the admin form. |
+| `prefectures_slug_key` (unique, implicit) | Slug lookup from the admin form and as the join target from `breweries`. |
+| `idx_prefectures_region_id` | "List prefectures in region X" for the admin grouped dropdown and any future region-filtered brewery query. |
+
+```sql
+CREATE INDEX idx_prefectures_region_id ON prefectures (region_id);
+```
+
 ### beverage_addition_requests
 
 | Index | Purpose |
@@ -212,7 +230,7 @@ CREATE INDEX idx_beverage_addition_requests_status
 - `users.LOWER(display_username)` — never queried. Login uses `LOWER(?)` against `username`, never `display_username`.
 - `check_ins.deleted_at` — we use partial-index predicates everywhere instead of a separate index on the column.
 - `beverages.subcategory` — subcategory is admin free-text from a predefined list. Filtering by subcategory is a post-MVP feature.
-- Any index on `breweries.region`/`beverages.region` — browse-by-region is post-MVP. Add when SearchScreen exposes a region filter.
+- Any index on `breweries.region`/`beverages.region` — these free-text columns were removed in 016. Locality is now derived through `breweries.prefecture_id → prefectures.region_id`; add a covering index on `(region_id, …)` of `prefectures` only if the brewery-list-by-region query becomes a hotspot (it does not today).
 
 ## Future migrations to consider
 

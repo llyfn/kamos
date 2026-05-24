@@ -17,11 +17,22 @@ Migrations live in `migrations/`. **Append-only**: never edit a deployed migrati
                                             ▼
    ┌──────────────────┐ brewery_id ┌────────────────────┐
    │ breweries        │◀───────────│ beverages          │───────┐
-   │ name_i18n, ...   │            │ name_i18n, abv,    │       │
-   └──────────────────┘            │ polishing_ratio,   │       │
-                                   │ avg_rating (denorm)│       │
-                                   │ check_in_count     │       │
-                                   └────────┬───────────┘       │
+   │ name_i18n,       │            │ name_i18n, abv,    │       │
+   │ prefecture_id ─┐ │            │ polishing_ratio,   │       │
+   └──────────────┬─┘ │            │ avg_rating (denorm)│       │
+                  ▼   │            │ check_in_count     │       │
+       ┌──────────────┴──┐         └────────┬───────────┘       │
+       │ prefectures     │                                      │
+       │ region_id, slug │                                      │
+       │ name_i18n       │                                      │
+       └────────┬────────┘                                      │
+                ▼                                               │
+         ┌──────────────┐                                       │
+         │ regions      │ (8 seeded rows;                       │
+         │ slug,        │  Japan's traditional regions)         │
+         │ name_i18n    │                                       │
+         └──────────────┘                                       │
+                                                                │
                                             │ beverage_id       │ flavor_tag_id
                                             ▼                   ▼
    ┌──────────────────┐                ┌─────────────────┐  ┌────────────────┐
@@ -162,6 +173,23 @@ We chose option 2 because:
 
 Beverages also carry a denormalized `category_slug` column kept in sync by a trigger (`sync_beverage_category_slug`), so the `polishing_ratio_nihonshu_only` CHECK can be evaluated row-locally without a join.
 
+### 9b. Regions / prefectures as i18n reference tables (016)
+
+`breweries` originally carried free-text `prefecture` and `region` columns. In practice this drifted (mixed `'Niigata'` / `'新潟'` / `'新潟県'` for the same logical place) and made it impossible to drive admin filtering or grouped dropdowns without a controlled vocabulary.
+
+Migration 016 introduces:
+
+- `regions` — 8 seed rows for Japan's traditional regions (Hokkaido, Tōhoku, Kantō, Chūbu, Kansai, Chūgoku, Shikoku, Kyūshū & Okinawa).
+- `prefectures` — 47 seed rows in JIS order, each FK'd to a region with `ON DELETE RESTRICT`.
+
+Both tables follow the same `JSONB name_i18n` pattern as `beverage_categories` and `flavor_tags` (`{en, ja, ko}` all required by CHECK — these are seed-only, so all three locales are mandatory).
+
+`breweries` gets a nullable `prefecture_id UUID REFERENCES prefectures(id) ON DELETE RESTRICT`. The old `breweries.prefecture` and `breweries.region` columns were backfilled best-effort (case-insensitive match against `name_i18n->>'en'` or exact match against `name_i18n->>'ja'`) and then dropped. Rows that didn't match resolve to NULL — admin recuration is the explicit fallback rather than silently guessing.
+
+`beverages.prefecture` and `beverages.region` were also dropped with no replacement: locality is derived through `beverages.brewery_id → breweries.prefecture_id → prefectures.region_id`. Two FK hops on a small catalog is cheap and removes the duplication.
+
+Country dimension is intentionally **not** introduced: MVP is Japan-only. A `countries` table can be added later above `regions` without disturbing existing FKs. `venues.prefecture` (Phase 4, Foursquare-backed) is independent and was not touched — that column is third-party-sourced free text.
+
 ### 10. UUID, not bigint, primary keys
 
 `pgcrypto.gen_random_uuid()` everywhere. Trade-offs:
@@ -181,8 +209,10 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `users` | Accounts. | `deleted_at` + `username_release_at` | Lowercase username regex, en/ja/ko locale, public/private privacy, at least one auth method present. |
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
-| `breweries` | Maker catalog. | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. |
-| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. |
+| `breweries` | Maker catalog. | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. |
+| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `brewery_id → breweries.prefecture_id` (016); own `prefecture`/`region` columns dropped. |
+| `regions` | Japan's 8 traditional regions (seed). | — | `name_i18n` requires en+ja+ko. 8 seeded rows (016). |
+| `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
 | `flavor_tags` | Admin taxonomy (SPEC §4.3). | — | 5 fixed dimensions. |
 | `beverage_flavor_tags` | Aggregate tags per beverage. | — | Composite PK. |
 | `check_ins` | User logs. | `deleted_at` | Rating 0.5..5.0 in 0.5 steps, review ≤500, price coherence. Beverage immutable post-create (SPEC §4.4) — enforced at app layer. |
@@ -225,6 +255,8 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `collection_entries.note` ≤ 200 | §6.2 |
 | Cursor pagination indexes | §5.2, §6.6 |
 | Default `Inventory` + `Wishlist` (app-layer) | §6.1, §6.8 |
+| `regions` / `prefectures` (i18n reference) | §2.3 (brewery prefecture display); 016 |
+| `breweries.prefecture_id` FK (replaces free-text) | §2.3; 016 |
 
 ---
 
