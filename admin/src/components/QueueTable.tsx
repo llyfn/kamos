@@ -62,8 +62,8 @@ export function QueueTable<T>(props: QueueTableProps<T>) {
 
   return (
     <>
-      <div className="border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border border-[color:var(--color-border)] rounded bg-[color:var(--color-surface)] overflow-x-auto">
+        <table className="w-full min-w-[40rem] text-sm">
           <thead className="bg-[color:var(--color-bg)] text-left">
             <tr>
               {columns.map((c) => (

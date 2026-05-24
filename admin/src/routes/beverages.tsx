@@ -116,10 +116,10 @@ function BeveragesPage() {
               setCursor(null);
             }}
             placeholder="FTS over name_i18n"
-            className="border border-[color:var(--color-border)] rounded px-2 py-1 w-64"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 w-full sm:w-64"
           />
         </label>
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <BreweryPicker
             value={breweryFilter}
             onChange={(v) => {
@@ -155,7 +155,7 @@ function BeveragesPage() {
               setCursor(null);
             }}
             placeholder="beverage uuid"
-            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-72"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-1">

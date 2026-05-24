@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
+import {
+  CatalogBeverageForm,
+  type CatalogBeverageFormPartial,
+} from '@/components/CatalogBeverageForm';
 import { RoleGuard } from '@/components/guard';
 import { JsonTree } from '@/components/json-tree';
 import { Modal } from '@/components/modal';
@@ -107,40 +111,17 @@ function Row({ request }: { request: Request }) {
 function ApproveModal({ request, onClose }: { request: Request; onClose: () => void }) {
   const toast = useToast();
   const approve = useApproveBeverageRequest(request.id);
-  const [form, setForm] = useState<{
-    brewery_id: string;
-    category_id: string;
-    name_en: string;
-    name_ja: string;
-    name_ko: string;
-    abv: string;
-    label_image_url: string;
-  }>({
-    brewery_id: '',
-    category_id: '',
-    name_en: '',
-    name_ja: '',
-    name_ko: '',
-    abv: '',
-    label_image_url: '',
-  });
   const [error, setError] = useState<string | null>(null);
+  const initialPartial = requestPayloadToInitial(request.payload);
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  function handleSubmit(body: components['schemas']['AdminBeverageCreate']) {
     setError(null);
-    const body: components['schemas']['AdminBeverageRequestApproval'] = {
-      brewery_id: form.brewery_id.trim(),
-      category_id: form.category_id.trim(),
-      name_i18n: {
-        en: form.name_en.trim(),
-        ja: form.name_ja.trim(),
-        ko: form.name_ko.trim(),
-      },
-    };
-    if (form.abv.trim()) body.abv = Number(form.abv);
-    if (form.label_image_url.trim()) body.label_image_url = form.label_image_url.trim();
-    approve.mutate(body, {
+    // AdminBeverageCreate and AdminBeverageRequestApproval share the same
+    // wire shape post-approval-parity; Approval just adds optional
+    // `notes` + `subcategory_i18n`. Forward the form's emitted Create
+    // body as the approval payload.
+    const approval = body as unknown as components['schemas']['AdminBeverageRequestApproval'];
+    approve.mutate(approval, {
       onSuccess: () => {
         toast.push('Approved');
         onClose();
@@ -151,68 +132,44 @@ function ApproveModal({ request, onClose }: { request: Request; onClose: () => v
 
   return (
     <Modal open onClose={onClose} title="Approve beverage request">
-      <form onSubmit={onSubmit} className="flex flex-col gap-3 text-sm">
-        <Field
-          label="Brewery ID (uuid)"
-          value={form.brewery_id}
-          onChange={(v) => setForm({ ...form, brewery_id: v })}
-          required
-        />
-        <Field
-          label="Category ID (uuid)"
-          value={form.category_id}
-          onChange={(v) => setForm({ ...form, category_id: v })}
-          required
-        />
-        <Field
-          label="Name (en)"
-          value={form.name_en}
-          onChange={(v) => setForm({ ...form, name_en: v })}
-          required
-        />
-        <Field
-          label="Name (ja)"
-          value={form.name_ja}
-          onChange={(v) => setForm({ ...form, name_ja: v })}
-          required
-        />
-        <Field
-          label="Name (ko)"
-          value={form.name_ko}
-          onChange={(v) => setForm({ ...form, name_ko: v })}
-          required
-        />
-        <Field
-          label="ABV (optional)"
-          value={form.abv}
-          onChange={(v) => setForm({ ...form, abv: v })}
-          type="number"
-        />
-        <Field
-          label="Label image URL (optional)"
-          value={form.label_image_url}
-          onChange={(v) => setForm({ ...form, label_image_url: v })}
-        />
-        {error && <p className="text-red-700 text-xs">{error}</p>}
-        <div className="flex justify-end gap-2 mt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1 border border-[color:var(--color-border)] rounded"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={approve.isPending}
-            className="px-3 py-1 bg-emerald-700 text-white rounded disabled:opacity-50"
-          >
-            {approve.isPending ? 'Approving…' : 'Approve'}
-          </button>
-        </div>
-      </form>
+      <CatalogBeverageForm
+        initialPartial={initialPartial}
+        submitting={approve.isPending}
+        submitLabel="Approve"
+        errorMessage={error}
+        onSubmit={handleSubmit}
+        onCancel={onClose}
+      />
     </Modal>
   );
+}
+
+// Best-effort mapping from the free-form JSONB request payload (see
+// backend/internal/domain/types_request.go for known keys) into the
+// admin form's loose initial-partial shape. Unknown keys are dropped:
+// the full payload is still rendered by JsonTree on the row so the
+// reviewer can crib values manually. Brewery is intentionally not
+// prefilled — `brewery_name` is the user's free-text guess, not a
+// UUID, so the reviewer picks the canonical brewery via BreweryPicker.
+function requestPayloadToInitial(payload: Record<string, unknown>): CatalogBeverageFormPartial {
+  const str = (k: string) => (typeof payload[k] === 'string' ? (payload[k] as string) : '');
+  const num = (k: string): string => {
+    const v = payload[k];
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'string') return v;
+    return '';
+  };
+  const rawSlug = str('category_slug');
+  const slug =
+    rawSlug === 'nihonshu' || rawSlug === 'shochu' || rawSlug === 'liqueur' ? rawSlug : '';
+  return {
+    category_slug: slug,
+    name_en: str('name'),
+    name_ja: str('name_ja'),
+    abv: num('abv'),
+    polishing_ratio: num('polishing_ratio'),
+    label_image_url: str('label_image_url'),
+  };
 }
 
 function RejectModal({ request, onClose }: { request: Request; onClose: () => void }) {
@@ -237,7 +194,7 @@ function RejectModal({ request, onClose }: { request: Request; onClose: () => vo
     <Modal open onClose={onClose} title="Reject beverage request">
       <form onSubmit={onSubmit} className="flex flex-col gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          <span className="text-[color:var(--color-muted)]">Notes (1–500 chars)</span>
+          <span className="text-[color:var(--color-muted)]">Notes * (1–500 chars)</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -267,28 +224,5 @@ function RejectModal({ request, onClose }: { request: Request; onClose: () => vo
         </div>
       </form>
     </Modal>
-  );
-}
-
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  type?: string;
-}
-
-function Field({ label, value, onChange, required, type = 'text' }: FieldProps) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[color:var(--color-muted)]">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required ?? false}
-        className="border border-[color:var(--color-border)] rounded px-2 py-1"
-      />
-    </label>
   );
 }

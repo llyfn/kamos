@@ -48,7 +48,7 @@ function CheckinsPage() {
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          <span className="text-[color:var(--color-muted)]">Check-in ID (uuid)</span>
+          <span className="text-[color:var(--color-muted)]">Check-in ID * (uuid)</span>
           <input
             type="text"
             value={id}

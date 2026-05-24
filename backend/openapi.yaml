@@ -3060,15 +3060,25 @@ components:
     AdminBeverageRequestApproval:
       type: object
       description: |
+        Field set mirrors AdminBeverageCreate so the admin can drive the
+        approve and direct-create flows from the same form. Exactly one
+        of `category_id` / `category_slug` is required; the handler
+        resolves slug → UUID before the INSERT runs. An unknown
+        `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
+
         Migration 016 dropped beverages.prefecture / beverages.region —
         the beverage's locality is derived through the brewery's
         prefecture_id, so no per-beverage geo fields are accepted here.
         Recurate the brewery via PATCH /v1/admin/breweries/{id} before
         approving if the prefecture is wrong.
-      required: [brewery_id, category_id, name_i18n]
+      required: [brewery_id, name_i18n]
       properties:
         brewery_id: { type: string, format: uuid }
         category_id: { type: string, format: uuid }
+        category_slug:
+          type: string
+          enum: [nihonshu, shochu, liqueur]
+          description: alternative to category_id; resolved server-side
         name_i18n: { $ref: "#/components/schemas/I18nText" }
         subcategory_i18n:
           allOf:
@@ -3080,10 +3090,20 @@ components:
           nullable: true
           minimum: 0
           maximum: 70
+        polishing_ratio:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+          description: nihonshu only — server CHECK rejects non-null values for other categories
         label_image_url: { type: string, format: uri, nullable: true }
         flavor_profile:
           type: array
           items: { type: string }
+        description_i18n:
+          allOf:
+            - $ref: "#/components/schemas/I18nText"
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -3164,7 +3184,7 @@ components:
           format: float
           nullable: true
           minimum: 0
-          maximum: 60
+          maximum: 70
         polishing_ratio:
           type: integer
           nullable: true
@@ -3214,7 +3234,7 @@ components:
           format: float
           nullable: true
           minimum: 0
-          maximum: 60
+          maximum: 70
         polishing_ratio:
           type: integer
           nullable: true

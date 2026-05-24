@@ -2050,7 +2050,13 @@ export interface components {
             created_at: string;
         };
         /**
-         * @description Migration 016 dropped beverages.prefecture / beverages.region —
+         * @description Field set mirrors AdminBeverageCreate so the admin can drive the
+         *     approve and direct-create flows from the same form. Exactly one
+         *     of `category_id` / `category_slug` is required; the handler
+         *     resolves slug → UUID before the INSERT runs. An unknown
+         *     `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
+         *
+         *     Migration 016 dropped beverages.prefecture / beverages.region —
          *     the beverage's locality is derived through the brewery's
          *     prefecture_id, so no per-beverage geo fields are accepted here.
          *     Recurate the brewery via PATCH /v1/admin/breweries/{id} before
@@ -2060,14 +2066,22 @@ export interface components {
             /** Format: uuid */
             brewery_id: string;
             /** Format: uuid */
-            category_id: string;
+            category_id?: string;
+            /**
+             * @description alternative to category_id; resolved server-side
+             * @enum {string}
+             */
+            category_slug?: "nihonshu" | "shochu" | "liqueur";
             name_i18n: components["schemas"]["I18nText"];
             subcategory_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: float */
             abv?: number | null;
+            /** @description nihonshu only — server CHECK rejects non-null values for other categories */
+            polishing_ratio?: number | null;
             /** Format: uri */
             label_image_url?: string | null;
             flavor_profile?: string[];
+            description_i18n?: components["schemas"]["I18nText"] | null;
             /** @description reviewer notes recorded on the request row */
             notes?: string | null;
         };

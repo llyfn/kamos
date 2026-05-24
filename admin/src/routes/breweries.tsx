@@ -99,7 +99,7 @@ function BreweriesPage() {
               setCursor(null);
             }}
             placeholder="FTS over name_i18n"
-            className="border border-[color:var(--color-border)] rounded px-2 py-1 w-72"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 w-full sm:w-72"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -112,7 +112,7 @@ function BreweriesPage() {
               setCursor(null);
             }}
             placeholder="brewery uuid"
-            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-72"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-1">

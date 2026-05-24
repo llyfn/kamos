@@ -39,8 +39,28 @@ const FALLBACK_CATEGORIES: CategoryLabel[] = [
   { slug: 'liqueur', label_i18n: { en: 'Liqueur', ja: 'リキュール', ko: '리큐어' } },
 ];
 
+// Loose seed shape used by callers that don't have a full AdminBeverage
+// (e.g. the approval queue, which constructs an initial from the user's
+// free-form JSONB request payload). `initial` always wins when set.
+export interface CatalogBeverageFormPartial {
+  brewery_id?: string;
+  brewery_label?: string;
+  category_slug?: CategorySlug | '';
+  name_en?: string;
+  name_ja?: string;
+  name_ko?: string;
+  abv?: string;
+  polishing_ratio?: string;
+  flavor_profile?: string[];
+  description_en?: string;
+  description_ja?: string;
+  description_ko?: string;
+  label_image_url?: string;
+}
+
 interface CatalogBeverageFormProps {
   initial?: AdminBeverage | null;
+  initialPartial?: CatalogBeverageFormPartial;
   submitting?: boolean;
   submitLabel?: string;
   errorMessage?: string | null;
@@ -66,33 +86,57 @@ interface FormState {
 
 // The initial-edit AdminBeverage carries category.slug, which is also
 // what the server now accepts on create/update — no UUID lookup needed.
-function initialState(b: AdminBeverage | null | undefined): FormState {
+// When `b` is absent the form falls through to `p`, a loose partial
+// used by the approval queue to seed the form from the user's free-form
+// JSONB request payload.
+function initialState(
+  b: AdminBeverage | null | undefined,
+  p: CatalogBeverageFormPartial | undefined,
+): FormState {
+  if (b) {
+    return {
+      brewery: { id: b.brewery.id, label: preferredName(b.brewery.name) },
+      category_slug: b.category.slug,
+      name_en: b.name.en ?? '',
+      name_ja: b.name.ja ?? '',
+      name_ko: b.name.ko ?? '',
+      abv: b.abv != null ? String(b.abv) : '',
+      polishing_ratio: b.polishing_ratio != null ? String(b.polishing_ratio) : '',
+      flavor_profile: b.flavor_profile ?? [],
+      flavor_draft: '',
+      description_en: b.description?.en ?? '',
+      description_ja: b.description?.ja ?? '',
+      description_ko: b.description?.ko ?? '',
+      label_image_url: b.label_image_url ?? '',
+    };
+  }
   return {
-    brewery: b ? { id: b.brewery.id, label: preferredName(b.brewery.name) } : null,
-    category_slug: b?.category.slug ?? '',
-    name_en: b?.name.en ?? '',
-    name_ja: b?.name.ja ?? '',
-    name_ko: b?.name.ko ?? '',
-    abv: b?.abv != null ? String(b.abv) : '',
-    polishing_ratio: b?.polishing_ratio != null ? String(b.polishing_ratio) : '',
-    flavor_profile: b?.flavor_profile ?? [],
+    brewery: p?.brewery_id ? { id: p.brewery_id, label: p.brewery_label ?? '' } : null,
+    category_slug: p?.category_slug ?? '',
+    name_en: p?.name_en ?? '',
+    name_ja: p?.name_ja ?? '',
+    name_ko: p?.name_ko ?? '',
+    abv: p?.abv ?? '',
+    polishing_ratio: p?.polishing_ratio ?? '',
+    flavor_profile: p?.flavor_profile ?? [],
     flavor_draft: '',
-    description_en: b?.description?.en ?? '',
-    description_ja: b?.description?.ja ?? '',
-    description_ko: b?.description?.ko ?? '',
-    label_image_url: b?.label_image_url ?? '',
+    description_en: p?.description_en ?? '',
+    description_ja: p?.description_ja ?? '',
+    description_ko: p?.description_ko ?? '',
+    label_image_url: p?.label_image_url ?? '',
   };
 }
 
 export function CatalogBeverageForm({
   initial,
+  initialPartial,
   submitting = false,
   submitLabel = 'Save',
   errorMessage,
   onSubmit,
   onCancel,
 }: CatalogBeverageFormProps) {
-  const [form, setForm] = useState<FormState>(() => initialState(initial));
+  const [form, setForm] = useState<FormState>(() => initialState(initial, initialPartial));
   const [localError, setLocalError] = useState<string | null>(null);
 
   // Categories — the public /v1/categories returns slugs + locale labels.

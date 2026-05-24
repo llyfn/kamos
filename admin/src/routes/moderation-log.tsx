@@ -150,7 +150,7 @@ function ModerationLogPage() {
             value={draft.target_id}
             onChange={(e) => setDraft({ ...draft, target_id: e.target.value })}
             placeholder="uuid"
-            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-72"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-full sm:w-72"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -160,7 +160,7 @@ function ModerationLogPage() {
             value={draft.moderator_id}
             onChange={(e) => setDraft({ ...draft, moderator_id: e.target.value })}
             placeholder="uuid"
-            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-72"
+            className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-full sm:w-72"
           />
         </label>
         <div className="flex gap-2">
