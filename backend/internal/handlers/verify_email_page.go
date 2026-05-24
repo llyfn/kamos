@@ -36,7 +36,7 @@ func (h *Handler) verifyEmailPage(w http.ResponseWriter, r *http.Request, users 
 	locale := pickLandingLocale(r.URL.Query().Get("lang"))
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		h.renderLanding(w, r, locale, "Invalid", http.StatusBadRequest)
+		h.renderLanding(w, locale, "Invalid", http.StatusBadRequest)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (h *Handler) verifyEmailPage(w http.ResponseWriter, r *http.Request, users 
 		if !errors.Is(err, domain.ErrTokenExpired) && !errors.Is(err, domain.ErrNotFound) {
 			h.Log.Warn("VerifyEmailPage: find token", "err", err)
 		}
-		h.renderLanding(w, r, locale, "Invalid", http.StatusBadRequest)
+		h.renderLanding(w, locale, "Invalid", http.StatusBadRequest)
 		return
 	}
 
@@ -59,26 +59,26 @@ func (h *Handler) verifyEmailPage(w http.ResponseWriter, r *http.Request, users 
 	user, err := users.FindByID(r.Context(), userID)
 	if err != nil {
 		h.Log.Warn("VerifyEmailPage: find user", "err", err, "user_id", userID)
-		h.renderLanding(w, r, locale, "Invalid", http.StatusBadRequest)
+		h.renderLanding(w, locale, "Invalid", http.StatusBadRequest)
 		return
 	}
 	if user.EmailVerified {
-		h.renderLanding(w, r, locale, "AlreadyVerified", http.StatusOK)
+		h.renderLanding(w, locale, "AlreadyVerified", http.StatusOK)
 		return
 	}
 
 	if err := users.MarkEmailVerified(r.Context(), userID, token); err != nil {
 		h.Log.Warn("VerifyEmailPage: mark verified", "err", err, "user_id", userID)
-		h.renderLanding(w, r, locale, "Invalid", http.StatusBadRequest)
+		h.renderLanding(w, locale, "Invalid", http.StatusBadRequest)
 		return
 	}
-	h.renderLanding(w, r, locale, "Verified", http.StatusOK)
+	h.renderLanding(w, locale, "Verified", http.StatusOK)
 }
 
 // renderLanding writes the locale-appropriate landing page. Template-render
 // failures degrade to a tiny plain-text fallback so a broken template never
 // turns into a blank screen for the user.
-func (h *Handler) renderLanding(w http.ResponseWriter, r *http.Request, locale, status string, code int) {
+func (h *Handler) renderLanding(w http.ResponseWriter, locale, status string, code int) {
 	body, err := email.RenderLanding(locale, status)
 	w.Header().Set("Cache-Control", "no-store")
 	if err != nil {
@@ -90,6 +90,10 @@ func (h *Handler) renderLanding(w http.ResponseWriter, r *http.Request, locale, 
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
+	// #nosec G705 — body is html/template output (contextually escaped); the
+	// only template bindings are LandingData{Status, AppName}, both bounded
+	// to a closed set of strings ("Verified"/"AlreadyVerified"/"Invalid"
+	// and "KAMOS"). No user input flows in.
 	_, _ = w.Write([]byte(body))
 }
 
