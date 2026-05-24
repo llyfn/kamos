@@ -37,6 +37,7 @@ import (
 type Caches struct {
 	Categories     *LRU[string, []domain.CategoryLabel]
 	FlavorTags     *LRU[string, []domain.FlavorTag]
+	Regions        *LRU[string, []domain.RegionWithPrefectures]
 	BeverageDetail *LRU[string, domain.BeverageDetail]
 	BreweryDetail  *LRU[string, domain.Brewery]
 }
@@ -52,6 +53,13 @@ const (
 	flavorTagsCacheSize = 4
 	flavorTagsCacheTTL  = time.Hour
 
+	// Regions: same shape as Categories / FlavorTags (locale-axis cache
+	// key) and the same long TTL — the 8 regions × 47 prefectures
+	// reference graph is seed-only data that effectively never changes
+	// during a deploy window.
+	regionsCacheSize = 4
+	regionsCacheTTL  = time.Hour
+
 	beverageDetailCacheSize = 1000
 	beverageDetailCacheTTL  = 5 * time.Minute
 
@@ -64,6 +72,7 @@ func NewCaches() *Caches {
 	return &Caches{
 		Categories:     NewLRU[string, []domain.CategoryLabel]("categories", categoriesCacheSize, categoriesCacheTTL),
 		FlavorTags:     NewLRU[string, []domain.FlavorTag]("flavor_tags", flavorTagsCacheSize, flavorTagsCacheTTL),
+		Regions:        NewLRU[string, []domain.RegionWithPrefectures]("regions", regionsCacheSize, regionsCacheTTL),
 		BeverageDetail: NewLRU[string, domain.BeverageDetail]("beverage_detail", beverageDetailCacheSize, beverageDetailCacheTTL),
 		BreweryDetail:  NewLRU[string, domain.Brewery]("brewery_detail", breweryDetailCacheSize, breweryDetailCacheTTL),
 	}
@@ -74,6 +83,7 @@ func NewCaches() *Caches {
 func (c *Caches) SetObservers(onHit, onMiss func(name string)) {
 	c.Categories.SetObservers(onHit, onMiss)
 	c.FlavorTags.SetObservers(onHit, onMiss)
+	c.Regions.SetObservers(onHit, onMiss)
 	c.BeverageDetail.SetObservers(onHit, onMiss)
 	c.BreweryDetail.SetObservers(onHit, onMiss)
 }
@@ -99,6 +109,7 @@ func (c *Caches) InvalidatePrefix(payload string) {
 	case payload == "taxonomy":
 		c.Categories.InvalidatePrefix("")
 		c.FlavorTags.InvalidatePrefix("")
+		c.Regions.InvalidatePrefix("")
 	case strings.HasPrefix(payload, "beverage:"):
 		id := strings.TrimPrefix(payload, "beverage:")
 		if id != "" {

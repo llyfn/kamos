@@ -6,11 +6,11 @@
 // search.
 //
 // Each end-to-end test:
-//   1. registers + promotes an admin user
-//   2. drives the new admin route
-//   3. asserts the row visible/invisible on the corresponding public
-//      endpoint
-//   4. asserts the moderation_log row was written in the same tx
+//  1. registers + promotes an admin user
+//  2. drives the new admin route
+//  3. asserts the row visible/invisible on the corresponding public
+//     endpoint
+//  4. asserts the moderation_log row was written in the same tx
 //
 // Migration prerequisites (014 + 015) must be applied for these to pass
 // — the deleted_at column and the expanded moderation_action_type /
@@ -61,10 +61,12 @@ func TestAdminBrewery_CreateListSearch(t *testing.T) {
 	promoteToAdmin(t, adminID)
 
 	// Create.
+	// Migration 016: prefecture is now a slug FK into the `prefectures`
+	// reference table; the handler resolves it before the INSERT.
 	createBody := map[string]any{
-		"name_i18n":    map[string]string{"en": "Dassai Kura", "ja": "獺祭蔵"},
-		"prefecture":   "Yamaguchi",
-		"founded_year": 1948,
+		"name_i18n":       map[string]string{"en": "Dassai Kura", "ja": "獺祭蔵"},
+		"prefecture_slug": "yamaguchi",
+		"founded_year":    1948,
 	}
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, createBody)
 	if code != http.StatusCreated {
@@ -283,8 +285,10 @@ func TestAdminBeverage_CreateUpdateDeleteRestore(t *testing.T) {
 		t.Errorf("public list missing new beverage %s", bevID)
 	}
 
-	// PATCH abv.
-	patchBody := map[string]any{"abv": 16.0, "prefecture": "Niigata"}
+	// PATCH abv. Migration 016 dropped beverages.prefecture / region —
+	// the patch only adjusts the per-beverage abv now; brewery-level
+	// locality is curated via PATCH /v1/admin/breweries/{id}.
+	patchBody := map[string]any{"abv": 16.0}
 	code, raw = doReq(t, srv, http.MethodPatch, "/v1/admin/beverages/"+bevID, adminTok, patchBody)
 	if code != http.StatusOK {
 		t.Fatalf("patch: %d body=%s", code, raw)
@@ -299,9 +303,6 @@ func TestAdminBeverage_CreateUpdateDeleteRestore(t *testing.T) {
 	_ = json.Unmarshal(raw, &detail)
 	if abv, ok := detail["abv"].(float64); !ok || abv != 16.0 {
 		t.Errorf("abv after patch = %v, want 16.0", detail["abv"])
-	}
-	if pref, _ := detail["prefecture"].(string); pref != "Niigata" {
-		t.Errorf("prefecture = %v, want Niigata", detail["prefecture"])
 	}
 
 	// DELETE.

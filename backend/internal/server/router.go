@@ -162,6 +162,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			Get("/categories", h.Categories)
 		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
 			Get("/flavor-tags", h.FlavorTags)
+		// Reference data (migration 016): regions + prefectures. Public,
+		// same TTL bucket as the taxonomy endpoints above. Pinned under
+		// /v1/reference/ to keep the URL space tidy for future seed
+		// reference tables (countries, currencies, …).
+		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
+			Get("/reference/regions", h.Regions)
 
 		// Beverages / breweries — public reads. Beverage detail uses a
 		// shorter TTL (5m) because avg_rating + check_in_count drift as

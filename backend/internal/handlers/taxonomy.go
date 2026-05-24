@@ -44,6 +44,43 @@ func (h *Handler) Categories(w http.ResponseWriter, r *http.Request) {
 	httperr.WriteJSON(w, http.StatusOK, rows)
 }
 
+// Regions — GET /v1/reference/regions.
+//
+// Returns the full 8-region × 47-prefecture seed graph in canonical
+// sort order. Each region carries its i18n name + the ordered list of
+// its prefectures (also i18n-named). One round-trip is enough to
+// populate the admin "Pick a prefecture" dropdown or any client-side
+// filter UI.
+//
+// Caching: same shape as Categories / FlavorTags — locale-axis LRU
+// keyed on Accept-Language, long TTL (seed-only data; no invalidator
+// hook because there's no mutation surface).
+//
+// Auth: public (no security). Mirrors how /v1/categories and
+// /v1/flavor-tags are exposed today.
+func (h *Handler) Regions(w http.ResponseWriter, r *http.Request) {
+	key := localeKey(r)
+	//nolint:contextcheck // loader runs synchronously inside the request; captures r.Context() (GetOrLoad takes no ctx).
+	loader := func() ([]domain.RegionWithPrefectures, error) {
+		return h.Repos.Geo.ListRegionsWithPrefectures(r.Context())
+	}
+	if h.Caches == nil {
+		rows, err := loader()
+		if err != nil {
+			h.writeErr(w, "Regions", err)
+			return
+		}
+		httperr.WriteJSON(w, http.StatusOK, rows)
+		return
+	}
+	rows, err := h.Caches.Regions.GetOrLoad(key, loader)
+	if err != nil {
+		h.writeErr(w, "Regions", err)
+		return
+	}
+	httperr.WriteJSON(w, http.StatusOK, rows)
+}
+
 // FlavorTags — GET /v1/flavor-tags. See Categories for the cache key
 // rationale; same shape, same TTL bucket.
 func (h *Handler) FlavorTags(w http.ResponseWriter, r *http.Request) {

@@ -7,15 +7,14 @@ import "time"
 // ---------------------------------------------------------------------------
 
 type Brewery struct {
-	ID            string    `json:"id"`
-	Name          I18nText  `json:"name"`
-	Prefecture    *string   `json:"prefecture,omitempty"`
-	Region        *string   `json:"region,omitempty"`
-	FoundedYear   *int      `json:"founded_year,omitempty"`
-	Website       *string   `json:"website,omitempty"`
-	Description   *I18nText `json:"description,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-	BeverageCount *int      `json:"beverage_count,omitempty"`
+	ID            string      `json:"id"`
+	Name          I18nText    `json:"name"`
+	Prefecture    *Prefecture `json:"prefecture,omitempty"`
+	FoundedYear   *int        `json:"founded_year,omitempty"`
+	Website       *string     `json:"website,omitempty"`
+	Description   *I18nText   `json:"description,omitempty"`
+	CreatedAt     time.Time   `json:"created_at"`
+	BeverageCount *int        `json:"beverage_count,omitempty"`
 }
 
 type CategoryLabel struct {
@@ -31,8 +30,6 @@ type Beverage struct {
 	Subcategory    *I18nText     `json:"subcategory,omitempty"`
 	ABV            *float64      `json:"abv,omitempty"`
 	PolishingRatio *int          `json:"polishing_ratio,omitempty"`
-	Prefecture     *string       `json:"prefecture,omitempty"`
-	Region         *string       `json:"region,omitempty"`
 	FlavorProfile  []string      `json:"flavor_profile"` // tag slugs
 	Description    *I18nText     `json:"description,omitempty"`
 	LabelImageURL  *string       `json:"label_image_url,omitempty"`
@@ -70,8 +67,11 @@ type BeverageRef struct {
 	LabelImageURL *string       `json:"label_image_url,omitempty"`
 }
 
+// BreweryRef is the compact brewery embedding used by check-ins, feed,
+// and collection entries. Prefecture is nested (and carries its own
+// embedded Region) when known; absent otherwise.
 type BreweryRef struct {
-	ID     string   `json:"id"`
-	Name   I18nText `json:"name"`
-	Region *string  `json:"region,omitempty"`
+	ID         string      `json:"id"`
+	Name       I18nText    `json:"name"`
+	Prefecture *Prefecture `json:"prefecture,omitempty"`
 }

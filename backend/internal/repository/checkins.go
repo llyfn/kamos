@@ -122,7 +122,7 @@ SELECT
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id AS brewery_id, br.name_i18n AS brewery_name_i18n, br.region AS brewery_region,
+  br.id AS brewery_id, br.name_i18n AS brewery_name_i18n,` + breweryPrefectureSelectCols + `,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   ci.toast_count AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,
@@ -131,7 +131,7 @@ FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 
@@ -487,7 +487,7 @@ SELECT
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id, br.name_i18n, br.region,
+  br.id, br.name_i18n,` + breweryPrefectureSelectCols + `,
   v.id, v.name, v.locality, v.country,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
@@ -496,7 +496,7 @@ FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.user_id = $1
   AND ci.deleted_at IS NULL
@@ -557,7 +557,8 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		bevName, catName         []byte
 		brwName                  []byte
 		bevSlug                  string
-		bevLabel, brwRegion      *string
+		bevLabel                 *string
+		brwPref                  prefectureScan
 		brwID, userIDVal, bevID  string
 		venueID, venueName       *string
 		venueLocality, venueCtry *string
@@ -566,7 +567,9 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		userPrivacy              string
 		commentCnt               int64
 	)
-	if err := rows.Scan(
+	prefArgs := brwPref.scanArgs()
+	scanArgs := make([]any, 0, 23+len(prefArgs)+7)
+	scanArgs = append(scanArgs,
 		&c.ID, &userIDVal, &bevID,
 		&c.Rating, &c.Review,
 		&priceAmount, &priceCcy, &priceUnit,
@@ -575,10 +578,14 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
 		&bevName, &bevSlug, &bevLabel,
 		&catName,
-		&brwID, &brwName, &brwRegion,
+		&brwID, &brwName,
+	)
+	scanArgs = append(scanArgs, prefArgs...)
+	scanArgs = append(scanArgs,
 		&venueID, &venueName, &venueLocality, &venueCtry,
 		&toastCnt, &youToast, &commentCnt,
-	); err != nil {
+	)
+	if err := rows.Scan(scanArgs...); err != nil {
 		return domain.Checkin{}, "", err
 	}
 	c.User.ID = userIDVal
@@ -591,7 +598,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 	c.Beverage = domain.BeverageRef{
 		ID:            bevID,
 		Name:          bn,
-		Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Region: brwRegion},
+		Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
 		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 		LabelImageURL: bevLabel,
 	}

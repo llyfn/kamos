@@ -270,8 +270,6 @@ func (h *Handler) createBeverageTx(ctx context.Context, adminID, categoryID stri
 		ABV:            body.ABV,
 		PolishingRatio: body.PolishingRatio,
 		FlavorProfile:  body.FlavorProfile,
-		Prefecture:     body.Prefecture,
-		Region:         body.Region,
 		Description:    body.DescriptionI18n,
 		LabelImageURL:  body.LabelImageURL,
 	})
@@ -307,8 +305,6 @@ func (h *Handler) updateBeverageTx(ctx context.Context, adminID, id string, cate
 		ABV:            body.ABV,
 		PolishingRatio: body.PolishingRatio,
 		FlavorProfile:  body.FlavorProfile,
-		Prefecture:     body.Prefecture,
-		Region:         body.Region,
 		Description:    body.DescriptionI18n,
 		LabelImageURL:  body.LabelImageURL,
 	}); err != nil {
