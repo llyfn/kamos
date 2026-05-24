@@ -168,7 +168,7 @@ function BreweryRow({ brewery }: { brewery: AdminBrewery }) {
         </td>
         <td className="p-2 align-top">{display}</td>
         <td className="p-2 align-top text-[color:var(--color-muted)]">
-          {brewery.prefecture ?? '—'}
+          {brewery.prefecture ? preferredName(brewery.prefecture.name) : '—'}
         </td>
         <td className="p-2 align-top whitespace-nowrap">
           {isDeleted ? (
@@ -245,7 +245,13 @@ function CreateBreweryModal({
   const mut = useMutation({
     mutationFn: async (body: CreateBody) => {
       const { data, error: err, response } = await api.POST('/v1/admin/breweries', { body });
-      if (err || !data) throw new Error(`create_failed_${response.status}`);
+      if (err || !data) {
+        const code = (err as { code?: string } | undefined)?.code;
+        if (response.status === 422 && code === 'INVALID_PREFECTURE_SLUG') {
+          throw new Error('INVALID_PREFECTURE_SLUG');
+        }
+        throw new Error(`create_failed_${response.status}`);
+      }
       return data;
     },
     onSuccess: () => {
@@ -261,7 +267,7 @@ function CreateBreweryModal({
         submitLabel="Create"
         errorMessage={error}
         onSubmit={(body) =>
-          mut.mutate(body, {
+          mut.mutate(body as CreateBody, {
             onError: (e: Error) => setError(e.message),
           })
         }
@@ -285,7 +291,13 @@ function EditBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose
         params: { path: { id: brewery.id } },
         body,
       });
-      if (err || !data) throw new Error(`update_failed_${response.status}`);
+      if (err || !data) {
+        const code = (err as { code?: string } | undefined)?.code;
+        if (response.status === 422 && code === 'INVALID_PREFECTURE_SLUG') {
+          throw new Error('INVALID_PREFECTURE_SLUG');
+        }
+        throw new Error(`update_failed_${response.status}`);
+      }
       return data;
     },
     onSuccess: () => {
@@ -303,7 +315,7 @@ function EditBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose
         submitLabel="Save"
         errorMessage={error}
         onSubmit={(body) =>
-          mut.mutate(body, {
+          mut.mutate(body as UpdateBody, {
             onError: (e: Error) => setError(e.message),
           })
         }
