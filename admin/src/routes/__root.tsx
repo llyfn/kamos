@@ -23,11 +23,11 @@ function RootLayout() {
     <ToastProvider>
       <div className="min-h-full flex flex-col">
         <header className="border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)]">
-          <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between">
+          <div className="mx-auto max-w-6xl px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
             <Link to="/" className="font-semibold tracking-tight text-[color:var(--color-accent)]">
               KAMOS Admin
             </Link>
-            <nav className="flex items-center gap-4 text-sm">
+            <nav className="flex items-center gap-4 text-sm overflow-x-auto whitespace-nowrap -mx-2 px-2 [scrollbar-width:thin]">
               {loggedIn && (
                 <>
                   <Link
@@ -99,7 +99,7 @@ function RootLayout() {
           </div>
         </header>
         <main className="flex-1">
-          <div className="mx-auto max-w-6xl px-6 py-6">
+          <div className="mx-auto max-w-6xl px-3 sm:px-6 py-6">
             <Outlet />
           </div>
         </main>
