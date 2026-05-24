@@ -35,10 +35,13 @@ class VerifyEmailPendingScreen extends ConsumerStatefulWidget {
       _VerifyEmailPendingScreenState();
 }
 
+enum _CheckStatus { initial, checking, unverified, errored }
+
 class _VerifyEmailPendingScreenState
     extends ConsumerState<VerifyEmailPendingScreen> {
   Timer? _pollTimer;
   bool _resending = false;
+  _CheckStatus _status = _CheckStatus.initial;
 
   @override
   void initState() {
@@ -48,7 +51,7 @@ class _VerifyEmailPendingScreenState
     // sane rate-limit on /v1/users/me.
     _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
-      _refreshAndMaybeAdvance();
+      _refreshAndMaybeAdvance(manual: false);
     });
   }
 
@@ -58,18 +61,38 @@ class _VerifyEmailPendingScreenState
     super.dispose();
   }
 
-  Future<void> _refreshAndMaybeAdvance() async {
+  // Re-reads `meProvider` and either advances to `/` (verified) or
+  // updates the on-screen status indicator. Background ticks update the
+  // status silently; a manual tap additionally surfaces a snackbar so
+  // the user gets explicit feedback that something happened.
+  Future<void> _refreshAndMaybeAdvance({required bool manual}) async {
+    if (mounted) setState(() => _status = _CheckStatus.checking);
     ref.invalidate(meProvider);
+    final l = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final me = await ref.read(meProvider.future);
       if (!mounted) return;
       if (me.user.emailVerified) {
         _pollTimer?.cancel();
+        _pollTimer = null;
         context.go('/');
+        return;
+      }
+      setState(() => _status = _CheckStatus.unverified);
+      if (manual) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l.verifyPendingStatusUnverified)),
+        );
       }
     } catch (_) {
-      // Polling failures are silent — the next tick (or the manual
-      // "I've verified" tap) will retry.
+      if (!mounted) return;
+      setState(() => _status = _CheckStatus.errored);
+      if (manual) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l.verifyPendingStatusError)),
+        );
+      }
     }
   }
 
@@ -145,14 +168,39 @@ class _VerifyEmailPendingScreenState
                 ),
                 const SizedBox(height: KamosSpacing.lg),
                 FilledButton(
-                  onPressed: _refreshAndMaybeAdvance,
+                  onPressed: _status == _CheckStatus.checking
+                      ? null
+                      : () => _refreshAndMaybeAdvance(manual: true),
                   style: FilledButton.styleFrom(
                     backgroundColor: t.ai,
                     shape: const StadiumBorder(),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: Text(l.verifyPendingICheckedMyMail),
+                  child: _status == _CheckStatus.checking
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l.verifyPendingICheckedMyMail),
                 ),
+                if (_status == _CheckStatus.unverified ||
+                    _status == _CheckStatus.errored)
+                  Padding(
+                    padding: const EdgeInsets.only(top: KamosSpacing.sm),
+                    child: Text(
+                      _status == _CheckStatus.errored
+                          ? l.verifyPendingStatusError
+                          : l.verifyPendingStatusUnverified,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _status == _CheckStatus.errored
+                            ? t.fgDanger
+                            : t.fg3,
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: KamosSpacing.sm),
                 OutlinedButton(
                   onPressed: _resending ? null : _onResend,

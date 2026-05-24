@@ -124,6 +124,8 @@
   "verifyPendingResendFailed": "Couldn't resend. Try again in a moment.",
   "verifyPendingBackToSignIn": "Back to sign-in",
   "verifyPendingICheckedMyMail": "I've verified",
+  "verifyPendingStatusUnverified": "Not verified yet. Open the link in your email.",
+  "verifyPendingStatusError": "Couldn't check verification (will retry).",
 
   "profileEdit": "Edit profile",
   "profileSettings": "Settings",

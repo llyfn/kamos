@@ -124,6 +124,8 @@
   "verifyPendingResendFailed": "再送できませんでした。しばらくしてから再度お試しください。",
   "verifyPendingBackToSignIn": "サインインに戻る",
   "verifyPendingICheckedMyMail": "認証しました",
+  "verifyPendingStatusUnverified": "未認証です。メール内のリンクを開いてください。",
+  "verifyPendingStatusError": "認証状態を確認できませんでした（再試行します）。",
 
   "profileEdit": "プロフィール編集",
   "profileSettings": "設定",

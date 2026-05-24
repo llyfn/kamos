@@ -652,6 +652,18 @@ abstract class AppLocalizations {
   /// **'I\'ve verified'**
   String get verifyPendingICheckedMyMail;
 
+  /// No description provided for @verifyPendingStatusUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not verified yet. Open the link in your email.'**
+  String get verifyPendingStatusUnverified;
+
+  /// No description provided for @verifyPendingStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check verification (will retry).'**
+  String get verifyPendingStatusError;
+
   /// No description provided for @profileEdit.
   ///
   /// In en, this message translates to:

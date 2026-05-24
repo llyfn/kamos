@@ -299,6 +299,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get verifyPendingICheckedMyMail => '인증 완료';
 
   @override
+  String get verifyPendingStatusUnverified => '아직 인증되지 않았습니다. 메일의 링크를 열어주세요.';
+
+  @override
+  String get verifyPendingStatusError => '인증 상태를 확인할 수 없습니다 (재시도합니다).';
+
+  @override
   String get profileEdit => '프로필 편집';
 
   @override

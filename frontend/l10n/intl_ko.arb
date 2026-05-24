@@ -124,6 +124,8 @@
   "verifyPendingResendFailed": "재전송에 실패했습니다. 잠시 후 다시 시도해 주세요.",
   "verifyPendingBackToSignIn": "로그인으로 돌아가기",
   "verifyPendingICheckedMyMail": "인증 완료",
+  "verifyPendingStatusUnverified": "아직 인증되지 않았습니다. 메일의 링크를 열어주세요.",
+  "verifyPendingStatusError": "인증 상태를 확인할 수 없습니다 (재시도합니다).",
 
   "profileEdit": "프로필 편집",
   "profileSettings": "설정",

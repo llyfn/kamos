@@ -304,6 +304,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verifyPendingICheckedMyMail => 'I\'ve verified';
 
   @override
+  String get verifyPendingStatusUnverified =>
+      'Not verified yet. Open the link in your email.';
+
+  @override
+  String get verifyPendingStatusError =>
+      'Couldn\'t check verification (will retry).';
+
+  @override
   String get profileEdit => 'Edit profile';
 
   @override

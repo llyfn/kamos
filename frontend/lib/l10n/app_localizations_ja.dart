@@ -299,6 +299,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get verifyPendingICheckedMyMail => '認証しました';
 
   @override
+  String get verifyPendingStatusUnverified => '未認証です。メール内のリンクを開いてください。';
+
+  @override
+  String get verifyPendingStatusError => '認証状態を確認できませんでした（再試行します）。';
+
+  @override
   String get profileEdit => 'プロフィール編集';
 
   @override
