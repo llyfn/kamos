@@ -136,7 +136,7 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 - Translucent overlays use `rgba(15, 35, 80, 0.5)` — kon-iro at 50%.
 
 ### Fixed elements
-- Bottom tab bar is always fixed (Flutter `BottomNavigationBar` analogue): 5 tabs — **Feed · Search · Check in · Lists · Me**. The center "Check in" tab is a raised circular Ai-iro button; the others are hairline icons.
+- Bottom tab bar is always fixed (Flutter `BottomNavigationBar` analogue): 5 tabs — **Feed · Search · Check-in · Lists · Me**. The center "Check-in" tab is a raised circular Ai-iro button; the others are hairline icons.
 - Top app bar is **not** fixed by default — scrolls away — except on the Check-in flow where the action button must remain reachable.
 
 ---

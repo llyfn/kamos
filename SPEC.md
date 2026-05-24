@@ -149,7 +149,7 @@ Tags are locale-aware (displayed in the user's locale). A check-in can have any 
 
 - Edit a check-in: all fields editable except the beverage after submission.
 - Delete a check-in: soft-delete; removed from feed and counts, but not permanently erased.
-- A user can check in the same beverage multiple times (like Untappd).
+- A user can check-in the same beverage multiple times (like Untappd).
 
 ---
 

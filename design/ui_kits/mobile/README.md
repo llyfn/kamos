@@ -30,12 +30,12 @@ components/
 
 ## Five-tab structure
 
-**Feed · Search · Check in · Lists · Me** — matches the SPEC nouns. The center "Check in" tab is a raised circular Ai-iro button; the others are hairline icons.
+**Feed · Search · Check-in · Lists · Me** — matches the SPEC nouns. The center "Check-in" tab is a raised circular Ai-iro button; the others are hairline icons.
 
 ## What works (interactive)
 - Tab switching, search filtering with locale-correct category chips
 - Tap a beverage → detail page → back nav
-- "Check in" → 0.5-step rating input, 500-char review counter, 4-photo grid with add/remove, price + currency + per-serving/bottle, purchase + serving chips
+- "Check-in" → 0.5-step rating input, 500-char review counter, 4-photo grid with add/remove, price + currency + per-serving/bottle, purchase + serving chips
 - Toast reaction toggles the kanpai mark (`1 → 1.15 → 1` over 240 ms)
 - Bell icon in the feed opens the follow-request inbox with Approve / Decline
 - Profile → Edit profile / Settings (privacy toggle, delete-account confirmation sheet)

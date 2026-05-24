@@ -14,7 +14,7 @@
 
 ## 1. Product (1-paragraph anchor)
 
-KAMOS — *Untappd for Japanese craft spirits.* Mobile-first (Flutter, iOS + Android) discovery and tracking platform for **Nihonshu (日本酒)**, **Shochu (焼酎)**, and **Liqueur (リキュール)**. Users discover from an admin-curated catalog, **check in** with rating / review / tags / photos / price, **follow** other users, view a reverse-chronological feed, and curate **collections** (default `Inventory` + `Wishlist`). Full first-class i18n in **en / ja / ko**.
+KAMOS — *Untappd for Japanese craft spirits.* Mobile-first (Flutter, iOS + Android) discovery and tracking platform for **Nihonshu (日本酒)**, **Shochu (焼酎)**, and **Liqueur (リキュール)**. Users discover from an admin-curated catalog, **check-in** with rating / review / tags / photos / price, **follow** other users, view a reverse-chronological feed, and curate **collections** (default `Inventory` + `Wishlist`). Full first-class i18n in **en / ja / ko**.
 
 ## 2. Tech stack (decided)
 
