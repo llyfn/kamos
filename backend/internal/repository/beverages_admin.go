@@ -38,26 +38,28 @@ import (
 
 // BreweryCreateInput is the validated input shape for AdminCreateBrewery.
 // Pointers carry the "absent" signal — required fields are non-pointer.
+//
+// Migration 016: locality is captured via PrefectureID (a UUID FK into
+// `prefectures`) — the handler resolves a `prefecture_slug` to this id
+// before calling Create. nil = no curated prefecture (column NULL).
 type BreweryCreateInput struct {
-	Name        domain.I18nText
-	Prefecture  *string
-	Region      *string
-	FoundedYear *int
-	Website     *string
-	Description *domain.I18nText
+	Name         domain.I18nText
+	PrefectureID *string
+	FoundedYear  *int
+	Website      *string
+	Description  *domain.I18nText
 }
 
 // BreweryUpdateInput is the partial-update shape for AdminUpdateBrewery.
-// Every field is a pointer; nil means "leave unchanged". Use a sentinel
-// "" (empty pointer-to-zero-string) to clear a nullable column — the
-// dynamic SET builder treats the pointer's presence as the signal.
+// Every field is a pointer; nil means "leave unchanged". Use an empty
+// string for a non-nil PrefectureID (ptr to "") to clear the column to
+// NULL — the dynamic SET builder treats this as an explicit clear.
 type BreweryUpdateInput struct {
-	Name        *domain.I18nText
-	Prefecture  *string
-	Region      *string
-	FoundedYear *int
-	Website     *string
-	Description *domain.I18nText
+	Name         *domain.I18nText
+	PrefectureID *string
+	FoundedYear  *int
+	Website      *string
+	Description  *domain.I18nText
 }
 
 // AdminBreweryListParams scopes the admin brewery search.
@@ -83,19 +85,29 @@ type AdminBreweryRow struct {
 	DeletedAt *time.Time `json:"deleted_at"`
 }
 
+// adminBrewerySelect projects every column the admin UI needs (i18n
+// name + description, beverage_count, deleted_at) plus the nested
+// prefecture/region chain via the LEFT JOIN. Migration 016 dropped
+// the free-text `breweries.prefecture` and `breweries.region` columns
+// in favor of `prefecture_id`.
 const adminBrewerySelect = `
-SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website,
-       b.description_i18n, b.created_at, b.beverage_count, b.deleted_at
-FROM breweries b`
+SELECT b.id, b.name_i18n, b.founded_year, b.website,
+       b.description_i18n, b.created_at, b.beverage_count, b.deleted_at,` + breweryPrefectureSelectCols + `
+FROM breweries b` + breweriesPrefectureJoinClause
 
 func scanAdminBrewery(row pgx.Row) (*AdminBreweryRow, error) {
 	var out AdminBreweryRow
 	var nameJSON, descJSON []byte
 	var count int
-	if err := row.Scan(
-		&out.ID, &nameJSON, &out.Prefecture, &out.Region, &out.FoundedYear,
+	var pref prefectureScan
+	prefArgs := pref.scanArgs()
+	args := make([]any, 0, 8+len(prefArgs))
+	args = append(args,
+		&out.ID, &nameJSON, &out.FoundedYear,
 		&out.Website, &descJSON, &out.CreatedAt, &count, &out.DeletedAt,
-	); err != nil {
+	)
+	args = append(args, prefArgs...)
+	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
 	out.Name, _ = domain.I18nFromJSON(nameJSON)
@@ -104,6 +116,7 @@ func scanAdminBrewery(row pgx.Row) (*AdminBreweryRow, error) {
 		out.Description = &d
 	}
 	out.BeverageCount = &count
+	out.Prefecture = pref.toPrefecture()
 	return &out, nil
 }
 
@@ -180,7 +193,12 @@ func (r *BreweryRepo) AdminDetail(ctx context.Context, id string) (*AdminBrewery
 // Create inserts a brewery row inside the supplied tx and returns the
 // freshly-scanned row. The handler bundles a moderation_log audit row
 // into the same tx for atomic commit. Caller is responsible for
-// SanitizeText + range checks.
+// SanitizeText + range checks (and for resolving `prefecture_slug`
+// → `prefecture_id` before calling).
+//
+// Migration 016: only `prefecture_id` is persisted. The RETURNING
+// clause re-fetches via the LEFT JOIN to populate the nested
+// prefecture/region in the response.
 func (r *BreweryRepo) Create(ctx context.Context, tx pgx.Tx, in BreweryCreateInput) (*AdminBreweryRow, error) {
 	nameJSON, err := jsonMarshalI18n(in.Name)
 	if err != nil {
@@ -191,17 +209,24 @@ func (r *BreweryRepo) Create(ctx context.Context, tx pgx.Tx, in BreweryCreateInp
 		return nil, err
 	}
 
-	const q = `
-INSERT INTO breweries (name_i18n, prefecture, region, founded_year, website, description_i18n)
-VALUES ($1::jsonb, $2, $3, $4, $5, $6::jsonb)
-RETURNING id, name_i18n, prefecture, region, founded_year, website,
-          description_i18n, created_at, beverage_count, deleted_at;`
-	row := tx.QueryRow(ctx, q,
-		string(nameJSON), in.Prefecture, in.Region, in.FoundedYear, in.Website, descArg,
-	)
-	out, err := scanAdminBrewery(row)
-	if err != nil {
+	// Two-step: INSERT returns the new id, then re-SELECT via the
+	// adminBrewerySelect projection so the response carries the joined
+	// prefecture + region. A single statement with RETURNING cannot
+	// easily reach across the prefectures + regions joins.
+	const ins = `
+INSERT INTO breweries (name_i18n, prefecture_id, founded_year, website, description_i18n)
+VALUES ($1::jsonb, $2, $3, $4, $5::jsonb)
+RETURNING id;`
+	var id string
+	if err := tx.QueryRow(ctx, ins,
+		string(nameJSON), in.PrefectureID, in.FoundedYear, in.Website, descArg,
+	).Scan(&id); err != nil {
 		return nil, fmt.Errorf("BreweryRepo.Create: %w", err)
+	}
+	const reselect = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+	out, err := scanAdminBrewery(tx.QueryRow(ctx, reselect, id))
+	if err != nil {
+		return nil, fmt.Errorf("BreweryRepo.Create reselect: %w", err)
 	}
 	return out, nil
 }
@@ -230,11 +255,14 @@ func (r *BreweryRepo) Update(ctx context.Context, tx pgx.Tx, id string, in Brewe
 		// pgx serializes string as text; the column accepts ::jsonb cast.
 		add("name_i18n", string(nameJSON))
 	}
-	if in.Prefecture != nil {
-		add("prefecture", *in.Prefecture)
-	}
-	if in.Region != nil {
-		add("region", *in.Region)
+	if in.PrefectureID != nil {
+		// Empty string clears the FK (SET prefecture_id = NULL);
+		// non-empty assigns the supplied UUID.
+		if *in.PrefectureID == "" {
+			add("prefecture_id", nil)
+		} else {
+			add("prefecture_id", *in.PrefectureID)
+		}
 	}
 	if in.FoundedYear != nil {
 		add("founded_year", *in.FoundedYear)
@@ -271,14 +299,18 @@ func (r *BreweryRepo) Update(ctx context.Context, tx pgx.Tx, id string, in Brewe
 	sql := fmt.Sprintf(`
 UPDATE breweries SET %s
 WHERE id = $%d AND deleted_at IS NULL
-RETURNING id, name_i18n, prefecture, region, founded_year, website,
-          description_i18n, created_at, beverage_count, deleted_at;`,
-		strings.Join(sets, ", "), len(args))
+RETURNING id;`, strings.Join(sets, ", "), len(args))
 
-	row := tx.QueryRow(ctx, sql, args...)
-	out, err := scanAdminBrewery(row)
-	if err != nil {
+	var updatedID string
+	if err := tx.QueryRow(ctx, sql, args...).Scan(&updatedID); err != nil {
 		return nil, wrapNoRows("BreweryRepo.Update", err)
+	}
+	// Reselect via the joined projection so the response carries the
+	// nested prefecture/region (RETURNING can't cross the LEFT JOINs).
+	const reselect = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+	out, err := scanAdminBrewery(tx.QueryRow(ctx, reselect, updatedID))
+	if err != nil {
+		return nil, wrapNoRows("BreweryRepo.Update reselect", err)
 	}
 	return out, nil
 }
@@ -342,6 +374,9 @@ RETURNING id;`
 // BeverageCreateInput carries the validated payload for AdminCreateBeverage.
 // CategoryID drives the category_slug via the existing
 // sync_beverage_category_slug trigger — we do NOT set slug here.
+//
+// Migration 016 dropped beverages.prefecture / beverages.region; locality
+// is now derived through the brewery's prefecture_id.
 type BeverageCreateInput struct {
 	BreweryID      string
 	CategoryID     string
@@ -350,8 +385,6 @@ type BeverageCreateInput struct {
 	ABV            *float64
 	PolishingRatio *int
 	FlavorProfile  []string
-	Prefecture     *string
-	Region         *string
 	Description    *domain.I18nText
 	LabelImageURL  *string
 }
@@ -365,8 +398,6 @@ type BeverageUpdateInput struct {
 	ABV            *float64
 	PolishingRatio *int
 	FlavorProfile  *[]string
-	Prefecture     *string
-	Region         *string
 	Description    *domain.I18nText
 	LabelImageURL  *string
 }
@@ -396,6 +427,9 @@ type AdminBeverageRow struct {
 // admin list, including subcategory_i18n + description_i18n so the
 // edit modal can pre-fill every field, plus deleted_at for the tombstone
 // badge.
+// adminBeverageSelect is the full admin projection. Migration 016
+// dropped beverages.prefecture/region; the row's locality comes from
+// the brewery's joined prefecture chain via breweryPrefectureSelectCols.
 const adminBeverageSelect = `
 SELECT
   b.id,
@@ -406,8 +440,6 @@ SELECT
   cat.id         AS category_id,
   b.abv,
   b.polishing_ratio,
-  b.prefecture,
-  b.region,
   b.description_i18n,
   b.label_image_url,
   b.avg_rating,
@@ -415,17 +447,18 @@ SELECT
   b.flavor_profile,
   b.created_at,
   br.id          AS brewery_id,
-  br.name_i18n   AS brewery_name_i18n,
-  br.region      AS brewery_region,
+  br.name_i18n   AS brewery_name_i18n,` + breweryPrefectureSelectCols + `,
   b.deleted_at
 FROM beverages b
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id`
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause
 
 func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 	var b beverageRow
 	var deletedAt *time.Time
-	err := row.Scan(
+	prefArgs := b.breweryPref.scanArgs()
+	args := make([]any, 0, 16+len(prefArgs)+1)
+	args = append(args,
 		&b.id,
 		&b.nameJSON,
 		&b.subcatJSON,
@@ -434,8 +467,6 @@ func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 		&b.categoryID,
 		&b.abv,
 		&b.polRatio,
-		&b.prefecture,
-		&b.region,
 		&b.descJSON,
 		&b.labelImgURL,
 		&b.avgRating,
@@ -444,10 +475,10 @@ func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 		&b.createdAt,
 		&b.breweryID,
 		&b.breweryNameRaw,
-		&b.breweryRegion,
-		&deletedAt,
 	)
-	if err != nil {
+	args = append(args, prefArgs...)
+	args = append(args, &deletedAt)
+	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
 	// Reuse the toBeverage projection so the admin and public schemas
@@ -554,17 +585,21 @@ func (r *BeverageRepo) Create(ctx context.Context, tx pgx.Tx, in BeverageCreateI
 	// from beverage_categories(category_id).slug. Pass 'nihonshu' so the
 	// row passes the CHECK before the trigger fires; the trigger then
 	// rewrites it to the correct value.
+	//
+	// Migration 016 dropped beverages.prefecture / beverages.region — the
+	// locality is derived through the brewery's prefecture_id, not stored
+	// on the beverage row.
 	const q = `
 INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n,
-                       subcategory_i18n, abv, polishing_ratio, prefecture,
-                       region, description_i18n, label_image_url, flavor_profile)
-VALUES ($1::uuid, $2::uuid, 'nihonshu', $3::jsonb, $4::jsonb, $5, $6, $7,
-        $8, $9::jsonb, $10, COALESCE($11, '{}'::text[]))
+                       subcategory_i18n, abv, polishing_ratio,
+                       description_i18n, label_image_url, flavor_profile)
+VALUES ($1::uuid, $2::uuid, 'nihonshu', $3::jsonb, $4::jsonb, $5, $6,
+        $7::jsonb, $8, COALESCE($9, '{}'::text[]))
 RETURNING id;`
 	var id string
 	if err := tx.QueryRow(ctx, q,
 		in.BreweryID, in.CategoryID, string(nameJSON), subArg,
-		in.ABV, in.PolishingRatio, in.Prefecture, in.Region,
+		in.ABV, in.PolishingRatio,
 		descArg, in.LabelImageURL, in.FlavorProfile,
 	).Scan(&id); err != nil {
 		return "", fmt.Errorf("BeverageRepo.Create: %w", err)
@@ -653,12 +688,6 @@ func buildBeverageUpdateSets(in BeverageUpdateInput) ([]string, []any, error) {
 	}
 	if in.FlavorProfile != nil {
 		add("flavor_profile", *in.FlavorProfile)
-	}
-	if in.Prefecture != nil {
-		add("prefecture", *in.Prefecture)
-	}
-	if in.Region != nil {
-		add("region", *in.Region)
 	}
 	if in.Description != nil {
 		if err := addI18n("description_i18n", in.Description); err != nil {

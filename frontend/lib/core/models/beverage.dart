@@ -1,4 +1,8 @@
 // KAMOS — Beverage models (OpenAPI `Beverage`, `BeverageRef`, `BeverageDetail`).
+//
+// Migration 016 dropped the per-beverage `prefecture` / `region` free-text
+// columns. A beverage's locality is derived through `brewery.prefecture`
+// (which itself nests `region`).
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -18,8 +22,6 @@ abstract class Beverage with _$Beverage {
     I18nText? subcategory,
     double? abv,
     int? polishingRatio,
-    String? prefecture,
-    String? region,
     @Default(<String>[]) List<String> flavorProfile,
     I18nText? description,
     String? labelImageUrl,
@@ -44,8 +46,6 @@ abstract class Beverage with _$Beverage {
         : null,
     abv: (json['abv'] as num?)?.toDouble(),
     polishingRatio: (json['polishing_ratio'] as num?)?.toInt(),
-    prefecture: json['prefecture'] as String?,
-    region: json['region'] as String?,
     flavorProfile: ((json['flavor_profile'] as List?) ?? const [])
         .map((e) => e as String)
         .toList(),

@@ -6,11 +6,11 @@
 // search.
 //
 // Each end-to-end test:
-//   1. registers + promotes an admin user
-//   2. drives the new admin route
-//   3. asserts the row visible/invisible on the corresponding public
-//      endpoint
-//   4. asserts the moderation_log row was written in the same tx
+//  1. registers + promotes an admin user
+//  2. drives the new admin route
+//  3. asserts the row visible/invisible on the corresponding public
+//     endpoint
+//  4. asserts the moderation_log row was written in the same tx
 //
 // Migration prerequisites (014 + 015) must be applied for these to pass
 // — the deleted_at column and the expanded moderation_action_type /
@@ -61,10 +61,12 @@ func TestAdminBrewery_CreateListSearch(t *testing.T) {
 	promoteToAdmin(t, adminID)
 
 	// Create.
+	// Migration 016: prefecture is now a slug FK into the `prefectures`
+	// reference table; the handler resolves it before the INSERT.
 	createBody := map[string]any{
-		"name_i18n":    map[string]string{"en": "Dassai Kura", "ja": "獺祭蔵"},
-		"prefecture":   "Yamaguchi",
-		"founded_year": 1948,
+		"name_i18n":       map[string]string{"en": "Dassai Kura", "ja": "獺祭蔵"},
+		"prefecture_slug": "yamaguchi",
+		"founded_year":    1948,
 	}
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, createBody)
 	if code != http.StatusCreated {
@@ -75,6 +77,24 @@ func TestAdminBrewery_CreateListSearch(t *testing.T) {
 	breweryID, _ := created["id"].(string)
 	if breweryID == "" {
 		t.Fatalf("no id in create response: %s", raw)
+	}
+
+	// Migration 016: the create response nests a `prefecture` object
+	// (Prefecture → embedded Region) resolved from the submitted slug.
+	pref, ok := created["prefecture"].(map[string]any)
+	if !ok {
+		t.Fatalf("create response missing nested prefecture: %s", raw)
+	}
+	if got, _ := pref["slug"].(string); got != "yamaguchi" {
+		t.Errorf("prefecture.slug = %q, want yamaguchi", got)
+	}
+	prefName, _ := pref["name"].(map[string]any)
+	if got, _ := prefName["en"].(string); got != "Yamaguchi" {
+		t.Errorf("prefecture.name.en = %q, want Yamaguchi", got)
+	}
+	region, _ := pref["region"].(map[string]any)
+	if got, _ := region["slug"].(string); got != "chugoku" {
+		t.Errorf("prefecture.region.slug = %q, want chugoku", got)
 	}
 
 	// Public list returns the new row.
@@ -283,8 +303,10 @@ func TestAdminBeverage_CreateUpdateDeleteRestore(t *testing.T) {
 		t.Errorf("public list missing new beverage %s", bevID)
 	}
 
-	// PATCH abv.
-	patchBody := map[string]any{"abv": 16.0, "prefecture": "Niigata"}
+	// PATCH abv. Migration 016 dropped beverages.prefecture / region —
+	// the patch only adjusts the per-beverage abv now; brewery-level
+	// locality is curated via PATCH /v1/admin/breweries/{id}.
+	patchBody := map[string]any{"abv": 16.0}
 	code, raw = doReq(t, srv, http.MethodPatch, "/v1/admin/beverages/"+bevID, adminTok, patchBody)
 	if code != http.StatusOK {
 		t.Fatalf("patch: %d body=%s", code, raw)
@@ -299,9 +321,6 @@ func TestAdminBeverage_CreateUpdateDeleteRestore(t *testing.T) {
 	_ = json.Unmarshal(raw, &detail)
 	if abv, ok := detail["abv"].(float64); !ok || abv != 16.0 {
 		t.Errorf("abv after patch = %v, want 16.0", detail["abv"])
-	}
-	if pref, _ := detail["prefecture"].(string); pref != "Niigata" {
-		t.Errorf("prefecture = %v, want Niigata", detail["prefecture"])
 	}
 
 	// DELETE.
@@ -503,4 +522,140 @@ func hasID(items []map[string]any, want string) bool {
 		}
 	}
 	return false
+}
+
+// TestReferenceRegions_Shape — GET /v1/reference/regions returns the
+// full 8-region × 47-prefecture seed graph in canonical sort order.
+//
+// Asserts:
+//   - top-level array length is 8 (Japan's 8 traditional regions)
+//   - regions are ordered by sort_order (Hokkaido first, Kyushu_Okinawa
+//     last per migration 016 seed data)
+//   - every region embeds at least one prefecture
+//   - total prefecture count across all regions is 47
+//   - prefectures within each region are ordered by sort_order
+func TestReferenceRegions_Shape(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/reference/regions", "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("regions: %d body=%s", code, raw)
+	}
+
+	var regions []map[string]any
+	if err := json.Unmarshal(raw, &regions); err != nil {
+		t.Fatalf("decode regions: %v body=%s", err, raw)
+	}
+	if len(regions) != 8 {
+		t.Fatalf("regions len=%d, want 8", len(regions))
+	}
+
+	// First region is Hokkaido, last is Kyushu_Okinawa (canonical seed).
+	if got, _ := regions[0]["slug"].(string); got != "hokkaido" {
+		t.Errorf("regions[0].slug = %q, want hokkaido", got)
+	}
+	if got, _ := regions[7]["slug"].(string); got != "kyushu_okinawa" {
+		t.Errorf("regions[7].slug = %q, want kyushu_okinawa", got)
+	}
+
+	// sort_order is monotonically non-decreasing across the regions array.
+	var prevRegion float64
+	for i, r := range regions {
+		so, ok := r["sort_order"].(float64)
+		if !ok {
+			t.Fatalf("regions[%d] missing sort_order: %v", i, r)
+		}
+		if i > 0 && so < prevRegion {
+			t.Errorf("regions[%d].sort_order=%v < regions[%d].sort_order=%v (not sorted)",
+				i, so, i-1, prevRegion)
+		}
+		prevRegion = so
+	}
+
+	// Aggregate prefecture counts + per-region sort_order monotonicity.
+	totalPrefs := 0
+	for i, r := range regions {
+		prefs, ok := r["prefectures"].([]any)
+		if !ok || len(prefs) == 0 {
+			t.Errorf("regions[%d] (%v) has no prefectures", i, r["slug"])
+			continue
+		}
+		var prevPref float64
+		for j, pAny := range prefs {
+			p, _ := pAny.(map[string]any)
+			so, ok := p["sort_order"].(float64)
+			if !ok {
+				t.Errorf("regions[%d].prefectures[%d] missing sort_order: %v", i, j, p)
+				continue
+			}
+			if j > 0 && so < prevPref {
+				t.Errorf("regions[%d].prefectures[%d].sort_order=%v < prev %v (not sorted)",
+					i, j, so, prevPref)
+			}
+			prevPref = so
+		}
+		totalPrefs += len(prefs)
+	}
+	if totalPrefs != 47 {
+		t.Errorf("total prefectures = %d, want 47", totalPrefs)
+	}
+}
+
+// TestAdminBrewery_InvalidPrefectureSlug — POST and PATCH both return
+// 422 INVALID_PREFECTURE_SLUG when the slug doesn't resolve. Also
+// verifies that an explicit empty slug on Create (which the OpenAPI
+// `^[a-z0-9_]+$` pattern disallows) is rejected with the same code so
+// the contract and the runtime agree.
+func TestAdminBrewery_InvalidPrefectureSlug(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	adminTok, adminID := mustRegister(t, srv, "pref_admin", "pref_admin@example.com", "password-123")
+	promoteToAdmin(t, adminID)
+
+	// 1) POST with an unknown slug → 422 INVALID_PREFECTURE_SLUG.
+	createBody := map[string]any{
+		"name_i18n":       map[string]string{"en": "Atlantis Kura", "ja": "アトランティス酒造"},
+		"prefecture_slug": "atlantis",
+	}
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, createBody)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("create unknown slug: %d body=%s (want 422)", code, raw)
+	}
+	var e errBodyShape
+	_ = json.Unmarshal(raw, &e)
+	if e.Code != "INVALID_PREFECTURE_SLUG" {
+		t.Errorf("create code=%q want INVALID_PREFECTURE_SLUG (body=%s)", e.Code, raw)
+	}
+
+	// 2) PATCH with an unknown slug on a real brewery → same 422.
+	breweryID := seedBreweryRow(t, "Patch Target", "パッチ対象")
+	patchBody := map[string]any{"prefecture_slug": "atlantis"}
+	code, raw = doReq(t, srv, http.MethodPatch, "/v1/admin/breweries/"+breweryID, adminTok, patchBody)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("patch unknown slug: %d body=%s (want 422)", code, raw)
+	}
+	_ = json.Unmarshal(raw, &e)
+	if e.Code != "INVALID_PREFECTURE_SLUG" {
+		t.Errorf("patch code=%q want INVALID_PREFECTURE_SLUG (body=%s)", e.Code, raw)
+	}
+
+	// 3) POST with explicit empty `prefecture_slug: ""` → 422
+	// INVALID_PREFECTURE_SLUG (OpenAPI Create pattern is `^[a-z0-9_]+$`,
+	// no empty). The contract is "omit the field if no prefecture is
+	// intended".
+	emptyBody := map[string]any{
+		"name_i18n":       map[string]string{"en": "Empty Slug Kura", "ja": "空スラッグ酒造"},
+		"prefecture_slug": "",
+	}
+	code, raw = doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, emptyBody)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("create empty slug: %d body=%s (want 422)", code, raw)
+	}
+	_ = json.Unmarshal(raw, &e)
+	if e.Code != "INVALID_PREFECTURE_SLUG" {
+		t.Errorf("create empty code=%q want INVALID_PREFECTURE_SLUG (body=%s)", e.Code, raw)
+	}
 }

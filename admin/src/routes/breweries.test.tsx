@@ -32,11 +32,23 @@ function renderBreweries() {
   );
 }
 
+interface RegionFixture {
+  id: string;
+  slug: string;
+  name: { en: string; ja?: string; ko?: string };
+  sort_order: number;
+}
+interface PrefectureFixture {
+  id: string;
+  slug: string;
+  name: { en: string; ja?: string; ko?: string };
+  sort_order: number;
+  region: RegionFixture;
+}
 interface BreweryFixture {
   id: string;
   name: { en: string; ja?: string; ko?: string };
-  prefecture?: string;
-  region?: string;
+  prefecture?: PrefectureFixture | null;
   founded_year?: number;
   website?: string;
   description?: { en: string; ja?: string; ko?: string };
@@ -49,6 +61,38 @@ function defaultMe(role: 'admin' | 'moderator' | 'user' = 'admin') {
   return { data: { role } };
 }
 
+const sampleRegion: RegionFixture = {
+  id: 'rrrrrrrr-7777-7777-7777-777777777777',
+  slug: 'chugoku',
+  name: { en: 'Chūgoku', ja: '中国' },
+  sort_order: 7,
+};
+
+const samplePrefecture: PrefectureFixture = {
+  id: 'pppppppp-3535-3535-3535-353535353535',
+  slug: 'yamaguchi',
+  name: { en: 'Yamaguchi', ja: '山口県' },
+  sort_order: 35,
+  region: sampleRegion,
+};
+
+const sampleRegionsResponse = [
+  {
+    id: sampleRegion.id,
+    slug: sampleRegion.slug,
+    name: sampleRegion.name,
+    sort_order: sampleRegion.sort_order,
+    prefectures: [
+      {
+        id: samplePrefecture.id,
+        slug: samplePrefecture.slug,
+        name: samplePrefecture.name,
+        sort_order: samplePrefecture.sort_order,
+      },
+    ],
+  },
+];
+
 function setupListResponse(items: BreweryFixture[], hasMore = false) {
   apiGet.mockImplementation((path: string) => {
     if (path === '/v1/admin/me') return Promise.resolve(defaultMe());
@@ -57,6 +101,9 @@ function setupListResponse(items: BreweryFixture[], hasMore = false) {
         data: { items, next_cursor: null, has_more: hasMore },
       });
     }
+    if (path === '/v1/reference/regions') {
+      return Promise.resolve({ data: sampleRegionsResponse });
+    }
     return Promise.resolve({ error: { error: 'not_mocked', code: 'NOT_MOCKED' } });
   });
 }
@@ -64,7 +111,7 @@ function setupListResponse(items: BreweryFixture[], hasMore = false) {
 const sampleBrewery: BreweryFixture = {
   id: '11111111-1111-1111-1111-111111111111',
   name: { en: 'Asahi Shuzo', ja: '旭酒造' },
-  prefecture: 'Yamaguchi',
+  prefecture: samplePrefecture,
   created_at: '2026-05-16T12:00:00Z',
   deleted_at: null,
 };

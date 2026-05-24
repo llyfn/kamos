@@ -148,6 +148,12 @@ LIMIT $4;`
 
 // ApproveBeverageRequestParams carries the canonical beverage fields the
 // admin fills in based on the original request payload.
+//
+// Migration 016 dropped beverages.prefecture / beverages.region — the
+// beverage's locality is now derived through the brewery's prefecture
+// chain, so there are no per-beverage geo fields to set here. If the
+// admin needs to recurate the brewery's prefecture they do it via
+// PATCH /v1/admin/breweries/{id} before approving.
 type ApproveBeverageRequestParams struct {
 	RequestID     string
 	BreweryID     string
@@ -155,8 +161,6 @@ type ApproveBeverageRequestParams struct {
 	NameI18n      domain.I18nText
 	Subcategory   *domain.I18nText
 	ABV           *float64
-	Prefecture    *string
-	Region        *string
 	LabelImageURL *string
 	FlavorProfile []string
 	ReviewerID    string
@@ -217,14 +221,14 @@ func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverag
 
 	const insBev = `
 INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n,
-                       subcategory_i18n, abv, prefecture, region,
+                       subcategory_i18n, abv,
                        label_image_url, flavor_profile)
-VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, $9, COALESCE($10, '{}'::text[]))
+VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, COALESCE($8, '{}'::text[]))
 RETURNING id;`
 	var bevID string
 	if err := tx.QueryRow(ctx, insBev,
 		p.BreweryID, p.CategoryID, categorySlug, string(nameJSON),
-		subJSON, p.ABV, p.Prefecture, p.Region,
+		subJSON, p.ABV,
 		p.LabelImageURL, p.FlavorProfile,
 	).Scan(&bevID); err != nil {
 		return "", fmt.Errorf("ApproveBeverageRequest insert beverage: %w", err)

@@ -65,17 +65,19 @@ func (r *SearchRepo) SearchBreweries(ctx context.Context, q string, cursorID *st
 		limit = 20
 	}
 	// Stage 8: exclude tombstoned rows from public search.
+	// Migration 016: prefecture is nested via the LEFT JOIN to
+	// prefectures + regions (brewery.prefecture_id is nullable).
 	const brq = `
-SELECT id, name_i18n, prefecture, region, founded_year, website, description_i18n, created_at
-FROM breweries
-WHERE deleted_at IS NULL
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,` + breweryPrefectureSelectCols + `
+FROM breweries b` + breweriesPrefectureJoinClause + `
+WHERE b.deleted_at IS NULL
   AND to_tsvector('simple',
-        coalesce(name_i18n->>'en','') || ' ' ||
-        coalesce(name_i18n->>'ja','') || ' ' ||
-        coalesce(name_i18n->>'ko','')
+        coalesce(b.name_i18n->>'en','') || ' ' ||
+        coalesce(b.name_i18n->>'ja','') || ' ' ||
+        coalesce(b.name_i18n->>'ko','')
       ) @@ plainto_tsquery('simple', $1)
-  AND ($2::text IS NULL OR id < $2::uuid)
-ORDER BY id DESC
+  AND ($2::text IS NULL OR b.id < $2::uuid)
+ORDER BY b.id DESC
 LIMIT $3;`
 	rows, err := r.db.Query(ctx, brq, q, cursorID, limit+1)
 	if err != nil {

@@ -6,9 +6,12 @@
 //   * abv: 0–60 (step 0.1), nullable
 //   * polishing_ratio: 0–100 integer, NIHONSHU ONLY (server CHECK)
 //   * flavor_profile: array of slugs, ≤ 8 chips
-//   * prefecture / region: ≤ 100
 //   * description_i18n: each locale ≤ 2000
 //   * label_image_url: https only, ≤ 512
+//
+// Migration 016: beverages no longer carry their own prefecture/region —
+// they derive geography from `brewery.prefecture`, so this form has no
+// prefecture inputs. To change a beverage's prefecture, edit its brewery.
 //
 // The form drives `category_slug`; the server resolves it to the
 // canonical category row. The brewery picker hits the same
@@ -55,8 +58,6 @@ interface FormState {
   polishing_ratio: string;
   flavor_profile: string[];
   flavor_draft: string;
-  prefecture: string;
-  region: string;
   description_en: string;
   description_ja: string;
   description_ko: string;
@@ -76,8 +77,6 @@ function initialState(b: AdminBeverage | null | undefined): FormState {
     polishing_ratio: b?.polishing_ratio != null ? String(b.polishing_ratio) : '',
     flavor_profile: b?.flavor_profile ?? [],
     flavor_draft: '',
-    prefecture: b?.prefecture ?? '',
-    region: b?.region ?? '',
     description_en: b?.description?.en ?? '',
     description_ja: b?.description?.ja ?? '',
     description_ko: b?.description?.ko ?? '',
@@ -203,8 +202,6 @@ export function CatalogBeverageForm({
       body.polishing_ratio = n;
     }
     if (form.flavor_profile.length > 0) body.flavor_profile = form.flavor_profile;
-    if (form.prefecture.trim()) body.prefecture = form.prefecture.trim();
-    if (form.region.trim()) body.region = form.region.trim();
     const descEn = form.description_en.trim();
     const descJa = form.description_ja.trim();
     const descKo = form.description_ko.trim();
@@ -345,19 +342,6 @@ export function CatalogBeverageForm({
           </datalist>
         )}
       </div>
-
-      <TextField
-        label="Prefecture (optional)"
-        value={form.prefecture}
-        onChange={(v) => set('prefecture', v)}
-        maxLength={100}
-      />
-      <TextField
-        label="Region (optional)"
-        value={form.region}
-        onChange={(v) => set('region', v)}
-        maxLength={100}
-      />
 
       <fieldset className="flex flex-col gap-2 border border-[color:var(--color-border)] rounded p-3">
         <legend className="px-1 text-[color:var(--color-muted)]">Description (optional)</legend>

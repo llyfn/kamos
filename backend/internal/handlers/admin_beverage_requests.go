@@ -80,8 +80,6 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		NameI18n:      body.NameI18n,
 		Subcategory:   body.Subcategory,
 		ABV:           body.ABV,
-		Prefecture:    body.Prefecture,
-		Region:        body.Region,
 		LabelImageURL: body.LabelImageURL,
 		FlavorProfile: body.FlavorProfile,
 		ReviewerID:    uid,

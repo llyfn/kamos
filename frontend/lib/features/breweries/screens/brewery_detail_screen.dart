@@ -36,7 +36,11 @@ class BreweryDetailScreen extends ConsumerWidget {
         data: (detail) {
           final brewery = detail.brewery;
           final name = resolveI18n(brewery.name, locale);
-          final region = brewery.region ?? '';
+          // Migration 016: prefecture is now a nested object that embeds its
+          // region. Display the prefecture name (most specific locality).
+          final region = brewery.prefecture == null
+              ? ''
+              : resolveI18n(brewery.prefecture!.name, locale);
           return ListView(
             padding: EdgeInsets.zero,
             children: [

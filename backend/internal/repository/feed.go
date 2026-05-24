@@ -24,6 +24,10 @@ func (r *FeedRepo) Page(ctx context.Context, viewerID string, cursorTs *time.Tim
 	// feed ships actual photo URLs (not just a count). The only
 	// remaining per-viewer correlated lookup is `you_toasted` — it
 	// can't be denormalized because the answer is per-requesting-user.
+	// Migration 016: brewery.region is replaced by the nested
+	// prefecture (via the LEFT JOIN on prefectures + regions). The
+	// BreweryRef embedding in the feed item exposes a *Prefecture so
+	// the feed card can render locality without a second fetch.
 	const q = `
 SELECT
   ci.id,
@@ -37,7 +41,7 @@ SELECT
   b.category_slug,
   b.label_image_url,
   cat.name_i18n,
-  br.id, br.name_i18n, br.region,
+  br.id, br.name_i18n,` + breweryPrefectureSelectCols + `,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
   ci.comment_count,
@@ -50,7 +54,7 @@ JOIN follows f
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.deleted_at IS NULL
   AND ci.user_id <> $1
@@ -74,7 +78,7 @@ LIMIT $4;`
 			catName       []byte
 			brwName       []byte
 			brwID         string
-			brwRegion     *string
+			brwPref       prefectureScan
 			toastCnt      int64
 			commentCnt    int64
 			youToast      bool
@@ -85,7 +89,9 @@ LIMIT $4;`
 			venueLocality *string
 			venueCountry  *string
 		)
-		if err := rows.Scan(
+		prefArgs := brwPref.scanArgs()
+		scanArgs := make([]any, 0, 16+len(prefArgs)+7)
+		scanArgs = append(scanArgs,
 			&it.ID,
 			&it.Rating,
 			&it.Review,
@@ -97,12 +103,16 @@ LIMIT $4;`
 			&bevSlug,
 			&bevLabel,
 			&catName,
-			&brwID, &brwName, &brwRegion,
+			&brwID, &brwName,
+		)
+		scanArgs = append(scanArgs, prefArgs...)
+		scanArgs = append(scanArgs,
 			&toastCnt,
 			&youToast,
 			&commentCnt,
 			&venueID, &venueName, &venueLocality, &venueCountry,
-		); err != nil {
+		)
+		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, fmt.Errorf("FeedRepo.Page scan: %w", err)
 		}
 		it.User.ID = userIDVal
@@ -113,7 +123,7 @@ LIMIT $4;`
 		it.Beverage = domain.BeverageRef{
 			ID:            beverageID,
 			Name:          bn,
-			Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Region: brwRegion},
+			Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 			LabelImageURL: bevLabel,
 		}

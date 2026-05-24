@@ -66,14 +66,6 @@ func TestAdminBeverageCreateValidate(t *testing.T) {
 		{"bidi-override in name", func(r *AdminBeverageCreate) {
 			r.NameI18n.EN = "hi\u202eevil"
 		}, "bidi-override", false},
-		{"control char in prefecture", func(r *AdminBeverageCreate) {
-			v := "Hyogo\x01"
-			r.Prefecture = &v
-		}, "control character", false},
-		{"prefecture too long", func(r *AdminBeverageCreate) {
-			v := strings.Repeat("a", 200)
-			r.Prefecture = &v
-		}, "100", false},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -150,6 +142,22 @@ func TestAdminBreweryCreateValidate(t *testing.T) {
 		{"bidi-override in name", func(r *AdminBreweryCreate) {
 			r.NameI18n.EN = "kura\u2067evil"
 		}, "bidi-override", false},
+		{"prefecture_slug valid lower", func(r *AdminBreweryCreate) {
+			v := "niigata"
+			r.PrefectureSlug = &v
+		}, "", true},
+		{"prefecture_slug empty allowed (no curated value)", func(r *AdminBreweryCreate) {
+			v := ""
+			r.PrefectureSlug = &v
+		}, "", true},
+		{"prefecture_slug uppercase rejected", func(r *AdminBreweryCreate) {
+			v := "Niigata"
+			r.PrefectureSlug = &v
+		}, "prefecture_slug", false},
+		{"prefecture_slug too long", func(r *AdminBreweryCreate) {
+			v := strings.Repeat("a", 65)
+			r.PrefectureSlug = &v
+		}, "prefecture_slug", false},
 	}
 	for _, tc := range cases {
 		tc := tc

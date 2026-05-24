@@ -32,7 +32,11 @@ class CheckInCard extends StatelessWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final beverageName = resolveI18n(item.beverage.name, locale);
     final breweryName = resolveI18n(item.beverage.brewery.name, locale);
-    final region = item.beverage.brewery.region ?? '';
+    // Migration 016: BreweryRef.region (free-text) was replaced by
+    // BreweryRef.prefecture (nested Prefecture). Display the prefecture name.
+    final region = item.beverage.brewery.prefecture == null
+        ? ''
+        : resolveI18n(item.beverage.brewery.prefecture!.name, locale);
     final when = parseIsoDateOrNull(item.createdAt);
 
     return Padding(

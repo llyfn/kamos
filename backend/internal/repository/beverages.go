@@ -42,8 +42,6 @@ type beverageRow struct {
 	categoryID     string
 	abv            *float64
 	polRatio       *int
-	prefecture     *string
-	region         *string
 	descJSON       []byte
 	labelImgURL    *string
 	avgRating      *float64
@@ -52,12 +50,16 @@ type beverageRow struct {
 	createdAt      time.Time
 	breweryID      string
 	breweryNameRaw []byte
-	breweryRegion  *string
+	breweryPref    prefectureScan
 }
 
 // beverageSelect is the full projection used by /v1/beverages/{id}.
 // It carries the two i18n JSONB blobs (subcategory_i18n,
 // description_i18n) that are needed on the detail screen.
+//
+// Migration 016 dropped beverages.prefecture / beverages.region; the
+// row's locality is now derived via the brewery's prefecture chain
+// (LEFT JOIN prefectures + regions on breweries.prefecture_id).
 const beverageSelect = `
 SELECT
   b.id,
@@ -68,8 +70,6 @@ SELECT
   cat.id         AS category_id,
   b.abv,
   b.polishing_ratio,
-  b.prefecture,
-  b.region,
   b.description_i18n,
   b.label_image_url,
   b.avg_rating,
@@ -77,11 +77,10 @@ SELECT
   b.flavor_profile,
   b.created_at,
   br.id           AS brewery_id,
-  br.name_i18n    AS brewery_name_i18n,
-  br.region       AS brewery_region
+  br.name_i18n    AS brewery_name_i18n,` + breweryPrefectureSelectCols + `
 FROM beverages b
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id`
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause
 
 // beverageListSelect is the slim projection used by list/search paths:
 // it drops the two JSONB blobs (subcategory_i18n, description_i18n)
@@ -97,23 +96,22 @@ SELECT
   cat.id         AS category_id,
   b.abv,
   b.polishing_ratio,
-  b.prefecture,
-  b.region,
   b.label_image_url,
   b.avg_rating,
   b.check_in_count,
   b.flavor_profile,
   b.created_at,
   br.id           AS brewery_id,
-  br.name_i18n    AS brewery_name_i18n,
-  br.region       AS brewery_region
+  br.name_i18n    AS brewery_name_i18n,` + breweryPrefectureSelectCols + `
 FROM beverages b
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id`
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause
 
 func scanBeverage(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
-	err := row.Scan(
+	prefArgs := b.breweryPref.scanArgs()
+	args := make([]any, 0, 16+len(prefArgs))
+	args = append(args,
 		&b.id,
 		&b.nameJSON,
 		&b.subcatJSON,
@@ -122,8 +120,6 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 		&b.categoryID,
 		&b.abv,
 		&b.polRatio,
-		&b.prefecture,
-		&b.region,
 		&b.descJSON,
 		&b.labelImgURL,
 		&b.avgRating,
@@ -132,9 +128,9 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 		&b.createdAt,
 		&b.breweryID,
 		&b.breweryNameRaw,
-		&b.breweryRegion,
 	)
-	if err != nil {
+	args = append(args, prefArgs...)
+	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
 	return &b, nil
@@ -146,7 +142,9 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 // len-0 as "absent", so the API response omits those fields.
 func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
-	err := row.Scan(
+	prefArgs := b.breweryPref.scanArgs()
+	args := make([]any, 0, 14+len(prefArgs))
+	args = append(args,
 		&b.id,
 		&b.nameJSON,
 		&b.categorySlug,
@@ -154,8 +152,6 @@ func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 		&b.categoryID,
 		&b.abv,
 		&b.polRatio,
-		&b.prefecture,
-		&b.region,
 		&b.labelImgURL,
 		&b.avgRating,
 		&b.checkInCount,
@@ -163,9 +159,9 @@ func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 		&b.createdAt,
 		&b.breweryID,
 		&b.breweryNameRaw,
-		&b.breweryRegion,
 	)
-	if err != nil {
+	args = append(args, prefArgs...)
+	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
 	return &b, nil
@@ -185,14 +181,16 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 		return domain.Beverage{}, err
 	}
 	out := domain.Beverage{
-		ID:             row.id,
-		Name:           name,
-		Brewery:        domain.Brewery{ID: row.breweryID, Name: brewName, Region: row.breweryRegion},
+		ID:   row.id,
+		Name: name,
+		Brewery: domain.Brewery{
+			ID:         row.breweryID,
+			Name:       brewName,
+			Prefecture: row.breweryPref.toPrefecture(),
+		},
 		Category:       domain.CategoryLabel{Slug: row.categorySlug, LabelI18n: catLabel},
 		ABV:            row.abv,
 		PolishingRatio: row.polRatio,
-		Prefecture:     row.prefecture,
-		Region:         row.region,
 		FlavorProfile:  row.flavorProfile,
 		LabelImageURL:  row.labelImgURL,
 		AvgRating:      row.avgRating,
@@ -435,10 +433,13 @@ func (r *BreweryRepo) List(ctx context.Context, q *string, cursorTs *time.Time, 
 	// Stage 8 (admin catalog soft-delete, migration 014): rows with
 	// deleted_at set are excluded from the public catalog. The partial
 	// idx_breweries_name_tsv keeps FTS index-friendly.
+	//
+	// Migration 016: prefecture comes from a LEFT JOIN on
+	// prefectures + regions via breweries.prefecture_id; nullable.
 	const sql = `
-SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
-       b.beverage_count
-FROM breweries b
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,
+       b.beverage_count,` + breweryPrefectureSelectCols + `
+FROM breweries b` + breweriesPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
   AND ($1::text IS NULL OR
        to_tsvector('simple',
@@ -459,9 +460,10 @@ LIMIT $4;`
 
 func (r *BreweryRepo) Detail(ctx context.Context, id string) (*domain.Brewery, error) {
 	const sql = `
-SELECT b.id, b.name_i18n, b.prefecture, b.region, b.founded_year, b.website, b.description_i18n, b.created_at,
-       b.beverage_count
-FROM breweries b WHERE b.id = $1 AND b.deleted_at IS NULL;`
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,
+       b.beverage_count,` + breweryPrefectureSelectCols + `
+FROM breweries b` + breweriesPrefectureJoinClause + `
+WHERE b.id = $1 AND b.deleted_at IS NULL;`
 	row := r.db.QueryRow(ctx, sql, id)
 	out, err := scanBreweryWithCount(row)
 	if err != nil {
@@ -507,10 +509,20 @@ LIMIT $4;`
 	return out, rows.Err()
 }
 
+// scanBrewery scans the count-free brewery projection used by
+// /v1/search. Column order:
+//
+//	id, name_i18n, founded_year, website, description_i18n, created_at,
+//	+ breweryPrefectureSelectCols (8 join columns).
 func scanBrewery(row pgx.Row) (*domain.Brewery, error) {
 	var b domain.Brewery
 	var nameJSON, descJSON []byte
-	if err := row.Scan(&b.ID, &nameJSON, &b.Prefecture, &b.Region, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt); err != nil {
+	var pref prefectureScan
+	prefArgs := pref.scanArgs()
+	args := make([]any, 0, 6+len(prefArgs))
+	args = append(args, &b.ID, &nameJSON, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt)
+	args = append(args, prefArgs...)
+	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
 	b.Name, _ = domain.I18nFromJSON(nameJSON)
@@ -518,17 +530,26 @@ func scanBrewery(row pgx.Row) (*domain.Brewery, error) {
 		d, _ := domain.I18nFromJSON(descJSON)
 		b.Description = &d
 	}
+	b.Prefecture = pref.toPrefecture()
 	return &b, nil
 }
 
 // scanBreweryWithCount scans the brewery row plus a trailing beverage_count
 // column. Used by BreweryRepo.List/Detail; search.go still uses the count-
-// free variant.
+// free variant. Column order:
+//
+//	id, name_i18n, founded_year, website, description_i18n, created_at,
+//	beverage_count, + breweryPrefectureSelectCols (8 join columns).
 func scanBreweryWithCount(row pgx.Row) (*domain.Brewery, error) {
 	var b domain.Brewery
 	var nameJSON, descJSON []byte
 	var count int
-	if err := row.Scan(&b.ID, &nameJSON, &b.Prefecture, &b.Region, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt, &count); err != nil {
+	var pref prefectureScan
+	prefArgs := pref.scanArgs()
+	args := make([]any, 0, 7+len(prefArgs))
+	args = append(args, &b.ID, &nameJSON, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt, &count)
+	args = append(args, prefArgs...)
+	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
 	b.Name, _ = domain.I18nFromJSON(nameJSON)
@@ -537,6 +558,7 @@ func scanBreweryWithCount(row pgx.Row) (*domain.Brewery, error) {
 		b.Description = &d
 	}
 	b.BeverageCount = &count
+	b.Prefecture = pref.toPrefecture()
 	return &b, nil
 }
 

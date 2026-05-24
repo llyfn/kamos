@@ -23,14 +23,17 @@ import (
 // AdminApproveBeverageRequest is the body for POST /v1/admin/beverage-requests/{id}/approve.
 // The admin uses this to fill in canonical fields based on the user-
 // submitted payload (which is free-form JSONB).
+//
+// Migration 016 dropped beverages.prefecture / beverages.region — the
+// row's locality is now derived through the brewery's prefecture_id, so
+// per-beverage geo fields are no longer accepted. Re-curate the brewery
+// via PATCH /v1/admin/breweries/{id} if needed before approving.
 type AdminApproveBeverageRequest struct {
 	BreweryID     string           `json:"brewery_id"`
 	CategoryID    string           `json:"category_id"`
 	NameI18n      domain.I18nText  `json:"name_i18n"`
 	Subcategory   *domain.I18nText `json:"subcategory_i18n,omitempty"`
 	ABV           *float64         `json:"abv,omitempty"`
-	Prefecture    *string          `json:"prefecture,omitempty"`
-	Region        *string          `json:"region,omitempty"`
 	LabelImageURL *string          `json:"label_image_url,omitempty"`
 	FlavorProfile []string         `json:"flavor_profile,omitempty"`
 	Notes         *string          `json:"notes,omitempty"`
@@ -112,8 +115,6 @@ type AdminBeverageCreate struct {
 	ABV             *float64         `json:"abv,omitempty"`
 	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
 	FlavorProfile   []string         `json:"flavor_profile,omitempty"`
-	Prefecture      *string          `json:"prefecture,omitempty"`
-	Region          *string          `json:"region,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
 	LabelImageURL   *string          `json:"label_image_url,omitempty"`
 }
@@ -135,8 +136,7 @@ func (r *AdminBeverageCreate) Validate() error {
 	}
 	return validateBeverageFields(
 		&r.NameI18n, r.SubcategoryI18n, r.DescriptionI18n,
-		r.ABV, r.PolishingRatio,
-		r.Prefecture, r.Region, r.LabelImageURL,
+		r.ABV, r.PolishingRatio, r.LabelImageURL,
 	)
 }
 
@@ -156,8 +156,6 @@ type AdminBeverageUpdate struct {
 	ABV             *float64         `json:"abv,omitempty"`
 	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
 	FlavorProfile   *[]string        `json:"flavor_profile,omitempty"`
-	Prefecture      *string          `json:"prefecture,omitempty"`
-	Region          *string          `json:"region,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
 	LabelImageURL   *string          `json:"label_image_url,omitempty"`
 }
@@ -168,8 +166,7 @@ func (r *AdminBeverageUpdate) Validate() error {
 	}
 	return validateBeverageFields(
 		r.NameI18n, r.SubcategoryI18n, r.DescriptionI18n,
-		r.ABV, r.PolishingRatio,
-		r.Prefecture, r.Region, r.LabelImageURL,
+		r.ABV, r.PolishingRatio, r.LabelImageURL,
 	)
 }
 
@@ -183,7 +180,7 @@ func validateBeverageFields(
 	description *domain.I18nText,
 	abv *float64,
 	polishingRatio *int,
-	prefecture, region, labelImageURL *string,
+	labelImageURL *string,
 ) error {
 	if name != nil {
 		if err := sanitizeI18n("name_i18n", name, 200); err != nil {
@@ -206,20 +203,21 @@ func validateBeverageFields(
 	if polishingRatio != nil && (*polishingRatio < 0 || *polishingRatio > 100) {
 		return wrapV("polishing_ratio must be between 0 and 100")
 	}
-	if err := sanitizeOptional("prefecture", prefecture); err != nil {
-		return err
-	}
-	if err := sanitizeOptional("region", region); err != nil {
-		return err
-	}
 	return validateLabelImageURL(labelImageURL)
 }
 
 // AdminBreweryCreate is the body for POST /v1/admin/breweries.
+//
+// Migration 016 replaced the free-text `prefecture` / `region` columns
+// with `prefecture_id`. The admin SPA works in slugs (GET
+// /v1/reference/regions returns slug + i18n labels), so we mirror the
+// `category_slug` pattern: clients send `prefecture_slug` and the handler
+// resolves it to a UUID before the INSERT. Region is derived from the
+// prefecture (no separate input). Unknown slug → 422
+// INVALID_PREFECTURE_SLUG.
 type AdminBreweryCreate struct {
 	NameI18n        domain.I18nText  `json:"name_i18n"`
-	Prefecture      *string          `json:"prefecture,omitempty"`
-	Region          *string          `json:"region,omitempty"`
+	PrefectureSlug  *string          `json:"prefecture_slug,omitempty"`
 	FoundedYear     *int             `json:"founded_year,omitempty"`
 	Website         *string          `json:"website,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
@@ -237,10 +235,7 @@ func (r *AdminBreweryCreate) Validate() error {
 			return err
 		}
 	}
-	if err := sanitizeOptional("prefecture", r.Prefecture); err != nil {
-		return err
-	}
-	if err := sanitizeOptional("region", r.Region); err != nil {
+	if err := validatePrefectureSlugFormat(r.PrefectureSlug); err != nil {
 		return err
 	}
 	if r.FoundedYear != nil && (*r.FoundedYear < 800 || *r.FoundedYear > 2100) {
@@ -253,10 +248,17 @@ func (r *AdminBreweryCreate) Validate() error {
 }
 
 // AdminBreweryUpdate is the body for PATCH /v1/admin/breweries/{id}.
+//
+// `prefecture_slug` semantics (mirrors how category_slug works on
+// AdminBeverageUpdate, plus the "explicit clear" use-case):
+//   - omitted (JSON key absent / nil pointer) → leave column unchanged.
+//   - non-nil with a valid slug → resolve and set prefecture_id.
+//   - non-nil with empty string ("") → clear prefecture_id to NULL.
+//
+// Unknown slug → 422 INVALID_PREFECTURE_SLUG.
 type AdminBreweryUpdate struct {
 	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
-	Prefecture      *string          `json:"prefecture,omitempty"`
-	Region          *string          `json:"region,omitempty"`
+	PrefectureSlug  *string          `json:"prefecture_slug,omitempty"`
 	FoundedYear     *int             `json:"founded_year,omitempty"`
 	Website         *string          `json:"website,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
@@ -276,10 +278,7 @@ func (r *AdminBreweryUpdate) Validate() error {
 			return err
 		}
 	}
-	if err := sanitizeOptional("prefecture", r.Prefecture); err != nil {
-		return err
-	}
-	if err := sanitizeOptional("region", r.Region); err != nil {
+	if err := validatePrefectureSlugFormat(r.PrefectureSlug); err != nil {
 		return err
 	}
 	if r.FoundedYear != nil && (*r.FoundedYear < 800 || *r.FoundedYear > 2100) {
@@ -287,6 +286,35 @@ func (r *AdminBreweryUpdate) Validate() error {
 	}
 	if err := validateWebsite(r.Website); err != nil {
 		return err
+	}
+	return nil
+}
+
+// validatePrefectureSlugFormat enforces the lightweight shape check on
+// `prefecture_slug` so an obviously-malformed value (e.g. a 200-char
+// payload) gets a 422 VALIDATION before the resolver round-trips to the
+// DB. Existence + canonical-list membership is enforced by
+// BreweryRepo.PrefectureIDForSlug at resolve time (422
+// INVALID_PREFECTURE_SLUG). Empty string is allowed at the format
+// layer — the resolver (resolveOptionalPrefectureID) is the one that
+// decides whether an explicit empty is legal: it's the "clear" signal on
+// Update (allowClear=true), and a 422 INVALID_PREFECTURE_SLUG on Create
+// (allowClear=false). Nil pointer is a no-op.
+func validatePrefectureSlugFormat(p *string) error {
+	if p == nil || *p == "" {
+		return nil
+	}
+	if len(*p) > 64 {
+		return wrapV("prefecture_slug must be ≤ 64 characters")
+	}
+	for _, c := range *p {
+		switch {
+		case c >= 'a' && c <= 'z':
+		case c >= '0' && c <= '9':
+		case c == '_':
+		default:
+			return wrapV("prefecture_slug must match [a-z0-9_]")
+		}
 	}
 	return nil
 }
@@ -311,21 +339,6 @@ func sanitizeI18n(field string, t *domain.I18nText, maxLen int) error {
 	t.EN = en
 	t.JA = ja
 	t.KO = ko
-	return nil
-}
-
-// sanitizeOptional runs an optional single-line catalog string (prefecture /
-// region) through SanitizeText with the canonical 100-char cap. Nil pointer
-// is a no-op; non-nil is always sanitized.
-func sanitizeOptional(field string, p *string) error {
-	if p == nil {
-		return nil
-	}
-	v, err := domain.SanitizeText(field, *p, false, 100)
-	if err != nil {
-		return err
-	}
-	*p = v
 	return nil
 }
 

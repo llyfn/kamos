@@ -13,19 +13,39 @@
 // _log audit row, so the change + audit commit atomically. DELETE returns
 // 409 BREWERY_HAS_LIVE_BEVERAGES when at least one beverage still
 // references the brewery with deleted_at IS NULL.
+//
+// Migration 016: brewery locality is captured via `prefecture_id` (FK
+// into `prefectures`). Admin clients send `prefecture_slug`; this
+// handler resolves it to a UUID before the write. Unknown slug → 422
+// INVALID_PREFECTURE_SLUG (mirrors `category_slug` on beverages).
 package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kamos/api/internal/cache"
 	"github.com/kamos/api/internal/cursor"
+	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
 )
+
+// errUnknownPrefectureSlug is returned by the prefecture-slug resolver
+// when the supplied slug does not match any row in `prefectures`. The
+// handler maps this to 422 INVALID_PREFECTURE_SLUG (the canonical 47
+// slugs are seeded in migration 016).
+var errUnknownPrefectureSlug = errors.New("unknown prefecture_slug")
+
+// errEmptyPrefectureSlugOnCreate is returned when an AdminBreweryCreate
+// payload sends `prefecture_slug: ""`. OpenAPI's Create pattern is
+// `^[a-z0-9_]+$` (non-empty); the contract is "omit the field if no
+// prefecture is intended". The handler maps this to the same 422
+// INVALID_PREFECTURE_SLUG response code with a more specific message.
+var errEmptyPrefectureSlugOnCreate = errors.New("empty prefecture_slug on create")
 
 // AdminListBreweries — GET /v1/admin/breweries
 //
@@ -98,8 +118,15 @@ func (h *Handler) AdminCreateBrewery(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminCreateBrewery validate", err)
 		return
 	}
+	// Resolve prefecture_slug → prefecture_id before the write. Empty
+	// slug stays nil (no curated prefecture).
+	prefID, err := h.resolveOptionalPrefectureID(r.Context(), body.PrefectureSlug, false)
+	if err != nil {
+		h.writePrefectureErr(w, "AdminCreateBrewery", err)
+		return
+	}
 
-	out, err := h.createBreweryTx(r.Context(), uid, body)
+	out, err := h.createBreweryTx(r.Context(), uid, body, prefID)
 	if err != nil {
 		h.writeErr(w, "AdminCreateBrewery", err)
 		return
@@ -127,8 +154,15 @@ func (h *Handler) AdminUpdateBrewery(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminUpdateBrewery validate", err)
 		return
 	}
+	// Resolve prefecture_slug → prefecture_id. allowClear=true since on
+	// update, an explicit empty slug clears the column to NULL.
+	prefID, err := h.resolveOptionalPrefectureID(r.Context(), body.PrefectureSlug, true)
+	if err != nil {
+		h.writePrefectureErr(w, "AdminUpdateBrewery", err)
+		return
+	}
 
-	out, err := h.updateBreweryTx(r.Context(), uid, id, body)
+	out, err := h.updateBreweryTx(r.Context(), uid, id, body, prefID)
 	if err != nil {
 		h.writeErr(w, "AdminUpdateBrewery", err)
 		return
@@ -201,7 +235,7 @@ func (h *Handler) AdminRestoreBrewery(w http.ResponseWriter, r *http.Request) {
 // here (handler layer) rather than in the repo because the moderation
 // _log coupling is an admin concept, not a domain concept of breweries.
 
-func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body AdminBreweryCreate) (*repository.AdminBreweryRow, error) {
+func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body AdminBreweryCreate, prefectureID *string) (*repository.AdminBreweryRow, error) {
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -209,12 +243,11 @@ func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body Admi
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	out, err := h.Repos.Breweries.Create(ctx, tx, repository.BreweryCreateInput{
-		Name:        body.NameI18n,
-		Prefecture:  body.Prefecture,
-		Region:      body.Region,
-		FoundedYear: body.FoundedYear,
-		Website:     body.Website,
-		Description: body.DescriptionI18n,
+		Name:         body.NameI18n,
+		PrefectureID: prefectureID,
+		FoundedYear:  body.FoundedYear,
+		Website:      body.Website,
+		Description:  body.DescriptionI18n,
 	})
 	if err != nil {
 		return nil, err
@@ -230,7 +263,7 @@ func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body Admi
 	return out, nil
 }
 
-func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body AdminBreweryUpdate) (*repository.AdminBreweryRow, error) {
+func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body AdminBreweryUpdate, prefectureID *string) (*repository.AdminBreweryRow, error) {
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -238,12 +271,11 @@ func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	out, err := h.Repos.Breweries.Update(ctx, tx, id, repository.BreweryUpdateInput{
-		Name:        body.NameI18n,
-		Prefecture:  body.Prefecture,
-		Region:      body.Region,
-		FoundedYear: body.FoundedYear,
-		Website:     body.Website,
-		Description: body.DescriptionI18n,
+		Name:         body.NameI18n,
+		PrefectureID: prefectureID,
+		FoundedYear:  body.FoundedYear,
+		Website:      body.Website,
+		Description:  body.DescriptionI18n,
 	})
 	if err != nil {
 		return nil, err
@@ -257,6 +289,66 @@ func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body 
 		return nil, err
 	}
 	return out, nil
+}
+
+// ---- prefecture slug resolution ----
+
+// resolveOptionalPrefectureID converts a client-supplied prefecture_slug
+// to the FK id used by BreweryCreateInput / BreweryUpdateInput. Returns:
+//
+//   - (nil, nil) when slug is nil → "leave column unchanged" on update,
+//     or "no curated prefecture" on create.
+//   - (ptr to "", nil) when slug is non-nil but empty AND allowClear is
+//     true → explicit clear (Update path only).
+//   - (ptr to id, nil) when the slug resolves.
+//   - (nil, errEmptyPrefectureSlugOnCreate) when the slug is non-nil but
+//     empty AND allowClear is false → handler maps to 422
+//     INVALID_PREFECTURE_SLUG with a "cannot be empty on create" message
+//     so the client knows to either omit the field or send a real slug.
+//   - (nil, errUnknownPrefectureSlug) when the slug is non-empty but
+//     not found in `prefectures` → handler maps to 422
+//     INVALID_PREFECTURE_SLUG.
+//
+// allowClear=false on Create rejects an explicit empty slug — an unset
+// prefecture on create is achieved by omitting the field entirely. This
+// matches the OpenAPI `^[a-z0-9_]+$` (non-empty) pattern on
+// AdminBreweryCreate.prefecture_slug.
+func (h *Handler) resolveOptionalPrefectureID(ctx context.Context, slug *string, allowClear bool) (*string, error) {
+	if slug == nil {
+		return nil, nil
+	}
+	if *slug == "" {
+		if !allowClear {
+			return nil, errEmptyPrefectureSlugOnCreate
+		}
+		empty := ""
+		return &empty, nil
+	}
+	id, err := h.Repos.Geo.PrefectureIDForSlug(ctx, *slug)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, errUnknownPrefectureSlug
+		}
+		return nil, err
+	}
+	return &id, nil
+}
+
+// writePrefectureErr maps the prefecture-slug sentinels to a stable 422
+// response code; everything else flows through the usual writeErr path.
+// Mirrors writeCategoryErr in admin_beverages.go.
+func (h *Handler) writePrefectureErr(w http.ResponseWriter, op string, err error) {
+	if errors.Is(err, errUnknownPrefectureSlug) {
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "INVALID_PREFECTURE_SLUG",
+			"prefecture_slug must be a known prefecture (see GET /v1/reference/regions)")
+		return
+	}
+	if errors.Is(err, errEmptyPrefectureSlugOnCreate) {
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "INVALID_PREFECTURE_SLUG",
+			"prefecture_slug cannot be empty on create — omit the field if no prefecture is intended")
+		return
+	}
+	h.writeErr(w, op, err)
 }
 
 func (h *Handler) softDeleteBreweryTx(ctx context.Context, adminID, id string) error {

@@ -215,12 +215,12 @@ func (r *CollectionRepo) Entries(ctx context.Context, userID, collectionID strin
 SELECT ce.beverage_id, ce.note, ce.added_at,
        b.name_i18n, b.category_slug, b.label_image_url,
        cat.name_i18n,
-       br.id, br.name_i18n, br.region
+       br.id, br.name_i18n,` + breweryPrefectureSelectCols + `
 FROM collection_entries ce
 JOIN collections c ON c.id = ce.collection_id AND c.user_id = $1 AND c.deleted_at IS NULL
 JOIN beverages b ON b.id = ce.beverage_id
 JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
 WHERE ce.collection_id = $2
   AND ($3::timestamptz IS NULL OR (ce.added_at, ce.beverage_id) < ($3::timestamptz, $4::uuid))
 ORDER BY ce.added_at DESC, ce.beverage_id DESC
@@ -234,16 +234,20 @@ LIMIT $5;`
 	for rows.Next() {
 		var e domain.CollectionEntry
 		var (
-			bevID     string
-			bevName   []byte
-			bevSlug   string
-			bevLabel  *string
-			catName   []byte
-			brwID     string
-			brwName   []byte
-			brwRegion *string
+			bevID    string
+			bevName  []byte
+			bevSlug  string
+			bevLabel *string
+			catName  []byte
+			brwID    string
+			brwName  []byte
+			brwPref  prefectureScan
 		)
-		if err := rows.Scan(&bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName, &brwRegion); err != nil {
+		prefArgs := brwPref.scanArgs()
+		scanArgs := make([]any, 0, 9+len(prefArgs))
+		scanArgs = append(scanArgs, &bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName)
+		scanArgs = append(scanArgs, prefArgs...)
+		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, fmt.Errorf("CollectionRepo.Entries scan: %w", err)
 		}
 		bn, _ := domain.I18nFromJSON(bevName)
@@ -252,7 +256,7 @@ LIMIT $5;`
 		e.Beverage = domain.BeverageRef{
 			ID:            bevID,
 			Name:          bn,
-			Brewery:       domain.BreweryRef{ID: brwID, Name: brn, Region: brwRegion},
+			Brewery:       domain.BreweryRef{ID: brwID, Name: brn, Prefecture: brwPref.toPrefecture()},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 			LabelImageURL: bevLabel,
 		}

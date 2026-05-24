@@ -895,6 +895,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reference/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Migration 016 — returns the full 8-region × 47-prefecture seed
+         *     graph in canonical sort order (regions.sort_order, then
+         *     prefectures.sort_order). Each region carries its i18n name +
+         *     the ordered list of its prefectures. One round-trip is enough
+         *     to populate the admin "Pick a prefecture" dropdown or any
+         *     client-side filter UI. Mirrors the cache/auth shape of
+         *     /v1/categories + /v1/flavor-tags — public, long Cache-Control
+         *     TTL (seed-only data; effectively immutable during a deploy
+         *     window).
+         */
+        get: operations["getRegions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/beverage-requests": {
         parameters: {
             query?: never;
@@ -1471,18 +1498,91 @@ export interface components {
             refresh_token?: string;
         };
         /**
-         * @description Optional fields (`prefecture`, `region`, `founded_year`, `website`,
+         * @description Migration 016 — one row of the seed `regions` reference table
+         *     (Japan's 8 traditional regions). Used standalone and as the
+         *     embedded `region` field of `Prefecture`.
+         */
+        Region: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description stable lowercase slug (e.g. `hokkaido`, `kanto`,
+             *     `kyushu_okinawa`).
+             */
+            slug: string;
+            name: components["schemas"]["I18nText"];
+            /** @description canonical render order (1–8). */
+            sort_order: number;
+        };
+        /**
+         * @description Migration 016 — one row of the seed `prefectures` reference
+         *     table. `region` is embedded so a brewery's `prefecture` field
+         *     carries enough context to render "Niigata (Chūbu)" without a
+         *     second lookup.
+         */
+        Prefecture: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description stable lowercase slug (e.g. `niigata`, `tokyo`,
+             *     `kagoshima`); accepted by admin write paths as
+             *     `prefecture_slug` on AdminBreweryCreate / AdminBreweryUpdate.
+             */
+            slug: string;
+            name: components["schemas"]["I18nText"];
+            /** @description JIS prefecture code (1=Hokkaido … 47=Okinawa). */
+            sort_order: number;
+            region: components["schemas"]["Region"];
+        };
+        /**
+         * @description Per-prefecture shape inside `RegionWithPrefectures.prefectures`.
+         *     Identical to `Prefecture` minus the embedded `region` back-
+         *     reference (the parent region is the array container, so the
+         *     nested copy would be redundant). Extracted as a named schema so
+         *     codegen surfaces a reusable type rather than an anonymous
+         *     nested array element.
+         */
+        PrefectureInline: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: components["schemas"]["I18nText"];
+            sort_order: number;
+        };
+        /**
+         * @description Flattened response shape returned by `GET /v1/reference/regions`.
+         *     Each region carries its i18n name + the ordered list of its
+         *     prefectures (also i18n-named). One round-trip is enough to
+         *     populate the admin "Pick a prefecture" dropdown or any
+         *     client-side filter UI. Nested prefectures drop the back-
+         *     reference to `region` (the container is the region) to keep
+         *     the payload compact.
+         */
+        RegionWithPrefectures: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: components["schemas"]["I18nText"];
+            sort_order: number;
+            prefectures: components["schemas"]["PrefectureInline"][];
+        };
+        /**
+         * @description Optional fields (`prefecture`, `founded_year`, `website`,
          *     `description`, `beverage_count`) use the **absent-when-unknown**
          *     convention: the Go server emits them with `omitempty`, so the JSON
          *     key is omitted entirely rather than set to `null`. Clients should
          *     treat an absent key the same as `null`.
+         *
+         *     Migration 016: `prefecture` is now a nested `Prefecture` object
+         *     (which itself embeds its `Region`). The previous free-text
+         *     `prefecture` / `region` string fields are gone. The brewery's
+         *     region is derivable via `brewery.prefecture.region`.
          */
         Brewery: {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
-            prefecture?: string;
-            region?: string;
+            prefecture?: components["schemas"]["Prefecture"];
             founded_year?: number;
             /** Format: uri */
             website?: string;
@@ -1497,12 +1597,16 @@ export interface components {
             created_at: string;
         };
         /**
-         * @description Optional fields (`subcategory`, `abv`, `polishing_ratio`, `prefecture`,
-         *     `region`, `description`, `label_image_url`) use the **absent-when-
-         *     unknown** convention: the Go server emits them with `omitempty`, so
-         *     the JSON key is omitted entirely rather than set to `null`. The
+         * @description Optional fields (`subcategory`, `abv`, `polishing_ratio`,
+         *     `description`, `label_image_url`) use the **absent-when-unknown**
+         *     convention: the Go server emits them with `omitempty`, so the
+         *     JSON key is omitted entirely rather than set to `null`. The
          *     exception is `avg_rating`, which is `*float64` without `omitempty` —
          *     it is always present and is `null` when no ratings exist.
+         *
+         *     Migration 016 dropped the per-beverage `prefecture` / `region`
+         *     free-text columns. A beverage's locality is now derived through
+         *     its `brewery.prefecture` (which itself nests `region`).
          *
          *     List endpoints (`GET /v1/beverages`, `GET /v1/breweries/{id}` inline
          *     beverages page, `GET /v1/search` beverage results) ship a slim
@@ -1522,8 +1626,6 @@ export interface components {
             abv?: number;
             /** @description Nihonshu only */
             polishing_ratio?: number;
-            prefecture?: string;
-            region?: string;
             flavor_profile: string[];
             description?: components["schemas"]["I18nText"];
             /** Format: uri */
@@ -1577,14 +1679,16 @@ export interface components {
         };
         /**
          * @description Compact brewery embedding used by check-in / feed / collection
-         *     entries. `region` follows the absent-when-unknown convention
-         *     (Go `omitempty`).
+         *     entries. `prefecture` (a nested Prefecture that itself embeds
+         *     its Region) follows the absent-when-unknown convention (Go
+         *     `omitempty`). Migration 016 replaced the free-text `region`
+         *     string with this nested shape.
          */
         BreweryRef: {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
-            region?: string;
+            prefecture?: components["schemas"]["Prefecture"];
         };
         PhotoRef: {
             /** Format: uri */
@@ -1945,6 +2049,13 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        /**
+         * @description Migration 016 dropped beverages.prefecture / beverages.region —
+         *     the beverage's locality is derived through the brewery's
+         *     prefecture_id, so no per-beverage geo fields are accepted here.
+         *     Recurate the brewery via PATCH /v1/admin/breweries/{id} before
+         *     approving if the prefecture is wrong.
+         */
         AdminBeverageRequestApproval: {
             /** Format: uuid */
             brewery_id: string;
@@ -1954,8 +2065,6 @@ export interface components {
             subcategory_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: float */
             abv?: number | null;
-            prefecture?: string | null;
-            region?: string | null;
             /** Format: uri */
             label_image_url?: string | null;
             flavor_profile?: string[];
@@ -2020,8 +2129,6 @@ export interface components {
             /** @description nihonshu only — server CHECK rejects non-null values for other categories */
             polishing_ratio?: number | null;
             flavor_profile?: string[];
-            prefecture?: string | null;
-            region?: string | null;
             description_i18n?: components["schemas"]["I18nText"] | null;
             /**
              * Format: uri
@@ -2056,8 +2163,6 @@ export interface components {
             abv?: number | null;
             polishing_ratio?: number | null;
             flavor_profile?: string[];
-            prefecture?: string | null;
-            region?: string | null;
             description_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: uri */
             label_image_url?: string | null;
@@ -2076,11 +2181,22 @@ export interface components {
          * @description Payload for POST /v1/admin/breweries. `name_i18n.en` and
          *     `name_i18n.ja` are required; `ko` optional. `founded_year`
          *     must be between 800 and 2100 to match the DB CHECK.
+         *
+         *     Migration 016: `prefecture_slug` is optional; when supplied
+         *     the handler resolves it to a `prefecture_id` (UUID) via the
+         *     unique index on `prefectures.slug` before the INSERT. The set
+         *     of valid slugs is the 47 prefectures returned by
+         *     `GET /v1/reference/regions`. Unknown slug returns
+         *     `422 INVALID_PREFECTURE_SLUG`. Omit `prefecture_slug` to leave
+         *     the brewery without a curated prefecture.
          */
         AdminBreweryCreate: {
             name_i18n: components["schemas"]["I18nText"];
-            prefecture?: string | null;
-            region?: string | null;
+            /**
+             * @description Stable slug from `GET /v1/reference/regions`. Omit or send
+             *     null when the brewery has no curated prefecture.
+             */
+            prefecture_slug?: string | null;
             founded_year?: number | null;
             /** Format: uri */
             website?: string | null;
@@ -2089,11 +2205,23 @@ export interface components {
         /**
          * @description Partial-update body for PATCH /v1/admin/breweries/{id}. Every
          *     field is optional; omitted fields are left unchanged.
+         *
+         *     `prefecture_slug` semantics (mirrors `category_slug` on
+         *     AdminBeverageUpdate, plus an explicit-clear use-case):
+         *
+         *     * omitted (JSON key absent or `null`) → leave column unchanged.
+         *     * non-empty slug → resolve and set `prefecture_id`.
+         *     * empty string (`""`) → clear `prefecture_id` to NULL.
+         *
+         *     Unknown slug returns `422 INVALID_PREFECTURE_SLUG`.
          */
         AdminBreweryUpdate: {
             name_i18n?: components["schemas"]["I18nText"];
-            prefecture?: string | null;
-            region?: string | null;
+            /**
+             * @description Stable slug from `GET /v1/reference/regions`. Send `""` to
+             *     clear the prefecture column.
+             */
+            prefecture_slug?: string | null;
             founded_year?: number | null;
             /** Format: uri */
             website?: string | null;
@@ -3696,6 +3824,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FlavorTag"][];
+                };
+            };
+        };
+    };
+    getRegions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description regions + prefectures reference graph */
+            200: {
+                headers: {
+                    /**
+                     * @description `public, max-age=3600, stale-while-revalidate=86400`
+                     *     emitted by middleware.
+                     */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionWithPrefectures"][];
                 };
             };
         };
