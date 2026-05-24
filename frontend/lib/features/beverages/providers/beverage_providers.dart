@@ -3,11 +3,40 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/beverage.dart';
+import '../../../core/models/collection.dart';
+import '../../collections/repository/collection_repository.dart';
 import '../repository/beverage_repository.dart';
 
 final beverageDetailProvider = FutureProvider.autoDispose
     .family<BeverageDetail, String>((ref, id) async {
       return ref.read(beverageRepositoryProvider).get(id);
+    });
+
+/// Resolved state for the beverage-detail "Add to list" bottom sheet.
+/// Holds the signed-in user's collections plus the set of collection ids
+/// that already contain the beverage. Consumed by
+/// [myCollectionsForBeverageProvider].
+class MyCollectionsState {
+  const MyCollectionsState({required this.all, required this.memberIds});
+  final List<Collection> all;
+  final Set<String> memberIds;
+}
+
+/// Fetches the signed-in user's collections together with which of them
+/// already contain the given beverage. The bottom sheet rebuilds its
+/// checkbox state from this provider; invalidate it after a successful
+/// add/remove so the next open reflects the latest membership.
+final myCollectionsForBeverageProvider =
+    FutureProvider.family.autoDispose<MyCollectionsState, String>((
+      ref,
+      beverageId,
+    ) async {
+      final repo = ref.read(collectionRepositoryProvider);
+      final result = await repo.listMineWithMembership(beverageId);
+      return MyCollectionsState(
+        all: result.all,
+        memberIds: result.memberIds,
+      );
     });
 
 class BeverageListState {

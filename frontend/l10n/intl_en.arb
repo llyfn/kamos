@@ -112,18 +112,6 @@
   "authPasswordTooShort": "Too short",
   "authTagline": "Discover and log Nihonshu, Shochu, and Liqueur.",
 
-  "authVerifyTitle": "Verify your email",
-  "authVerifySent": "We sent a verification link to",
-  "authVerifyExpiry": "The link expires in 24 hours. You can still use the app while unverified.",
-  "authVerifyContinue": "Continue to KAMOS",
-  "authVerifyResend": "Resend email",
-
-  "verifyEmailTitle": "Verifying your email",
-  "verifyEmailLoading": "Confirming your verification link…",
-  "verifyEmailSuccess": "Your email is verified.",
-  "verifyEmailFailure": "We could not verify this link. It may have expired.",
-  "verifyEmailBackToAuth": "Back to sign in",
-
   "verifyPendingTitle": "Check your email",
   "verifyPendingBody": "We sent a verification link to {email}. Open it on this device or any browser to verify your account.",
   "@verifyPendingBody": {

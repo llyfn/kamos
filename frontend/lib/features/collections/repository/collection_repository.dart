@@ -70,6 +70,40 @@ class CollectionRepository {
 
   Future<void> removeEntry(String collectionId, String beverageId) =>
       _api.collections.removeEntry(collectionId, beverageId);
+
+  /// Fetches the signed-in user's collections plus the set of those that
+  /// already contain [beverageId]. Used by the beverage-detail "Add to
+  /// list" sheet to seed checkbox state.
+  ///
+  /// No batch-membership endpoint exists in the API yet, so this fans out
+  /// one detail call per collection. User collections are small in the
+  /// MVP (Inventory + Wishlist + a handful of user-created lists) so the
+  /// fan-out is bounded; if a collection has more than 100 entries (the
+  /// detail endpoint's max page size) a membership beyond the first page
+  /// would not be detected — acceptable for the MVP UX where the user
+  /// can still re-add and the server is idempotent.
+  Future<({List<Collection> all, Set<String> memberIds})>
+  listMineWithMembership(String beverageId) async {
+    final page = await list();
+    final all = page.items;
+    final memberIds = <String>{};
+    for (final c in all) {
+      try {
+        final (_, entries) = await detail(c.id);
+        for (final e in entries.items) {
+          if (e.beverage.id == beverageId) {
+            memberIds.add(c.id);
+            break;
+          }
+        }
+      } catch (_) {
+        // Treat a per-collection error as "unknown membership"; the
+        // sheet still renders the collection unchecked, and a user
+        // tap will surface any real failure via the toggle handler.
+      }
+    }
+    return (all: all, memberIds: memberIds);
+  }
 }
 
 final collectionRepositoryProvider = Provider<CollectionRepository>(

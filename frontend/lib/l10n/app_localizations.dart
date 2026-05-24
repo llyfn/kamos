@@ -610,66 +610,6 @@ abstract class AppLocalizations {
   /// **'Discover and log Nihonshu, Shochu, and Liqueur.'**
   String get authTagline;
 
-  /// No description provided for @authVerifyTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify your email'**
-  String get authVerifyTitle;
-
-  /// No description provided for @authVerifySent.
-  ///
-  /// In en, this message translates to:
-  /// **'We sent a verification link to'**
-  String get authVerifySent;
-
-  /// No description provided for @authVerifyExpiry.
-  ///
-  /// In en, this message translates to:
-  /// **'The link expires in 24 hours. You can still use the app while unverified.'**
-  String get authVerifyExpiry;
-
-  /// No description provided for @authVerifyContinue.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue to KAMOS'**
-  String get authVerifyContinue;
-
-  /// No description provided for @authVerifyResend.
-  ///
-  /// In en, this message translates to:
-  /// **'Resend email'**
-  String get authVerifyResend;
-
-  /// No description provided for @verifyEmailTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Verifying your email'**
-  String get verifyEmailTitle;
-
-  /// No description provided for @verifyEmailLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirming your verification link…'**
-  String get verifyEmailLoading;
-
-  /// No description provided for @verifyEmailSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Your email is verified.'**
-  String get verifyEmailSuccess;
-
-  /// No description provided for @verifyEmailFailure.
-  ///
-  /// In en, this message translates to:
-  /// **'We could not verify this link. It may have expired.'**
-  String get verifyEmailFailure;
-
-  /// No description provided for @verifyEmailBackToAuth.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to sign in'**
-  String get verifyEmailBackToAuth;
-
   /// No description provided for @verifyPendingTitle.
   ///
   /// In en, this message translates to:

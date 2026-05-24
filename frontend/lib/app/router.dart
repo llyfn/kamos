@@ -2,7 +2,7 @@
 //
 // Paths:
 // /auth unauthenticated landing
-// /auth/verify-email token-based email verification landing
+// /auth/verify-pending post-signup "check your email" landing
 // / feed (shell root)
 // /search discover
 // /check-in modal (needs a Beverage extra)
@@ -20,9 +20,10 @@
 // /beverage-requests/new user-side "suggest a beverage" form
 //
 // Unauthenticated users are redirected to `/auth`; authenticated users on
-// `/auth` are redirected to `/`. The `/auth/verify-email` route is exempt
-// from the unauth redirect so a verification deeplink works even when no
-// session token is present.
+// `/auth` are redirected to `/`. Verification is now end-to-end server-
+// side: the mail link points at the backend's `/verify` HTML page, so
+// the mobile app has no token-consuming screen — only a post-signup
+// "check your mail" landing (`/auth/verify-pending`).
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +32,7 @@ import 'package:go_router/go_router.dart';
 import '../core/models/beverage.dart';
 import '../features/auth/providers/auth_state.dart';
 import '../features/auth/screens/auth_screen.dart';
-import '../features/auth/screens/verify_email_screen.dart';
+import '../features/auth/screens/verify_email_pending_screen.dart';
 import '../features/beverage_requests/screens/submit_beverage_request_screen.dart';
 import '../features/beverages/screens/beverage_detail_screen.dart';
 import '../features/breweries/screens/brewery_detail_screen.dart';
@@ -57,20 +58,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.isLoading) return null;
       final path = state.uri.path;
       final atAuth = path.startsWith('/auth');
-      // The email-verification deeplink is always reachable, even when no
-      // session token is present (newly-registered users may not have signed
-      // in on this device yet).
-      final isVerifyEmail = path == '/auth/verify-email';
+      // The verify-pending screen renders right after signup, so the
+      // user is already authenticated when they land there — keep
+      // them on `/auth/verify-pending` rather than auto-redirecting
+      // to `/` until they confirm verification (or skip).
+      final isVerifyPending = path == '/auth/verify-pending';
       if (!auth.isAuthenticated && !atAuth) return '/auth';
-      if (auth.isAuthenticated && atAuth && !isVerifyEmail) return '/';
+      if (auth.isAuthenticated && atAuth && !isVerifyPending) return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/auth', builder: (_, _) => const AuthScreen()),
       GoRoute(
-        path: '/auth/verify-email',
-        builder: (_, state) =>
-            VerifyEmailScreen(token: state.uri.queryParameters['token'] ?? ''),
+        path: '/auth/verify-pending',
+        builder: (_, state) {
+          final extra = state.extra;
+          final email = extra is String
+              ? extra
+              : state.uri.queryParameters['email'] ?? '';
+          return VerifyEmailPendingScreen(email: email);
+        },
       ),
       ShellRoute(
         builder: (context, state, child) =>

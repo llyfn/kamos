@@ -280,38 +280,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authTagline => 'Discover and log Nihonshu, Shochu, and Liqueur.';
 
   @override
-  String get authVerifyTitle => 'Verify your email';
-
-  @override
-  String get authVerifySent => 'We sent a verification link to';
-
-  @override
-  String get authVerifyExpiry =>
-      'The link expires in 24 hours. You can still use the app while unverified.';
-
-  @override
-  String get authVerifyContinue => 'Continue to KAMOS';
-
-  @override
-  String get authVerifyResend => 'Resend email';
-
-  @override
-  String get verifyEmailTitle => 'Verifying your email';
-
-  @override
-  String get verifyEmailLoading => 'Confirming your verification link…';
-
-  @override
-  String get verifyEmailSuccess => 'Your email is verified.';
-
-  @override
-  String get verifyEmailFailure =>
-      'We could not verify this link. It may have expired.';
-
-  @override
-  String get verifyEmailBackToAuth => 'Back to sign in';
-
-  @override
   String get verifyPendingTitle => 'Check your email';
 
   @override

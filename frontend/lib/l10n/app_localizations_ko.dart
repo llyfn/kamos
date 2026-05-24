@@ -276,36 +276,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authTagline => '니혼슈, 쇼츄, 리큐어를 기록하는 앱.';
 
   @override
-  String get authVerifyTitle => '이메일을 확인하세요';
-
-  @override
-  String get authVerifySent => '확인 링크를 보내드렸습니다:';
-
-  @override
-  String get authVerifyExpiry => '링크는 24시간 동안 유효합니다. 미확인 상태에서도 앱을 사용할 수 있습니다.';
-
-  @override
-  String get authVerifyContinue => 'KAMOS 시작하기';
-
-  @override
-  String get authVerifyResend => '이메일 다시 보내기';
-
-  @override
-  String get verifyEmailTitle => '이메일 인증 중';
-
-  @override
-  String get verifyEmailLoading => '인증 링크를 확인하고 있습니다…';
-
-  @override
-  String get verifyEmailSuccess => '이메일이 인증되었습니다.';
-
-  @override
-  String get verifyEmailFailure => '링크를 인증할 수 없습니다. 만료되었을 수 있습니다.';
-
-  @override
-  String get verifyEmailBackToAuth => '로그인으로 돌아가기';
-
-  @override
   String get verifyPendingTitle => '이메일을 확인하세요';
 
   @override

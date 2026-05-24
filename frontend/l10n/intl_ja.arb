@@ -112,18 +112,6 @@
   "authPasswordTooShort": "短すぎます",
   "authTagline": "日本酒、焼酎、リキュールを記録するアプリ。",
 
-  "authVerifyTitle": "メールを確認",
-  "authVerifySent": "確認リンクをお送りしました：",
-  "authVerifyExpiry": "リンクは24時間有効です。未確認でもアプリは利用できます。",
-  "authVerifyContinue": "KAMOSを始める",
-  "authVerifyResend": "メールを再送",
-
-  "verifyEmailTitle": "メールを認証中",
-  "verifyEmailLoading": "認証リンクを確認しています…",
-  "verifyEmailSuccess": "メールが認証されました。",
-  "verifyEmailFailure": "リンクを認証できませんでした。期限切れの可能性があります。",
-  "verifyEmailBackToAuth": "サインインに戻る",
-
   "verifyPendingTitle": "メールをご確認ください",
   "verifyPendingBody": "{email} 宛に確認用リンクを送信しました。このデバイスまたはお使いのブラウザでリンクを開いてアカウントを認証してください。",
   "@verifyPendingBody": {

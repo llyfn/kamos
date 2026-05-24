@@ -276,36 +276,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authTagline => '日本酒、焼酎、リキュールを記録するアプリ。';
 
   @override
-  String get authVerifyTitle => 'メールを確認';
-
-  @override
-  String get authVerifySent => '確認リンクをお送りしました：';
-
-  @override
-  String get authVerifyExpiry => 'リンクは24時間有効です。未確認でもアプリは利用できます。';
-
-  @override
-  String get authVerifyContinue => 'KAMOSを始める';
-
-  @override
-  String get authVerifyResend => 'メールを再送';
-
-  @override
-  String get verifyEmailTitle => 'メールを認証中';
-
-  @override
-  String get verifyEmailLoading => '認証リンクを確認しています…';
-
-  @override
-  String get verifyEmailSuccess => 'メールが認証されました。';
-
-  @override
-  String get verifyEmailFailure => 'リンクを認証できませんでした。期限切れの可能性があります。';
-
-  @override
-  String get verifyEmailBackToAuth => 'サインインに戻る';
-
-  @override
   String get verifyPendingTitle => 'メールをご確認ください';
 
   @override
