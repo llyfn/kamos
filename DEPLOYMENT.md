@@ -37,9 +37,8 @@ Copy `backend/.env.example` to `.env` at the repo root (or wherever your runner 
 | `JWT_SECRET` | HMAC signing key for JWT, ≥ 32 random bytes | yes |
 | `JWT_TTL` | Access-token lifetime. Phase 2 (rotating refresh tokens) lowered the default to `15m`; the env var still wins. | yes (default `15m`) |
 | `REFRESH_TTL` | Refresh-token lifetime. Long-lived but revocable; rotated on every `POST /v1/auth/refresh`. | yes (default `720h` = 30 days) |
-| `APP_BASE_URL` | Base URL used in verification-email links | yes |
+| `APP_BASE_URL` | Base URL used in verification-email links and as the host of the public `GET /verify` HTML landing page. | yes |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (used as ID-token audience) | only if Google sign-in is enabled |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Verification email | **production** — dev logs the link instead |
 | `APP_VERSION` | Reported as `service.version` on OTel spans + Sentry release tag | optional (default `dev`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP/HTTP host for traces + metrics (e.g. `otlp-gateway-prod-eu-west-2.grafana.net`). Empty disables OTel entirely. | optional |
 | `OTEL_EXPORTER_OTLP_HEADERS` | `"k1=v1,k2=v2"` headers — usually a single `Authorization=Basic …` line | optional |

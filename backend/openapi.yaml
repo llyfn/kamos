@@ -225,6 +225,41 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /verify:
+    get:
+      tags: [auth]
+      operationId: verifyEmailLandingPage
+      security: []
+      summary: Localized HTML landing page that consumes an email-verification token.
+      description: |
+        Public, top-level route (NOT under `/v1`). The target of the link in
+        the verification email. Consumes the token server-side and renders a
+        small branded HTML page (Verified / AlreadyVerified / Invalid).
+        Mobile clients do not call this endpoint programmatically — the app
+        lands the user on a "Check your email" pending screen and polls
+        `/v1/users/me` for the verification flip.
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: lang
+          required: false
+          description: Locale for the rendered page. Defaults to `en` when omitted or unrecognized.
+          schema:
+            type: string
+            enum: [en, ja, ko]
+      responses:
+        "200":
+          description: HTML page rendered (Verified or AlreadyVerified state).
+          content:
+            text/html: {}
+        "400":
+          description: HTML page rendered (Invalid or missing token).
+          content:
+            text/html: {}
+
   /v1/auth/verify-email:
     post:
       tags: [auth]
