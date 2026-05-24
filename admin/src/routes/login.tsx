@@ -49,7 +49,7 @@ function LoginPage() {
       <h1 className="text-xl font-semibold mb-6">Sign in</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-[color:var(--color-muted)]">Email</span>
+          <span className="text-[color:var(--color-muted)]">Email *</span>
           <input
             type="email"
             value={email}
@@ -60,7 +60,7 @@ function LoginPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-[color:var(--color-muted)]">Password</span>
+          <span className="text-[color:var(--color-muted)]">Password *</span>
           <input
             type="password"
             value={password}

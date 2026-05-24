@@ -237,7 +237,7 @@ function RejectModal({ request, onClose }: { request: Request; onClose: () => vo
     <Modal open onClose={onClose} title="Reject beverage request">
       <form onSubmit={onSubmit} className="flex flex-col gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          <span className="text-[color:var(--color-muted)]">Notes (1–500 chars)</span>
+          <span className="text-[color:var(--color-muted)]">Notes * (1–500 chars)</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
