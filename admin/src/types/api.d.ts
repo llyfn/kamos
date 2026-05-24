@@ -1535,6 +1535,21 @@ export interface components {
             region: components["schemas"]["Region"];
         };
         /**
+         * @description Per-prefecture shape inside `RegionWithPrefectures.prefectures`.
+         *     Identical to `Prefecture` minus the embedded `region` back-
+         *     reference (the parent region is the array container, so the
+         *     nested copy would be redundant). Extracted as a named schema so
+         *     codegen surfaces a reusable type rather than an anonymous
+         *     nested array element.
+         */
+        PrefectureInline: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: components["schemas"]["I18nText"];
+            sort_order: number;
+        };
+        /**
          * @description Flattened response shape returned by `GET /v1/reference/regions`.
          *     Each region carries its i18n name + the ordered list of its
          *     prefectures (also i18n-named). One round-trip is enough to
@@ -1549,13 +1564,7 @@ export interface components {
             slug: string;
             name: components["schemas"]["I18nText"];
             sort_order: number;
-            prefectures: {
-                /** Format: uuid */
-                id: string;
-                slug: string;
-                name: components["schemas"]["I18nText"];
-                sort_order: number;
-            }[];
+            prefectures: components["schemas"]["PrefectureInline"][];
         };
         /**
          * @description Optional fields (`prefecture`, `founded_year`, `website`,
@@ -1573,7 +1582,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
-            prefecture?: components["schemas"]["Prefecture"] | null;
+            prefecture?: components["schemas"]["Prefecture"];
             founded_year?: number;
             /** Format: uri */
             website?: string;
@@ -1679,7 +1688,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
-            prefecture?: components["schemas"]["Prefecture"] | null;
+            prefecture?: components["schemas"]["Prefecture"];
         };
         PhotoRef: {
             /** Format: uri */

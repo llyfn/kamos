@@ -40,6 +40,13 @@ import (
 // slugs are seeded in migration 016).
 var errUnknownPrefectureSlug = errors.New("unknown prefecture_slug")
 
+// errEmptyPrefectureSlugOnCreate is returned when an AdminBreweryCreate
+// payload sends `prefecture_slug: ""`. OpenAPI's Create pattern is
+// `^[a-z0-9_]+$` (non-empty); the contract is "omit the field if no
+// prefecture is intended". The handler maps this to the same 422
+// INVALID_PREFECTURE_SLUG response code with a more specific message.
+var errEmptyPrefectureSlugOnCreate = errors.New("empty prefecture_slug on create")
+
 // AdminListBreweries — GET /v1/admin/breweries
 //
 // Query params:
@@ -294,20 +301,25 @@ func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body 
 //   - (ptr to "", nil) when slug is non-nil but empty AND allowClear is
 //     true → explicit clear (Update path only).
 //   - (ptr to id, nil) when the slug resolves.
+//   - (nil, errEmptyPrefectureSlugOnCreate) when the slug is non-nil but
+//     empty AND allowClear is false → handler maps to 422
+//     INVALID_PREFECTURE_SLUG with a "cannot be empty on create" message
+//     so the client knows to either omit the field or send a real slug.
 //   - (nil, errUnknownPrefectureSlug) when the slug is non-empty but
 //     not found in `prefectures` → handler maps to 422
 //     INVALID_PREFECTURE_SLUG.
 //
-// allowClear=false on Create rejects an explicit empty slug as a
-// validation error — an unset prefecture on create is achieved by
-// omitting the field entirely.
+// allowClear=false on Create rejects an explicit empty slug — an unset
+// prefecture on create is achieved by omitting the field entirely. This
+// matches the OpenAPI `^[a-z0-9_]+$` (non-empty) pattern on
+// AdminBreweryCreate.prefecture_slug.
 func (h *Handler) resolveOptionalPrefectureID(ctx context.Context, slug *string, allowClear bool) (*string, error) {
 	if slug == nil {
 		return nil, nil
 	}
 	if *slug == "" {
 		if !allowClear {
-			return nil, nil
+			return nil, errEmptyPrefectureSlugOnCreate
 		}
 		empty := ""
 		return &empty, nil
@@ -322,13 +334,18 @@ func (h *Handler) resolveOptionalPrefectureID(ctx context.Context, slug *string,
 	return &id, nil
 }
 
-// writePrefectureErr maps the slug-not-found sentinel to a stable 422
+// writePrefectureErr maps the prefecture-slug sentinels to a stable 422
 // response code; everything else flows through the usual writeErr path.
 // Mirrors writeCategoryErr in admin_beverages.go.
 func (h *Handler) writePrefectureErr(w http.ResponseWriter, op string, err error) {
 	if errors.Is(err, errUnknownPrefectureSlug) {
 		httperr.WriteError(w, http.StatusUnprocessableEntity, "INVALID_PREFECTURE_SLUG",
 			"prefecture_slug must be a known prefecture (see GET /v1/reference/regions)")
+		return
+	}
+	if errors.Is(err, errEmptyPrefectureSlugOnCreate) {
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "INVALID_PREFECTURE_SLUG",
+			"prefecture_slug cannot be empty on create — omit the field if no prefecture is intended")
 		return
 	}
 	h.writeErr(w, op, err)

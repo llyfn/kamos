@@ -2386,6 +2386,22 @@ components:
         region:
           $ref: "#/components/schemas/Region"
 
+    PrefectureInline:
+      type: object
+      description: |
+        Per-prefecture shape inside `RegionWithPrefectures.prefectures`.
+        Identical to `Prefecture` minus the embedded `region` back-
+        reference (the parent region is the array container, so the
+        nested copy would be redundant). Extracted as a named schema so
+        codegen surfaces a reusable type rather than an anonymous
+        nested array element.
+      required: [id, slug, name, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { $ref: "#/components/schemas/I18nText" }
+        sort_order: { type: integer, minimum: 0 }
+
     RegionWithPrefectures:
       type: object
       description: |
@@ -2404,14 +2420,7 @@ components:
         sort_order: { type: integer, minimum: 0 }
         prefectures:
           type: array
-          items:
-            type: object
-            required: [id, slug, name, sort_order]
-            properties:
-              id: { type: string, format: uuid }
-              slug: { type: string }
-              name: { $ref: "#/components/schemas/I18nText" }
-              sort_order: { type: integer, minimum: 0 }
+          items: { $ref: "#/components/schemas/PrefectureInline" }
 
     Brewery:
       type: object
@@ -2430,10 +2439,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
-        prefecture:
-          allOf:
-            - $ref: "#/components/schemas/Prefecture"
-          nullable: true
+        prefecture: { $ref: "#/components/schemas/Prefecture" }
         founded_year: { type: integer }
         website: { type: string, format: uri }
         description: { $ref: "#/components/schemas/I18nText" }
@@ -2552,10 +2558,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
-        prefecture:
-          allOf:
-            - $ref: "#/components/schemas/Prefecture"
-          nullable: true
+        prefecture: { $ref: "#/components/schemas/Prefecture" }
 
     PhotoRef:
       type: object

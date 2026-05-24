@@ -19,6 +19,16 @@ import (
 // the admin queue UI actually uses; unknown extra keys are still allowed
 // (they round-trip into PayloadRaw for the moderator to see), but each
 // known string is sanitized against control / bidi / NUL bytes.
+//
+// Migration 016: per-beverage `prefecture` / `region` were dropped — the
+// approval moderator UI (AdminApproveBeverageRequest) no longer accepts
+// them either, and brewery locality is now curated via
+// PATCH /v1/admin/breweries/{id}. We accordingly stopped declaring
+// `prefecture` / `region` as known fields on the user submission: a
+// client that still sends them will see the values round-trip into
+// PayloadRaw (no validation, no sanitization) for the moderator to see
+// as free-form hints, but they will not be promoted into any
+// structured Beverage column.
 type BeverageRequest struct {
 	Payload map[string]any `json:"payload"`
 }
@@ -56,8 +66,6 @@ var beverageRequestFields = []payloadField{
 	{key: "category_slug", required: true, allowNewline: false, maxLen: 200},
 	// Optional sanitized strings — only validated when present.
 	{key: "subcategory", required: false, allowNewline: false, maxLen: 200},
-	{key: "prefecture", required: false, allowNewline: false, maxLen: 200},
-	{key: "region", required: false, allowNewline: false, maxLen: 200},
 	{key: "label_image_url", required: false, allowNewline: false, maxLen: 200},
 	{key: "notes", required: false, allowNewline: true, maxLen: 500},
 }

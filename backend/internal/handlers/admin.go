@@ -295,8 +295,11 @@ func (r *AdminBreweryUpdate) Validate() error {
 // payload) gets a 422 VALIDATION before the resolver round-trips to the
 // DB. Existence + canonical-list membership is enforced by
 // BreweryRepo.PrefectureIDForSlug at resolve time (422
-// INVALID_PREFECTURE_SLUG). Empty string is allowed — it's the clear
-// signal on Update. Nil pointer is a no-op.
+// INVALID_PREFECTURE_SLUG). Empty string is allowed at the format
+// layer — the resolver (resolveOptionalPrefectureID) is the one that
+// decides whether an explicit empty is legal: it's the "clear" signal on
+// Update (allowClear=true), and a 422 INVALID_PREFECTURE_SLUG on Create
+// (allowClear=false). Nil pointer is a no-op.
 func validatePrefectureSlugFormat(p *string) error {
 	if p == nil || *p == "" {
 		return nil
