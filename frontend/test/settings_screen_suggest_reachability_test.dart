@@ -110,7 +110,16 @@ void main() {
       // are uppercased by `_SectionTitle`.
       expect(find.text('ACCOUNT'), findsOneWidget);
       expect(find.text('Suggest a beverage'), findsOneWidget);
-      expect(find.text('Delete account'), findsOneWidget);
+
+      // Delete account is below the fold after the Sign-out tile was added —
+      // scroll the ListView to bring it into view before asserting.
+      final deleteAccount = find.text('Delete account');
+      await tester.scrollUntilVisible(
+        deleteAccount,
+        200.0,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(deleteAccount, findsOneWidget);
     },
   );
 }

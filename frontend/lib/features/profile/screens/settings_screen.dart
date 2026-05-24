@@ -35,6 +35,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       onTap: () => context.push('/beverage-requests/new'),
     );
 
+    // Sign-out is also session-only — it does not depend on `meProvider`
+    // returning successfully (in fact, if `meProvider` is erroring on auth
+    // we especially want this tile reachable). Lives just above the
+    // Danger Zone so destructive options group together.
+    final signOutTile = ListTile(
+      leading: const Icon(Icons.logout),
+      title: Text(l.settingsSignOut),
+      onTap: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text(l.settingsSignOutConfirmTitle),
+            content: Text(l.settingsSignOutConfirmBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(l.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(l.settingsSignOut),
+              ),
+            ],
+          ),
+        );
+        if (confirmed == true) {
+          await ref.read(authStateProvider.notifier).logout();
+          if (context.mounted) context.go('/auth');
+        }
+      },
+    );
+
     // Profile-dependent slices (account, privacy, language tile, danger zone)
     // collapse to a single status widget when `meProvider` is loading/erroring.
     final accountPrivacy = async.when(
@@ -73,6 +105,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SectionTitle(l.settingsPreferences),
           languageTile,
           suggestTile,
+          signOutTile,
           dangerZone,
           const SizedBox(height: 24),
           Center(
@@ -196,7 +229,6 @@ class _DangerZoneSection extends ConsumerWidget {
             l.settingsDeleteAccount,
             style: TextStyle(color: t.fgDanger, fontWeight: FontWeight.w600),
           ),
-          subtitle: Text(l.settingsDeleteAccountHelper),
           onTap: () async {
             final confirmed = await showDialog<bool>(
               context: context,

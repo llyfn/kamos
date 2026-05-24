@@ -21,11 +21,14 @@ class CollectionsListScreen extends ConsumerWidget {
     final t = context.tokens;
     final async = ref.watch(collectionsProvider);
     return Scaffold(
-      body: AsyncWidget(
-        value: async,
-        center: true,
-        onRetry: () => ref.invalidate(collectionsProvider),
-        data: (page) {
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: AsyncWidget(
+          value: async,
+          center: true,
+          onRetry: () => ref.invalidate(collectionsProvider),
+          data: (page) {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -150,6 +153,7 @@ class CollectionsListScreen extends ConsumerWidget {
             ],
           );
         },
+        ),
       ),
     );
   }

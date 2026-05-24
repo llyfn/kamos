@@ -57,27 +57,31 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final t = context.tokens;
     final state = ref.watch(feedProvider);
 
+    // Wrap the whole tree in a Scaffold so the route animates with an opaque
+    // material background (no page-bleed during the navigation transition)
+    // and SafeArea(top: true) so the first row of content clears the dynamic
+    // island. bottom:false because KamosTabBar pads with MediaQuery.padding
+    // .bottom itself.
+    final Widget body;
     if (state.isLoading && state.items.isEmpty) {
-      return Center(child: LoadingView(label: l.actionLoadingMore));
-    }
-    if (state.error != null && state.items.isEmpty) {
-      return Center(
+      body = Center(child: LoadingView(label: l.actionLoadingMore));
+    } else if (state.error != null && state.items.isEmpty) {
+      body = Center(
         child: ErrorView(
           message: state.error,
           onRetry: () => ref.read(feedProvider.notifier).refresh(),
         ),
       );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () =>
-          ref.read(feedProvider.notifier).refresh(forceRefresh: true),
-      child: NotificationListener<ScrollEndNotification>(
-        onNotification: _onScrollEnd,
-        child: ListView(
-          controller: _scroll,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          children: [
+    } else {
+      body = RefreshIndicator(
+        onRefresh: () =>
+            ref.read(feedProvider.notifier).refresh(forceRefresh: true),
+        child: NotificationListener<ScrollEndNotification>(
+          onNotification: _onScrollEnd,
+          child: ListView(
+            controller: _scroll,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: [
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 14),
               child: Row(
@@ -148,6 +152,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           ],
         ),
       ),
+      );
+    }
+
+    return Scaffold(
+      body: SafeArea(top: true, bottom: false, child: body),
     );
   }
 }
