@@ -155,16 +155,18 @@ LIMIT $4;`
 // admin needs to recurate the brewery's prefecture they do it via
 // PATCH /v1/admin/breweries/{id} before approving.
 type ApproveBeverageRequestParams struct {
-	RequestID     string
-	BreweryID     string
-	CategoryID    string
-	NameI18n      domain.I18nText
-	Subcategory   *domain.I18nText
-	ABV           *float64
-	LabelImageURL *string
-	FlavorProfile []string
-	ReviewerID    string
-	Notes         *string
+	RequestID       string
+	BreweryID       string
+	CategoryID      string
+	NameI18n        domain.I18nText
+	Subcategory     *domain.I18nText
+	ABV             *float64
+	PolishingRatio  *int
+	LabelImageURL   *string
+	FlavorProfile   []string
+	DescriptionI18n *domain.I18nText
+	ReviewerID      string
+	Notes           *string
 }
 
 // ApproveBeverageRequest creates the beverage row and marks the request
@@ -205,11 +207,12 @@ func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverag
 	if err != nil {
 		return "", err
 	}
-	// subcategory: pass a *string so absent → SQL NULL, present → JSONB literal.
-	// pgx serializes nil-string and empty-string both as text NULL when the
-	// column accepts NULL, but the `::jsonb` cast on an empty string would
-	// raise "invalid input syntax for type json" — keeping it nullable here.
-	var subJSON *string
+	// subcategory + description: pass a *string so absent → SQL NULL,
+	// present → JSONB literal. pgx serializes nil-string and empty-string
+	// both as text NULL when the column accepts NULL, but the `::jsonb`
+	// cast on an empty string would raise "invalid input syntax for type
+	// json" — keeping each nullable here.
+	var subJSON, descJSON *string
 	if p.Subcategory != nil {
 		b, err := jsonMarshalI18n(*p.Subcategory)
 		if err != nil {
@@ -218,18 +221,26 @@ func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverag
 		s := string(b)
 		subJSON = &s
 	}
+	if p.DescriptionI18n != nil {
+		b, err := jsonMarshalI18n(*p.DescriptionI18n)
+		if err != nil {
+			return "", err
+		}
+		s := string(b)
+		descJSON = &s
+	}
 
 	const insBev = `
 INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n,
-                       subcategory_i18n, abv,
-                       label_image_url, flavor_profile)
-VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, COALESCE($8, '{}'::text[]))
+                       subcategory_i18n, abv, polishing_ratio,
+                       label_image_url, flavor_profile, description_i18n)
+VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, COALESCE($9, '{}'::text[]), $10::jsonb)
 RETURNING id;`
 	var bevID string
 	if err := tx.QueryRow(ctx, insBev,
 		p.BreweryID, p.CategoryID, categorySlug, string(nameJSON),
-		subJSON, p.ABV,
-		p.LabelImageURL, p.FlavorProfile,
+		subJSON, p.ABV, p.PolishingRatio,
+		p.LabelImageURL, p.FlavorProfile, descJSON,
 	).Scan(&bevID); err != nil {
 		return "", fmt.Errorf("ApproveBeverageRequest insert beverage: %w", err)
 	}

@@ -24,35 +24,45 @@ import (
 // The admin uses this to fill in canonical fields based on the user-
 // submitted payload (which is free-form JSONB).
 //
+// Field set mirrors AdminBeverageCreate so the admin can drive both
+// endpoints from the same form. Exactly one of `category_id` /
+// `category_slug` is required; the handler resolves slug → UUID before
+// the INSERT runs.
+//
 // Migration 016 dropped beverages.prefecture / beverages.region — the
 // row's locality is now derived through the brewery's prefecture_id, so
 // per-beverage geo fields are no longer accepted. Re-curate the brewery
 // via PATCH /v1/admin/breweries/{id} if needed before approving.
 type AdminApproveBeverageRequest struct {
-	BreweryID     string           `json:"brewery_id"`
-	CategoryID    string           `json:"category_id"`
-	NameI18n      domain.I18nText  `json:"name_i18n"`
-	Subcategory   *domain.I18nText `json:"subcategory_i18n,omitempty"`
-	ABV           *float64         `json:"abv,omitempty"`
-	LabelImageURL *string          `json:"label_image_url,omitempty"`
-	FlavorProfile []string         `json:"flavor_profile,omitempty"`
-	Notes         *string          `json:"notes,omitempty"`
+	BreweryID       string           `json:"brewery_id"`
+	CategoryID      *string          `json:"category_id,omitempty"`
+	CategorySlug    *string          `json:"category_slug,omitempty"`
+	NameI18n        domain.I18nText  `json:"name_i18n"`
+	Subcategory     *domain.I18nText `json:"subcategory_i18n,omitempty"`
+	ABV             *float64         `json:"abv,omitempty"`
+	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
+	LabelImageURL   *string          `json:"label_image_url,omitempty"`
+	FlavorProfile   []string         `json:"flavor_profile,omitempty"`
+	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+	Notes           *string          `json:"notes,omitempty"`
 }
 
 func (r *AdminApproveBeverageRequest) Validate() error {
 	if r.BreweryID == "" {
 		return wrapV("brewery_id is required")
 	}
-	if r.CategoryID == "" {
-		return wrapV("category_id is required")
+	hasID := r.CategoryID != nil && *r.CategoryID != ""
+	hasSlug := r.CategorySlug != nil && *r.CategorySlug != ""
+	if !hasID && !hasSlug {
+		return wrapV("category_id or category_slug is required")
 	}
 	if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
 		return wrapV("name_i18n.en and name_i18n.ja are required")
 	}
-	if r.ABV != nil && (*r.ABV < 0 || *r.ABV > 70) {
-		return wrapV("abv must be between 0 and 70")
-	}
-	return nil
+	return validateBeverageFields(
+		&r.NameI18n, r.Subcategory, r.DescriptionI18n,
+		r.ABV, r.PolishingRatio, r.LabelImageURL,
+	)
 }
 
 // AdminRejectRequest is the body for POST /v1/admin/beverage-requests/{id}/reject.
@@ -197,8 +207,8 @@ func validateBeverageFields(
 			return err
 		}
 	}
-	if abv != nil && (*abv < 0 || *abv > 60) {
-		return wrapV("abv must be between 0 and 60")
+	if abv != nil && (*abv < 0 || *abv > 70) {
+		return wrapV("abv must be between 0 and 70")
 	}
 	if polishingRatio != nil && (*polishingRatio < 0 || *polishingRatio > 100) {
 		return wrapV("polishing_ratio must be between 0 and 100")

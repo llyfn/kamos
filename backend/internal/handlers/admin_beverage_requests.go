@@ -73,17 +73,24 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		h.writeErr(w, "AdminApproveBeverageRequest validate", err)
 		return
 	}
+	categoryID, err := h.resolveCategoryID(r.Context(), body.CategoryID, body.CategorySlug)
+	if err != nil {
+		h.writeCategoryErr(w, "AdminApproveBeverageRequest", err)
+		return
+	}
 	bevID, err := h.Repos.Admin.ApproveBeverageRequest(r.Context(), repository.ApproveBeverageRequestParams{
-		RequestID:     requestID,
-		BreweryID:     body.BreweryID,
-		CategoryID:    body.CategoryID,
-		NameI18n:      body.NameI18n,
-		Subcategory:   body.Subcategory,
-		ABV:           body.ABV,
-		LabelImageURL: body.LabelImageURL,
-		FlavorProfile: body.FlavorProfile,
-		ReviewerID:    uid,
-		Notes:         body.Notes,
+		RequestID:       requestID,
+		BreweryID:       body.BreweryID,
+		CategoryID:      categoryID,
+		NameI18n:        body.NameI18n,
+		Subcategory:     body.Subcategory,
+		ABV:             body.ABV,
+		PolishingRatio:  body.PolishingRatio,
+		LabelImageURL:   body.LabelImageURL,
+		FlavorProfile:   body.FlavorProfile,
+		DescriptionI18n: body.DescriptionI18n,
+		ReviewerID:      uid,
+		Notes:           body.Notes,
 	})
 	if err != nil {
 		h.writeErr(w, "AdminApproveBeverageRequest", err)
