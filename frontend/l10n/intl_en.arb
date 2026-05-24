@@ -9,7 +9,7 @@
 
   "tabFeed": "Feed",
   "tabSearch": "Search",
-  "tabCheckIn": "Check in",
+  "tabCheckIn": "Check-in",
   "tabLists": "Lists",
   "tabMe": "Me",
 
@@ -34,16 +34,16 @@
   "ratingTapToRate": "Tap a star to rate · half-steps allowed",
   "ratingLabel": "Rating",
 
-  "checkInTitle": "Check in",
-  "checkInCta": "Check in",
-  "checkInReviewLabel": "Review · optional",
+  "checkInTitle": "Check-in",
+  "checkInCta": "Check-in",
+  "checkInReviewLabel": "Review",
   "checkInReviewPlaceholder": "Pear, soft rice, a clean finish…",
   "checkInReviewTooLong": "Review is too long",
   "checkInFlavorTags": "Flavor tags",
   "checkInPhotosLabel": "Photos · up to 4",
   "checkInPhotoCounter": "{count} / 4",
   "@checkInPhotoCounter": { "placeholders": { "count": { "type": "int" } } },
-  "checkInPriceLabel": "Price · optional",
+  "checkInPriceLabel": "Price",
   "checkInPurchaseType": "Purchase type",
   "checkInServingStyle": "Serving style",
   "checkInPriceServing": "Per serving",
@@ -67,7 +67,7 @@
   "venuePickerSearchPlaceholder": "Search for a venue",
   "venuePickerEmptyHint": "Search for a bar, restaurant, or shop.",
   "venuePickerNoResults": "No venues found.",
-  "venuePickerDisabled": "Venue search is not configured. You can still check in without a venue.",
+  "venuePickerDisabled": "Venue search is not configured. You can still check-in without a venue.",
   "venuePickerRateLimited": "Slow down — try again in a moment.",
   "feedCardAtVenue": "at {name} · {locality}",
   "@feedCardAtVenue": {
@@ -124,6 +124,19 @@
   "verifyEmailFailure": "We could not verify this link. It may have expired.",
   "verifyEmailBackToAuth": "Back to sign in",
 
+  "verifyPendingTitle": "Check your email",
+  "verifyPendingBody": "We sent a verification link to {email}. Open it on this device or any browser to verify your account.",
+  "@verifyPendingBody": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "verifyPendingResend": "Resend verification email",
+  "verifyPendingResendSent": "Sent. Check your inbox.",
+  "verifyPendingResendFailed": "Couldn't resend. Try again in a moment.",
+  "verifyPendingBackToSignIn": "Back to sign-in",
+  "verifyPendingICheckedMyMail": "I've verified",
+
   "profileEdit": "Edit profile",
   "profileSettings": "Settings",
   "profilePrivate": "Private",
@@ -150,9 +163,11 @@
   "settingsLanguage": "Language",
   "settingsDangerZone": "Danger zone",
   "settingsDeleteAccount": "Delete account",
-  "settingsDeleteAccountHelper": "Soft-delete · username held for 30 days before release.",
   "settingsConfirmDelete": "Delete account?",
-  "settingsConfirmDeleteBody": "Your account will be soft-deleted. Your username will be held for 30 days before it can be claimed by someone else. Check-ins and collections will be removed from public view.",
+  "settingsConfirmDeleteBody": "Your account will be deleted. Your username will be held for 30 days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.",
+  "settingsSignOut": "Sign out",
+  "settingsSignOutConfirmTitle": "Sign out?",
+  "settingsSignOutConfirmBody": "You'll be returned to the sign-in screen.",
   "settingsVersion": "KAMOS · v0.1.0",
 
   "collectionsHeader": "Collections",
@@ -222,6 +237,9 @@
   "beverageDetailRecent": "Recent check-ins",
   "beverageNoCheckinsTitle": "No check-ins yet",
   "beverageNoCheckinsBody": "Be the first to log this bottle.",
+  "beverageListSheetTitle": "Add to list",
+  "beverageListSheetEmpty": "You have no lists yet.",
+  "beverageListSheetSaveFailed": "Couldn't update. Try again.",
 
   "breweryOverline": "Brewery",
   "breweryFounded": "Founded",
@@ -247,7 +265,7 @@
   "submitBeverageRequestNameLabel": "Name",
   "submitBeverageRequestBreweryLabel": "Brewery",
   "submitBeverageRequestCategoryLabel": "Category",
-  "submitBeverageRequestNotesLabel": "Notes (optional)",
+  "submitBeverageRequestNotesLabel": "Notes",
   "submitBeverageRequestSubmitButton": "Submit",
   "submitBeverageRequestSuccessToast": "Thanks — we'll review your suggestion.",
   "submitBeverageRequestErrorGeneric": "Could not submit. Try again.",

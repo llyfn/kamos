@@ -27,7 +27,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabSearch => 'Search';
 
   @override
-  String get tabCheckIn => 'Check in';
+  String get tabCheckIn => 'Check-in';
 
   @override
   String get tabLists => 'Lists';
@@ -87,13 +87,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ratingLabel => 'Rating';
 
   @override
-  String get checkInTitle => 'Check in';
+  String get checkInTitle => 'Check-in';
 
   @override
-  String get checkInCta => 'Check in';
+  String get checkInCta => 'Check-in';
 
   @override
-  String get checkInReviewLabel => 'Review · optional';
+  String get checkInReviewLabel => 'Review';
 
   @override
   String get checkInReviewPlaceholder => 'Pear, soft rice, a clean finish…';
@@ -113,7 +113,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get checkInPriceLabel => 'Price · optional';
+  String get checkInPriceLabel => 'Price';
 
   @override
   String get checkInPurchaseType => 'Purchase type';
@@ -184,7 +184,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get venuePickerDisabled =>
-      'Venue search is not configured. You can still check in without a venue.';
+      'Venue search is not configured. You can still check-in without a venue.';
 
   @override
   String get venuePickerRateLimited => 'Slow down — try again in a moment.';
@@ -312,6 +312,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verifyEmailBackToAuth => 'Back to sign in';
 
   @override
+  String get verifyPendingTitle => 'Check your email';
+
+  @override
+  String verifyPendingBody(String email) {
+    return 'We sent a verification link to $email. Open it on this device or any browser to verify your account.';
+  }
+
+  @override
+  String get verifyPendingResend => 'Resend verification email';
+
+  @override
+  String get verifyPendingResendSent => 'Sent. Check your inbox.';
+
+  @override
+  String get verifyPendingResendFailed =>
+      'Couldn\'t resend. Try again in a moment.';
+
+  @override
+  String get verifyPendingBackToSignIn => 'Back to sign-in';
+
+  @override
+  String get verifyPendingICheckedMyMail => 'I\'ve verified';
+
+  @override
   String get profileEdit => 'Edit profile';
 
   @override
@@ -388,15 +412,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeleteAccount => 'Delete account';
 
   @override
-  String get settingsDeleteAccountHelper =>
-      'Soft-delete · username held for 30 days before release.';
-
-  @override
   String get settingsConfirmDelete => 'Delete account?';
 
   @override
   String get settingsConfirmDeleteBody =>
-      'Your account will be soft-deleted. Your username will be held for 30 days before it can be claimed by someone else. Check-ins and collections will be removed from public view.';
+      'Your account will be deleted. Your username will be held for 30 days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.';
+
+  @override
+  String get settingsSignOut => 'Sign out';
+
+  @override
+  String get settingsSignOutConfirmTitle => 'Sign out?';
+
+  @override
+  String get settingsSignOutConfirmBody =>
+      'You\'ll be returned to the sign-in screen.';
 
   @override
   String get settingsVersion => 'KAMOS · v0.1.0';
@@ -581,6 +611,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beverageNoCheckinsBody => 'Be the first to log this bottle.';
 
   @override
+  String get beverageListSheetTitle => 'Add to list';
+
+  @override
+  String get beverageListSheetEmpty => 'You have no lists yet.';
+
+  @override
+  String get beverageListSheetSaveFailed => 'Couldn\'t update. Try again.';
+
+  @override
   String get breweryOverline => 'Brewery';
 
   @override
@@ -644,7 +683,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get submitBeverageRequestCategoryLabel => 'Category';
 
   @override
-  String get submitBeverageRequestNotesLabel => 'Notes (optional)';
+  String get submitBeverageRequestNotesLabel => 'Notes';
 
   @override
   String get submitBeverageRequestSubmitButton => 'Submit';

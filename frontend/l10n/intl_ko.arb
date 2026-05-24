@@ -36,14 +36,14 @@
 
   "checkInTitle": "체크인",
   "checkInCta": "체크인",
-  "checkInReviewLabel": "리뷰 · 선택",
+  "checkInReviewLabel": "리뷰",
   "checkInReviewPlaceholder": "배, 부드러운 쌀, 깔끔한 피니시…",
   "checkInReviewTooLong": "리뷰가 너무 깁니다",
   "checkInFlavorTags": "풍미 태그",
   "checkInPhotosLabel": "사진 · 최대 4장",
   "checkInPhotoCounter": "{count} / 4",
   "@checkInPhotoCounter": { "placeholders": { "count": { "type": "int" } } },
-  "checkInPriceLabel": "가격 · 선택",
+  "checkInPriceLabel": "가격",
   "checkInPurchaseType": "구매 유형",
   "checkInServingStyle": "서빙 스타일",
   "checkInPriceServing": "잔당",
@@ -124,6 +124,19 @@
   "verifyEmailFailure": "링크를 인증할 수 없습니다. 만료되었을 수 있습니다.",
   "verifyEmailBackToAuth": "로그인으로 돌아가기",
 
+  "verifyPendingTitle": "이메일을 확인하세요",
+  "verifyPendingBody": "{email} (으)로 인증 링크를 보냈습니다. 이 기기 또는 브라우저에서 링크를 열어 계정을 인증하세요.",
+  "@verifyPendingBody": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "verifyPendingResend": "인증 메일 재전송",
+  "verifyPendingResendSent": "전송되었습니다. 받은편지함을 확인하세요.",
+  "verifyPendingResendFailed": "재전송에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+  "verifyPendingBackToSignIn": "로그인으로 돌아가기",
+  "verifyPendingICheckedMyMail": "인증 완료",
+
   "profileEdit": "프로필 편집",
   "profileSettings": "설정",
   "profilePrivate": "비공개",
@@ -150,9 +163,11 @@
   "settingsLanguage": "언어",
   "settingsDangerZone": "계정 삭제",
   "settingsDeleteAccount": "계정 삭제",
-  "settingsDeleteAccountHelper": "소프트 삭제 · 사용자 이름은 30일간 보류 후 해제됩니다.",
   "settingsConfirmDelete": "계정을 삭제하시겠습니까?",
-  "settingsConfirmDeleteBody": "계정은 소프트 삭제됩니다. 사용자 이름은 30일간 보류 후 다른 사용자가 사용할 수 있습니다. 체크인과 컬렉션은 비공개 처리됩니다.",
+  "settingsConfirmDeleteBody": "계정이 삭제됩니다. 사용자 이름은 30일간 보류된 후 다른 사용자가 사용할 수 있습니다. 체크인과 컬렉션은 다른 사용자에게 더 이상 표시되지 않습니다.",
+  "settingsSignOut": "로그아웃",
+  "settingsSignOutConfirmTitle": "로그아웃하시겠습니까?",
+  "settingsSignOutConfirmBody": "로그인 화면으로 돌아갑니다.",
   "settingsVersion": "KAMOS · v0.1.0",
 
   "collectionsHeader": "컬렉션",
@@ -222,6 +237,9 @@
   "beverageDetailRecent": "최근 체크인",
   "beverageNoCheckinsTitle": "아직 체크인이 없습니다",
   "beverageNoCheckinsBody": "첫 기록을 남겨보세요.",
+  "beverageListSheetTitle": "리스트에 추가",
+  "beverageListSheetEmpty": "아직 리스트가 없습니다.",
+  "beverageListSheetSaveFailed": "업데이트에 실패했습니다. 다시 시도하세요.",
 
   "breweryOverline": "양조장",
   "breweryFounded": "창업",
@@ -247,7 +265,7 @@
   "submitBeverageRequestNameLabel": "이름",
   "submitBeverageRequestBreweryLabel": "양조장",
   "submitBeverageRequestCategoryLabel": "카테고리",
-  "submitBeverageRequestNotesLabel": "메모(선택)",
+  "submitBeverageRequestNotesLabel": "메모",
   "submitBeverageRequestSubmitButton": "제출",
   "submitBeverageRequestSuccessToast": "감사합니다 — 검토하겠습니다.",
   "submitBeverageRequestErrorGeneric": "제출하지 못했습니다. 다시 시도하세요.",

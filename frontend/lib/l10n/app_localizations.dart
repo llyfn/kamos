@@ -139,7 +139,7 @@ abstract class AppLocalizations {
   /// No description provided for @tabCheckIn.
   ///
   /// In en, this message translates to:
-  /// **'Check in'**
+  /// **'Check-in'**
   String get tabCheckIn;
 
   /// No description provided for @tabLists.
@@ -247,19 +247,19 @@ abstract class AppLocalizations {
   /// No description provided for @checkInTitle.
   ///
   /// In en, this message translates to:
-  /// **'Check in'**
+  /// **'Check-in'**
   String get checkInTitle;
 
   /// No description provided for @checkInCta.
   ///
   /// In en, this message translates to:
-  /// **'Check in'**
+  /// **'Check-in'**
   String get checkInCta;
 
   /// No description provided for @checkInReviewLabel.
   ///
   /// In en, this message translates to:
-  /// **'Review · optional'**
+  /// **'Review'**
   String get checkInReviewLabel;
 
   /// No description provided for @checkInReviewPlaceholder.
@@ -295,7 +295,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkInPriceLabel.
   ///
   /// In en, this message translates to:
-  /// **'Price · optional'**
+  /// **'Price'**
   String get checkInPriceLabel;
 
   /// No description provided for @checkInPurchaseType.
@@ -433,7 +433,7 @@ abstract class AppLocalizations {
   /// No description provided for @venuePickerDisabled.
   ///
   /// In en, this message translates to:
-  /// **'Venue search is not configured. You can still check in without a venue.'**
+  /// **'Venue search is not configured. You can still check-in without a venue.'**
   String get venuePickerDisabled;
 
   /// No description provided for @venuePickerRateLimited.
@@ -670,6 +670,48 @@ abstract class AppLocalizations {
   /// **'Back to sign in'**
   String get verifyEmailBackToAuth;
 
+  /// No description provided for @verifyPendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get verifyPendingTitle;
+
+  /// No description provided for @verifyPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a verification link to {email}. Open it on this device or any browser to verify your account.'**
+  String verifyPendingBody(String email);
+
+  /// No description provided for @verifyPendingResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend verification email'**
+  String get verifyPendingResend;
+
+  /// No description provided for @verifyPendingResendSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent. Check your inbox.'**
+  String get verifyPendingResendSent;
+
+  /// No description provided for @verifyPendingResendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t resend. Try again in a moment.'**
+  String get verifyPendingResendFailed;
+
+  /// No description provided for @verifyPendingBackToSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign-in'**
+  String get verifyPendingBackToSignIn;
+
+  /// No description provided for @verifyPendingICheckedMyMail.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve verified'**
+  String get verifyPendingICheckedMyMail;
+
   /// No description provided for @profileEdit.
   ///
   /// In en, this message translates to:
@@ -820,12 +862,6 @@ abstract class AppLocalizations {
   /// **'Delete account'**
   String get settingsDeleteAccount;
 
-  /// No description provided for @settingsDeleteAccountHelper.
-  ///
-  /// In en, this message translates to:
-  /// **'Soft-delete · username held for 30 days before release.'**
-  String get settingsDeleteAccountHelper;
-
   /// No description provided for @settingsConfirmDelete.
   ///
   /// In en, this message translates to:
@@ -835,8 +871,26 @@ abstract class AppLocalizations {
   /// No description provided for @settingsConfirmDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'Your account will be soft-deleted. Your username will be held for 30 days before it can be claimed by someone else. Check-ins and collections will be removed from public view.'**
+  /// **'Your account will be deleted. Your username will be held for 30 days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.'**
   String get settingsConfirmDeleteBody;
+
+  /// No description provided for @settingsSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get settingsSignOut;
+
+  /// No description provided for @settingsSignOutConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get settingsSignOutConfirmTitle;
+
+  /// No description provided for @settingsSignOutConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll be returned to the sign-in screen.'**
+  String get settingsSignOutConfirmBody;
 
   /// No description provided for @settingsVersion.
   ///
@@ -1168,6 +1222,24 @@ abstract class AppLocalizations {
   /// **'Be the first to log this bottle.'**
   String get beverageNoCheckinsBody;
 
+  /// No description provided for @beverageListSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to list'**
+  String get beverageListSheetTitle;
+
+  /// No description provided for @beverageListSheetEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no lists yet.'**
+  String get beverageListSheetEmpty;
+
+  /// No description provided for @beverageListSheetSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update. Try again.'**
+  String get beverageListSheetSaveFailed;
+
   /// No description provided for @breweryOverline.
   ///
   /// In en, this message translates to:
@@ -1297,7 +1369,7 @@ abstract class AppLocalizations {
   /// No description provided for @submitBeverageRequestNotesLabel.
   ///
   /// In en, this message translates to:
-  /// **'Notes (optional)'**
+  /// **'Notes'**
   String get submitBeverageRequestNotesLabel;
 
   /// No description provided for @submitBeverageRequestSubmitButton.

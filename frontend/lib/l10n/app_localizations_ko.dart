@@ -93,7 +93,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInCta => '체크인';
 
   @override
-  String get checkInReviewLabel => '리뷰 · 선택';
+  String get checkInReviewLabel => '리뷰';
 
   @override
   String get checkInReviewPlaceholder => '배, 부드러운 쌀, 깔끔한 피니시…';
@@ -113,7 +113,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get checkInPriceLabel => '가격 · 선택';
+  String get checkInPriceLabel => '가격';
 
   @override
   String get checkInPurchaseType => '구매 유형';
@@ -306,6 +306,29 @@ class AppLocalizationsKo extends AppLocalizations {
   String get verifyEmailBackToAuth => '로그인으로 돌아가기';
 
   @override
+  String get verifyPendingTitle => '이메일을 확인하세요';
+
+  @override
+  String verifyPendingBody(String email) {
+    return '$email (으)로 인증 링크를 보냈습니다. 이 기기 또는 브라우저에서 링크를 열어 계정을 인증하세요.';
+  }
+
+  @override
+  String get verifyPendingResend => '인증 메일 재전송';
+
+  @override
+  String get verifyPendingResendSent => '전송되었습니다. 받은편지함을 확인하세요.';
+
+  @override
+  String get verifyPendingResendFailed => '재전송에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+
+  @override
+  String get verifyPendingBackToSignIn => '로그인으로 돌아가기';
+
+  @override
+  String get verifyPendingICheckedMyMail => '인증 완료';
+
+  @override
   String get profileEdit => '프로필 편집';
 
   @override
@@ -381,14 +404,20 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsDeleteAccount => '계정 삭제';
 
   @override
-  String get settingsDeleteAccountHelper => '소프트 삭제 · 사용자 이름은 30일간 보류 후 해제됩니다.';
-
-  @override
   String get settingsConfirmDelete => '계정을 삭제하시겠습니까?';
 
   @override
   String get settingsConfirmDeleteBody =>
-      '계정은 소프트 삭제됩니다. 사용자 이름은 30일간 보류 후 다른 사용자가 사용할 수 있습니다. 체크인과 컬렉션은 비공개 처리됩니다.';
+      '계정이 삭제됩니다. 사용자 이름은 30일간 보류된 후 다른 사용자가 사용할 수 있습니다. 체크인과 컬렉션은 다른 사용자에게 더 이상 표시되지 않습니다.';
+
+  @override
+  String get settingsSignOut => '로그아웃';
+
+  @override
+  String get settingsSignOutConfirmTitle => '로그아웃하시겠습니까?';
+
+  @override
+  String get settingsSignOutConfirmBody => '로그인 화면으로 돌아갑니다.';
 
   @override
   String get settingsVersion => 'KAMOS · v0.1.0';
@@ -568,6 +597,15 @@ class AppLocalizationsKo extends AppLocalizations {
   String get beverageNoCheckinsBody => '첫 기록을 남겨보세요.';
 
   @override
+  String get beverageListSheetTitle => '리스트에 추가';
+
+  @override
+  String get beverageListSheetEmpty => '아직 리스트가 없습니다.';
+
+  @override
+  String get beverageListSheetSaveFailed => '업데이트에 실패했습니다. 다시 시도하세요.';
+
+  @override
   String get breweryOverline => '양조장';
 
   @override
@@ -631,7 +669,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get submitBeverageRequestCategoryLabel => '카테고리';
 
   @override
-  String get submitBeverageRequestNotesLabel => '메모(선택)';
+  String get submitBeverageRequestNotesLabel => '메모';
 
   @override
   String get submitBeverageRequestSubmitButton => '제출';
