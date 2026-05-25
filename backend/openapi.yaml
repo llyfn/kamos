@@ -2719,7 +2719,7 @@ components:
 
     CheckinSummary:
       type: object
-      required: [id, user, photos, created_at]
+      required: [id, user, photos, tags, created_at]
       properties:
         id: { type: string, format: uuid }
         user: { $ref: "#/components/schemas/CheckinUser" }
@@ -2729,6 +2729,16 @@ components:
           type: array
           maxItems: 4
           items: { $ref: "#/components/schemas/PhotoRef" }
+        tags:
+          type: array
+          description: |
+            Flavor-tag chips so the beverage detail "recent check-ins"
+            rows can render rich cards without a follow-up round trip.
+          items: { $ref: "#/components/schemas/FlavorTag" }
+        serving_style:
+          type: string
+          enum: [glass, carafe, bottle, can, other]
+          nullable: true
         created_at: { type: string, format: date-time }
 
     CreateCheckinRequest:
