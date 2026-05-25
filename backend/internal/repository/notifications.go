@@ -18,13 +18,13 @@ import (
 // NotificationRepo wraps the SQL for the notifications inbox.
 type NotificationRepo struct{ db *pgxpool.Pool }
 
-// InsertToast emits a `toast` row. Idempotent via the partial unique index
+// InsertToastTx emits a `toast` row. Idempotent via the partial unique index
 // (recipient_user_id, actor_user_id, check_in_id) WHERE type='toast'; a
 // re-toast after un-toast collapses to ON CONFLICT DO NOTHING.
 //
 // Self-toast filtering is the caller's responsibility (service layer);
 // the DB CHECK notifications_no_self is the backstop.
-func (r *NotificationRepo) InsertToast(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID string) error {
+func (r *NotificationRepo) InsertToastTx(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID string) error {
 	const q = `
 INSERT INTO notifications (recipient_user_id, type, actor_user_id, check_in_id)
 VALUES ($1, 'toast', $2, $3)
@@ -32,78 +32,78 @@ ON CONFLICT (recipient_user_id, actor_user_id, check_in_id)
   WHERE type = 'toast'
 DO NOTHING;`
 	if _, err := tx.Exec(ctx, q, recipientID, actorID, checkInID); err != nil {
-		return fmt.Errorf("NotificationRepo.InsertToast: %w", err)
+		return fmt.Errorf("NotificationRepo.InsertToastTx: %w", err)
 	}
 	return nil
 }
 
-// InsertComment emits a `comment` row. No dedupe — every comment is its
+// InsertCommentTx emits a `comment` row. No dedupe — every comment is its
 // own distinct event.
-func (r *NotificationRepo) InsertComment(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID, commentID string) error {
+func (r *NotificationRepo) InsertCommentTx(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID, commentID string) error {
 	const q = `
 INSERT INTO notifications (recipient_user_id, type, actor_user_id, check_in_id, comment_id)
 VALUES ($1, 'comment', $2, $3, $4);`
 	if _, err := tx.Exec(ctx, q, recipientID, actorID, checkInID, commentID); err != nil {
-		return fmt.Errorf("NotificationRepo.InsertComment: %w", err)
+		return fmt.Errorf("NotificationRepo.InsertCommentTx: %w", err)
 	}
 	return nil
 }
 
-// InsertFollow emits a `follow` row for the public auto-accept path.
+// InsertFollowTx emits a `follow` row for the public auto-accept path.
 // Idempotent via the partial unique index (recipient_user_id, actor_user_id)
 // WHERE type='follow' — re-following after an unfollow does NOT spam.
-func (r *NotificationRepo) InsertFollow(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
+func (r *NotificationRepo) InsertFollowTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
 	const q = `
 INSERT INTO notifications (recipient_user_id, type, actor_user_id)
 VALUES ($1, 'follow', $2)
 ON CONFLICT (recipient_user_id, actor_user_id) WHERE type = 'follow'
 DO NOTHING;`
 	if _, err := tx.Exec(ctx, q, recipientID, actorID); err != nil {
-		return fmt.Errorf("NotificationRepo.InsertFollow: %w", err)
+		return fmt.Errorf("NotificationRepo.InsertFollowTx: %w", err)
 	}
 	return nil
 }
 
-// InsertFollowRequest emits a `follow_request` row for the private
+// InsertFollowRequestTx emits a `follow_request` row for the private
 // request path. No DB-level dedupe — the service deletes the row on every
 // terminal transition (approve / decline / cancel) so a re-request inserts
 // cleanly.
-func (r *NotificationRepo) InsertFollowRequest(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
+func (r *NotificationRepo) InsertFollowRequestTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
 	const q = `
 INSERT INTO notifications (recipient_user_id, type, actor_user_id)
 VALUES ($1, 'follow_request', $2);`
 	if _, err := tx.Exec(ctx, q, recipientID, actorID); err != nil {
-		return fmt.Errorf("NotificationRepo.InsertFollowRequest: %w", err)
+		return fmt.Errorf("NotificationRepo.InsertFollowRequestTx: %w", err)
 	}
 	return nil
 }
 
-// InsertFollowApproved emits a `follow_approved` row for the original
+// InsertFollowApprovedTx emits a `follow_approved` row for the original
 // requester. Idempotent via the partial unique index.
-func (r *NotificationRepo) InsertFollowApproved(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
+func (r *NotificationRepo) InsertFollowApprovedTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
 	const q = `
 INSERT INTO notifications (recipient_user_id, type, actor_user_id)
 VALUES ($1, 'follow_approved', $2)
 ON CONFLICT (recipient_user_id, actor_user_id) WHERE type = 'follow_approved'
 DO NOTHING;`
 	if _, err := tx.Exec(ctx, q, recipientID, actorID); err != nil {
-		return fmt.Errorf("NotificationRepo.InsertFollowApproved: %w", err)
+		return fmt.Errorf("NotificationRepo.InsertFollowApprovedTx: %w", err)
 	}
 	return nil
 }
 
-// DeleteFollowRequest removes the pending `follow_request` row from the
+// DeleteFollowRequestTx removes the pending `follow_request` row from the
 // recipient's inbox. Called from approve / decline / cancel paths so the
 // row stops showing once the request has reached a terminal state.
 // Idempotent — zero rows deleted is fine.
-func (r *NotificationRepo) DeleteFollowRequest(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
+func (r *NotificationRepo) DeleteFollowRequestTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
 	const q = `
 DELETE FROM notifications
 WHERE recipient_user_id = $1
   AND actor_user_id = $2
   AND type = 'follow_request';`
 	if _, err := tx.Exec(ctx, q, recipientID, actorID); err != nil {
-		return fmt.Errorf("NotificationRepo.DeleteFollowRequest: %w", err)
+		return fmt.Errorf("NotificationRepo.DeleteFollowRequestTx: %w", err)
 	}
 	return nil
 }

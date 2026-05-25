@@ -30,12 +30,12 @@ type NotificationService struct {
 // uses. Defined here (consumer-side) so the service is testable with a
 // hand-rolled fake.
 type NotificationRepo interface {
-	InsertToast(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID string) error
-	InsertComment(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID, commentID string) error
-	InsertFollow(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
-	InsertFollowRequest(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
-	InsertFollowApproved(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
-	DeleteFollowRequest(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
+	InsertToastTx(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID string) error
+	InsertCommentTx(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID, commentID string) error
+	InsertFollowTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
+	InsertFollowRequestTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
+	InsertFollowApprovedTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
+	DeleteFollowRequestTx(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error
 	ListByRecipient(ctx context.Context, recipientID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Notification, error)
 	CountUnread(ctx context.Context, recipientID string) (int, error)
 	MarkRead(ctx context.Context, recipientID string, ids []string) (int, error)
@@ -64,7 +64,7 @@ func (s *NotificationService) EmitToast(ctx context.Context, tx pgx.Tx, recipien
 	if s.skip(recipientID, actorID) {
 		return nil
 	}
-	return s.notifications.InsertToast(ctx, tx, recipientID, actorID, checkInID)
+	return s.notifications.InsertToastTx(ctx, tx, recipientID, actorID, checkInID)
 }
 
 // EmitComment inserts a `comment` notification. No-op when recipient == actor.
@@ -72,7 +72,7 @@ func (s *NotificationService) EmitComment(ctx context.Context, tx pgx.Tx, recipi
 	if s.skip(recipientID, actorID) {
 		return nil
 	}
-	return s.notifications.InsertComment(ctx, tx, recipientID, actorID, checkInID, commentID)
+	return s.notifications.InsertCommentTx(ctx, tx, recipientID, actorID, checkInID, commentID)
 }
 
 // EmitFollow inserts a `follow` notification (public auto-accept path).
@@ -82,7 +82,7 @@ func (s *NotificationService) EmitFollow(ctx context.Context, tx pgx.Tx, recipie
 	if s.skip(recipientID, actorID) {
 		return nil
 	}
-	return s.notifications.InsertFollow(ctx, tx, recipientID, actorID)
+	return s.notifications.InsertFollowTx(ctx, tx, recipientID, actorID)
 }
 
 // EmitFollowRequest inserts a `follow_request` notification (private path).
@@ -90,7 +90,7 @@ func (s *NotificationService) EmitFollowRequest(ctx context.Context, tx pgx.Tx, 
 	if s.skip(recipientID, actorID) {
 		return nil
 	}
-	return s.notifications.InsertFollowRequest(ctx, tx, recipientID, actorID)
+	return s.notifications.InsertFollowRequestTx(ctx, tx, recipientID, actorID)
 }
 
 // EmitFollowApproved inserts a `follow_approved` notification AND deletes
@@ -103,12 +103,12 @@ func (s *NotificationService) EmitFollowApproved(ctx context.Context, tx pgx.Tx,
 	if s.skip(recipientID, actorID) {
 		return nil
 	}
-	if err := s.notifications.InsertFollowApproved(ctx, tx, recipientID, actorID); err != nil {
+	if err := s.notifications.InsertFollowApprovedTx(ctx, tx, recipientID, actorID); err != nil {
 		return err
 	}
 	// Approver's inbox previously held a `follow_request` row from the
 	// requester; drop it now that the request has reached a terminal state.
-	return s.notifications.DeleteFollowRequest(ctx, tx, actorID, recipientID)
+	return s.notifications.DeleteFollowRequestTx(ctx, tx, actorID, recipientID)
 }
 
 // RemoveFollowRequest deletes the pending `follow_request` notification
@@ -122,7 +122,7 @@ func (s *NotificationService) RemoveFollowRequest(ctx context.Context, tx pgx.Tx
 	if s == nil || s.notifications == nil || recipientID == "" || actorID == "" {
 		return nil
 	}
-	return s.notifications.DeleteFollowRequest(ctx, tx, recipientID, actorID)
+	return s.notifications.DeleteFollowRequestTx(ctx, tx, recipientID, actorID)
 }
 
 // List pages through the recipient's inbox.
