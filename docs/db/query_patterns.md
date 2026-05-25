@@ -722,6 +722,20 @@ Admin variant keeps `u.id` (moderators need to navigate to the user account from
 
 ---
 
+## 18. Notifications retention sweep (PERF-002)
+
+A daily background job hard-deletes read notifications older than 180 days. Unread rows are preserved indefinitely — they are the recipient's pending TODOs and the partial unread-index keeps them cheap to scan regardless of age. Run from `cmd/worker` alongside the other maintenance jobs; the scheduler tick is wrapped in `pg_try_advisory_lock` so a multi-replica misconfiguration still fires the body exactly once.
+
+```sql
+DELETE FROM notifications
+WHERE created_at < NOW() - INTERVAL '180 days'
+  AND read_at IS NOT NULL;
+```
+
+180 days mirrors the SPEC §5.4 retention paragraph and the inbox window used by comparable platforms. The boundary uses strict `<` so an exactly-180-day-old row survives one more tick — gives the job an idempotent re-run window without surprising the user.
+
+---
+
 ## 15. Cache coherence (Stage 4)
 
 KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass through three coherence tiers:

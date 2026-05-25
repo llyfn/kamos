@@ -200,3 +200,91 @@ func TestJobAvgRatingSweep(t *testing.T) {
 		t.Fatalf("re-run: %v", err)
 	}
 }
+
+// TestJobNotificationPrune — boundary check on the 180-day retention.
+// Seeds five rows around the boundary:
+//   - unread + 200d old → KEEP (unread is never pruned regardless of age)
+//   - read   + 200d old → DELETE (read AND older than 180d)
+//   - read   + 180d old → DELETE (strict `<` rounds to "older than" by
+//     a few microseconds — the test does not pin sub-second boundaries)
+//   - read   + 179d old → KEEP (under retention)
+//   - read   +   1d old → KEEP
+func TestJobNotificationPrune(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	_, recipientID := mustRegister(t, srv, "prune_r", "pr@example.com", "password1")
+	_, actorID := mustRegister(t, srv, "prune_a", "pa@example.com", "password1")
+
+	p := getPool(t)
+	ctx := context.Background()
+	insert := func(label string, ageDays int, read bool) {
+		var readAt any
+		if read {
+			readAt = "NOW()"
+		}
+		// follow_request has no DB-level dedupe, so multiple rows with the
+		// same (recipient, actor) are allowed — perfect for fixtures.
+		var q string
+		if read {
+			q = `
+INSERT INTO notifications (recipient_user_id, type, actor_user_id, created_at, read_at)
+VALUES ($1, 'follow_request', $2, NOW() - ($3 * INTERVAL '1 day'), NOW());`
+		} else {
+			q = `
+INSERT INTO notifications (recipient_user_id, type, actor_user_id, created_at)
+VALUES ($1, 'follow_request', $2, NOW() - ($3 * INTERVAL '1 day'));`
+		}
+		if _, err := p.Exec(ctx, q, recipientID, actorID, ageDays); err != nil {
+			t.Fatalf("seed %s: %v", label, err)
+		}
+		_ = readAt
+	}
+	insert("unread_old", 200, false)
+	insert("read_200d", 200, true)
+	insert("read_180d_boundary", 180, true)
+	insert("read_179d", 179, true)
+	insert("read_1d", 1, true)
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if err := jobs.JobNotificationPrune(log)(ctx, p); err != nil {
+		t.Fatalf("prune: %v", err)
+	}
+
+	var total int
+	if err := p.QueryRow(ctx,
+		`SELECT COUNT(*) FROM notifications WHERE recipient_user_id = $1;`, recipientID).Scan(&total); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	// Survivors: unread_old + read_179d + read_1d. read_200d AND
+	// read_180d_boundary both fall on the wrong side of `< NOW() -
+	// INTERVAL '180 days'` (the boundary row was inserted microseconds
+	// before NOW() evaluated again inside the DELETE).
+	if total != 3 {
+		t.Errorf("survivors=%d want 3 (unread_old + read_179d + read_1d)", total)
+	}
+
+	// Verify the read_200d row is gone.
+	var oldRead int
+	if err := p.QueryRow(ctx,
+		`SELECT COUNT(*) FROM notifications WHERE recipient_user_id = $1
+		   AND read_at IS NOT NULL AND created_at < NOW() - INTERVAL '180 days';`,
+		recipientID).Scan(&oldRead); err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if oldRead != 0 {
+		t.Errorf("read+old rows remain: %d", oldRead)
+	}
+
+	// Verify the unread_old row stayed.
+	var unreadCount int
+	if err := p.QueryRow(ctx,
+		`SELECT COUNT(*) FROM notifications WHERE recipient_user_id = $1 AND read_at IS NULL;`,
+		recipientID).Scan(&unreadCount); err != nil {
+		t.Fatalf("verify unread: %v", err)
+	}
+	if unreadCount != 1 {
+		t.Errorf("unread rows: %d want 1 (unread_old must survive)", unreadCount)
+	}
+}

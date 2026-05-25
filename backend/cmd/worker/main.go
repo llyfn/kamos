@@ -146,6 +146,7 @@ func main() {
 	sched.Register("email_verification_cleanup", 6*time.Hour, jobs.JobEmailVerificationCleanup(log))
 	sched.Register("avg_rating_sweep", 24*time.Hour, jobs.JobAvgRatingSweep(log))
 	sched.Register("photo_orphan_cleanup", time.Hour, jobs.JobPhotoOrphanCleanup(log, store))
+	sched.Register("notification_prune", 24*time.Hour, jobs.JobNotificationPrune(log))
 	sched.Start()
 	defer sched.Stop()
 
@@ -157,7 +158,7 @@ func main() {
 		}
 	}()
 
-	log.Info("worker ready", "jobs", 4, "env", cfg.Env, "version", cfg.Version)
+	log.Info("worker ready", "jobs", 5, "env", cfg.Env, "version", cfg.Version)
 
 	// Graceful shutdown.
 	sigCh := make(chan os.Signal, 1)

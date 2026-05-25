@@ -220,6 +220,10 @@ In-app notifications are surfaced on the **Notifications** tab. Push notificatio
 - Follow-request rows expose inline **Approve** / **Decline** actions; all other types are tap-to-open.
 - Cursor-paginated, 20 per page, newest first.
 
+**Retention:**
+
+- Read notifications older than 180 days are hard-deleted by a daily background sweep. Unread rows are preserved regardless of age — they remain the recipient's pending TODOs until explicitly resolved (tapped, scrolled into view, or "Mark all read"). 180 days mirrors the inbox window used by comparable social platforms and keeps the partial-index read-set bounded for healthy accounts.
+
 ---
 
 ## 6. Collection
