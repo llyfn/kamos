@@ -185,15 +185,40 @@ A single-tap reaction on any check-in — called a **toast** (🍶).
 - Any logged-in user can toast a check-in. One toast per user per check-in (toggle to un-toast).
 - Toast count shown on the check-in card in the feed and on the check-in detail page.
 - Toasting a check-in on a private profile requires being an approved follower.
-- Comments are deferred to v1.1.
 
 ### 5.4 Notifications
 
-Push notifications are deferred to v1.1. In-app notifications are limited to the **follow request inbox** required by the private profile feature:
+In-app notifications are surfaced on the **Notifications** tab. Push notifications remain deferred to v1.1.
 
-- Inbox shows pending follow requests with Approve / Decline actions.
-- Badge count on the inbox icon when there are unread requests.
-- No other in-app notification types in MVP.
+**Event types:**
+
+| Type | Trigger |
+|------|---------|
+| `toast` | Someone toasts my check-in (§5.3) |
+| `comment` | Someone comments on my check-in |
+| `follow` | Someone starts following me (public account, auto-accepted) |
+| `follow_request` | Someone requests to follow me (private account) |
+| `follow_approved` | A follow request I sent was approved |
+
+**Rules:**
+
+- Self-actions never produce a notification (toasting your own check-in writes no row).
+- Deduped on `(recipient, type, actor, check_in_id)` where applicable — toggling a toast off and back on does not create a duplicate row.
+- The original `follow_request` row remains after approval; a separate `follow_approved` row is created for the original requester.
+- Soft-deleting the actor preserves the row (`actor_user_id` → NULL); the UI renders a localized "Deleted user" placeholder.
+- Soft-deleting the referenced check-in or comment preserves the row.
+
+**Read state:**
+
+- Each row has a nullable `read_at` timestamp.
+- Marked read when (a) the row scrolls into view, (b) it is tapped open, or (c) the user invokes **Mark all read**.
+- The Notifications tab shows an **unread dot** (not a count) when any row has `read_at IS NULL`.
+
+**UI:**
+
+- Single screen at `/notifications`. The prior follow-request-only `/inbox` is removed; deep links to `/inbox` redirect to `/notifications`.
+- Follow-request rows expose inline **Approve** / **Decline** actions; all other types are tap-to-open.
+- Cursor-paginated, 20 per page, newest first.
 
 ---
 
