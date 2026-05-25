@@ -237,6 +237,37 @@ class _SignInOrUp extends StatelessWidget {
             ),
           ),
         ],
+        if (controllerState.error != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: KamosSpacing.md,
+              vertical: KamosSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: t.fgDanger.withValues(alpha: 0.10),
+              border: Border.all(color: t.fgDanger.withValues(alpha: 0.40)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline, color: t.fgDanger, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    controllerState.error!,
+                    style: TextStyle(
+                      color: t.fgDanger,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: KamosSpacing.md),
+        ],
         _FieldLabel(l.authEmailLabel),
         TextField(
           controller: email,
@@ -274,37 +305,6 @@ class _SignInOrUp extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 8),
-        if (controllerState.error != null) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: KamosSpacing.md,
-              vertical: KamosSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: t.fgDanger.withValues(alpha: 0.10),
-              border: Border.all(color: t.fgDanger.withValues(alpha: 0.40)),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.error_outline, color: t.fgDanger, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    controllerState.error!,
-                    style: TextStyle(
-                      color: t.fgDanger,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: KamosSpacing.sm),
-        ],
         FilledButton(
           onPressed: controllerState.isSubmitting ? null : onSubmit,
           style: FilledButton.styleFrom(
