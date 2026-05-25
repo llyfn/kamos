@@ -156,8 +156,8 @@ func (r *CollectionRepo) Rename(ctx context.Context, userID, id, name string) (*
 //
 // The owner row is NOT joined — callers already resolved the username →
 // id before invoking this; the page shape mirrors GET /v1/collections so
-// the Flutter side can reuse Collection.fromJson without a
-// CollectionWithOwner adapter. Cursor on (created_at, id) DESC.
+// the Flutter side can reuse Collection.fromJson directly. Cursor on
+// (created_at, id) DESC.
 func (r *CollectionRepo) ListByUser(
 	ctx context.Context,
 	ownerID string,
@@ -195,53 +195,6 @@ LIMIT $5;`
 			return nil, fmt.Errorf("CollectionRepo.ListByUser scan: %w", err)
 		}
 		out = append(out, c)
-	}
-	return out, rows.Err()
-}
-
-// ListPublic pages through the discovery feed of public collections,
-// joining the owner row for attribution. Cursor on (created_at, id),
-// most-recent-first. Soft-deleted owners are filtered out — the owner
-// JOIN is INNER, so a soft-deleted owner's public collection vanishes
-// from discovery.
-func (r *CollectionRepo) ListPublic(
-	ctx context.Context,
-	cursorTs *time.Time,
-	cursorID *string,
-	limit int,
-) ([]domain.CollectionWithOwner, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	const q = `
-SELECT
-  c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
-  c.entry_count,
-  u.id, u.username, u.display_username, u.display_name, u.avatar_url
-FROM collections c
-JOIN users u ON u.id = c.user_id AND u.deleted_at IS NULL
-WHERE c.visibility = 'public'
-  AND c.deleted_at IS NULL
-  AND ($1::timestamptz IS NULL OR (c.created_at, c.id) < ($1::timestamptz, $2::uuid))
-ORDER BY c.created_at DESC, c.id DESC
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q, cursorTs, cursorID, limit+1)
-	if err != nil {
-		return nil, fmt.Errorf("CollectionRepo.ListPublic: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.CollectionWithOwner, 0, limit+1)
-	for rows.Next() {
-		var row domain.CollectionWithOwner
-		if err := rows.Scan(
-			&row.ID, &row.OwnerID, &row.Name, &row.Visibility,
-			&row.CreatedAt, &row.UpdatedAt, &row.EntryCount,
-			&row.Owner.ID, &row.Owner.Username, &row.Owner.DisplayUsername,
-			&row.Owner.DisplayName, &row.Owner.AvatarURL,
-		); err != nil {
-			return nil, fmt.Errorf("CollectionRepo.ListPublic scan: %w", err)
-		}
-		out = append(out, row)
 	}
 	return out, rows.Err()
 }

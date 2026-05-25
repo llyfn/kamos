@@ -1,8 +1,12 @@
 //go:build integration
 // +build integration
 
-// Phase 6a — public collections discovery endpoint + visibility patch on
-// PATCH /v1/collections/{id}.
+// Phase 6a — collection visibility (PATCH /v1/collections/{id}) and the
+// per-user public listing surface (GET /v1/users/{username}/collections).
+// The Phase 6a discover-feed endpoint (GET /v1/collections/public) was
+// removed during the profile-social-ux expansion in favor of per-user
+// browsing; this file inherits the original suite minus the discover
+// tests, plus replacement coverage on the new endpoint.
 package integration
 
 import (
@@ -30,66 +34,10 @@ func mustCreateCollectionCompat(t *testing.T, srv *httptest.Server, tok, name st
 	return id
 }
 
-// TestListPublicCollections_OnlyShowsPublic — three collections across two
-// users; only the one flipped to public appears.
-func TestListPublicCollections_OnlyShowsPublic(t *testing.T) {
-	truncateAll(t)
-	srv := newServer(t)
-	defer srv.Close()
-
-	// Alice: one private, one to-be-public.
-	aliceTok, _ := mustRegister(t, srv, "alice_pub", "alice_pub@example.com", "password-123")
-	alicePrivate := mustCreateCollectionCompat(t, srv, aliceTok, "Alice Private")
-	alicePublic := mustCreateCollectionCompat(t, srv, aliceTok, "Alice Public")
-
-	// Bob: one private.
-	bobTok, _ := mustRegister(t, srv, "bob_pub", "bob_pub@example.com", "password-123")
-	_ = mustCreateCollectionCompat(t, srv, bobTok, "Bob Private")
-
-	// Flip alicePublic to public.
-	code, raw := doReq(t, srv, http.MethodPatch, "/v1/collections/"+alicePublic, aliceTok,
-		map[string]any{"visibility": "public"})
-	if code != http.StatusOK {
-		t.Fatalf("patch alicePublic: %d body=%s", code, raw)
-	}
-
-	// Hit /v1/collections/public anonymously.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/collections/public", "", nil)
-	if code != http.StatusOK {
-		t.Fatalf("list: %d body=%s", code, raw)
-	}
-	var page struct {
-		Items []struct {
-			ID    string `json:"id"`
-			Name  string `json:"name"`
-			Owner struct {
-				Username string `json:"username"`
-			} `json:"owner"`
-		} `json:"items"`
-		HasMore bool `json:"has_more"`
-	}
-	if err := json.Unmarshal(raw, &page); err != nil {
-		t.Fatalf("decode: %v body=%s", err, raw)
-	}
-	if len(page.Items) != 1 {
-		t.Fatalf("expected exactly 1 public collection, got %d: %s", len(page.Items), raw)
-	}
-	if page.Items[0].ID != alicePublic {
-		t.Errorf("returned id=%s want alicePublic=%s", page.Items[0].ID, alicePublic)
-	}
-	if page.Items[0].Owner.Username != "alice_pub" {
-		t.Errorf("owner.username=%q want alice_pub", page.Items[0].Owner.Username)
-	}
-	// Private collection should NOT appear.
-	for _, it := range page.Items {
-		if it.ID == alicePrivate {
-			t.Errorf("private collection leaked into public feed")
-		}
-	}
-}
-
 // TestUpdateCollectionVisibility_RoundTrip — owner toggles public, then
-// back to private; each transition is reflected in the discovery feed.
+// back to private; each transition is reflected in the per-user public
+// listing (GET /v1/users/{username}/collections, anonymous viewer sees
+// only public rows).
 func TestUpdateCollectionVisibility_RoundTrip(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -98,8 +46,8 @@ func TestUpdateCollectionVisibility_RoundTrip(t *testing.T) {
 	tok, _ := mustRegister(t, srv, "vis_owner", "vis@example.com", "password-123")
 	id := mustCreateCollectionCompat(t, srv, tok, "Toggle Me")
 
-	// Initially private — not in public feed.
-	code, raw := doReq(t, srv, http.MethodGet, "/v1/collections/public", "", nil)
+	// Initially private — anonymous viewer sees zero rows.
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/users/vis_owner/collections", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("list 1: %d", code)
 	}
@@ -119,13 +67,13 @@ func TestUpdateCollectionVisibility_RoundTrip(t *testing.T) {
 		t.Errorf("response visibility=%v want public", c["visibility"])
 	}
 
-	// Now in public feed.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/collections/public", "", nil)
+	// Now visible to anonymous viewer.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/vis_owner/collections", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("list 2: %d", code)
 	}
 	if countWithID(raw, id) != 1 {
-		t.Errorf("flipped-public collection not in feed: %s", raw)
+		t.Errorf("flipped-public collection not in listing: %s", raw)
 	}
 
 	// Flip back to private.
@@ -135,13 +83,13 @@ func TestUpdateCollectionVisibility_RoundTrip(t *testing.T) {
 		t.Fatalf("patch private: %d body=%s", code, raw)
 	}
 
-	// Gone from feed again.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/collections/public", "", nil)
+	// Gone from anonymous listing again.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/vis_owner/collections", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("list 3: %d", code)
 	}
 	if countWithID(raw, id) != 0 {
-		t.Errorf("re-private collection still in feed: %s", raw)
+		t.Errorf("re-private collection still visible: %s", raw)
 	}
 }
 
@@ -164,13 +112,13 @@ func TestUpdateCollectionVisibility_OnlyOwner(t *testing.T) {
 		t.Errorf("stranger PATCH: %d body=%s (want 404)", code, raw)
 	}
 
-	// Verify A's collection is still private.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/collections/public", "", nil)
+	// Verify A's collection is still private (anonymous viewer sees zero).
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/owner_a/collections", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("list: %d", code)
 	}
 	if countWithID(raw, id) != 0 {
-		t.Errorf("stranger leaked collection to public feed: %s", raw)
+		t.Errorf("stranger leaked collection to public listing: %s", raw)
 	}
 }
 
@@ -320,6 +268,75 @@ func TestGetCollection_AnonymousCanReadPublic(t *testing.T) {
 	}
 	if _, hasOwnerID := c["owner_id"]; !hasOwnerID {
 		t.Errorf("missing owner_id in anonymous response: %s", raw)
+	}
+}
+
+// TestGetUserCollections_OwnerSeesPrivate — owner-as-viewer sees both
+// public and private rows; non-owner sees only public.
+func TestGetUserCollections_OwnerSeesPrivate(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	ownerTok, _ := mustRegister(t, srv, "uc_owner", "ucowner@example.com", "password-123")
+	strangerTok, _ := mustRegister(t, srv, "uc_stranger", "ucstr@example.com", "password-123")
+
+	// Both default collections (Inventory, Wishlist) ship private. Add
+	// one explicit public collection.
+	pubID := mustCreateCollectionCompat(t, srv, ownerTok, "Shareable")
+	code, _ := doReq(t, srv, http.MethodPatch, "/v1/collections/"+pubID, ownerTok,
+		map[string]any{"visibility": "public"})
+	if code != http.StatusOK {
+		t.Fatalf("flip public: %d", code)
+	}
+
+	// Owner view: sees Inventory + Wishlist + Shareable (3 rows).
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/users/uc_owner/collections", ownerTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("owner list: %d body=%s", code, raw)
+	}
+	var page struct {
+		Items []map[string]any `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 3 {
+		t.Errorf("owner sees %d rows, want 3 (2 default private + 1 public): %s", len(page.Items), raw)
+	}
+
+	// Stranger view: only the public row.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/uc_owner/collections", strangerTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("stranger list: %d body=%s", code, raw)
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 1 {
+		t.Errorf("stranger sees %d rows, want 1 (only public): %s", len(page.Items), raw)
+	}
+	if len(page.Items) == 1 && page.Items[0]["id"] != pubID {
+		t.Errorf("stranger sees wrong row: got id=%v want %s", page.Items[0]["id"], pubID)
+	}
+
+	// Anonymous viewer: same as stranger (public only).
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/users/uc_owner/collections", "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("anon list: %d body=%s", code, raw)
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 1 {
+		t.Errorf("anon sees %d rows, want 1: %s", len(page.Items), raw)
+	}
+}
+
+// TestGetUserCollections_UnknownUser — 404 when the username does not
+// resolve to a live user.
+func TestGetUserCollections_UnknownUser(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/users/no_such_user/collections", "", nil)
+	if code != http.StatusNotFound {
+		t.Errorf("unknown user: %d body=%s (want 404)", code, raw)
 	}
 }
 

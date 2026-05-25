@@ -14,7 +14,7 @@
 //     PhotoRef, CheckinSummary, FeedItem, ToastState, ValidRating
 //   - types_venue.go       — CheckinVenue + venue validation helpers, Venue, VenueRef
 //   - types_comment.go     — Comment, CreateCommentRequest
-//   - types_collection.go  — Collection, CollectionWithOwner, CollectionEntry,
+//   - types_collection.go  — Collection, CollectionEntry,
 //     CollectionDetail, requests
 //   - types_social.go      — FollowRequest, FollowResult
 //   - types_admin.go       — UserRole

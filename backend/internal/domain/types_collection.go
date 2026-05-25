@@ -13,8 +13,7 @@ type Collection struct {
 	ID string `json:"id"`
 	// OwnerID is the row's `user_id`. Exposed on the wire so clients can gate
 	// owner-only UI (e.g. the visibility toggle on the detail screen) without
-	// a second `GET /v1/users/me` round trip. Added historically alongside
-	// public-collection discovery.
+	// a second `GET /v1/users/me` round trip.
 	OwnerID    string `json:"owner_id"`
 	Name       string `json:"name"`
 	EntryCount int    `json:"entry_count"`
@@ -24,26 +23,6 @@ type Collection struct {
 	Visibility string    `json:"visibility"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-// PublicCollectionOwner is the slim user attribution embedded on rows of
-// GET /v1/collections/public. Mirrors PublicUser but drops everything the
-// discovery feed doesn't need (locale, privacy_mode, bio, ...).
-type PublicCollectionOwner struct {
-	ID              string  `json:"id"`
-	Username        string  `json:"username"`
-	DisplayUsername string  `json:"display_username"`
-	DisplayName     string  `json:"display_name"`
-	AvatarURL       *string `json:"avatar_url"`
-}
-
-// CollectionWithOwner is the row shape of GET /v1/collections/public. The
-// Flutter model unpacks `owner` separately and reconstructs the inner
-// Collection from the same JSON object — keep the field names aligned with
-// `core/models/collection.dart::CollectionWithOwner.fromJson`.
-type CollectionWithOwner struct {
-	Collection
-	Owner PublicCollectionOwner `json:"owner"`
 }
 
 type CollectionEntry struct {

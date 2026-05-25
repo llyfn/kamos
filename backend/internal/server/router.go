@@ -218,6 +218,10 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// OptionalAuth for forward compatibility (we may add a
 			// "you_replied" or similar viewer-relative field).
 			r.Get("/check-ins/{id}/comments", h.ListComments)
+			// GET /v1/collections/public was removed when the public-
+			// collections discovery surface shipped to the bin. Per-user
+			// collection browsing is now served by GET
+			// /v1/users/{username}/collections (visibility-gated).
 
 			// collection detail is OptionalAuth so the
 			// discovery feed → detail-screen route works for non-owners

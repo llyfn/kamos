@@ -1161,30 +1161,6 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   # ----- COLLECTIONS -----
-  /v1/collections/public:
-    get:
-      tags: [collections]
-      operationId: listPublicCollections
-      security: []
-      description: |
-        Phase 6a. Public discovery feed of collections users have flipped to
-        visibility = 'public'. OptionalAuth: works with or without a Bearer
-        token (response shape is identical). Cursor pagination on
-        (created_at, id) DESC.
-      parameters:
-        - in: query
-          name: cursor
-          schema: { type: string }
-        - in: query
-          name: limit
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: page of public collections with owner attribution
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PageOfCollectionWithOwner" }
-
   /v1/collections:
     get:
       tags: [collections]
@@ -2962,30 +2938,10 @@ components:
           description: |
             Phase 6a. New collections default to `private`. Toggle via
             PATCH /v1/collections/{id} with `{"visibility":"public"}`.
-            Public collections appear in GET /v1/collections/public.
+            Public collections appear in GET
+            /v1/users/{username}/collections for non-owners.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
-
-    PublicCollectionOwner:
-      type: object
-      description: |
-        Slim owner attribution embedded in each row of
-        GET /v1/collections/public. Privacy-safe — never carries email.
-      required: [id, username, display_username, display_name]
-      properties:
-        id: { type: string, format: uuid }
-        username: { type: string }
-        display_username: { type: string }
-        display_name: { type: string }
-        avatar_url: { type: string, format: uri, nullable: true }
-
-    CollectionWithOwner:
-      allOf:
-        - $ref: "#/components/schemas/Collection"
-        - type: object
-          required: [owner]
-          properties:
-            owner: { $ref: "#/components/schemas/PublicCollectionOwner" }
 
     UpdateCollectionRequest:
       type: object
@@ -3105,14 +3061,6 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/Collection" }
-    PageOfCollectionWithOwner:
-      allOf:
-        - $ref: "#/components/schemas/PageBase"
-        - type: object
-          properties:
-            items:
-              type: array
-              items: { $ref: "#/components/schemas/CollectionWithOwner" }
     PageOfCollectionEntry:
       allOf:
         - $ref: "#/components/schemas/PageBase"
