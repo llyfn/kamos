@@ -92,7 +92,10 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
     final raw = err is ApiException
         ? err.message
         : (e.message ?? 'Request failed');
-    if (raw.isEmpty) return raw;
+    // Defensive: an empty server message still routes through the visible
+    // error banner, which would render an icon + tinted box with no text.
+    // Fall back to a generic so the user always sees a real message.
+    if (raw.isEmpty) return 'Request failed';
     // Server error strings come back lowercase (Go convention). Capitalise
     // the first character for display; locales without case (ja/ko) are
     // unaffected because their codepoints don't change under toUpperCase.

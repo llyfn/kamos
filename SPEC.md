@@ -230,7 +230,7 @@ These behave identically to user-created collections. They can be renamed or del
 
 ### 6.4 Visibility
 
-Collections are **private by default** — visible only to the owner, regardless of profile privacy setting. Public collections are a post-MVP feature.
+Collections are **private by default** — visible only to the owner, regardless of profile privacy setting. Owners may flip a collection's visibility to public; non-owners see only the owner's public collections via `GET /v1/users/{username}/collections`.
 
 ---
 

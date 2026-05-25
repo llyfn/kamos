@@ -61,7 +61,6 @@ import '../shared/widgets/kamos_tab_bar.dart';
 NoTransitionPage<void> _noTransition(GoRouterState state, Widget child) =>
     NoTransitionPage<void>(key: state.pageKey, child: child);
 
-
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',

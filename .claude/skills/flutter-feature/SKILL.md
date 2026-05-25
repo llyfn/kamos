@@ -95,9 +95,11 @@ class BeverageRepository {
 }
 
 final beverageRepositoryProvider = Provider(
-  (ref) => BeverageRepository(ref.read(dioProvider)),
+  (ref) => BeverageRepository(ref.watch(dioProvider)),
 );
 ```
+
+Use `ref.watch(dioProvider)` (not `read`). When the user logs out, `dioProvider` is invalidated; `watch` makes every repository rebuild against the fresh Dio (and its fresh `AuthInterceptor` + `MemCacheStore`), which is what prevents cross-user data leaks. See `frontend/lib/features/auth/providers/auth_state.dart` for the invalidation chain.
 
 `Page<T>` is a shared model matching the Go `pkg/cursor.Page[T]` shape:
 
@@ -241,6 +243,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 ```
+
+**Profile navigation** — call `pushUserProfile(context, username)` from `lib/features/users/navigation.dart` rather than `context.push('/users/$username')` directly. The helper detects self-navigation (`username == me.user.username`) and uses `context.go('/me')` so the navigator never stacks a duplicate `NoTransitionPage` on top of the existing `/me` shell tab — pushing `/users/:self` would otherwise crash with `keyReservation.contains(key) is not true`.
 
 qa-inspector will check that every path here corresponds to a real screen file.
 
