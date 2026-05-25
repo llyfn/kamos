@@ -22,12 +22,7 @@ func (h *Handler) Follow(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Follow find", err)
 		return
 	}
-	var status string
-	if h.Services != nil && h.Services.Social != nil {
-		status, err = h.Services.Social.Follow(r.Context(), uid, target.ID)
-	} else {
-		status, err = h.Repos.Social.Follow(r.Context(), uid, target.ID)
-	}
+	status, err := h.Services.Social.Follow(r.Context(), uid, target.ID)
 	if err != nil {
 		h.writeErr(w, "Follow", err)
 		return
@@ -47,12 +42,7 @@ func (h *Handler) Unfollow(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "Unfollow find", err)
 		return
 	}
-	if h.Services != nil && h.Services.Social != nil {
-		err = h.Services.Social.Unfollow(r.Context(), uid, target.ID)
-	} else {
-		err = h.Repos.Social.Unfollow(r.Context(), uid, target.ID)
-	}
-	if err != nil {
+	if err := h.Services.Social.Unfollow(r.Context(), uid, target.ID); err != nil {
 		h.writeErr(w, "Unfollow", err)
 		return
 	}
@@ -95,13 +85,7 @@ func (h *Handler) ApproveFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	followerID := chi.URLParam(r, "id")
-	var err error
-	if h.Services != nil && h.Services.Social != nil {
-		err = h.Services.Social.Approve(r.Context(), uid, followerID)
-	} else {
-		err = h.Repos.Social.Approve(r.Context(), uid, followerID)
-	}
-	if err != nil {
+	if err := h.Services.Social.Approve(r.Context(), uid, followerID); err != nil {
 		h.writeErr(w, "ApproveFollowRequest", err)
 		return
 	}
@@ -115,13 +99,7 @@ func (h *Handler) DeclineFollowRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	followerID := chi.URLParam(r, "id")
-	var err error
-	if h.Services != nil && h.Services.Social != nil {
-		err = h.Services.Social.Decline(r.Context(), uid, followerID)
-	} else {
-		err = h.Repos.Social.Decline(r.Context(), uid, followerID)
-	}
-	if err != nil {
+	if err := h.Services.Social.Decline(r.Context(), uid, followerID); err != nil {
 		h.writeErr(w, "DeclineFollowRequest", err)
 		return
 	}

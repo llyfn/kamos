@@ -21,37 +21,16 @@ import (
 // CommentRepo wraps the SQL for comments.
 type CommentRepo struct{ db *pgxpool.Pool }
 
-// Create inserts a new comment and returns the enriched DTO. The author
-// row is joined so the caller doesn't need a second round trip to render
-// the new comment.
+// CreateTx inserts a new comment inside the caller's transaction so the
+// notification emit can participate in the same atomic write. Returns the
+// hydrated comment plus the owner of the parent check-in (so the service
+// can emit a notification to the right recipient without a follow-up
+// query).
 //
 // Returns ErrNotFound when checkInID doesn't exist (or is soft-deleted) —
 // the FK INSERT would otherwise return a generic SQLSTATE 23503 that gets
 // wrapped as 500 by the handler. The pre-check is one indexed PK lookup,
 // cheaper than the 23503 path.
-//
-// Self-managed transaction — the legacy (pre-service) handler path uses
-// this. The service path uses CreateTx so the notification emit can
-// participate in the same transaction.
-func (r *CommentRepo) Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error) {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	out, _, err := r.CreateTx(ctx, tx, checkInID, userID, body)
-	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create commit: %w", err)
-	}
-	return out, nil
-}
-
-// CreateTx is the tx-aware variant. Returns the hydrated comment plus the
-// owner of the parent check-in (so the service can emit a notification to
-// the right recipient without a follow-up query).
 func (r *CommentRepo) CreateTx(ctx context.Context, tx pgx.Tx, checkInID, userID, body string) (*domain.Comment, string, error) {
 	var ownerID string
 	if err := tx.QueryRow(ctx,

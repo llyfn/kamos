@@ -392,15 +392,7 @@ func (h *Handler) ToggleToast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	var (
-		state domain.ToastState
-		err   error
-	)
-	if h.Services != nil && h.Services.Checkin != nil {
-		state, err = h.Services.Checkin.ToggleToast(r.Context(), uid, id)
-	} else {
-		state, err = h.Repos.Checkins.ToggleToast(r.Context(), uid, id)
-	}
+	state, err := h.Services.Checkin.ToggleToast(r.Context(), uid, id)
 	if err != nil {
 		h.writeErr(w, "ToggleToast", err)
 		return

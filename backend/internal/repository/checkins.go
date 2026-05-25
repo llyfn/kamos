@@ -388,29 +388,6 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 	return errors.New("AddPhoto: insert returned no rows but row passes all gates")
 }
 
-// ToggleToast inserts-or-deletes the row, returning the fresh state.
-// Self-managed transaction — the legacy (pre-service) handler path uses
-// this. The service path uses ToggleToastTx so the notification emit can
-// participate in the same transaction.
-func (r *CheckinRepo) ToggleToast(ctx context.Context, userID, checkinID string) (domain.ToastState, error) {
-	if err := r.checkVisibility(ctx, userID, checkinID); err != nil {
-		return domain.ToastState{}, err
-	}
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return domain.ToastState{}, fmt.Errorf("ToggleToast: begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	state, _, _, err := r.ToggleToastTx(ctx, tx, userID, checkinID)
-	if err != nil {
-		return domain.ToastState{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return domain.ToastState{}, fmt.Errorf("ToggleToast commit: %w", err)
-	}
-	return state, nil
-}
-
 // ToggleToastTx runs the toggle inside the caller's transaction so the
 // notification emit on the "added" branch can land atomically with the
 // toasts row INSERT. The visibility gate runs on the pool (cheap, indexed,
