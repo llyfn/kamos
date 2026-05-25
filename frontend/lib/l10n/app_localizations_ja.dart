@@ -93,7 +93,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInCta => 'チェックイン';
 
   @override
-  String get checkInReviewLabel => 'レビュー · 任意';
+  String get checkInReviewLabel => 'レビュー';
 
   @override
   String get checkInReviewPlaceholder => '梨、柔らかな米、クリアな余韻…';
@@ -113,7 +113,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get checkInPriceLabel => '価格 · 任意';
+  String get checkInPriceLabel => '価格';
 
   @override
   String get checkInPurchaseType => '購入種別';
@@ -276,34 +276,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authTagline => '日本酒、焼酎、リキュールを記録するアプリ。';
 
   @override
-  String get authVerifyTitle => 'メールを確認';
+  String get verifyPendingTitle => 'メールをご確認ください';
 
   @override
-  String get authVerifySent => '確認リンクをお送りしました：';
+  String verifyPendingBody(String email) {
+    return '$email 宛に確認用リンクを送信しました。このデバイスまたはお使いのブラウザでリンクを開いてアカウントを認証してください。';
+  }
 
   @override
-  String get authVerifyExpiry => 'リンクは24時間有効です。未確認でもアプリは利用できます。';
+  String get verifyPendingResend => '確認メールを再送';
 
   @override
-  String get authVerifyContinue => 'KAMOSを始める';
+  String get verifyPendingResendSent => '送信しました。受信トレイをご確認ください。';
 
   @override
-  String get authVerifyResend => 'メールを再送';
+  String get verifyPendingResendFailed => '再送できませんでした。しばらくしてから再度お試しください。';
 
   @override
-  String get verifyEmailTitle => 'メールを認証中';
+  String get verifyPendingBackToSignIn => 'サインインに戻る';
 
   @override
-  String get verifyEmailLoading => '認証リンクを確認しています…';
+  String get verifyPendingICheckedMyMail => '認証しました';
 
   @override
-  String get verifyEmailSuccess => 'メールが認証されました。';
+  String get verifyPendingStatusUnverified => '未認証です。メール内のリンクを開いてください。';
 
   @override
-  String get verifyEmailFailure => 'リンクを認証できませんでした。期限切れの可能性があります。';
-
-  @override
-  String get verifyEmailBackToAuth => 'サインインに戻る';
+  String get verifyPendingStatusError => '認証状態を確認できませんでした（再試行します）。';
 
   @override
   String get profileEdit => 'プロフィール編集';
@@ -381,14 +380,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsDeleteAccount => 'アカウントを削除';
 
   @override
-  String get settingsDeleteAccountHelper => '論理削除 · ユーザー名は30日間保留されます。';
-
-  @override
   String get settingsConfirmDelete => 'アカウントを削除しますか？';
 
   @override
   String get settingsConfirmDeleteBody =>
-      'アカウントは論理削除されます。ユーザー名は30日間保留され、その後再利用可能になります。チェックインとコレクションは非表示となります。';
+      'アカウントを削除します。ユーザー名は30日間保留され、その後再利用可能になります。あなたのチェックインとコレクションは他のユーザーから見えなくなります。';
+
+  @override
+  String get settingsSignOut => 'サインアウト';
+
+  @override
+  String get settingsSignOutConfirmTitle => 'サインアウトしますか？';
+
+  @override
+  String get settingsSignOutConfirmBody => 'サインイン画面に戻ります。';
 
   @override
   String get settingsVersion => 'KAMOS · v0.1.0';
@@ -568,6 +573,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get beverageNoCheckinsBody => '最初の一本を記録しましょう。';
 
   @override
+  String get beverageListSheetTitle => 'リストに追加';
+
+  @override
+  String get beverageListSheetEmpty => 'まだリストがありません。';
+
+  @override
+  String get beverageListSheetSaveFailed => '更新できませんでした。再度お試しください。';
+
+  @override
   String get breweryOverline => '蔵元';
 
   @override
@@ -631,7 +645,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get submitBeverageRequestCategoryLabel => 'カテゴリー';
 
   @override
-  String get submitBeverageRequestNotesLabel => '備考（任意）';
+  String get submitBeverageRequestNotesLabel => '備考';
 
   @override
   String get submitBeverageRequestSubmitButton => '送信';

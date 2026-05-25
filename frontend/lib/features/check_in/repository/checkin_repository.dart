@@ -92,6 +92,21 @@ class CheckInRepository {
     return Checkin.fromJson(data);
   }
 
+  /// Latest check-ins authored by [username]. Wraps the cursor-paginated
+  /// `GET /v1/users/{username}/check-ins`; callers that need pagination
+  /// can extend this to forward `cursor`, but the profile recent-list
+  /// only ever needs the first page.
+  Future<List<Checkin>> listForUser(
+    String username, {
+    int limit = 20,
+  }) async {
+    final data = await _api.users.getUserCheckins(username, limit: limit);
+    final items = (data['items'] as List?) ?? const [];
+    return items
+        .map((e) => Checkin.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<FlavorTag>> tags() async {
     final raw = await _api.taxonomy.flavorTags();
     return raw

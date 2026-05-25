@@ -9,6 +9,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/kamos/api/internal/auth"
@@ -20,7 +21,10 @@ import (
 // it via the configured mailer. Errors are logged at WARN; we never fail the
 // triggering request — verification mail is best-effort.
 func (h *Handler) sendVerificationEmail(r *http.Request, user *domain.User, token string) {
-	link := h.Cfg.AppBaseURL + "/verify?token=" + token
+	// The landing page reads ?lang= to render in the user's locale; pass it
+	// alongside the token so a click works without an Accept-Language header.
+	link := h.Cfg.AppBaseURL + "/verify?token=" + url.QueryEscape(token) +
+		"&lang=" + url.QueryEscape(user.Locale)
 	data := email.TemplateData{
 		DisplayName:  user.DisplayName,
 		VerifyLink:   link,

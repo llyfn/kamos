@@ -8,7 +8,7 @@ Named after *醸す (kamosu)*, the Japanese verb for brewing and fermenting, KAM
 
 **Discover** a curated database of beverages with brewery profiles, flavor profiles, regional origins, and brewing details — searchable and browseable across three languages.
 
-**Check in** with a rating, tasting notes, flavor tags, price, and photos. Every check-in builds an aggregated flavor portrait for each beverage over time.
+**Check-in** with a rating, tasting notes, flavor tags, price, and photos. Every check-in builds an aggregated flavor portrait for each beverage over time.
 
 **Follow** other users and see their check-ins in a live feed. Profiles can be public or private.
 

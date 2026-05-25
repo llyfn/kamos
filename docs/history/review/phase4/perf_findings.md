@@ -25,7 +25,7 @@ Severity scale: HIGH (must fix this phase), MEDIUM (fix opportunistically / trac
 ### PERF-003 — Cache stores in-flight failures' absence, not in-flight calls — thundering herd on cache miss [MEDIUM]
 **File:** `_workspace/02_backend/api/internal/foursquare/client.go:120-142`
 **Issue:** `Search` checks the LRU, and on miss calls `fetchWithRetry` directly. There is no singleflight / coalescing. If 50 concurrent callers issue the same (q, ll, locale) at the moment of cache miss (or cache TTL expiry), all 50 will fire upstream simultaneously, each costing 1 (or 2 with the 5xx retry) Foursquare API call. Foursquare's free tier is hard-rate-limited; a herd is the exact failure mode the LRU was supposed to prevent.
-**Impact:** Throughput / upstream cost — burns the rate-limit budget right when the cache would have saved it. Realistic when a popular event drives many users to check in at the same venue at the same minute.
+**Impact:** Throughput / upstream cost — burns the rate-limit budget right when the cache would have saved it. Realistic when a popular event drives many users to check-in at the same venue at the same minute.
 **Recommendation:** Wrap the cache miss in `singleflight.Group.Do(key, ...)` (golang.org/x/sync/singleflight). One in-flight upstream call per (q, ll, locale) key; all concurrent callers share the result. Cheap (one extra dependency, ~10 LOC) and high-value at low traffic spikes.
 
 ---

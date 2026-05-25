@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.AppName}} — 이메일 인증</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Malgun Gothic, sans-serif; color: #1c1c1e; background: #fafafa; margin: 0; padding: 24px;">
+  <div style="max-width: 480px; margin: 48px auto; background: #ffffff; border-radius: 12px; padding: 32px; text-align: center;">
+    <p style="margin: 0 0 12px; font-size: 13px; letter-spacing: 0.1em; color: #8a8a8a; text-transform: uppercase;">{{.AppName}}</p>
+    {{if eq .Status "Verified"}}
+      <h1 style="margin: 0 0 16px; font-size: 22px;">이메일이 인증되었습니다</h1>
+      <p style="margin: 0 0 8px; color: #4a4a4a;">{{.AppName}} 앱을 열어 계속하세요.</p>
+    {{else if eq .Status "AlreadyVerified"}}
+      <h1 style="margin: 0 0 16px; font-size: 22px;">이미 인증된 이메일입니다</h1>
+      <p style="margin: 0 0 8px; color: #4a4a4a;">이 이메일은 이미 인증되어 있습니다. {{.AppName}} 앱을 열어 계속하세요.</p>
+    {{else}}
+      <h1 style="margin: 0 0 16px; font-size: 22px;">인증 링크가 잘못되었거나 만료되었습니다</h1>
+      <p style="margin: 0 0 8px; color: #4a4a4a;">{{.AppName}} 앱에서 새 인증 링크를 요청해 주세요.</p>
+    {{end}}
+  </div>
+</body>
+</html>

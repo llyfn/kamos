@@ -15,9 +15,11 @@ import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
+import '../../../shared/widgets/kamos_pill_button.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/beverage_providers.dart';
+import '../widgets/collection_picker_sheet.dart';
 
 class BeverageDetailScreen extends ConsumerWidget {
   const BeverageDetailScreen({super.key, required this.beverageId});
@@ -142,22 +144,21 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => context.push('/check-in', extra: b),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: t.ai,
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: Text(l.checkInCta),
-                ),
+              KamosPillButton.primary(
+                label: l.checkInCta,
+                onPressed: () => context.push('/check-in', extra: b),
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.bookmark_outline, size: 16),
-                label: Text(l.beverageDetailAddToList),
+              KamosPillButton.secondary(
+                label: l.beverageDetailAddToList,
+                icon: Icons.bookmark_outline,
+                onPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  showDragHandle: true,
+                  builder: (_) => CollectionPickerSheet(beverage: b),
+                ),
               ),
             ],
           ),

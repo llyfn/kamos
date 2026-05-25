@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
@@ -103,7 +104,10 @@ func (s *AuthService) IssueAuthPair(ctx context.Context, user *domain.User) (acc
 // are logged at WARN; we never fail the caller's request — verification
 // mail is best-effort. SEC-011: only log the raw link in non-production.
 func (s *AuthService) SendVerificationEmail(ctx context.Context, user *domain.User, token string) {
-	link := s.baseURL + "/verify?token=" + token
+	// The landing page reads ?lang= to render in the user's locale; pass it
+	// alongside the token so a click works without an Accept-Language header.
+	link := s.baseURL + "/verify?token=" + url.QueryEscape(token) +
+		"&lang=" + url.QueryEscape(user.Locale)
 	data := email.TemplateData{
 		DisplayName:  user.DisplayName,
 		VerifyLink:   link,

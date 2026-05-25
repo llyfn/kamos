@@ -39,6 +39,38 @@ var supportedLocales = map[string]bool{
 	"ko": true,
 }
 
+// LandingData is the binding fed to the verify_landing.* templates. Status
+// is one of "Verified", "AlreadyVerified", "Invalid"; the template branches
+// on it via {{if eq .Status "..."}}. AppName is always "KAMOS" today but is
+// passed through so the templates stay parametric.
+type LandingData struct {
+	Status  string
+	AppName string
+}
+
+// RenderLanding produces the HTML body for the post-click email-verification
+// landing page in the requested locale. Unknown locales fall back to en.
+// Returns an error only if the template file is missing or malformed.
+func RenderLanding(locale, status string) (string, error) {
+	if !supportedLocales[locale] {
+		locale = "en"
+	}
+	path := fmt.Sprintf("templates/verify_landing.%s.html.tmpl", locale)
+	raw, err := templatesFS.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("RenderLanding: read: %w", err)
+	}
+	t, err := htmltmpl.New(path).Parse(string(raw))
+	if err != nil {
+		return "", fmt.Errorf("RenderLanding: parse: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, LandingData{Status: status, AppName: "KAMOS"}); err != nil {
+		return "", fmt.Errorf("RenderLanding: exec: %w", err)
+	}
+	return buf.String(), nil
+}
+
 // Render produces (subject, htmlBody, textBody) for the given template name
 // and locale. Unknown locales fall back to en. Returns an error only if the
 // template files are missing/malformed — never on locale.

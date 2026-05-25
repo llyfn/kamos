@@ -70,7 +70,7 @@ type Config struct {
 	SMTPUser       string
 	SMTPPass       string
 	AppBaseURL     string
-	Env            string // "dev" | "prod"
+	Env            string // "dev" | "production"
 
 	// Observability — all optional. Empty values mean the feature is OFF
 	// at startup; the SDK is never initialized in that case (no warnings,

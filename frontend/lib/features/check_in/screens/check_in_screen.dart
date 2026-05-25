@@ -34,6 +34,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_input.dart';
+import '../../beverages/providers/beverage_providers.dart';
+import '../../feed/providers/feed_providers.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../../venues/widgets/venue_picker_sheet.dart';
 import '../providers/checkin_providers.dart';
 import '../repository/checkin_repository.dart';
@@ -303,6 +306,25 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(l.checkInFirstToast)));
+    // The check-in is now committed server-side. Invalidate every list
+    // that surfaces it so a stale cached page never hides the user's
+    // own activity: the home Feed, /v1/users/me stats, the
+    // user-check-ins list shown on the Me profile, and the beverage
+    // detail page's recent-check-ins block.
+    // Capture the username BEFORE invalidating `meProvider` — otherwise
+    // the synchronous read after invalidation returns a loading state
+    // and we'd skip the userCheckins invalidation. The family key is the
+    // username (not the user id) because that is what the Me profile
+    // screen watches via `userCheckinsProvider(user.username)`; passing
+    // the id here would invalidate a different cache slot than the one
+    // the profile actually reads.
+    final meUsername = ref.read(meProvider).asData?.value.user.username;
+    ref.invalidate(feedProvider);
+    ref.invalidate(meProvider);
+    if (meUsername != null && meUsername.isNotEmpty) {
+      ref.invalidate(userCheckinsProvider(meUsername));
+    }
+    ref.invalidate(beverageDetailProvider(widget.beverage.id));
     final onSubmitted = widget.onSubmitted;
     if (onSubmitted != null) {
       onSubmitted(posted);

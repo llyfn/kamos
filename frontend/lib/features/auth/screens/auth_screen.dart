@@ -10,13 +10,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/auth/google_signin_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/auth_controller.dart';
 
-enum _Mode { signIn, signUp, forgot, verify }
+enum _Mode { signIn, signUp, forgot }
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -54,9 +55,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               const SizedBox(height: KamosSpacing.xxl),
               _Header(),
               const SizedBox(height: KamosSpacing.xl),
-              if (_mode == _Mode.verify)
-                _VerifyEmailBody(email: _email.text)
-              else if (_mode == _Mode.forgot)
+              if (_mode == _Mode.forgot)
                 _ForgotBody(
                   controller: _email,
                   onBack: () => setState(() => _mode = _Mode.signIn),
@@ -83,22 +82,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             password: _password.text,
                           );
                     } else {
+                      // Capture the router synchronously so the post-await
+                      // navigation doesn't have to re-touch `context`.
+                      final router = GoRouter.of(context);
+                      final email = _email.text.trim();
                       await ref
                           .read(authControllerProvider.notifier)
                           .signUp(
                             username: _username.text.trim(),
-                            email: _email.text.trim(),
+                            email: email,
                             password: _password.text,
                             locale: Localizations.localeOf(
                               context,
                             ).languageCode,
                           );
-                      // After signup, show the verify message even though the
-                      // user is already signed-in (unverified accounts can still
-                      // use the app per SPEC §3.1).
+                      // After signup, land on the dedicated "check your
+                      // mail" pending screen. Verification is now fully
+                      // server-side (mail link → backend HTML page) so
+                      // the mobile app's only job is to tell the user
+                      // to open the mail and detect when verification
+                      // lands.
                       if (mounted &&
                           ref.read(authControllerProvider).error == null) {
-                        setState(() => _mode = _Mode.verify);
+                        router.go('/auth/verify-pending', extra: email);
                       }
                     }
                   },
@@ -390,83 +396,6 @@ class _ForgotBody extends StatelessWidget {
           child: Text(l.authForgotSend),
         ),
         TextButton(onPressed: onBack, child: Text(l.authBackToSignIn)),
-      ],
-    );
-  }
-}
-
-class _VerifyEmailBody extends StatelessWidget {
-  const _VerifyEmailBody({required this.email});
-  final String email;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final t = context.tokens;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Center(
-          child: Text(
-            '封',
-            style: TextStyle(
-              fontFamily: 'ShipporiMincho',
-              fontSize: 48,
-              color: t.gray300,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: Text(
-            l.authVerifyTitle,
-            style: TextStyle(
-              fontFamily: 'ShipporiMincho',
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: t.fg1,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: Text(
-            l.authVerifySent,
-            style: TextStyle(fontSize: 14, color: t.fg2),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Center(
-          child: Text(
-            email.isEmpty ? 'you@example.com' : email,
-            style: TextStyle(
-              fontFamily: 'JetBrainsMono',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: t.fg1,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: Text(
-            l.authVerifyExpiry,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: t.fg3),
-          ),
-        ),
-        const SizedBox(height: 14),
-        FilledButton(
-          // Already signed-in path lands on /feed by the router redirect.
-          onPressed: () {},
-          style: FilledButton.styleFrom(
-            backgroundColor: t.ai,
-            shape: const StadiumBorder(),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-          child: Text(l.authVerifyContinue),
-        ),
-        TextButton(onPressed: () {}, child: Text(l.authVerifyResend)),
       ],
     );
   }
