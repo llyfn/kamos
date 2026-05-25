@@ -172,12 +172,11 @@ Two profile modes, user-selectable in settings:
 
 ### 5.2 Feed
 
-The feed shows check-ins from users the current user follows.
+The feed shows the user's own check-ins plus check-ins from users the current user follows. It doubles as a personal activity log and a social timeline; the UI label is "Activities".
 
 - **Ordering:** Reverse chronological (newest first). No algorithmic ranking for MVP.
 - **Pagination:** Cursor-based (infinite scroll); 20 items per page.
 - **Feed item content:** User avatar + username, beverage name + brewery, rating, review text (truncated at 140 chars with "more"), first photo if any, flavor tags, elapsed time ("2h ago").
-- The user's own check-ins do **not** appear in their own feed (visible on their profile instead).
 - Check-ins from private users only appear in the feed of approved followers.
 
 ### 5.3 Toasts (Reactions)

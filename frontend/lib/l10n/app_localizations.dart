@@ -157,14 +157,8 @@ abstract class AppLocalizations {
   /// No description provided for @feedHeader.
   ///
   /// In en, this message translates to:
-  /// **'Following'**
+  /// **'Activities'**
   String get feedHeader;
-
-  /// No description provided for @feedSubheader.
-  ///
-  /// In en, this message translates to:
-  /// **'From people you follow'**
-  String get feedSubheader;
 
   /// No description provided for @feedEmptyTitle.
   ///
