@@ -261,6 +261,35 @@ LIMIT 1;`
 	return &u, nil
 }
 
+// SearchCursor carries the three values the SearchUsers keyset needs:
+// the match rank tier, the row created_at, and the row id. The tier is
+// part of the cursor because results are ordered by (rank ASC,
+// created_at DESC, id DESC) and a 2-tuple keyset of just (created_at,
+// id) misorders pages whenever a later page's leading row sits in a
+// later tier than the previous page's trailing row (it would re-emit
+// rows from earlier tiers and skip the new tier's older rows). The
+// handler bundles this into the opaque cursor envelope; clients never
+// see the rank.
+type SearchCursor struct {
+	Rank      int
+	CreatedAt time.Time
+	ID        string
+}
+
+// SearchRow pairs the projected user with the rank tier it matched in
+// so the handler can re-emit that rank into the next cursor.
+type SearchRow struct {
+	User domain.PublicUser
+	Rank int
+}
+
+// likeEscaper escapes the three PostgreSQL LIKE metacharacters so the
+// user-supplied query is interpreted literally. Without this, a query
+// like "a%" matches every username starting with "a"; "_" matches any
+// single character; "\" pairs with the next character. The default
+// LIKE escape is "\", which our patterns rely on.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
 // SearchUsers returns a page of live users matching `query`, ranked by
 // match quality:
 //
@@ -272,24 +301,46 @@ LIMIT 1;`
 // keyset cursor stays stable. The handler validates query length;
 // repository assumes a non-empty trimmed string.
 //
+// `cursor` is the SearchCursor from the previously-returned next-page
+// token (nil for the first page). The keyset predicate is
+// (rank > $score OR (rank = $score AND (created_at, id) < ($ts, $id)))
+// so the walk advances through the rank tiers without duplicating or
+// skipping rows at tier boundaries.
+//
 // At KAMOS' current scale (users table is small) the ILIKE scan is
 // fine; a trigram or pg_trgm index can be layered on later if scan
 // time becomes meaningful.
 func (r *UserRepo) SearchUsers(
 	ctx context.Context,
 	query string,
-	cursorTs *time.Time,
-	cursorID *string,
+	cur *SearchCursor,
 	limit int,
-) ([]domain.PublicUser, error) {
+) ([]SearchRow, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-	// Two LIKE patterns: prefix (`q%`) and contains (`%q%`). We feed both
-	// into the CASE that computes the rank — using ILIKE keeps the match
-	// case-insensitive without requiring callers to lowercase first.
-	prefix := query + "%"
-	contains := "%" + query + "%"
+	// Escape LIKE wildcards in the user-supplied query so `%` and `_`
+	// match literally instead of as metacharacters. Apply this before
+	// building the prefix/contains patterns so only our own surrounding
+	// `%` carries metacharacter meaning.
+	escaped := likeEscaper.Replace(query)
+	prefix := escaped + "%"
+	contains := "%" + escaped + "%"
+
+	// $5/$6/$7 carry the cursor triple; nil means "first page" and the
+	// SQL guard short-circuits the keyset predicate.
+	var (
+		curRank *int
+		curTs   *time.Time
+		curID   *string
+	)
+	if cur != nil {
+		curRank = &cur.Rank
+		ts := cur.CreatedAt
+		curTs = &ts
+		id := cur.ID
+		curID = &id
+	}
 	const q = `
 SELECT id, username, display_username, display_name, avatar_url, bio,
        locale, privacy_mode, created_at,
@@ -301,26 +352,41 @@ SELECT id, username, display_username, display_name, avatar_url, bio,
 FROM users
 WHERE deleted_at IS NULL
   AND (username ILIKE $2 OR display_name ILIKE $2)
-  AND ($3::timestamptz IS NULL OR (created_at, id) < ($3::timestamptz, $4::uuid))
+  AND (
+    $4::int IS NULL
+    OR (CASE
+          WHEN username ILIKE $1     THEN 1
+          WHEN display_name ILIKE $1 THEN 2
+          ELSE 3
+        END) > $4::int
+    OR ((CASE
+          WHEN username ILIKE $1     THEN 1
+          WHEN display_name ILIKE $1 THEN 2
+          ELSE 3
+        END) = $4::int
+        AND (created_at, id) < ($5::timestamptz, $6::uuid))
+  )
 ORDER BY rank ASC, created_at DESC, id DESC
-LIMIT $5;`
-	rows, err := r.db.Query(ctx, q, prefix, contains, cursorTs, cursorID, limit+1)
+LIMIT $3;`
+	rows, err := r.db.Query(ctx, q,
+		prefix, contains, limit+1,
+		curRank, curTs, curID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("UserRepo.SearchUsers: %w", err)
 	}
 	defer rows.Close()
-	out := make([]domain.PublicUser, 0, limit+1)
+	out := make([]SearchRow, 0, limit+1)
 	for rows.Next() {
-		var u domain.PublicUser
-		var rank int
+		var row SearchRow
 		if err := rows.Scan(
-			&u.ID, &u.Username, &u.DisplayUsername, &u.DisplayName,
-			&u.AvatarURL, &u.Bio, &u.Locale, &u.PrivacyMode, &u.CreatedAt,
-			&rank,
+			&row.User.ID, &row.User.Username, &row.User.DisplayUsername, &row.User.DisplayName,
+			&row.User.AvatarURL, &row.User.Bio, &row.User.Locale, &row.User.PrivacyMode, &row.User.CreatedAt,
+			&row.Rank,
 		); err != nil {
 			return nil, fmt.Errorf("UserRepo.SearchUsers scan: %w", err)
 		}
-		out = append(out, u)
+		out = append(out, row)
 	}
 	return out, rows.Err()
 }

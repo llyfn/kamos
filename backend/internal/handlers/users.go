@@ -112,6 +112,12 @@ type publicProfile struct {
 // `q` is sanitized via SanitizeText (control + bidi-override rejected),
 // trimmed, and must be ≥ 2 chars; shorter queries return
 // 400 INVALID_QUERY. Empty `q` returns the same.
+//
+// The opaque cursor carries (rank, created_at, id). Rank lives in the
+// Cursor.Score slot — keyset pagination must order by rank first to
+// keep results stable across the (rank ASC, created_at DESC, id DESC)
+// outer sort. A 2-tuple of (created_at, id) would re-emit rows from
+// earlier rank tiers on page 2+ and skip newer rows in later tiers.
 func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("q"))
 	q, err := domain.SanitizeText("q", raw, false, 100)
@@ -130,17 +136,33 @@ func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "SearchUsers cursor", err)
 		return
 	}
-	rows, err := h.Repos.Users.SearchUsers(r.Context(), q,
-		optTimestamp(c), optString(c.ID), limit)
+	var sc *repository.SearchCursor
+	if c.Score != nil && !c.CreatedAt.IsZero() && c.ID != "" {
+		sc = &repository.SearchCursor{
+			Rank:      int(*c.Score),
+			CreatedAt: c.CreatedAt,
+			ID:        c.ID,
+		}
+	}
+	rows, err := h.Repos.Users.SearchUsers(r.Context(), q, sc, limit)
 	if err != nil {
 		h.writeErr(w, "SearchUsers", err)
 		return
 	}
-	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(u domain.PublicUser) cursor.Cursor {
-		return cursor.Cursor{CreatedAt: u.CreatedAt, ID: u.ID}
+	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(row repository.SearchRow) cursor.Cursor {
+		score := int64(row.Rank)
+		return cursor.Cursor{
+			Score:     &score,
+			CreatedAt: row.User.CreatedAt,
+			ID:        row.User.ID,
+		}
 	})
+	users := make([]domain.PublicUser, 0, len(items))
+	for _, row := range items {
+		users = append(users, row.User)
+	}
 	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.PublicUser]{
-		Items: items, NextCursor: next, HasMore: hasMore,
+		Items: users, NextCursor: next, HasMore: hasMore,
 	})
 }
 
