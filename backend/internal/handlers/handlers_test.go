@@ -113,7 +113,6 @@ func TestAuthedRoutesRequireBearer(t *testing.T) {
 		{http.MethodPost, "/v1/check-ins/some-id/toast"},
 		{http.MethodPost, "/v1/users/yamamoto/follow"},
 		{http.MethodDelete, "/v1/users/yamamoto/follow"},
-		{http.MethodGet, "/v1/follow-requests"},
 		{http.MethodPost, "/v1/follow-requests/u-1/approve"},
 		{http.MethodPost, "/v1/follow-requests/u-1/decline"},
 		{http.MethodGet, "/v1/collections"},

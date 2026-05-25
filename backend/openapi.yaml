@@ -1110,25 +1110,6 @@ paths:
         "204": { description: unfollowed }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
-  /v1/follow-requests:
-    get:
-      tags: [social]
-      operationId: listFollowRequests
-      parameters:
-        - in: query
-          name: cursor
-          schema: { type: string }
-        - in: query
-          name: limit
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: pending requests
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PageOfFollowRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-
   /v1/follow-requests/{id}/approve:
     parameters:
       - in: path
@@ -2955,18 +2936,6 @@ components:
           nullable: true
           description: Server-side-filtered on list; exposed for completeness.
 
-    FollowRequest:
-      type: object
-      required: [user_id, username, display_username, display_name, created_at]
-      properties:
-        user_id: { type: string, format: uuid }
-        username: { type: string }
-        display_username: { type: string }
-        display_name: { type: string }
-        avatar_url: { type: string, format: uri, nullable: true }
-        bio: { type: string, nullable: true }
-        created_at: { type: string, format: date-time }
-
     FollowResult:
       type: object
       required: [status]
@@ -3190,14 +3159,6 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/Comment" }
-    PageOfFollowRequest:
-      allOf:
-        - $ref: "#/components/schemas/PageBase"
-        - type: object
-          properties:
-            items:
-              type: array
-              items: { $ref: "#/components/schemas/FollowRequest" }
     PageOfNotification:
       allOf:
         - $ref: "#/components/schemas/PageBase"

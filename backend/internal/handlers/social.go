@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 )
@@ -47,33 +46,6 @@ func (h *Handler) Unfollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// FollowRequests — GET /v1/follow-requests.
-func (h *Handler) FollowRequests(w http.ResponseWriter, r *http.Request) {
-	uid, ok := h.authedID(w, r)
-	if !ok {
-		return
-	}
-	limit := parseLimit(r, 20, 50)
-	c, err := parseCursor(r)
-	if err != nil {
-		h.writeErr(w, "FollowRequests cursor", err)
-		return
-	}
-	ts := optTimestamp(c)
-	cid := optString(c.ID)
-	rows, err := h.Repos.Social.Inbox(r.Context(), uid, ts, cid, limit)
-	if err != nil {
-		h.writeErr(w, "FollowRequests", err)
-		return
-	}
-	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(f domain.FollowRequest) cursor.Cursor {
-		return cursor.Cursor{CreatedAt: f.CreatedAt, ID: f.UserID}
-	})
-	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.FollowRequest]{
-		Items: items, NextCursor: next, HasMore: hasMore,
-	})
 }
 
 // ApproveFollowRequest — POST /v1/follow-requests/{id}/approve. The `id`

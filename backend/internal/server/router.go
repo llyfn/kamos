@@ -280,7 +280,9 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// Social.
 			r.Post("/users/{username}/follow", h.Follow)
 			r.Delete("/users/{username}/follow", h.Unfollow)
-			r.Get("/follow-requests", h.FollowRequests)
+			// GET /v1/follow-requests was retired in Phase 4 — the
+			// notifications inbox subsumed the list. Inline Approve /
+			// Decline actions still post against the rows below.
 			r.Post("/follow-requests/{id}/approve", h.ApproveFollowRequest)
 			r.Post("/follow-requests/{id}/decline", h.DeclineFollowRequest)
 

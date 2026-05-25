@@ -96,35 +96,6 @@ func (r *SocialRepo) FollowState(ctx context.Context, viewer, target string) (st
 	return s, nil
 }
 
-// Inbox lists pending follow requests for the current user. Cursor
-// uses the tuple keyset (created_at, follower_id) so ties on
-// created_at (rare but possible — two follow requests fired in the
-// same microsecond) paginate deterministically (PERF-013).
-func (r *SocialRepo) Inbox(ctx context.Context, userID string, cursorTs *time.Time, cursorFollowerID *string, limit int) ([]domain.FollowRequest, error) {
-	const q = `
-SELECT f.follower_id, u.username, u.display_username, u.display_name, u.avatar_url, u.bio, f.created_at
-FROM follows f
-JOIN users u ON u.id = f.follower_id AND u.deleted_at IS NULL
-WHERE f.followed_id = $1 AND f.status = 'pending'
-  AND ($2::timestamptz IS NULL OR (f.created_at, f.follower_id) < ($2::timestamptz, $3::uuid))
-ORDER BY f.created_at DESC, f.follower_id DESC
-LIMIT $4;`
-	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorFollowerID, limit+1)
-	if err != nil {
-		return nil, fmt.Errorf("Inbox: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.FollowRequest, 0, limit+1)
-	for rows.Next() {
-		var fr domain.FollowRequest
-		if err := rows.Scan(&fr.UserID, &fr.Username, &fr.DisplayUsername, &fr.DisplayName, &fr.AvatarURL, &fr.Bio, &fr.CreatedAt); err != nil {
-			return nil, fmt.Errorf("Inbox scan: %w", err)
-		}
-		out = append(out, fr)
-	}
-	return out, rows.Err()
-}
-
 // ApproveTx is the tx-aware variant.
 func (r *SocialRepo) ApproveTx(ctx context.Context, tx pgx.Tx, followedID, followerID string) error {
 	const q = `
