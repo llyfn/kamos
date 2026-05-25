@@ -575,27 +575,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsDeletedActor => 'Deleted user';
 
   @override
-  String notifVerbToast(String actor) {
+  String notificationsVerbToast(String actor) {
     return '$actor toasted your check-in.';
   }
 
   @override
-  String notifVerbComment(String actor) {
+  String notificationsVerbComment(String actor) {
     return '$actor commented on your check-in.';
   }
 
   @override
-  String notifVerbFollow(String actor) {
+  String notificationsVerbFollow(String actor) {
     return '$actor started following you.';
   }
 
   @override
-  String notifVerbFollowRequest(String actor) {
+  String notificationsVerbFollowRequest(String actor) {
     return '$actor requested to follow you.';
   }
 
   @override
-  String notifVerbFollowApproved(String actor) {
+  String notificationsVerbFollowApproved(String actor) {
     return '$actor approved your follow request.';
   }
 

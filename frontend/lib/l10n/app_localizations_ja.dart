@@ -560,27 +560,27 @@ class AppLocalizationsJa extends AppLocalizations {
   String get notificationsDeletedActor => '削除されたユーザー';
 
   @override
-  String notifVerbToast(String actor) {
+  String notificationsVerbToast(String actor) {
     return '$actorがあなたのチェックインに乾杯しました。';
   }
 
   @override
-  String notifVerbComment(String actor) {
+  String notificationsVerbComment(String actor) {
     return '$actorがあなたのチェックインにコメントしました。';
   }
 
   @override
-  String notifVerbFollow(String actor) {
+  String notificationsVerbFollow(String actor) {
     return '$actorがあなたをフォローしました。';
   }
 
   @override
-  String notifVerbFollowRequest(String actor) {
+  String notificationsVerbFollowRequest(String actor) {
     return '$actorからフォローリクエストが届きました。';
   }
 
   @override
-  String notifVerbFollowApproved(String actor) {
+  String notificationsVerbFollowApproved(String actor) {
     return '$actorがあなたのフォローリクエストを承認しました。';
   }
 

@@ -559,27 +559,27 @@ class AppLocalizationsKo extends AppLocalizations {
   String get notificationsDeletedActor => '삭제된 사용자';
 
   @override
-  String notifVerbToast(String actor) {
+  String notificationsVerbToast(String actor) {
     return '$actor님이 회원님의 체크인에 건배했습니다.';
   }
 
   @override
-  String notifVerbComment(String actor) {
+  String notificationsVerbComment(String actor) {
     return '$actor님이 회원님의 체크인에 댓글을 남겼습니다.';
   }
 
   @override
-  String notifVerbFollow(String actor) {
+  String notificationsVerbFollow(String actor) {
     return '$actor님이 회원님을 팔로우하기 시작했습니다.';
   }
 
   @override
-  String notifVerbFollowRequest(String actor) {
+  String notificationsVerbFollowRequest(String actor) {
     return '$actor님이 팔로우 요청을 보냈습니다.';
   }
 
   @override
-  String notifVerbFollowApproved(String actor) {
+  String notificationsVerbFollowApproved(String actor) {
     return '$actor님이 회원님의 팔로우 요청을 수락했습니다.';
   }
 

@@ -2,11 +2,11 @@
 //
 // Renders a single notification card. Per-type rules:
 //
-//   toast            → tap → /check-ins/:id        verb: notifVerbToast
-//   comment          → tap → /check-ins/:id        verb: notifVerbComment
-//   follow           → tap → /users/:username      verb: notifVerbFollow
-//   follow_request   → no card-tap; inline buttons verb: notifVerbFollowRequest
-//   follow_approved  → tap → /users/:username      verb: notifVerbFollowApproved
+//   toast            → tap → /check-ins/:id        verb: notificationsVerbToast
+//   comment          → tap → /check-ins/:id        verb: notificationsVerbComment
+//   follow           → tap → /users/:username      verb: notificationsVerbFollow
+//   follow_request   → no card-tap; inline buttons verb: notificationsVerbFollowRequest
+//   follow_approved  → tap → /users/:username      verb: notificationsVerbFollowApproved
 //
 // Visual states per §2.3:
 //   unread → background bgTintMizu (light brand wash)
@@ -244,15 +244,15 @@ class _VerbLine extends StatelessWidget {
   ) {
     switch (type) {
       case NotificationType.toast:
-        return l.notifVerbToast(actor);
+        return l.notificationsVerbToast(actor);
       case NotificationType.comment:
-        return l.notifVerbComment(actor);
+        return l.notificationsVerbComment(actor);
       case NotificationType.follow:
-        return l.notifVerbFollow(actor);
+        return l.notificationsVerbFollow(actor);
       case NotificationType.followRequest:
-        return l.notifVerbFollowRequest(actor);
+        return l.notificationsVerbFollowRequest(actor);
       case NotificationType.followApproved:
-        return l.notifVerbFollowApproved(actor);
+        return l.notificationsVerbFollowApproved(actor);
     }
   }
 }

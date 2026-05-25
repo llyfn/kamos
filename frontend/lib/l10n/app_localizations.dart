@@ -1138,35 +1138,35 @@ abstract class AppLocalizations {
   /// **'Deleted user'**
   String get notificationsDeletedActor;
 
-  /// No description provided for @notifVerbToast.
+  /// No description provided for @notificationsVerbToast.
   ///
   /// In en, this message translates to:
   /// **'{actor} toasted your check-in.'**
-  String notifVerbToast(String actor);
+  String notificationsVerbToast(String actor);
 
-  /// No description provided for @notifVerbComment.
+  /// No description provided for @notificationsVerbComment.
   ///
   /// In en, this message translates to:
   /// **'{actor} commented on your check-in.'**
-  String notifVerbComment(String actor);
+  String notificationsVerbComment(String actor);
 
-  /// No description provided for @notifVerbFollow.
+  /// No description provided for @notificationsVerbFollow.
   ///
   /// In en, this message translates to:
   /// **'{actor} started following you.'**
-  String notifVerbFollow(String actor);
+  String notificationsVerbFollow(String actor);
 
-  /// No description provided for @notifVerbFollowRequest.
+  /// No description provided for @notificationsVerbFollowRequest.
   ///
   /// In en, this message translates to:
   /// **'{actor} requested to follow you.'**
-  String notifVerbFollowRequest(String actor);
+  String notificationsVerbFollowRequest(String actor);
 
-  /// No description provided for @notifVerbFollowApproved.
+  /// No description provided for @notificationsVerbFollowApproved.
   ///
   /// In en, this message translates to:
   /// **'{actor} approved your follow request.'**
-  String notifVerbFollowApproved(String actor);
+  String notificationsVerbFollowApproved(String actor);
 
   /// No description provided for @beverageDetailAbv.
   ///
