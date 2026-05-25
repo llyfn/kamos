@@ -48,22 +48,39 @@ class CheckInCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                KamosAvatar(
-                  initial: item.user.displayUsername,
-                  size: 36,
-                  imageUrl: item.user.avatarUrl,
+                // The avatar + username Text subtree taps through to the
+                // author's profile. HitTestBehavior.opaque ensures taps on
+                // the transparent gap between avatar and text are absorbed
+                // by this gesture instead of bubbling to the card-level
+                // open-detail tap. The timestamp sits in the same Column
+                // but outside the gesture (per designer spec §5) so the
+                // elapsed-time region still opens the check-in detail.
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () =>
+                      context.push('/users/${item.user.username}'),
+                  child: KamosAvatar(
+                    initial: item.user.displayUsername,
+                    size: 36,
+                    imageUrl: item.user.avatarUrl,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.user.displayUsername,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: t.fg1,
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            context.push('/users/${item.user.username}'),
+                        child: Text(
+                          item.user.displayUsername,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: t.fg1,
+                          ),
                         ),
                       ),
                       Text(

@@ -224,14 +224,24 @@ class _Body extends ConsumerWidget {
               (r) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: KamosCard(
+                  // Whole-card tap → check-in detail. The avatar + username
+                  // subtree below has its own opaque GestureDetector that
+                  // wins the gesture arena for that sub-region and pushes
+                  // to the author's profile instead.
+                  onTap: () => context.push('/check-ins/${r.id}'),
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      KamosAvatar(
-                        initial: r.user.displayUsername,
-                        size: 32,
-                        imageUrl: r.user.avatarUrl,
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            context.push('/users/${r.user.username}'),
+                        child: KamosAvatar(
+                          initial: r.user.displayUsername,
+                          size: 32,
+                          imageUrl: r.user.avatarUrl,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -241,11 +251,16 @@ class _Body extends ConsumerWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  r.user.displayUsername,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => context
+                                      .push('/users/${r.user.username}'),
+                                  child: Text(
+                                    r.user.displayUsername,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                                 if (r.rating != null)

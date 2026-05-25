@@ -8,6 +8,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/models/comment.dart';
@@ -46,11 +47,24 @@ class CommentTile extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          KamosAvatar(
-            initial: displayName,
-            size: 32,
-            imageUrl: author?.avatarUrl,
-          ),
+          // Avatar taps through to the author's profile. Orphan comments
+          // (author hard-purged) have a null `author` and no tappable
+          // target — fall back to a plain avatar with no gesture.
+          author != null
+              ? GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => context.push('/users/${author.username}'),
+                  child: KamosAvatar(
+                    initial: displayName,
+                    size: 32,
+                    imageUrl: author.avatarUrl,
+                  ),
+                )
+              : KamosAvatar(
+                  initial: displayName,
+                  size: 32,
+                  imageUrl: author?.avatarUrl,
+                ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -59,14 +73,31 @@ class CommentTile extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        displayName,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: t.fg1,
-                        ),
-                      ),
+                      // Username Text also taps through to the author's
+                      // profile. Orphan comments render the placeholder
+                      // label without a gesture.
+                      child: author != null
+                          ? GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () =>
+                                  context.push('/users/${author.username}'),
+                              child: Text(
+                                displayName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: t.fg1,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              displayName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: t.fg1,
+                              ),
+                            ),
                     ),
                     if (when != null)
                       Text(
