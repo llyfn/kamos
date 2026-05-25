@@ -486,7 +486,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get collectionVisibilityPublicTitle => '공개 컬렉션';
 
   @override
-  String get collectionVisibilityPublicSubtitle => '이 컬렉션은 디스커버 탭에서 모두에게 표시됩니다';
+  String get collectionVisibilityPublicSubtitle => '이 컬렉션은 프로필에서 누구나 볼 수 있습니다';
 
   @override
   String get collectionVisibilityPrivateSubtitle => '이 컬렉션은 본인만 볼 수 있습니다';

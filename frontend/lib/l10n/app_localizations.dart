@@ -1009,7 +1009,7 @@ abstract class AppLocalizations {
   /// No description provided for @collectionVisibilityPublicSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Anyone can see this collection on the discover tab'**
+  /// **'Anyone can see this collection on your profile'**
   String get collectionVisibilityPublicSubtitle;
 
   /// No description provided for @collectionVisibilityPrivateSubtitle.

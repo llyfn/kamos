@@ -498,7 +498,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get collectionVisibilityPublicSubtitle =>
-      'Anyone can see this collection on the discover tab';
+      'Anyone can see this collection on your profile';
 
   @override
   String get collectionVisibilityPrivateSubtitle =>

@@ -191,7 +191,7 @@
   "collectionsConfirmDelete": "Delete this collection?",
   "collectionsConfirmDeleteBody": "This removes the collection and all of its entries. The beverages themselves are unaffected.",
   "collectionVisibilityPublicTitle": "Public collection",
-  "collectionVisibilityPublicSubtitle": "Anyone can see this collection on the discover tab",
+  "collectionVisibilityPublicSubtitle": "Anyone can see this collection on your profile",
   "collectionVisibilityPrivateSubtitle": "Only you can see this collection",
   "publicCollectionsTitle": "Public collections",
   "publicCollectionsEmpty": "No public collections yet",

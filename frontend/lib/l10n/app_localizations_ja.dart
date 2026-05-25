@@ -486,7 +486,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get collectionVisibilityPublicTitle => '公開コレクション';
 
   @override
-  String get collectionVisibilityPublicSubtitle => 'このコレクションは発見タブで誰でも見られます';
+  String get collectionVisibilityPublicSubtitle =>
+      'このコレクションはあなたのプロフィールから誰でも見られます';
 
   @override
   String get collectionVisibilityPrivateSubtitle => 'このコレクションはあなただけが見られます';

@@ -151,13 +151,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/inbox',
         pageBuilder: (_, state) => _noTransition(state, const InboxScreen()),
       ),
+      // Static-segment routes (`/users/search`, `/users/:username/lists`)
+      // must precede `/users/:username` so go_router doesn't bind those
+      // segments to the path parameter.
       GoRoute(
         path: '/users/search',
         pageBuilder: (_, state) =>
             _noTransition(state, const UserSearchScreen()),
       ),
-      // Must precede `/users/:username` so go_router matches the literal
-      // `search` segment before the path-parameter branch.
       GoRoute(
         path: '/users/:username/lists',
         pageBuilder: (_, state) => _noTransition(

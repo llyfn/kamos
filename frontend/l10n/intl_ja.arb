@@ -191,7 +191,7 @@
   "collectionsConfirmDelete": "このコレクションを削除？",
   "collectionsConfirmDeleteBody": "コレクションとそのすべてのエントリが削除されます。銘柄自体には影響しません。",
   "collectionVisibilityPublicTitle": "公開コレクション",
-  "collectionVisibilityPublicSubtitle": "このコレクションは発見タブで誰でも見られます",
+  "collectionVisibilityPublicSubtitle": "このコレクションはあなたのプロフィールから誰でも見られます",
   "collectionVisibilityPrivateSubtitle": "このコレクションはあなただけが見られます",
   "publicCollectionsTitle": "公開コレクション",
   "publicCollectionsEmpty": "まだ公開されているコレクションはありません",
