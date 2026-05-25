@@ -124,14 +124,22 @@ func parseOpenAPIPaths() (map[string][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	pathRe := regexp.MustCompile(`^  (/v[0-9][^:]+):\s*$`)
+	// Any top-level path entry acts as a section boundary so methods
+	// belonging to non-/v1 paths (e.g. the public /verify HTML route) do
+	// not get wrongly attributed to the previous /v1 path's slot.
+	anyPathRe := regexp.MustCompile(`^  (/[^:]+):\s*$`)
+	versionedPathRe := regexp.MustCompile(`^/v[0-9]`)
 	methodRe := regexp.MustCompile(`^    (get|put|post|delete|patch):`)
 	out := map[string][]string{}
 	var current string
 	for _, line := range strings.Split(string(data), "\n") {
-		if m := pathRe.FindStringSubmatch(line); m != nil {
-			current = m[1]
-			out[current] = nil
+		if m := anyPathRe.FindStringSubmatch(line); m != nil {
+			if versionedPathRe.MatchString(m[1]) {
+				current = m[1]
+				out[current] = nil
+			} else {
+				current = "" // non-versioned path: ignore its methods.
+			}
 			continue
 		}
 		if current == "" {
