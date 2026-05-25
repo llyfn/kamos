@@ -102,7 +102,9 @@ class ApiPaths {
 
   // social
   static String userFollow(String username) => '/v1/users/$username/follow';
-  static const followRequests = '/v1/follow-requests';
+  // Note: GET /v1/follow-requests is removed by the backend alongside the
+  // standalone Inbox screen (ARCH-005). The approve / decline endpoints
+  // stay — _FollowRequestActions in the notification row still calls them.
   static String followRequestApprove(String userId) =>
       '/v1/follow-requests/$userId/approve';
   static String followRequestDecline(String userId) =>
@@ -595,20 +597,6 @@ class KamosSocialApi {
 
   Future<void> unfollow(String username) async {
     await _dio.delete<dynamic>(ApiPaths.userFollow(username));
-  }
-
-  Future<Map<String, dynamic>> followRequests({
-    String? cursor,
-    int limit = 20,
-  }) async {
-    final res = await _dio.get<dynamic>(
-      ApiPaths.followRequests,
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-        'limit': limit,
-      },
-    );
-    return _asMap(res.data);
   }
 
   Future<void> approveFollowRequest(String userId) async {
