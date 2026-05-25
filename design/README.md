@@ -185,7 +185,8 @@ ui_kits/
                                    Toggle · FormField · TextField · TextArea · SegmentedControl
                                    Row · PhotoTile · Badge · LocaleContext / useLocale
       Shell.jsx                    Phone frame, TopBar, TabBar, Sheet
-      FeedScreen.jsx               Following feed with toast reaction + bell badge → inbox
+      FeedScreen.jsx               Following feed with toast reaction (header bell removed; notifications are a tab)
+      NotificationsScreen.jsx      In-app inbox for the 5 notification types (SPEC §5.4)
       SearchScreen.jsx             Discover · category chips (exact SPEC strings) · recent + no-results
       BeverageScreen.jsx           Beverage detail · link to producer · CTAs to check-in + collection picker
       CheckInScreen.jsx            Modal check-in flow · 0.5-step rating · counter · 4-photo grid · price · purchase
@@ -223,7 +224,7 @@ fonts/                     (empty — Google Fonts loaded via colors_and_type.cs
 | Rating widget (§4.2) | 0.5-step input + display | `Primitives.jsx::StarsInput` + `Primitives.jsx::Stars` |
 | Toast reactions (§5.3) | Kanpai-mark toggle with animation | `FeedScreen.jsx::FeedItem` |
 | Feed (§5.2) | Reverse-chronological list + cursor pagination footer | `FeedScreen.jsx`, `Primitives.jsx::PagingFooter` |
-| Follow-request inbox (§5.4) | Approve / Decline list, badge on bell | `InboxScreen.jsx`, `Primitives.jsx::Badge` |
+| Notifications (§5.4) | Toast / comment / follow / follow_request (inline Approve / Decline) / follow_approved rows; unread dot on the Notifications tab | `NotificationsScreen.jsx`, `Shell.jsx::TabBar` (unread dot) |
 | Collections (§6) | List of collections, default `Inventory` + `Wishlist`, custom lists | `ProfileLists.jsx::ListsScreen` |
 | Collection detail (§6) | Contents, rename, delete with confirmation | `CollectionDetailScreen.jsx` |
 | Collection picker (§6.3) | Multi-select sheet with inline create | `CollectionPickerSheet.jsx` |

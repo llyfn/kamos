@@ -254,11 +254,11 @@ Each template uses `{actor}` as a placeholder for the actor's display name. Flut
 
 | Type | Text (en) | Suggested ARB key |
 |---|---|---|
-| `toast` | "{actor} toasted your check-in." | `notificationVerbToast` |
-| `comment` | "{actor} commented on your check-in." | `notificationVerbComment` |
-| `follow` | "{actor} started following you." | `notificationVerbFollow` |
-| `follow_request` | "{actor} requested to follow you." | `notificationVerbFollowRequest` |
-| `follow_approved` | "{actor} approved your follow request." | `notificationVerbFollowApproved` |
+| `toast` | "{actor} toasted your check-in." | `notificationsVerbToast` |
+| `comment` | "{actor} commented on your check-in." | `notificationsVerbComment` |
+| `follow` | "{actor} started following you." | `notificationsVerbFollow` |
+| `follow_request` | "{actor} requested to follow you." | `notificationsVerbFollowRequest` |
+| `follow_approved` | "{actor} approved your follow request." | `notificationsVerbFollowApproved` |
 
 ### 4.4 Reused strings (already in ARB)
 

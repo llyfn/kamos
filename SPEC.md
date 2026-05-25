@@ -204,7 +204,7 @@ In-app notifications are surfaced on the **Notifications** tab. Push notificatio
 
 - Self-actions never produce a notification (toasting your own check-in writes no row).
 - Deduped on `(recipient, type, actor, check_in_id)` where applicable — toggling a toast off and back on does not create a duplicate row.
-- The original `follow_request` row remains after approval; a separate `follow_approved` row is created for the original requester.
+- On approval, the original `follow_request` row is removed from the approver's inbox and a `follow_approved` row is created in the original requester's inbox.
 - Soft-deleting the actor preserves the row (`actor_user_id` → NULL); the UI renders a localized "Deleted user" placeholder.
 - Soft-deleting the referenced check-in or comment preserves the row.
 

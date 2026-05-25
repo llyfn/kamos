@@ -669,7 +669,7 @@ VALUES ($1, 'follow_request', $2);
 
 ### 16h. Emit — follow_approved
 
-Runs in the same `pgx.Tx` as the `UPDATE follows SET status='accepted'`. The original `follow_request` notification is deleted (see 16i) so it stops showing in the requester's inbox; in its place the requester sees the new `follow_approved` row.
+Runs in the same `pgx.Tx` as the `UPDATE follows SET status='accepted'`. The approver's `follow_request` notification is deleted (see 16i) so it stops showing in their inbox once the request is resolved. The requester receives a new `follow_approved` row in their own inbox.
 
 ```sql
 INSERT INTO notifications (recipient_user_id, type, actor_user_id)
