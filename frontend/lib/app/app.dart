@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_toast.dart';
 import '../features/auth/providers/auth_state.dart';
+import '../features/notifications/providers/notification_providers.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -28,10 +29,52 @@ class KamosApp extends ConsumerWidget {
       scaffoldMessengerKey: kamosMessengerKey,
       routerConfig: router,
       builder: (context, child) {
-        return _ApiToastListener(child: child ?? const SizedBox.shrink());
+        return _ApiToastListener(
+          child: _ResumeRefresher(child: child ?? const SizedBox.shrink()),
+        );
       },
     );
   }
+}
+
+/// Refreshes the unread notifications count when the app returns to the
+/// foreground. KAMOS doesn't poll — the bottom-tab dot is otherwise updated
+/// on tab-focus into Notifications and on mark-read mutations. This adds the
+/// third refresh hook called out in design/notifications_ux.md §3.5 ("fetched
+/// on app-start and on every tab-focus") so a user who backgrounded the app
+/// for hours sees an accurate dot on resume without having to navigate.
+class _ResumeRefresher extends ConsumerStatefulWidget {
+  const _ResumeRefresher({required this.child});
+  final Widget child;
+
+  @override
+  ConsumerState<_ResumeRefresher> createState() => _ResumeRefresherState();
+}
+
+class _ResumeRefresherState extends ConsumerState<_ResumeRefresher>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final auth = ref.read(authStateProvider);
+    if (!auth.isAuthenticated) return;
+    ref.read(unreadCountProvider.notifier).refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Listens for transport-level toasts emitted by `AuthInterceptor` and shows
