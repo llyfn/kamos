@@ -33,6 +33,7 @@ tags:
   - name: checkins
   - name: feed
   - name: social
+  - name: notifications
   - name: collections
   - name: search
   - name: taxonomy
@@ -1159,6 +1160,80 @@ paths:
       responses:
         "204": { description: declined }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  # ----- NOTIFICATIONS -----
+  /v1/notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      description: |
+        SPEC §5.4. Cursor-paginated inbox, newest first, 20 per page.
+        Soft-deleted actor / check-in / comment references survive as
+        nulls so the row keeps rendering (Flutter shows a "Deleted user"
+        placeholder per SPEC §5.4).
+      parameters:
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: page of notifications
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PageOfNotification" }
+        "400":
+          description: tampered or malformed cursor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/notifications/unread-count:
+    get:
+      tags: [notifications]
+      operationId: notificationUnreadCount
+      description: |
+        SPEC §5.4. Count of unread rows for the authed user — feeds the
+        bottom-tab unread dot. Backed by a partial index so the query is
+        cheap (Index Only Scan).
+      responses:
+        "200":
+          description: unread count
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UnreadCountResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/notifications/read:
+    post:
+      tags: [notifications]
+      operationId: markNotificationsRead
+      description: |
+        SPEC §5.4. Marks notifications read. Body is exactly one of
+        `{ "ids": ["uuid", ...] }` or `{ "all": true }` — sending both
+        or neither is a 422.
+
+        IDOR-safe: ids that do not belong to the caller are silently
+        skipped (the SQL UPDATE is scoped to the caller's recipient id);
+        the response always reports the actual rowcount. This way the
+        endpoint cannot be used to probe for the existence of
+        notifications on other users.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarkReadRequest" }
+      responses:
+        "200":
+          description: rows marked read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarkReadResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Validation" }
 
   # ----- COLLECTIONS -----
   /v1/collections:
@@ -2898,6 +2973,73 @@ components:
       properties:
         status: { type: string, enum: [accepted, pending] }
 
+    Notification:
+      type: object
+      description: |
+        SPEC §5.4. In-app notification row. `actor` is nullable because the
+        FK is ON DELETE SET NULL — when the original actor has been
+        hard-deleted by the username-hold sweep, the row survives and
+        Flutter renders a localized "Deleted user" placeholder.
+
+        `check_in_id` and `comment_id` are present only for the types that
+        carry the matching source reference (`toast`, `comment`); they are
+        absent for the three `follow*` types.
+      required: [id, type, actor, read_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        type:
+          type: string
+          enum: [toast, comment, follow, follow_request, follow_approved]
+        actor:
+          allOf:
+            - $ref: "#/components/schemas/CheckinUser"
+          nullable: true
+        check_in_id:
+          type: string
+          format: uuid
+          nullable: true
+        comment_id:
+          type: string
+          format: uuid
+          nullable: true
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at: { type: string, format: date-time }
+
+    MarkReadRequest:
+      type: object
+      description: |
+        Body for POST /v1/notifications/read. Exactly one of `ids` or
+        `all` must be set. The handler returns 422 if neither or both
+        are present.
+      properties:
+        ids:
+          type: array
+          items: { type: string, format: uuid }
+          minItems: 1
+        all:
+          type: boolean
+          description: When true, marks every unread row read.
+
+    MarkReadResponse:
+      type: object
+      required: [marked]
+      properties:
+        marked:
+          type: integer
+          minimum: 0
+          description: Number of rows transitioned to read.
+
+    UnreadCountResponse:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          minimum: 0
+
     SocialUser:
       type: object
       required: [id, username, display_username, display_name, followed_at]
@@ -3030,6 +3172,14 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/FollowRequest" }
+    PageOfNotification:
+      allOf:
+        - $ref: "#/components/schemas/PageBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Notification" }
     PageOfSocialUser:
       allOf:
         - $ref: "#/components/schemas/PageBase"
