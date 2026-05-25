@@ -15,6 +15,7 @@ import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_pill_button.dart';
 import '../../../shared/widgets/state_views.dart';
+import '../../feed/providers/feed_providers.dart';
 import '../../feed/widgets/check_in_card.dart';
 import '../../social/repository/social_repository.dart';
 import '../providers/profile_providers.dart';
@@ -421,6 +422,9 @@ class _FollowButtonState extends ConsumerState<_FollowButton> {
         // Viewer's own "following" stat changes after an accepted follow
         // or any unfollow — refresh meProvider so the Me page reflects it.
         ref.invalidate(meProvider);
+        // Feed composition (own + followed users' check-ins) is now stale —
+        // invalidate so the feed re-fetches its first page on next view.
+        ref.invalidate(feedProvider);
       }
     }
   }
