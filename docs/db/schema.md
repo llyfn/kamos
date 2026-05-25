@@ -190,7 +190,7 @@ Both tables follow the same `JSONB name_i18n` pattern as `beverage_categories` a
 
 Country dimension is intentionally **not** introduced: MVP is Japan-only. A `countries` table can be added later above `regions` without disturbing existing FKs. `venues.prefecture` (Phase 4, Foursquare-backed) is independent and was not touched — that column is third-party-sourced free text.
 
-### 9c. Notifications (019)
+### 9c. Notifications (019 + 020)
 
 SPEC §5.4 defines an in-app notifications inbox with five event types: `toast`, `comment`, `follow`, `follow_request`, `follow_approved`. Push notifications are deferred to v1.1. The schema is intentionally one wide table — splitting per-type tables would bloat the read path with `UNION ALL` for the unified-inbox cursor.
 

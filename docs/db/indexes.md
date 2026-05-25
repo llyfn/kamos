@@ -221,7 +221,9 @@ CREATE INDEX idx_beverage_addition_requests_status
   ON beverage_addition_requests (status, created_at DESC);
 ```
 
-### notifications (019)
+### notifications (019 + 020)
+
+Indexes are introduced by migration 019. Migration 020 swaps `check_in_id` and `comment_id` from `ON DELETE SET NULL` to `ON DELETE CASCADE` (resolving the `notifications_refs_match_type` contradiction); it adds no new indexes and the dedupe partials below are unchanged.
 
 | Index | Purpose | SPEC |
 |---|---|---|
