@@ -1,11 +1,11 @@
-// Typeahead brewery picker. Hits GET /v1/admin/breweries?q=&limit=10
+// Typeahead producer picker. Hits GET /v1/admin/producers?q=&limit=10
 // and renders a small dropdown of matches. Selecting one sets the
-// `brewery_id` and bubbles up an opaque display name so the parent
+// `producer_id` and bubbles up an opaque display name so the parent
 // can show "Name (id…)" without re-fetching.
 //
 // Used by:
-//   - CatalogBeverageForm (mandatory brewery_id field)
-//   - /beverages list page (optional brewery filter)
+//   - CatalogBeverageForm (mandatory producer_id field)
+//   - /beverages list page (optional producer filter)
 
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -13,17 +13,17 @@ import { api } from '@/lib/api';
 import { useDebounced } from '@/lib/use-debounced';
 import type { components } from '@/types/api';
 
-type AdminBrewery = components['schemas']['AdminBrewery'];
+type AdminProducer = components['schemas']['AdminProducer'];
 
-export interface BreweryPickerValue {
+export interface ProducerPickerValue {
   id: string;
   /** display name resolved from name_i18n (en→ja fallback). May be empty if cleared. */
   label: string;
 }
 
-interface BreweryPickerProps {
-  value: BreweryPickerValue | null;
-  onChange: (next: BreweryPickerValue | null) => void;
+interface ProducerPickerProps {
+  value: ProducerPickerValue | null;
+  onChange: (next: ProducerPickerValue | null) => void;
   label?: string;
   required?: boolean;
   placeholder?: string;
@@ -33,33 +33,33 @@ export function preferredName(name: components['schemas']['I18nText']): string {
   return name.en || name.ja || name.ko || '';
 }
 
-export function BreweryPicker({
+export function ProducerPicker({
   value,
   onChange,
-  label = 'Brewery',
+  label = 'Producer',
   required = false,
   placeholder = 'Search by name…',
-}: BreweryPickerProps) {
+}: ProducerPickerProps) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const debouncedQ = useDebounced(q.trim(), 300);
 
   const { data, isFetching } = useQuery({
-    queryKey: ['admin', 'brewery-typeahead', debouncedQ],
+    queryKey: ['admin', 'producer-typeahead', debouncedQ],
     queryFn: async () => {
       const query: { q?: string; limit: number } = { limit: 10 };
       if (debouncedQ) query.q = debouncedQ;
-      const { data: page, error } = await api.GET('/v1/admin/breweries', {
+      const { data: page, error } = await api.GET('/v1/admin/producers', {
         params: { query },
       });
-      if (error || !page) throw new Error('brewery_typeahead_failed');
+      if (error || !page) throw new Error('producer_typeahead_failed');
       return page.items;
     },
     enabled: open,
     staleTime: 30_000,
   });
 
-  function select(b: AdminBrewery) {
+  function select(b: AdminProducer) {
     onChange({ id: b.id, label: preferredName(b.name) });
     setQ('');
     setOpen(false);
@@ -88,7 +88,7 @@ export function BreweryPicker({
             type="button"
             onClick={clear}
             className="text-xs text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]"
-            aria-label="Clear brewery"
+            aria-label="Clear producer"
           >
             ✕
           </button>

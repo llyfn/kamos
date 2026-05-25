@@ -17,9 +17,9 @@ vi.mock('@/lib/api', () => ({
   ForbiddenError: class extends Error {},
 }));
 
-import { Route } from './breweries';
+import { Route } from './producers';
 
-function renderBreweries() {
+function renderProducers() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const Component = Route.options.component;
   if (!Component) throw new Error('no component on Route');
@@ -45,7 +45,7 @@ interface PrefectureFixture {
   sort_order: number;
   region: RegionFixture;
 }
-interface BreweryFixture {
+interface ProducerFixture {
   id: string;
   name: { en: string; ja?: string; ko?: string };
   prefecture?: PrefectureFixture | null;
@@ -93,10 +93,10 @@ const sampleRegionsResponse = [
   },
 ];
 
-function setupListResponse(items: BreweryFixture[], hasMore = false) {
+function setupListResponse(items: ProducerFixture[], hasMore = false) {
   apiGet.mockImplementation((path: string) => {
     if (path === '/v1/admin/me') return Promise.resolve(defaultMe());
-    if (path === '/v1/admin/breweries') {
+    if (path === '/v1/admin/producers') {
       return Promise.resolve({
         data: { items, next_cursor: null, has_more: hasMore },
       });
@@ -108,7 +108,7 @@ function setupListResponse(items: BreweryFixture[], hasMore = false) {
   });
 }
 
-const sampleBrewery: BreweryFixture = {
+const sampleProducer: ProducerFixture = {
   id: '11111111-1111-1111-1111-111111111111',
   name: { en: 'Asahi Shuzo', ja: '旭酒造' },
   prefecture: samplePrefecture,
@@ -116,7 +116,7 @@ const sampleBrewery: BreweryFixture = {
   deleted_at: null,
 };
 
-describe('/breweries', () => {
+describe('/producers', () => {
   beforeEach(() => {
     apiGet.mockReset();
     apiPost.mockReset();
@@ -125,8 +125,8 @@ describe('/breweries', () => {
   });
 
   it('renders rows from the API response', async () => {
-    setupListResponse([sampleBrewery]);
-    renderBreweries();
+    setupListResponse([sampleProducer]);
+    renderProducers();
 
     expect(await screen.findByText('Asahi Shuzo')).toBeInTheDocument();
     expect(screen.getByText('Yamaguchi')).toBeInTheDocument();
@@ -135,40 +135,40 @@ describe('/breweries', () => {
 
   it('shows an empty state with no items', async () => {
     setupListResponse([]);
-    renderBreweries();
-    expect(await screen.findByText('No breweries.')).toBeInTheDocument();
+    renderProducers();
+    expect(await screen.findByText('No producers.')).toBeInTheDocument();
   });
 
   it('q filter triggers refetch with the right query string', async () => {
-    setupListResponse([sampleBrewery]);
-    renderBreweries();
+    setupListResponse([sampleProducer]);
+    renderProducers();
     await screen.findByText('Asahi Shuzo');
 
     const search = screen.getByPlaceholderText('FTS over name_i18n') as HTMLInputElement;
     fireEvent.change(search, { target: { value: 'asahi' } });
 
     await waitFor(() => {
-      const lastCall = apiGet.mock.calls.filter((c) => c[0] === '/v1/admin/breweries').pop();
+      const lastCall = apiGet.mock.calls.filter((c) => c[0] === '/v1/admin/producers').pop();
       expect(lastCall?.[1]?.params?.query?.q).toBe('asahi');
     });
   });
 
-  it('create flow POSTs to /v1/admin/breweries', async () => {
+  it('create flow POSTs to /v1/admin/producers', async () => {
     setupListResponse([]);
     apiPost.mockResolvedValueOnce({
-      data: { ...sampleBrewery, id: 'new-id' },
+      data: { ...sampleProducer, id: 'new-id' },
       response: { status: 201 },
     });
 
-    renderBreweries();
-    fireEvent.click(await screen.findByRole('button', { name: 'New brewery' }));
+    renderProducers();
+    fireEvent.click(await screen.findByRole('button', { name: 'New producer' }));
 
     const englishLabel = await screen.findByText(/English \*/);
     const englishInput = englishLabel.parentElement?.querySelector('input');
     const japaneseLabel = screen.getByText(/Japanese \*/);
     const japaneseInput = japaneseLabel.parentElement?.querySelector('input');
     if (!englishInput || !japaneseInput) throw new Error('name inputs missing');
-    fireEvent.change(englishInput, { target: { value: 'Test Brewery' } });
+    fireEvent.change(englishInput, { target: { value: 'Test Producer' } });
     fireEvent.change(japaneseInput, { target: { value: 'テスト酒造' } });
 
     const dialog = screen.getByRole('dialog');
@@ -182,19 +182,19 @@ describe('/breweries', () => {
     const firstCall = apiPost.mock.calls[0];
     if (!firstCall) throw new Error('apiPost not called');
     const [path, init] = firstCall;
-    expect(path).toBe('/v1/admin/breweries');
-    expect(init.body.name_i18n.en).toBe('Test Brewery');
+    expect(path).toBe('/v1/admin/producers');
+    expect(init.body.name_i18n.en).toBe('Test Producer');
     expect(init.body.name_i18n.ja).toBe('テスト酒造');
   });
 
-  it('edit flow PATCHes to /v1/admin/breweries/{id}', async () => {
-    setupListResponse([sampleBrewery]);
+  it('edit flow PATCHes to /v1/admin/producers/{id}', async () => {
+    setupListResponse([sampleProducer]);
     apiPatch.mockResolvedValueOnce({
-      data: sampleBrewery,
+      data: sampleProducer,
       response: { status: 200 },
     });
 
-    renderBreweries();
+    renderProducers();
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
 
     const dialog = await screen.findByRole('dialog');
@@ -208,15 +208,15 @@ describe('/breweries', () => {
     const firstCall = apiPatch.mock.calls[0];
     if (!firstCall) throw new Error('apiPatch not called');
     const [path, init] = firstCall;
-    expect(path).toBe('/v1/admin/breweries/{id}');
-    expect(init.params.path.id).toBe(sampleBrewery.id);
+    expect(path).toBe('/v1/admin/producers/{id}');
+    expect(init.params.path.id).toBe(sampleProducer.id);
   });
 
-  it('soft-delete flow DELETEs to /v1/admin/breweries/{id}', async () => {
-    setupListResponse([sampleBrewery]);
+  it('soft-delete flow DELETEs to /v1/admin/producers/{id}', async () => {
+    setupListResponse([sampleProducer]);
     apiDelete.mockResolvedValueOnce({ response: { status: 204 } });
 
-    renderBreweries();
+    renderProducers();
     fireEvent.click(await screen.findByRole('button', { name: 'Soft-delete' }));
 
     const dialog = await screen.findByRole('dialog');
@@ -230,18 +230,18 @@ describe('/breweries', () => {
     const firstCall = apiDelete.mock.calls[0];
     if (!firstCall) throw new Error('apiDelete not called');
     const [path, init] = firstCall;
-    expect(path).toBe('/v1/admin/breweries/{id}');
-    expect(init.params.path.id).toBe(sampleBrewery.id);
+    expect(path).toBe('/v1/admin/producers/{id}');
+    expect(init.params.path.id).toBe(sampleProducer.id);
   });
 
-  it('soft-delete 409 surfaces the BREWERY_HAS_LIVE_BEVERAGES toast', async () => {
-    setupListResponse([sampleBrewery]);
+  it('soft-delete 409 surfaces the PRODUCER_HAS_LIVE_BEVERAGES toast', async () => {
+    setupListResponse([sampleProducer]);
     apiDelete.mockResolvedValueOnce({
-      error: { error: 'has live beverages', code: 'BREWERY_HAS_LIVE_BEVERAGES' },
+      error: { error: 'has live beverages', code: 'PRODUCER_HAS_LIVE_BEVERAGES' },
       response: { status: 409 },
     });
 
-    renderBreweries();
+    renderProducers();
     fireEvent.click(await screen.findByRole('button', { name: 'Soft-delete' }));
 
     const dialog = await screen.findByRole('dialog');
@@ -253,20 +253,20 @@ describe('/breweries', () => {
 
     expect(
       await screen.findByText(
-        /Cannot delete — this brewery still has live beverages\. Soft-delete or reassign them first\./,
+        /Cannot delete — this producer still has live beverages\. Soft-delete or reassign them first\./,
       ),
     ).toBeInTheDocument();
   });
 
-  it('restore flow POSTs to /v1/admin/breweries/{id}/restore', async () => {
-    const deleted = { ...sampleBrewery, deleted_at: '2026-05-16T13:00:00Z' };
+  it('restore flow POSTs to /v1/admin/producers/{id}/restore', async () => {
+    const deleted = { ...sampleProducer, deleted_at: '2026-05-16T13:00:00Z' };
     setupListResponse([deleted]);
     apiPost.mockResolvedValueOnce({
       data: { ...deleted, deleted_at: null },
       response: { status: 200 },
     });
 
-    renderBreweries();
+    renderProducers();
     fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
 
     const dialog = await screen.findByRole('dialog');
@@ -280,7 +280,7 @@ describe('/breweries', () => {
     const firstCall = apiPost.mock.calls[0];
     if (!firstCall) throw new Error('apiPost not called');
     const [path, init] = firstCall;
-    expect(path).toBe('/v1/admin/breweries/{id}/restore');
-    expect(init.params.path.id).toBe(sampleBrewery.id);
+    expect(path).toBe('/v1/admin/producers/{id}/restore');
+    expect(init.params.path.id).toBe(sampleProducer.id);
   });
 });

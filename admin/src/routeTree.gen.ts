@@ -11,11 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as QueueRouteImport } from './routes/queue'
+import { Route as ProducersRouteImport } from './routes/producers'
 import { Route as ModerationLogRouteImport } from './routes/moderation-log'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CommentsRouteImport } from './routes/comments'
 import { Route as CheckinsRouteImport } from './routes/checkins'
-import { Route as BreweriesRouteImport } from './routes/breweries'
 import { Route as BeveragesRouteImport } from './routes/beverages'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -27,6 +27,11 @@ const UsersRoute = UsersRouteImport.update({
 const QueueRoute = QueueRouteImport.update({
   id: '/queue',
   path: '/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProducersRoute = ProducersRouteImport.update({
+  id: '/producers',
+  path: '/producers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModerationLogRoute = ModerationLogRouteImport.update({
@@ -49,11 +54,6 @@ const CheckinsRoute = CheckinsRouteImport.update({
   path: '/checkins',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BreweriesRoute = BreweriesRouteImport.update({
-  id: '/breweries',
-  path: '/breweries',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BeveragesRoute = BeveragesRouteImport.update({
   id: '/beverages',
   path: '/beverages',
@@ -68,22 +68,22 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/beverages': typeof BeveragesRoute
-  '/breweries': typeof BreweriesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
   '/login': typeof LoginRoute
   '/moderation-log': typeof ModerationLogRoute
+  '/producers': typeof ProducersRoute
   '/queue': typeof QueueRoute
   '/users': typeof UsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/beverages': typeof BeveragesRoute
-  '/breweries': typeof BreweriesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
   '/login': typeof LoginRoute
   '/moderation-log': typeof ModerationLogRoute
+  '/producers': typeof ProducersRoute
   '/queue': typeof QueueRoute
   '/users': typeof UsersRoute
 }
@@ -91,11 +91,11 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/beverages': typeof BeveragesRoute
-  '/breweries': typeof BreweriesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
   '/login': typeof LoginRoute
   '/moderation-log': typeof ModerationLogRoute
+  '/producers': typeof ProducersRoute
   '/queue': typeof QueueRoute
   '/users': typeof UsersRoute
 }
@@ -104,33 +104,33 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/beverages'
-    | '/breweries'
     | '/checkins'
     | '/comments'
     | '/login'
     | '/moderation-log'
+    | '/producers'
     | '/queue'
     | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/beverages'
-    | '/breweries'
     | '/checkins'
     | '/comments'
     | '/login'
     | '/moderation-log'
+    | '/producers'
     | '/queue'
     | '/users'
   id:
     | '__root__'
     | '/'
     | '/beverages'
-    | '/breweries'
     | '/checkins'
     | '/comments'
     | '/login'
     | '/moderation-log'
+    | '/producers'
     | '/queue'
     | '/users'
   fileRoutesById: FileRoutesById
@@ -138,11 +138,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BeveragesRoute: typeof BeveragesRoute
-  BreweriesRoute: typeof BreweriesRoute
   CheckinsRoute: typeof CheckinsRoute
   CommentsRoute: typeof CommentsRoute
   LoginRoute: typeof LoginRoute
   ModerationLogRoute: typeof ModerationLogRoute
+  ProducersRoute: typeof ProducersRoute
   QueueRoute: typeof QueueRoute
   UsersRoute: typeof UsersRoute
 }
@@ -161,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/queue'
       fullPath: '/queue'
       preLoaderRoute: typeof QueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/producers': {
+      id: '/producers'
+      path: '/producers'
+      fullPath: '/producers'
+      preLoaderRoute: typeof ProducersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/moderation-log': {
@@ -191,13 +198,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckinsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/breweries': {
-      id: '/breweries'
-      path: '/breweries'
-      fullPath: '/breweries'
-      preLoaderRoute: typeof BreweriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/beverages': {
       id: '/beverages'
       path: '/beverages'
@@ -218,11 +218,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BeveragesRoute: BeveragesRoute,
-  BreweriesRoute: BreweriesRoute,
   CheckinsRoute: CheckinsRoute,
   CommentsRoute: CommentsRoute,
   LoginRoute: LoginRoute,
   ModerationLogRoute: ModerationLogRoute,
+  ProducersRoute: ProducersRoute,
   QueueRoute: QueueRoute,
   UsersRoute: UsersRoute,
 }

@@ -45,11 +45,11 @@ function RootLayout() {
                     Beverages
                   </Link>
                   <Link
-                    to="/breweries"
+                    to="/producers"
                     className="hover:underline"
                     activeProps={{ className: 'underline' }}
                   >
-                    Breweries
+                    Producers
                   </Link>
                   <Link
                     to="/users"

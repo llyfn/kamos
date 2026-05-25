@@ -2,7 +2,7 @@
 // backend/internal/handlers/admin.go (AdminBeverageCreate/Update):
 //
 //   * name_i18n.en + name_i18n.ja required, ko optional, each ≤ 200
-//   * brewery_id required (UUID); category driven by category_slug
+//   * producer_id required (UUID); category driven by category_slug
 //   * abv: 0–60 (step 0.1), nullable
 //   * polishing_ratio: 0–100 integer, NIHONSHU ONLY (server CHECK)
 //   * flavor_profile: array of slugs, ≤ 8 chips
@@ -10,18 +10,22 @@
 //   * label_image_url: https only, ≤ 512
 //
 // Migration 016: beverages no longer carry their own prefecture/region —
-// they derive geography from `brewery.prefecture`, so this form has no
-// prefecture inputs. To change a beverage's prefecture, edit its brewery.
+// they derive geography from `producer.prefecture`, so this form has no
+// prefecture inputs. To change a beverage's prefecture, edit its producer.
 //
 // The form drives `category_slug`; the server resolves it to the
-// canonical category row. The brewery picker hits the same
-// /v1/admin/breweries typeahead used by the filter bar. The category
+// canonical category row. The producer picker hits the same
+// /v1/admin/producers typeahead used by the filter bar. The category
 // list and flavor-tag list come from the public taxonomy endpoints
 // (cached forever in the browser).
 
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, type KeyboardEvent, useState } from 'react';
-import { BreweryPicker, type BreweryPickerValue, preferredName } from '@/components/BreweryPicker';
+import {
+  ProducerPicker,
+  type ProducerPickerValue,
+  preferredName,
+} from '@/components/ProducerPicker';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
 
@@ -43,8 +47,8 @@ const FALLBACK_CATEGORIES: CategoryLabel[] = [
 // (e.g. the approval queue, which constructs an initial from the user's
 // free-form JSONB request payload). `initial` always wins when set.
 export interface CatalogBeverageFormPartial {
-  brewery_id?: string;
-  brewery_label?: string;
+  producer_id?: string;
+  producer_label?: string;
   category_slug?: CategorySlug | '';
   name_en?: string;
   name_ja?: string;
@@ -69,7 +73,7 @@ interface CatalogBeverageFormProps {
 }
 
 interface FormState {
-  brewery: BreweryPickerValue | null;
+  producer: ProducerPickerValue | null;
   category_slug: CategorySlug | '';
   name_en: string;
   name_ja: string;
@@ -95,7 +99,7 @@ function initialState(
 ): FormState {
   if (b) {
     return {
-      brewery: { id: b.brewery.id, label: preferredName(b.brewery.name) },
+      producer: { id: b.producer.id, label: preferredName(b.producer.name) },
       category_slug: b.category.slug,
       name_en: b.name.en ?? '',
       name_ja: b.name.ja ?? '',
@@ -111,7 +115,7 @@ function initialState(
     };
   }
   return {
-    brewery: p?.brewery_id ? { id: p.brewery_id, label: p.brewery_label ?? '' } : null,
+    producer: p?.producer_id ? { id: p.producer_id, label: p.producer_label ?? '' } : null,
     category_slug: p?.category_slug ?? '',
     name_en: p?.name_en ?? '',
     name_ja: p?.name_ja ?? '',
@@ -208,8 +212,8 @@ export function CatalogBeverageForm({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLocalError(null);
-    if (!form.brewery) {
-      setLocalError('Brewery is required.');
+    if (!form.producer) {
+      setLocalError('Producer is required.');
       return;
     }
     if (!form.category_slug) {
@@ -225,7 +229,7 @@ export function CatalogBeverageForm({
     const ko = form.name_ko.trim();
 
     const body: Body = {
-      brewery_id: form.brewery.id,
+      producer_id: form.producer.id,
       category_slug: form.category_slug,
       name_i18n: ko ? { en, ja, ko } : { en, ja },
     };
@@ -298,10 +302,10 @@ export function CatalogBeverageForm({
         />
       </fieldset>
 
-      <BreweryPicker
-        value={form.brewery}
-        onChange={(v) => set('brewery', v)}
-        label="Brewery"
+      <ProducerPicker
+        value={form.producer}
+        onChange={(v) => set('producer', v)}
+        label="Producer"
         required
       />
 

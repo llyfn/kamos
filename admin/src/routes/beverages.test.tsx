@@ -32,7 +32,7 @@ function renderBeverages() {
   );
 }
 
-const sampleBrewery = {
+const sampleProducer = {
   id: 'bbbbbbbb-1111-1111-1111-111111111111',
   name: { en: 'Asahi Shuzo', ja: '旭酒造' },
   created_at: '2026-05-16T12:00:00Z',
@@ -42,7 +42,7 @@ const sampleBrewery = {
 const sampleBeverage = {
   id: '11111111-1111-1111-1111-111111111111',
   name: { en: 'Dassai 23', ja: '獺祭 二割三分' },
-  brewery: sampleBrewery,
+  producer: sampleProducer,
   category: { slug: 'nihonshu', label_i18n: { en: 'Nihonshu (Sake)' } },
   flavor_profile: [],
   abv: 16,
@@ -60,9 +60,9 @@ function setupListResponse(items: (typeof sampleBeverage)[]) {
         data: { items, next_cursor: null, has_more: false },
       });
     }
-    if (path === '/v1/admin/breweries') {
+    if (path === '/v1/admin/producers') {
       return Promise.resolve({
-        data: { items: [sampleBrewery], next_cursor: null, has_more: false },
+        data: { items: [sampleProducer], next_cursor: null, has_more: false },
       });
     }
     if (path === '/v1/categories') {
@@ -156,7 +156,7 @@ describe('/beverages', () => {
     const [path, init] = firstCall;
     expect(path).toBe('/v1/admin/beverages/{id}');
     expect(init.params.path.id).toBe(sampleBeverage.id);
-    expect(init.body.brewery_id).toBe(sampleBrewery.id);
+    expect(init.body.producer_id).toBe(sampleProducer.id);
     expect(init.body.category_slug).toBe('nihonshu');
     expect(init.body.category_id).toBeUndefined();
   });

@@ -1,6 +1,6 @@
 // /beverages — admin catalog CRUD page for beverages.
 //
-// Filters: debounced FTS `q`, brewery typeahead (BreweryPicker),
+// Filters: debounced FTS `q`, producer typeahead (ProducerPicker),
 // category dropdown (slug), UUID exact `id`, `include_deleted` checkbox.
 // Header: "New beverage" opens the CatalogBeverageForm in create mode.
 // Per-row: Edit, Soft-delete / Restore (confirm modal).
@@ -8,10 +8,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
-import { BreweryPicker, type BreweryPickerValue, preferredName } from '@/components/BreweryPicker';
 import { CatalogBeverageForm } from '@/components/CatalogBeverageForm';
 import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
+import {
+  ProducerPicker,
+  type ProducerPickerValue,
+  preferredName,
+} from '@/components/ProducerPicker';
 import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
 import { api } from '@/lib/api';
@@ -30,7 +34,7 @@ export const Route = createFileRoute('/beverages')({
 const COLUMNS: QueueTableColumn[] = [
   { key: 'id', label: 'ID' },
   { key: 'name', label: 'Name' },
-  { key: 'brewery', label: 'Brewery' },
+  { key: 'producer', label: 'Producer' },
   { key: 'category', label: 'Category' },
   { key: 'abv', label: 'ABV' },
   { key: 'deleted', label: 'Status' },
@@ -49,7 +53,7 @@ function BeveragesPage() {
   const toast = useToast();
   const [cursor, setCursor] = useState<string | null>(null);
   const [qInput, setQInput] = useState('');
-  const [breweryFilter, setBreweryFilter] = useState<BreweryPickerValue | null>(null);
+  const [producerFilter, setProducerFilter] = useState<ProducerPickerValue | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<CategorySlug | ''>('');
   const [idExact, setIdExact] = useState('');
   const [includeDeleted, setIncludeDeleted] = useState(false);
@@ -63,7 +67,7 @@ function BeveragesPage() {
       'admin',
       'beverages',
       debouncedQ,
-      breweryFilter?.id ?? null,
+      producerFilter?.id ?? null,
       categoryFilter,
       idTrim,
       includeDeleted,
@@ -72,14 +76,14 @@ function BeveragesPage() {
     queryFn: async () => {
       const query: {
         q?: string;
-        brewery_id?: string;
+        producer_id?: string;
         category_slug?: CategorySlug;
         id?: string;
         include_deleted?: '0' | '1';
         cursor?: string;
       } = {};
       if (debouncedQ) query.q = debouncedQ;
-      if (breweryFilter) query.brewery_id = breweryFilter.id;
+      if (producerFilter) query.producer_id = producerFilter.id;
       if (categoryFilter) query.category_slug = categoryFilter;
       if (idTrim) query.id = idTrim;
       if (includeDeleted) query.include_deleted = '1';
@@ -120,13 +124,13 @@ function BeveragesPage() {
           />
         </label>
         <div className="w-full sm:w-64">
-          <BreweryPicker
-            value={breweryFilter}
+          <ProducerPicker
+            value={producerFilter}
             onChange={(v) => {
-              setBreweryFilter(v);
+              setProducerFilter(v);
               setCursor(null);
             }}
-            label="Brewery (optional)"
+            label="Producer (optional)"
           />
         </div>
         <label className="flex flex-col gap-1">
@@ -203,7 +207,7 @@ function BeverageRow({ beverage }: { beverage: AdminBeverage }) {
   const [modal, setModal] = useState<'edit' | 'delete' | 'restore' | null>(null);
   const isDeleted = beverage.deleted_at != null;
   const name = preferredName(beverage.name) || '(unnamed)';
-  const brewery = preferredName(beverage.brewery.name) || '(unnamed)';
+  const producer = preferredName(beverage.producer.name) || '(unnamed)';
   return (
     <>
       <tr className="border-t border-[color:var(--color-border)]">
@@ -211,7 +215,7 @@ function BeverageRow({ beverage }: { beverage: AdminBeverage }) {
           <CopyableId id={beverage.id} />
         </td>
         <td className="p-2 align-top">{name}</td>
-        <td className="p-2 align-top text-[color:var(--color-muted)]">{brewery}</td>
+        <td className="p-2 align-top text-[color:var(--color-muted)]">{producer}</td>
         <td className="p-2 align-top">{beverage.category.slug}</td>
         <td className="p-2 align-top">
           {beverage.abv != null ? `${beverage.abv.toFixed(1)}%` : '—'}

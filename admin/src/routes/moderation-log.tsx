@@ -16,7 +16,7 @@ type TargetType =
   | 'user'
   | 'beverage_request'
   | 'beverage'
-  | 'brewery';
+  | 'producer';
 
 interface Filters {
   target_type: TargetType;
@@ -44,7 +44,7 @@ const TARGET_LABELS: Record<Entry['target_type'], string> = {
   user: 'user',
   beverage_request: 'beverage request',
   beverage: 'beverage',
-  brewery: 'brewery',
+  producer: 'producer',
 };
 const ACTION_BADGE_TONE: Record<Entry['action'], string> = {
   soft_delete: 'bg-red-100 text-red-800',
@@ -90,7 +90,13 @@ function ModerationLogPage() {
     queryKey: ['admin', 'moderation-log', applied, cursor],
     queryFn: async () => {
       const query: {
-        target_type?: 'check_in' | 'comment' | 'user' | 'beverage_request' | 'beverage' | 'brewery';
+        target_type?:
+          | 'check_in'
+          | 'comment'
+          | 'user'
+          | 'beverage_request'
+          | 'beverage'
+          | 'producer';
         target_id?: string;
         moderator_id?: string;
         cursor?: string;
@@ -140,7 +146,7 @@ function ModerationLogPage() {
             <option value="user">user</option>
             <option value="beverage_request">beverage_request</option>
             <option value="beverage">beverage</option>
-            <option value="brewery">brewery</option>
+            <option value="producer">producer</option>
           </select>
         </label>
         <label className="flex flex-col gap-1">

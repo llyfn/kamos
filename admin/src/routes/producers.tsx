@@ -1,30 +1,30 @@
-// /breweries — admin catalog CRUD page for breweries.
+// /producers — admin catalog CRUD page for producers.
 //
 // Filters: debounced FTS `q`, UUID exact `id`, `include_deleted` checkbox.
-// Header: "New brewery" opens the CatalogBreweryForm in create mode.
+// Header: "New producer" opens the CatalogProducerForm in create mode.
 // Per-row: Edit (modal with form in edit mode), Soft-delete / Restore
-// (confirm modal). The 409 BREWERY_HAS_LIVE_BEVERAGES soft-delete error
+// (confirm modal). The 409 PRODUCER_HAS_LIVE_BEVERAGES soft-delete error
 // is surfaced verbatim as a toast.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
-import { preferredName } from '@/components/BreweryPicker';
-import { CatalogBreweryForm } from '@/components/CatalogBreweryForm';
+import { CatalogProducerForm } from '@/components/CatalogProducerForm';
 import { RoleGuard } from '@/components/guard';
 import { Modal } from '@/components/modal';
+import { preferredName } from '@/components/ProducerPicker';
 import { QueueTable, type QueueTableColumn } from '@/components/QueueTable';
 import { useToast } from '@/components/toast';
 import { api } from '@/lib/api';
 import { useDebounced } from '@/lib/use-debounced';
 import type { components } from '@/types/api';
 
-type AdminBrewery = components['schemas']['AdminBrewery'];
-type CreateBody = components['schemas']['AdminBreweryCreate'];
-type UpdateBody = components['schemas']['AdminBreweryUpdate'];
+type AdminProducer = components['schemas']['AdminProducer'];
+type CreateBody = components['schemas']['AdminProducerCreate'];
+type UpdateBody = components['schemas']['AdminProducerUpdate'];
 
-export const Route = createFileRoute('/breweries')({
-  component: GuardedBreweriesPage,
+export const Route = createFileRoute('/producers')({
+  component: GuardedProducersPage,
 });
 
 const COLUMNS: QueueTableColumn[] = [
@@ -35,15 +35,15 @@ const COLUMNS: QueueTableColumn[] = [
   { key: 'actions', label: 'Actions', className: 'text-right' },
 ];
 
-function GuardedBreweriesPage() {
+function GuardedProducersPage() {
   return (
     <RoleGuard requires={['admin']}>
-      <BreweriesPage />
+      <ProducersPage />
     </RoleGuard>
   );
 }
 
-function BreweriesPage() {
+function ProducersPage() {
   const toast = useToast();
   const [cursor, setCursor] = useState<string | null>(null);
   const [qInput, setQInput] = useState('');
@@ -55,7 +55,7 @@ function BreweriesPage() {
   const idTrim = idExact.trim();
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['admin', 'breweries', debouncedQ, idTrim, includeDeleted, cursor],
+    queryKey: ['admin', 'producers', debouncedQ, idTrim, includeDeleted, cursor],
     queryFn: async () => {
       const query: {
         q?: string;
@@ -67,10 +67,10 @@ function BreweriesPage() {
       if (idTrim) query.id = idTrim;
       if (includeDeleted) query.include_deleted = '1';
       if (cursor) query.cursor = cursor;
-      const { data: page, error } = await api.GET('/v1/admin/breweries', {
+      const { data: page, error } = await api.GET('/v1/admin/producers', {
         params: { query },
       });
-      if (error || !page) throw new Error('failed_to_load_breweries');
+      if (error || !page) throw new Error('failed_to_load_producers');
       return page;
     },
   });
@@ -78,13 +78,13 @@ function BreweriesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Breweries</h1>
+        <h1 className="text-xl font-semibold">Producers</h1>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
           className="px-3 py-1 bg-[color:var(--color-accent)] text-white rounded text-sm"
         >
-          New brewery
+          New producer
         </button>
       </div>
 
@@ -111,7 +111,7 @@ function BreweriesPage() {
               setIdExact(e.target.value);
               setCursor(null);
             }}
-            placeholder="brewery uuid"
+            placeholder="producer uuid"
             className="border border-[color:var(--color-border)] rounded px-2 py-1 font-mono text-xs w-full sm:w-72"
           />
         </label>
@@ -129,25 +129,25 @@ function BreweriesPage() {
       </div>
 
       {isLoading && <p className="text-sm text-[color:var(--color-muted)]">Loading…</p>}
-      {isError && <p className="text-sm text-red-700">Failed to load breweries.</p>}
+      {isError && <p className="text-sm text-red-700">Failed to load producers.</p>}
       {data && (
-        <QueueTable<AdminBrewery>
+        <QueueTable<AdminProducer>
           columns={COLUMNS}
           items={data.items}
           page={{ hasMore: data.has_more, nextCursor: data.next_cursor ?? null }}
           cursor={cursor}
           onCursorChange={setCursor}
           rowKey={(b) => b.id}
-          emptyLabel="No breweries."
-          renderRow={(b) => <BreweryRow brewery={b} />}
+          emptyLabel="No producers."
+          renderRow={(b) => <ProducerRow producer={b} />}
         />
       )}
 
       {createOpen && (
-        <CreateBreweryModal
+        <CreateProducerModal
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
-            toast.push('Brewery created');
+            toast.push('Producer created');
             setCreateOpen(false);
           }}
         />
@@ -156,19 +156,19 @@ function BreweriesPage() {
   );
 }
 
-function BreweryRow({ brewery }: { brewery: AdminBrewery }) {
+function ProducerRow({ producer }: { producer: AdminProducer }) {
   const [modal, setModal] = useState<'edit' | 'delete' | 'restore' | null>(null);
-  const isDeleted = brewery.deleted_at != null;
-  const display = preferredName(brewery.name) || '(unnamed)';
+  const isDeleted = producer.deleted_at != null;
+  const display = preferredName(producer.name) || '(unnamed)';
   return (
     <>
       <tr className="border-t border-[color:var(--color-border)]">
         <td className="p-2 align-top">
-          <CopyableId id={brewery.id} />
+          <CopyableId id={producer.id} />
         </td>
         <td className="p-2 align-top">{display}</td>
         <td className="p-2 align-top text-[color:var(--color-muted)]">
-          {brewery.prefecture ? preferredName(brewery.prefecture.name) : '—'}
+          {producer.prefecture ? preferredName(producer.prefecture.name) : '—'}
         </td>
         <td className="p-2 align-top whitespace-nowrap">
           {isDeleted ? (
@@ -206,12 +206,12 @@ function BreweryRow({ brewery }: { brewery: AdminBrewery }) {
           )}
         </td>
       </tr>
-      {modal === 'edit' && <EditBreweryModal brewery={brewery} onClose={() => setModal(null)} />}
+      {modal === 'edit' && <EditProducerModal producer={producer} onClose={() => setModal(null)} />}
       {modal === 'delete' && (
-        <DeleteBreweryModal brewery={brewery} onClose={() => setModal(null)} />
+        <DeleteProducerModal producer={producer} onClose={() => setModal(null)} />
       )}
       {modal === 'restore' && (
-        <RestoreBreweryModal brewery={brewery} onClose={() => setModal(null)} />
+        <RestoreProducerModal producer={producer} onClose={() => setModal(null)} />
       )}
     </>
   );
@@ -233,7 +233,7 @@ function CopyableId({ id }: { id: string }) {
   );
 }
 
-function CreateBreweryModal({
+function CreateProducerModal({
   onClose,
   onCreated,
 }: {
@@ -244,7 +244,7 @@ function CreateBreweryModal({
   const [error, setError] = useState<string | null>(null);
   const mut = useMutation({
     mutationFn: async (body: CreateBody) => {
-      const { data, error: err, response } = await api.POST('/v1/admin/breweries', { body });
+      const { data, error: err, response } = await api.POST('/v1/admin/producers', { body });
       if (err || !data) {
         const code = (err as { code?: string } | undefined)?.code;
         if (response.status === 422 && code === 'INVALID_PREFECTURE_SLUG') {
@@ -255,14 +255,14 @@ function CreateBreweryModal({
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'breweries'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'brewery-typeahead'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'producers'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'producer-typeahead'] });
       onCreated();
     },
   });
   return (
-    <Modal open onClose={onClose} title="New brewery">
-      <CatalogBreweryForm
+    <Modal open onClose={onClose} title="New producer">
+      <CatalogProducerForm
         submitting={mut.isPending}
         submitLabel="Create"
         errorMessage={error}
@@ -277,7 +277,13 @@ function CreateBreweryModal({
   );
 }
 
-function EditBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose: () => void }) {
+function EditProducerModal({
+  producer,
+  onClose,
+}: {
+  producer: AdminProducer;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
@@ -287,8 +293,8 @@ function EditBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose
         data,
         error: err,
         response,
-      } = await api.PATCH('/v1/admin/breweries/{id}', {
-        params: { path: { id: brewery.id } },
+      } = await api.PATCH('/v1/admin/producers/{id}', {
+        params: { path: { id: producer.id } },
         body,
       });
       if (err || !data) {
@@ -301,16 +307,16 @@ function EditBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'breweries'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'brewery-typeahead'] });
-      toast.push('Brewery updated');
+      qc.invalidateQueries({ queryKey: ['admin', 'producers'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'producer-typeahead'] });
+      toast.push('Producer updated');
       onClose();
     },
   });
   return (
-    <Modal open onClose={onClose} title={`Edit brewery — ${preferredName(brewery.name)}`}>
-      <CatalogBreweryForm
-        initial={brewery}
+    <Modal open onClose={onClose} title={`Edit producer — ${preferredName(producer.name)}`}>
+      <CatalogProducerForm
+        initial={producer}
         submitting={mut.isPending}
         submitLabel="Save"
         errorMessage={error}
@@ -325,32 +331,38 @@ function EditBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose
   );
 }
 
-function DeleteBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose: () => void }) {
+function DeleteProducerModal({
+  producer,
+  onClose,
+}: {
+  producer: AdminProducer;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const mut = useMutation({
     mutationFn: async () => {
-      const { error: err, response } = await api.DELETE('/v1/admin/breweries/{id}', {
-        params: { path: { id: brewery.id } },
+      const { error: err, response } = await api.DELETE('/v1/admin/producers/{id}', {
+        params: { path: { id: producer.id } },
       });
       if (response.status === 409) {
-        throw new Error('BREWERY_HAS_LIVE_BEVERAGES');
+        throw new Error('PRODUCER_HAS_LIVE_BEVERAGES');
       }
       if (err || response.status !== 204) {
         throw new Error(`delete_failed_${response.status}`);
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'breweries'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'brewery-typeahead'] });
-      toast.push(`Soft-deleted ${preferredName(brewery.name)}`);
+      qc.invalidateQueries({ queryKey: ['admin', 'producers'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'producer-typeahead'] });
+      toast.push(`Soft-deleted ${preferredName(producer.name)}`);
       onClose();
     },
     onError: (e: Error) => {
-      if (e.message === 'BREWERY_HAS_LIVE_BEVERAGES') {
+      if (e.message === 'PRODUCER_HAS_LIVE_BEVERAGES') {
         toast.push(
-          'Cannot delete — this brewery still has live beverages. Soft-delete or reassign them first.',
+          'Cannot delete — this producer still has live beverages. Soft-delete or reassign them first.',
           'error',
         );
       }
@@ -363,14 +375,14 @@ function DeleteBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClo
     mut.mutate();
   }
   return (
-    <Modal open onClose={onClose} title={`Soft-delete ${preferredName(brewery.name)}?`}>
+    <Modal open onClose={onClose} title={`Soft-delete ${preferredName(producer.name)}?`}>
       <form onSubmit={onConfirm}>
         <p className="text-sm mb-3">
-          This sets <code className="font-mono">deleted_at</code> on the brewery. Public catalog
+          This sets <code className="font-mono">deleted_at</code> on the producer. Public catalog
           reads will hide it; you can restore it later. Fails with{' '}
           <code className="font-mono">409</code> if any live beverages still reference it.
         </p>
-        {error && error !== 'BREWERY_HAS_LIVE_BEVERAGES' && (
+        {error && error !== 'PRODUCER_HAS_LIVE_BEVERAGES' && (
           <p className="text-red-700 text-xs mb-2">{error}</p>
         )}
         <div className="flex justify-end gap-2">
@@ -394,7 +406,13 @@ function DeleteBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClo
   );
 }
 
-function RestoreBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onClose: () => void }) {
+function RestoreProducerModal({
+  producer,
+  onClose,
+}: {
+  producer: AdminProducer;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
@@ -404,16 +422,16 @@ function RestoreBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onCl
         data,
         error: err,
         response,
-      } = await api.POST('/v1/admin/breweries/{id}/restore', {
-        params: { path: { id: brewery.id } },
+      } = await api.POST('/v1/admin/producers/{id}/restore', {
+        params: { path: { id: producer.id } },
       });
       if (err || !data) throw new Error(`restore_failed_${response.status}`);
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'breweries'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'brewery-typeahead'] });
-      toast.push(`Restored ${preferredName(brewery.name)}`);
+      qc.invalidateQueries({ queryKey: ['admin', 'producers'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'producer-typeahead'] });
+      toast.push(`Restored ${preferredName(producer.name)}`);
       onClose();
     },
     onError: (e: Error) => setError(e.message),
@@ -424,10 +442,10 @@ function RestoreBreweryModal({ brewery, onClose }: { brewery: AdminBrewery; onCl
     mut.mutate();
   }
   return (
-    <Modal open onClose={onClose} title={`Restore ${preferredName(brewery.name)}?`}>
+    <Modal open onClose={onClose} title={`Restore ${preferredName(producer.name)}?`}>
       <form onSubmit={onConfirm}>
         <p className="text-sm mb-3">
-          Clears <code className="font-mono">deleted_at</code>; the brewery reappears in the public
+          Clears <code className="font-mono">deleted_at</code>; the producer reappears in the public
           catalog.
         </p>
         {error && <p className="text-red-700 text-xs mb-2">{error}</p>}
