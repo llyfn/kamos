@@ -23,18 +23,39 @@ class MeProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
     final async = ref.watch(meProvider);
     return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: AsyncWidget(
-          value: async,
-          center: true,
-          onRetry: () => ref.invalidate(meProvider),
-          data: (me) =>
-              _ProfileBody(user: me.user, stats: me.stats, isMe: true),
+      // AppBar background matches the page so the shell + scroll surface read
+      // as a single quiet plane. Tints/elevations are zeroed so Material 3
+      // doesn't paint a surface seam on scroll.
+      appBar: AppBar(
+        backgroundColor: t.bgPage,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.person_search_outlined, size: 24),
+          tooltip: l.userSearchTitle,
+          color: t.fg1,
+          onPressed: () => context.push('/users/search'),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline, size: 24),
+            tooltip: l.tabLists,
+            color: t.fg1,
+            onPressed: () => context.push('/collections'),
+          ),
+        ],
+      ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(meProvider),
+        data: (me) =>
+            _ProfileBody(user: me.user, stats: me.stats, isMe: true),
       ),
     );
   }
@@ -46,9 +67,24 @@ class OtherProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
     final async = ref.watch(publicProfileProvider(username));
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        backgroundColor: t.bgPage,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline, size: 24),
+            tooltip: l.userCollectionsTitle(username),
+            color: t.fg1,
+            onPressed: () => context.push('/users/$username/lists'),
+          ),
+        ],
+      ),
       body: AsyncWidget(
         value: async,
         center: true,
