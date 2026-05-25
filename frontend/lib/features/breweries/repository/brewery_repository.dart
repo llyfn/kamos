@@ -41,5 +41,5 @@ class BreweryRepository {
 }
 
 final breweryRepositoryProvider = Provider<BreweryRepository>(
-  (ref) => BreweryRepository(dio: ref.read(dioProvider)),
+  (ref) => BreweryRepository(dio: ref.watch(dioProvider)),
 );

@@ -47,5 +47,5 @@ class FeedRepository {
 }
 
 final feedRepositoryProvider = Provider<FeedRepository>(
-  (ref) => FeedRepository(dio: ref.read(dioProvider)),
+  (ref) => FeedRepository(dio: ref.watch(dioProvider)),
 );

@@ -59,5 +59,5 @@ class SearchRepository {
 }
 
 final searchRepositoryProvider = Provider<SearchRepository>(
-  (ref) => SearchRepository(dio: ref.read(dioProvider)),
+  (ref) => SearchRepository(dio: ref.watch(dioProvider)),
 );

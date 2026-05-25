@@ -95,5 +95,5 @@ class CommentRepository {
 }
 
 final commentRepositoryProvider = Provider<CommentRepository>(
-  (ref) => CommentRepository(ref.read(dioProvider)),
+  (ref) => CommentRepository(ref.watch(dioProvider)),
 );

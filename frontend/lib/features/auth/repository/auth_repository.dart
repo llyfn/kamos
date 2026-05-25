@@ -123,7 +123,7 @@ class AuthRepository {
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(
-    dio: ref.read(dioProvider),
+    dio: ref.watch(dioProvider),
     storage: ref.read(secureStorageProvider),
   ),
 );

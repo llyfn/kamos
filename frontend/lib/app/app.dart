@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_toast.dart';
+import '../features/auth/providers/auth_state.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -58,6 +59,19 @@ class _ApiToastListener extends ConsumerWidget {
       // One-shot semantics: clear so the next 401/network error re-triggers
       // even if the kind is the same.
       ref.read(apiToastBusProvider.notifier).clear();
+    });
+    // On sign-in transition (false → true), clear any pending API toast and
+    // hide any snackbar that's still on screen from the previous session —
+    // the previous unauthorized banner must not greet the freshly signed-in
+    // user with a stale "Please sign in again."
+    ref.listen<AuthState>(authStateProvider, (prev, next) {
+      if (prev == null) return;
+      if (!prev.isAuthenticated && next.isAuthenticated) {
+        kamosMessengerKey.currentState?.hideCurrentSnackBar(
+          reason: SnackBarClosedReason.remove,
+        );
+        ref.read(apiToastBusProvider.notifier).clear();
+      }
     });
     return child;
   }

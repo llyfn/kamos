@@ -721,5 +721,5 @@ class KamosBeverageRequestsApi {
 /// `dioProvider` so the facade inherits the full interceptor stack
 /// (`AuthInterceptor` + `DioCacheInterceptor` + Sentry).
 final kamosApiProvider = Provider<KamosApi>(
-  (ref) => KamosApi(ref.read(dioProvider)),
+  (ref) => KamosApi(ref.watch(dioProvider)),
 );

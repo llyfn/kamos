@@ -42,7 +42,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     final controller = ref.watch(authControllerProvider);
 
     return Scaffold(
@@ -127,15 +126,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         .read(authControllerProvider.notifier)
                         .signInWithGoogle(idToken: idToken, locale: locale);
                   },
-                ),
-              if (controller.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: KamosSpacing.md),
-                  child: Text(
-                    controller.error!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: t.fgDanger, fontSize: 13),
-                  ),
                 ),
               const SizedBox(height: KamosSpacing.xxl),
             ],
@@ -246,6 +236,37 @@ class _SignInOrUp extends StatelessWidget {
               style: TextStyle(fontSize: 12, color: t.fg3),
             ),
           ),
+        ],
+        if (controllerState.error != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: KamosSpacing.md,
+              vertical: KamosSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: t.fgDanger.withValues(alpha: 0.10),
+              border: Border.all(color: t.fgDanger.withValues(alpha: 0.40)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline, color: t.fgDanger, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    controllerState.error!,
+                    style: TextStyle(
+                      color: t.fgDanger,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: KamosSpacing.md),
         ],
         _FieldLabel(l.authEmailLabel),
         TextField(

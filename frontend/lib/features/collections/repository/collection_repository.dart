@@ -107,5 +107,5 @@ class CollectionRepository {
 }
 
 final collectionRepositoryProvider = Provider<CollectionRepository>(
-  (ref) => CollectionRepository(dio: ref.read(dioProvider)),
+  (ref) => CollectionRepository(dio: ref.watch(dioProvider)),
 );
