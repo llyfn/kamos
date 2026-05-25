@@ -195,6 +195,9 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		// Users (public reads, with optional auth for follow state).
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.OptionalAuth(signer, softDelete))
+			// Static-segment routes must precede the {username} catch-
+			// alls so chi doesn't bind "search" to the path param.
+			r.Get("/users/search", h.SearchUsers)
 			// public-profile response varies by the viewer's
 			// follow state (follow_state, restricted), so we can't share
 			// a LRU entry across viewers and we can't mark it public
@@ -209,12 +212,6 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Get("/users/{username}/followers", h.GetUserFollowers)
 			r.Get("/users/{username}/following", h.GetUserFollowing)
 			r.Get("/check-ins/{id}", h.GetCheckin)
-
-			// public collections discovery feed. OptionalAuth
-			// because the response shape is identical for anon and authed
-			// viewers; we add the middleware so a future "personalized
-			// discovery" overlay can plug in without re-routing.
-			r.Get("/collections/public", h.ListPublicCollections)
 
 			// comment list is also a public-read surface.
 			// OptionalAuth for forward compatibility (we may add a

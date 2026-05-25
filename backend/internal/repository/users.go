@@ -261,6 +261,70 @@ LIMIT 1;`
 	return &u, nil
 }
 
+// SearchUsers returns a page of live users matching `query`, ranked by
+// match quality:
+//
+//	rank 1 — username has the query as a case-insensitive prefix
+//	rank 2 — display_name has the query as a case-insensitive prefix
+//	rank 3 — username OR display_name contains the query
+//
+// Within a rank, results are sorted by (created_at, id) DESC so the
+// keyset cursor stays stable. The handler validates query length;
+// repository assumes a non-empty trimmed string.
+//
+// At KAMOS' current scale (users table is small) the ILIKE scan is
+// fine; a trigram or pg_trgm index can be layered on later if scan
+// time becomes meaningful.
+func (r *UserRepo) SearchUsers(
+	ctx context.Context,
+	query string,
+	cursorTs *time.Time,
+	cursorID *string,
+	limit int,
+) ([]domain.PublicUser, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	// Two LIKE patterns: prefix (`q%`) and contains (`%q%`). We feed both
+	// into the CASE that computes the rank — using ILIKE keeps the match
+	// case-insensitive without requiring callers to lowercase first.
+	prefix := query + "%"
+	contains := "%" + query + "%"
+	const q = `
+SELECT id, username, display_username, display_name, avatar_url, bio,
+       locale, privacy_mode, created_at,
+       CASE
+         WHEN username ILIKE $1     THEN 1
+         WHEN display_name ILIKE $1 THEN 2
+         ELSE 3
+       END AS rank
+FROM users
+WHERE deleted_at IS NULL
+  AND (username ILIKE $2 OR display_name ILIKE $2)
+  AND ($3::timestamptz IS NULL OR (created_at, id) < ($3::timestamptz, $4::uuid))
+ORDER BY rank ASC, created_at DESC, id DESC
+LIMIT $5;`
+	rows, err := r.db.Query(ctx, q, prefix, contains, cursorTs, cursorID, limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("UserRepo.SearchUsers: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.PublicUser, 0, limit+1)
+	for rows.Next() {
+		var u domain.PublicUser
+		var rank int
+		if err := rows.Scan(
+			&u.ID, &u.Username, &u.DisplayUsername, &u.DisplayName,
+			&u.AvatarURL, &u.Bio, &u.Locale, &u.PrivacyMode, &u.CreatedAt,
+			&rank,
+		); err != nil {
+			return nil, fmt.Errorf("UserRepo.SearchUsers scan: %w", err)
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
 // LoadPasswordHash returns the hash for an authed user (used by password change).
 func (r *UserRepo) LoadPasswordHash(ctx context.Context, id string) (string, error) {
 	var h *string

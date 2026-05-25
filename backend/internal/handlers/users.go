@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -97,6 +98,50 @@ type publicProfile struct {
 	Stats       domain.UserStats `json:"stats"`
 	FollowState string           `json:"follow_state,omitempty"` // 'accepted' | 'pending' | ''
 	Restricted  bool             `json:"restricted"`             // private + caller not approved
+}
+
+// SearchUsers — GET /v1/users/search?q=...&cursor=...&limit=...
+//
+// OptionalAuth. Returns a page of PublicUser rows matching `q`:
+//   - username prefix > display_name prefix > contains-either (ranked at
+//     the SQL level so cursor pagination stays stable).
+//   - Soft-deleted users excluded.
+//   - No follower counts or private fields leak — the username is
+//     inherently public (it's the canonical key for the profile route).
+//
+// `q` is sanitized via SanitizeText (control + bidi-override rejected),
+// trimmed, and must be ≥ 2 chars; shorter queries return
+// 400 INVALID_QUERY. Empty `q` returns the same.
+func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimSpace(r.URL.Query().Get("q"))
+	q, err := domain.SanitizeText("q", raw, false, 100)
+	if err != nil {
+		h.writeErr(w, "SearchUsers sanitize", err)
+		return
+	}
+	if len([]rune(q)) < 2 {
+		httperr.WriteError(w, http.StatusBadRequest, "INVALID_QUERY",
+			"q must be at least 2 characters")
+		return
+	}
+	limit := parseLimit(r, 20, 50)
+	c, err := parseCursor(r)
+	if err != nil {
+		h.writeErr(w, "SearchUsers cursor", err)
+		return
+	}
+	rows, err := h.Repos.Users.SearchUsers(r.Context(), q,
+		optTimestamp(c), optString(c.ID), limit)
+	if err != nil {
+		h.writeErr(w, "SearchUsers", err)
+		return
+	}
+	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(u domain.PublicUser) cursor.Cursor {
+		return cursor.Cursor{CreatedAt: u.CreatedAt, ID: u.ID}
+	})
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.PublicUser]{
+		Items: items, NextCursor: next, HasMore: hasMore,
+	})
 }
 
 // GetUser — GET /v1/users/{username}. Public profile, optional auth for
