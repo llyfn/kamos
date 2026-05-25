@@ -6,16 +6,6 @@ import "time"
 // Notifications (SPEC §5.4)
 // ---------------------------------------------------------------------------
 
-// Notification type discriminants. Mirror the DB CHECK constraint in
-// migration 019.
-const (
-	NotificationTypeToast          = "toast"
-	NotificationTypeComment        = "comment"
-	NotificationTypeFollow         = "follow"
-	NotificationTypeFollowRequest  = "follow_request"
-	NotificationTypeFollowApproved = "follow_approved"
-)
-
 // Notification is the wire shape returned by /v1/notifications. `Actor` may
 // be nil when the original actor was hard-deleted (FK ON DELETE SET NULL).
 // `CheckInID` and `CommentID` are nullable for the same reason and also for

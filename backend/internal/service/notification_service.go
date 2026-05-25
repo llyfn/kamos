@@ -137,11 +137,8 @@ func (s *NotificationService) CountUnread(ctx context.Context, recipientID strin
 
 // MarkRead marks the supplied ids read for the recipient.
 //
-// Per the orchestrator's IDOR rationale: when `ids` contains a UUID that
-// does NOT belong to the caller, we silently include the row count of
-// only the rows that DID match (i.e. zero for that id). The handler
-// returns 200 with `marked: N` rather than 404 so the endpoint isn't a
-// probing oracle for "does this notification id exist on any user."
+// Pool-scoped IDOR: SQL WHERE restricts UPDATE to recipient_user_id = $caller
+// (see handler doc for oracle rationale).
 func (s *NotificationService) MarkRead(ctx context.Context, recipientID string, ids []string) (int, error) {
 	return s.notifications.MarkRead(ctx, recipientID, ids)
 }
