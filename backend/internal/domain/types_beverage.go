@@ -3,10 +3,10 @@ package domain
 import "time"
 
 // ---------------------------------------------------------------------------
-// Beverage / Brewery
+// Beverage / Producer
 // ---------------------------------------------------------------------------
 
-type Brewery struct {
+type Producer struct {
 	ID            string      `json:"id"`
 	Name          I18nText    `json:"name"`
 	Prefecture    *Prefecture `json:"prefecture,omitempty"`
@@ -25,7 +25,7 @@ type CategoryLabel struct {
 type Beverage struct {
 	ID             string        `json:"id"`
 	Name           I18nText      `json:"name"`
-	Brewery        Brewery       `json:"brewery"`
+	Producer       Producer      `json:"producer"`
 	Category       CategoryLabel `json:"category"`
 	Subcategory    *I18nText     `json:"subcategory,omitempty"`
 	ABV            *float64      `json:"abv,omitempty"`
@@ -62,15 +62,15 @@ type FlavorTag struct {
 type BeverageRef struct {
 	ID            string        `json:"id"`
 	Name          I18nText      `json:"name"`
-	Brewery       BreweryRef    `json:"brewery"`
+	Producer      ProducerRef   `json:"producer"`
 	Category      CategoryLabel `json:"category"`
 	LabelImageURL *string       `json:"label_image_url,omitempty"`
 }
 
-// BreweryRef is the compact brewery embedding used by check-ins, feed,
+// ProducerRef is the compact producer embedding used by check-ins, feed,
 // and collection entries. Prefecture is nested (and carries its own
 // embedded Region) when known; absent otherwise.
-type BreweryRef struct {
+type ProducerRef struct {
 	ID         string      `json:"id"`
 	Name       I18nText    `json:"name"`
 	Prefecture *Prefecture `json:"prefecture,omitempty"`

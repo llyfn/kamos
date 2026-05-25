@@ -30,8 +30,8 @@ import (
 // sort. For non-time-ordered lists (e.g. popularity search), reuse the same
 // shape with the numeric value stuffed into Score. `Type` is used only by
 // /v1/search to disambiguate which sub-stream the cursor is mid-page in
-// (`beverage` while draining beverages, `brewery` once the cursor has
-// crossed into breweries).
+// (`beverage` while draining beverages, `producer` once the cursor has
+// crossed into producers).
 //
 // Stage 5 (PERF-003): popularity cursors carry a triple
 // (CheckInCount, CreatedAt, ID) so the keyset stays stable across the

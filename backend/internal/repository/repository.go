@@ -19,7 +19,7 @@ type Repos struct {
 	DB            *pgxpool.Pool
 	Users         *UserRepo
 	Beverages     *BeverageRepo
-	Breweries     *BreweryRepo
+	Producers     *ProducerRepo
 	Checkins      *CheckinRepo
 	Comments      *CommentRepo
 	Feed          *FeedRepo
@@ -41,7 +41,7 @@ func New(db *pgxpool.Pool) *Repos {
 		DB:            db,
 		Users:         &UserRepo{db: db},
 		Beverages:     &BeverageRepo{db: db},
-		Breweries:     &BreweryRepo{db: db},
+		Producers:     &ProducerRepo{db: db},
 		Checkins:      &CheckinRepo{db: db},
 		Comments:      &CommentRepo{db: db},
 		Feed:          &FeedRepo{db: db},

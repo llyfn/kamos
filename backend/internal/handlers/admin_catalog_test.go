@@ -25,12 +25,12 @@ var adminCatalogRoutes = []struct {
 	{http.MethodPatch, "/v1/admin/beverages/00000000-0000-0000-0000-000000000000"},
 	{http.MethodDelete, "/v1/admin/beverages/00000000-0000-0000-0000-000000000000"},
 	{http.MethodPost, "/v1/admin/beverages/00000000-0000-0000-0000-000000000000/restore"},
-	{http.MethodGet, "/v1/admin/breweries"},
-	{http.MethodGet, "/v1/admin/breweries/00000000-0000-0000-0000-000000000000"},
-	{http.MethodPost, "/v1/admin/breweries"},
-	{http.MethodPatch, "/v1/admin/breweries/00000000-0000-0000-0000-000000000000"},
-	{http.MethodDelete, "/v1/admin/breweries/00000000-0000-0000-0000-000000000000"},
-	{http.MethodPost, "/v1/admin/breweries/00000000-0000-0000-0000-000000000000/restore"},
+	{http.MethodGet, "/v1/admin/producers"},
+	{http.MethodGet, "/v1/admin/producers/00000000-0000-0000-0000-000000000000"},
+	{http.MethodPost, "/v1/admin/producers"},
+	{http.MethodPatch, "/v1/admin/producers/00000000-0000-0000-0000-000000000000"},
+	{http.MethodDelete, "/v1/admin/producers/00000000-0000-0000-0000-000000000000"},
+	{http.MethodPost, "/v1/admin/producers/00000000-0000-0000-0000-000000000000/restore"},
 }
 
 // TestAdminCatalogRequiresAuth — every admin catalog route returns 401

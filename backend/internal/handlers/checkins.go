@@ -71,7 +71,6 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		Rating:       req.Rating,
 		ReviewText:   req.Review,
 		PurchaseType: req.PurchaseType,
-		ServingStyle: req.ServingStyle,
 		PhotoURLs:    req.Photos,
 		TagSlugs:     req.Tags,
 		VenueID:      venueID,
@@ -194,7 +193,6 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		ClearReview:  req.ClearReview,
 		ClearPrice:   req.ClearPrice,
 		PurchaseType: req.PurchaseType,
-		ServingStyle: req.ServingStyle,
 		Tags:         req.Tags,
 	}
 	if req.Price != nil {
@@ -233,7 +231,6 @@ type updateCheckinPatch struct {
 	Tags         *[]string       `json:"tags,omitempty"`
 	Price        json.RawMessage `json:"price,omitempty"`
 	PurchaseType *string         `json:"purchase_type,omitempty"`
-	ServingStyle *string         `json:"serving_style,omitempty"`
 }
 
 // toRequest projects the patch onto domain.UpdateCheckinRequest, including
@@ -243,7 +240,6 @@ func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
 		BeverageID:   p.BeverageID,
 		Tags:         p.Tags,
 		PurchaseType: p.PurchaseType,
-		ServingStyle: p.ServingStyle,
 	}
 	// rating: null → clear; value → set; absent → no change.
 	if len(p.Rating) > 0 {

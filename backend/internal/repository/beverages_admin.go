@@ -1,6 +1,6 @@
 // beverages_admin.go — admin catalog write paths (Stage 8, migration 014).
 //
-// Direct admin CRUD for breweries + beverages plus admin-only listings
+// Direct admin CRUD for producers + beverages plus admin-only listings
 // that can include soft-deleted rows. Every method here is mounted under
 // `/v1/admin` with `RoleAdmin` required in router.go. The mutators are
 // designed to run inside the same `pgx.Tx` as `AdminRepo.LogAction` so the
@@ -8,7 +8,7 @@
 // Begin/Commit and threads the *pgx.Tx into each method's `tx` parameter.
 //
 // Public read paths in beverages.go now filter `deleted_at IS NULL` on
-// both `beverages` and `breweries`; the admin variants here either
+// both `beverages` and `producers`; the admin variants here either
 // short-circuit to a specific row by id or honor an `IncludeDeleted`
 // flag so the admin "trash" view can resurface tombstones for restore.
 //
@@ -33,16 +33,16 @@ import (
 )
 
 // ============================================================================
-// Brewery admin CRUD
+// Producer admin CRUD
 // ============================================================================
 
-// BreweryCreateInput is the validated input shape for AdminCreateBrewery.
+// ProducerCreateInput is the validated input shape for AdminCreateProducer.
 // Pointers carry the "absent" signal — required fields are non-pointer.
 //
 // Migration 016: locality is captured via PrefectureID (a UUID FK into
 // `prefectures`) — the handler resolves a `prefecture_slug` to this id
 // before calling Create. nil = no curated prefecture (column NULL).
-type BreweryCreateInput struct {
+type ProducerCreateInput struct {
 	Name         domain.I18nText
 	PrefectureID *string
 	FoundedYear  *int
@@ -50,11 +50,11 @@ type BreweryCreateInput struct {
 	Description  *domain.I18nText
 }
 
-// BreweryUpdateInput is the partial-update shape for AdminUpdateBrewery.
+// ProducerUpdateInput is the partial-update shape for AdminUpdateProducer.
 // Every field is a pointer; nil means "leave unchanged". Use an empty
 // string for a non-nil PrefectureID (ptr to "") to clear the column to
 // NULL — the dynamic SET builder treats this as an explicit clear.
-type BreweryUpdateInput struct {
+type ProducerUpdateInput struct {
 	Name         *domain.I18nText
 	PrefectureID *string
 	FoundedYear  *int
@@ -62,13 +62,13 @@ type BreweryUpdateInput struct {
 	Description  *domain.I18nText
 }
 
-// AdminBreweryListParams scopes the admin brewery search.
+// AdminProducerListParams scopes the admin producer search.
 //
 //   - Q (when set) drives FTS via websearch_to_tsquery('simple', $1)
-//     against idx_breweries_name_tsv.
+//     against idx_producers_name_tsv.
 //   - IDExact short-circuits the cursor and FTS to a single PK lookup.
 //   - IncludeDeleted = true surfaces soft-deleted rows (admin "trash").
-type AdminBreweryListParams struct {
+type AdminProducerListParams struct {
 	Q              *string
 	IDExact        *string
 	IncludeDeleted bool
@@ -77,26 +77,26 @@ type AdminBreweryListParams struct {
 	Limit          int
 }
 
-// AdminBreweryRow is the admin-list row shape; mirrors domain.Brewery
+// AdminProducerRow is the admin-list row shape; mirrors domain.Producer
 // but includes the nullable DeletedAt timestamp so the UI can render
 // the "tombstoned" badge.
-type AdminBreweryRow struct {
-	domain.Brewery
+type AdminProducerRow struct {
+	domain.Producer
 	DeletedAt *time.Time `json:"deleted_at"`
 }
 
-// adminBrewerySelect projects every column the admin UI needs (i18n
+// adminProducerSelect projects every column the admin UI needs (i18n
 // name + description, beverage_count, deleted_at) plus the nested
 // prefecture/region chain via the LEFT JOIN. Migration 016 dropped
-// the free-text `breweries.prefecture` and `breweries.region` columns
+// the free-text `producers.prefecture` and `producers.region` columns
 // in favor of `prefecture_id`.
-const adminBrewerySelect = `
+const adminProducerSelect = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website,
-       b.description_i18n, b.created_at, b.beverage_count, b.deleted_at,` + breweryPrefectureSelectCols + `
-FROM breweries b` + breweriesPrefectureJoinClause
+       b.description_i18n, b.created_at, b.beverage_count, b.deleted_at,` + producerPrefectureSelectCols + `
+FROM producers b` + producersPrefectureJoinClause
 
-func scanAdminBrewery(row pgx.Row) (*AdminBreweryRow, error) {
-	var out AdminBreweryRow
+func scanAdminProducer(row pgx.Row) (*AdminProducerRow, error) {
+	var out AdminProducerRow
 	var nameJSON, descJSON []byte
 	var count int
 	var pref prefectureScan
@@ -120,35 +120,35 @@ func scanAdminBrewery(row pgx.Row) (*AdminBreweryRow, error) {
 	return &out, nil
 }
 
-// AdminList pages through breweries with optional FTS + id + soft-delete
+// AdminList pages through producers with optional FTS + id + soft-delete
 // inclusion. IDExact short-circuits to a single-row lookup and ignores
 // the cursor (admin "find by UUID").
-func (r *BreweryRepo) AdminList(ctx context.Context, p AdminBreweryListParams) ([]AdminBreweryRow, error) {
+func (r *ProducerRepo) AdminList(ctx context.Context, p AdminProducerListParams) ([]AdminProducerRow, error) {
 	if p.Limit <= 0 {
 		p.Limit = 20
 	}
 
 	// Fast path: exact id lookup. Skips FTS + cursor entirely.
 	if p.IDExact != nil && *p.IDExact != "" {
-		sql := adminBrewerySelect + ` WHERE b.id = $1::uuid`
+		sql := adminProducerSelect + ` WHERE b.id = $1::uuid`
 		if !p.IncludeDeleted {
 			sql += ` AND b.deleted_at IS NULL`
 		}
 		sql += ` LIMIT 1;`
 		row := r.db.QueryRow(ctx, sql, *p.IDExact)
-		hit, err := scanAdminBrewery(row)
+		hit, err := scanAdminProducer(row)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, nil
 			}
-			return nil, fmt.Errorf("BreweryRepo.AdminList exact: %w", err)
+			return nil, fmt.Errorf("ProducerRepo.AdminList exact: %w", err)
 		}
-		return []AdminBreweryRow{*hit}, nil
+		return []AdminProducerRow{*hit}, nil
 	}
 
 	// FTS uses websearch_to_tsquery so the admin can type quoted phrases
 	// and OR/AND operators without learning tsquery syntax.
-	sql := adminBrewerySelect + `
+	sql := adminProducerSelect + `
 WHERE TRUE
   AND ($1::boolean OR b.deleted_at IS NULL)
   AND ($2::text IS NULL OR
@@ -163,34 +163,34 @@ LIMIT $5;`
 
 	rows, err := r.db.Query(ctx, sql, p.IncludeDeleted, p.Q, p.CursorTs, p.CursorID, p.Limit+1)
 	if err != nil {
-		return nil, fmt.Errorf("BreweryRepo.AdminList: %w", err)
+		return nil, fmt.Errorf("ProducerRepo.AdminList: %w", err)
 	}
 	defer rows.Close()
-	out := make([]AdminBreweryRow, 0, p.Limit+1)
+	out := make([]AdminProducerRow, 0, p.Limit+1)
 	for rows.Next() {
-		hit, err := scanAdminBrewery(rows)
+		hit, err := scanAdminProducer(rows)
 		if err != nil {
-			return nil, fmt.Errorf("BreweryRepo.AdminList scan: %w", err)
+			return nil, fmt.Errorf("ProducerRepo.AdminList scan: %w", err)
 		}
 		out = append(out, *hit)
 	}
 	return out, rows.Err()
 }
 
-// AdminDetail returns one brewery by id, including soft-deleted rows.
+// AdminDetail returns one producer by id, including soft-deleted rows.
 // Used by the admin GET endpoint which always exposes the deleted_at
 // flag — the public Detail filters tombstones out.
-func (r *BreweryRepo) AdminDetail(ctx context.Context, id string) (*AdminBreweryRow, error) {
-	const sql = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+func (r *ProducerRepo) AdminDetail(ctx context.Context, id string) (*AdminProducerRow, error) {
+	const sql = adminProducerSelect + ` WHERE b.id = $1::uuid LIMIT 1;`
 	row := r.db.QueryRow(ctx, sql, id)
-	out, err := scanAdminBrewery(row)
+	out, err := scanAdminProducer(row)
 	if err != nil {
-		return nil, wrapNoRows("BreweryRepo.AdminDetail", err)
+		return nil, wrapNoRows("ProducerRepo.AdminDetail", err)
 	}
 	return out, nil
 }
 
-// Create inserts a brewery row inside the supplied tx and returns the
+// Create inserts a producer row inside the supplied tx and returns the
 // freshly-scanned row. The handler bundles a moderation_log audit row
 // into the same tx for atomic commit. Caller is responsible for
 // SanitizeText + range checks (and for resolving `prefecture_slug`
@@ -199,7 +199,7 @@ func (r *BreweryRepo) AdminDetail(ctx context.Context, id string) (*AdminBrewery
 // Migration 016: only `prefecture_id` is persisted. The RETURNING
 // clause re-fetches via the LEFT JOIN to populate the nested
 // prefecture/region in the response.
-func (r *BreweryRepo) Create(ctx context.Context, tx pgx.Tx, in BreweryCreateInput) (*AdminBreweryRow, error) {
+func (r *ProducerRepo) Create(ctx context.Context, tx pgx.Tx, in ProducerCreateInput) (*AdminProducerRow, error) {
 	nameJSON, err := jsonMarshalI18n(in.Name)
 	if err != nil {
 		return nil, err
@@ -210,33 +210,33 @@ func (r *BreweryRepo) Create(ctx context.Context, tx pgx.Tx, in BreweryCreateInp
 	}
 
 	// Two-step: INSERT returns the new id, then re-SELECT via the
-	// adminBrewerySelect projection so the response carries the joined
+	// adminProducerSelect projection so the response carries the joined
 	// prefecture + region. A single statement with RETURNING cannot
 	// easily reach across the prefectures + regions joins.
 	const ins = `
-INSERT INTO breweries (name_i18n, prefecture_id, founded_year, website, description_i18n)
+INSERT INTO producers (name_i18n, prefecture_id, founded_year, website, description_i18n)
 VALUES ($1::jsonb, $2, $3, $4, $5::jsonb)
 RETURNING id;`
 	var id string
 	if err := tx.QueryRow(ctx, ins,
 		string(nameJSON), in.PrefectureID, in.FoundedYear, in.Website, descArg,
 	).Scan(&id); err != nil {
-		return nil, fmt.Errorf("BreweryRepo.Create: %w", err)
+		return nil, fmt.Errorf("ProducerRepo.Create: %w", err)
 	}
-	const reselect = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
-	out, err := scanAdminBrewery(tx.QueryRow(ctx, reselect, id))
+	const reselect = adminProducerSelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+	out, err := scanAdminProducer(tx.QueryRow(ctx, reselect, id))
 	if err != nil {
-		return nil, fmt.Errorf("BreweryRepo.Create reselect: %w", err)
+		return nil, fmt.Errorf("ProducerRepo.Create reselect: %w", err)
 	}
 	return out, nil
 }
 
-// Update applies a partial change to a brewery and returns the updated
+// Update applies a partial change to a producer and returns the updated
 // row. Only fields whose input pointers are non-nil are touched. The
 // row must be live (deleted_at IS NULL) — restoring goes through Restore.
 // Runs inside the supplied tx so the moderation_log audit row commits
 // atomically with the change.
-func (r *BreweryRepo) Update(ctx context.Context, tx pgx.Tx, id string, in BreweryUpdateInput) (*AdminBreweryRow, error) {
+func (r *ProducerRepo) Update(ctx context.Context, tx pgx.Tx, id string, in ProducerUpdateInput) (*AdminProducerRow, error) {
 	// Dynamic SET builder. Keeps SQL readable; arg numbering is generated
 	// alongside the column list so we never miss-index a placeholder.
 	var (
@@ -287,58 +287,58 @@ func (r *BreweryRepo) Update(ctx context.Context, tx pgx.Tx, id string, in Brewe
 		// No-op: return the existing row unchanged. We re-fetch via the
 		// tx so a concurrent admin update visible inside the tx is also
 		// visible to the caller.
-		const reselect = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+		const reselect = adminProducerSelect + ` WHERE b.id = $1::uuid LIMIT 1;`
 		row := tx.QueryRow(ctx, reselect, id)
-		out, err := scanAdminBrewery(row)
+		out, err := scanAdminProducer(row)
 		if err != nil {
-			return nil, wrapNoRows("BreweryRepo.Update reselect", err)
+			return nil, wrapNoRows("ProducerRepo.Update reselect", err)
 		}
 		return out, nil
 	}
 	args = append(args, id)
 	sql := fmt.Sprintf(`
-UPDATE breweries SET %s
+UPDATE producers SET %s
 WHERE id = $%d AND deleted_at IS NULL
 RETURNING id;`, strings.Join(sets, ", "), len(args))
 
 	var updatedID string
 	if err := tx.QueryRow(ctx, sql, args...).Scan(&updatedID); err != nil {
-		return nil, wrapNoRows("BreweryRepo.Update", err)
+		return nil, wrapNoRows("ProducerRepo.Update", err)
 	}
 	// Reselect via the joined projection so the response carries the
 	// nested prefecture/region (RETURNING can't cross the LEFT JOINs).
-	const reselect = adminBrewerySelect + ` WHERE b.id = $1::uuid LIMIT 1;`
-	out, err := scanAdminBrewery(tx.QueryRow(ctx, reselect, updatedID))
+	const reselect = adminProducerSelect + ` WHERE b.id = $1::uuid LIMIT 1;`
+	out, err := scanAdminProducer(tx.QueryRow(ctx, reselect, updatedID))
 	if err != nil {
-		return nil, wrapNoRows("BreweryRepo.Update reselect", err)
+		return nil, wrapNoRows("ProducerRepo.Update reselect", err)
 	}
 	return out, nil
 }
 
-// SoftDelete sets deleted_at = NOW() on the brewery row inside the supplied
+// SoftDelete sets deleted_at = NOW() on the producer row inside the supplied
 // transaction (the handler bundles the moderation_log row into the same tx).
-// Returns ErrBreweryHasLiveBeverages when at least one beverage still
-// references this brewery with deleted_at IS NULL — the FK is RESTRICT, so
-// leaving live children would orphan them from /v1/breweries lookups.
-func (r *BreweryRepo) SoftDelete(ctx context.Context, tx pgx.Tx, id string) error {
+// Returns ErrProducerHasLiveBeverages when at least one beverage still
+// references this producer with deleted_at IS NULL — the FK is RESTRICT, so
+// leaving live children would orphan them from /v1/producers lookups.
+func (r *ProducerRepo) SoftDelete(ctx context.Context, tx pgx.Tx, id string) error {
 	// Preflight: cheap exists-check on the live partial index. We hold a
-	// row-level lock on the brewery for the duration of the tx so a
-	// concurrent INSERT of a beverage referencing this brewery serializes
+	// row-level lock on the producer for the duration of the tx so a
+	// concurrent INSERT of a beverage referencing this producer serializes
 	// against this UPDATE's RETURNING (the trigger to bump beverage_count
 	// would acquire the same row lock).
 	var liveChild bool
 	if err := tx.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM beverages WHERE brewery_id = $1 AND deleted_at IS NULL LIMIT 1);`,
+		`SELECT EXISTS(SELECT 1 FROM beverages WHERE producer_id = $1 AND deleted_at IS NULL LIMIT 1);`,
 		id,
 	).Scan(&liveChild); err != nil {
-		return fmt.Errorf("BreweryRepo.SoftDelete preflight: %w", err)
+		return fmt.Errorf("ProducerRepo.SoftDelete preflight: %w", err)
 	}
 	if liveChild {
-		return domain.ErrBreweryHasLiveBeverages
+		return domain.ErrProducerHasLiveBeverages
 	}
 
 	const q = `
-UPDATE breweries SET deleted_at = NOW()
+UPDATE producers SET deleted_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING id;`
 	var got string
@@ -346,15 +346,15 @@ RETURNING id;`
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrNotFound
 		}
-		return fmt.Errorf("BreweryRepo.SoftDelete: %w", err)
+		return fmt.Errorf("ProducerRepo.SoftDelete: %w", err)
 	}
 	return nil
 }
 
-// Restore clears deleted_at on a tombstoned brewery row.
-func (r *BreweryRepo) Restore(ctx context.Context, tx pgx.Tx, id string) error {
+// Restore clears deleted_at on a tombstoned producer row.
+func (r *ProducerRepo) Restore(ctx context.Context, tx pgx.Tx, id string) error {
 	const q = `
-UPDATE breweries SET deleted_at = NULL
+UPDATE producers SET deleted_at = NULL
 WHERE id = $1 AND deleted_at IS NOT NULL
 RETURNING id;`
 	var got string
@@ -362,7 +362,7 @@ RETURNING id;`
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrNotFound
 		}
-		return fmt.Errorf("BreweryRepo.Restore: %w", err)
+		return fmt.Errorf("ProducerRepo.Restore: %w", err)
 	}
 	return nil
 }
@@ -376,9 +376,9 @@ RETURNING id;`
 // sync_beverage_category_slug trigger — we do NOT set slug here.
 //
 // Migration 016 dropped beverages.prefecture / beverages.region; locality
-// is now derived through the brewery's prefecture_id.
+// is now derived through the producer's prefecture_id.
 type BeverageCreateInput struct {
-	BreweryID      string
+	ProducerID     string
 	CategoryID     string
 	Name           domain.I18nText
 	Subcategory    *domain.I18nText
@@ -391,7 +391,7 @@ type BeverageCreateInput struct {
 
 // BeverageUpdateInput carries the partial-update fields.
 type BeverageUpdateInput struct {
-	BreweryID      *string
+	ProducerID     *string
 	CategoryID     *string
 	Name           *domain.I18nText
 	Subcategory    *domain.I18nText
@@ -403,11 +403,11 @@ type BeverageUpdateInput struct {
 }
 
 // AdminBeverageListParams scopes the admin beverage search. Q drives
-// the FTS index; the other filters narrow by category / brewery /
+// the FTS index; the other filters narrow by category / producer /
 // id-exact / tombstone visibility.
 type AdminBeverageListParams struct {
 	Q              *string
-	BreweryID      *string
+	ProducerID     *string
 	CategoryID     *string
 	CategorySlug   *string
 	IDExact        *string
@@ -429,7 +429,7 @@ type AdminBeverageRow struct {
 // badge.
 // adminBeverageSelect is the full admin projection. Migration 016
 // dropped beverages.prefecture/region; the row's locality comes from
-// the brewery's joined prefecture chain via breweryPrefectureSelectCols.
+// the producer's joined prefecture chain via producerPrefectureSelectCols.
 const adminBeverageSelect = `
 SELECT
   b.id,
@@ -446,17 +446,17 @@ SELECT
   b.check_in_count,
   b.flavor_profile,
   b.created_at,
-  br.id          AS brewery_id,
-  br.name_i18n   AS brewery_name_i18n,` + breweryPrefectureSelectCols + `,
+  br.id          AS producer_id,
+  br.name_i18n   AS producer_name_i18n,` + producerPrefectureSelectCols + `,
   b.deleted_at
 FROM beverages b
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
 
 func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 	var b beverageRow
 	var deletedAt *time.Time
-	prefArgs := b.breweryPref.scanArgs()
+	prefArgs := b.producerPref.scanArgs()
 	args := make([]any, 0, 16+len(prefArgs)+1)
 	args = append(args,
 		&b.id,
@@ -473,8 +473,8 @@ func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 		&b.checkInCount,
 		&b.flavorProfile,
 		&b.createdAt,
-		&b.breweryID,
-		&b.breweryNameRaw,
+		&b.producerID,
+		&b.producerNameRaw,
 	)
 	args = append(args, prefArgs...)
 	args = append(args, &deletedAt)
@@ -493,7 +493,7 @@ func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 }
 
 // AdminList pages through beverages for the admin tooling. Optional FTS,
-// brewery/category filters, and IDExact short-circuit. Soft-deleted rows
+// producer/category filters, and IDExact short-circuit. Soft-deleted rows
 // are hidden by default; set IncludeDeleted to surface them.
 func (r *BeverageRepo) AdminList(ctx context.Context, p AdminBeverageListParams) ([]AdminBeverageRow, error) {
 	if p.Limit <= 0 {
@@ -527,7 +527,7 @@ WHERE TRUE
          coalesce(b.name_i18n->>'ja','') || ' ' ||
          coalesce(b.name_i18n->>'ko','')
        ) @@ websearch_to_tsquery('simple', $2))
-  AND ($3::text IS NULL OR b.brewery_id = $3::uuid)
+  AND ($3::text IS NULL OR b.producer_id = $3::uuid)
   AND ($4::text IS NULL OR b.category_id = $4::uuid)
   AND ($5::text IS NULL OR b.category_slug = $5)
   AND ($6::timestamptz IS NULL OR (b.created_at, b.id) < ($6::timestamptz, $7::uuid))
@@ -535,7 +535,7 @@ ORDER BY b.created_at DESC, b.id DESC
 LIMIT $8;`
 
 	rows, err := r.db.Query(ctx, sql,
-		p.IncludeDeleted, p.Q, p.BreweryID, p.CategoryID, p.CategorySlug,
+		p.IncludeDeleted, p.Q, p.ProducerID, p.CategoryID, p.CategorySlug,
 		p.CursorTs, p.CursorID, p.Limit+1,
 	)
 	if err != nil {
@@ -587,10 +587,10 @@ func (r *BeverageRepo) Create(ctx context.Context, tx pgx.Tx, in BeverageCreateI
 	// rewrites it to the correct value.
 	//
 	// Migration 016 dropped beverages.prefecture / beverages.region — the
-	// locality is derived through the brewery's prefecture_id, not stored
+	// locality is derived through the producer's prefecture_id, not stored
 	// on the beverage row.
 	const q = `
-INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n,
+INSERT INTO beverages (producer_id, category_id, category_slug, name_i18n,
                        subcategory_i18n, abv, polishing_ratio,
                        description_i18n, label_image_url, flavor_profile)
 VALUES ($1::uuid, $2::uuid, 'nihonshu', $3::jsonb, $4::jsonb, $5, $6,
@@ -598,7 +598,7 @@ VALUES ($1::uuid, $2::uuid, 'nihonshu', $3::jsonb, $4::jsonb, $5, $6,
 RETURNING id;`
 	var id string
 	if err := tx.QueryRow(ctx, q,
-		in.BreweryID, in.CategoryID, string(nameJSON), subArg,
+		in.ProducerID, in.CategoryID, string(nameJSON), subArg,
 		in.ABV, in.PolishingRatio,
 		descArg, in.LabelImageURL, in.FlavorProfile,
 	).Scan(&id); err != nil {
@@ -661,8 +661,8 @@ func buildBeverageUpdateSets(in BeverageUpdateInput) ([]string, []any, error) {
 		return nil
 	}
 
-	if in.BreweryID != nil {
-		add("brewery_id", *in.BreweryID)
+	if in.ProducerID != nil {
+		add("producer_id", *in.ProducerID)
 	}
 	if in.CategoryID != nil {
 		// category_slug is auto-synced by trg_beverages_sync_category_slug.

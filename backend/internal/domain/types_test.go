@@ -393,7 +393,7 @@ func TestBeverageRequestValidate(t *testing.T) {
 	valid := func() map[string]any {
 		return map[string]any{
 			"name":          "Dassai 23",
-			"brewery_name":  "Asahi Shuzo",
+			"producer_name": "Asahi Shuzo",
 			"category_slug": "nihonshu",
 		}
 	}
@@ -426,13 +426,13 @@ func TestBeverageRequestValidate(t *testing.T) {
 			"name is required",
 		},
 		{
-			"missing brewery_name",
+			"missing producer_name",
 			func() map[string]any {
 				m := valid()
-				delete(m, "brewery_name")
+				delete(m, "producer_name")
 				return m
 			}(),
-			"brewery_name is required",
+			"producer_name is required",
 		},
 		{
 			"missing category_slug",

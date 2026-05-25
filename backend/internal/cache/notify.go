@@ -9,7 +9,7 @@ import (
 
 // notifyChannel is the Postgres LISTEN/NOTIFY channel every replica
 // subscribes to for cross-replica cache invalidation. The payload is
-// the cache prefix to bust (e.g. "beverage:<id>:", "brewery:<id>:",
+// the cache prefix to bust (e.g. "beverage:<id>:", "producer:<id>:",
 // "taxonomy"). Encoded as a free-form string to keep the protocol
 // trivially debuggable from psql.
 const notifyChannel = "kamos_cache_invalidate"
@@ -25,7 +25,7 @@ const notifyChannel = "kamos_cache_invalidate"
 // Payload examples:
 //
 //	"beverage:<id>"  → buckets BeverageDetail entries beginning with the id
-//	"brewery:<id>"   → BreweryDetail
+//	"producer:<id>"  → ProducerDetail
 //	"taxonomy"       → Categories + FlavorTags
 //
 // Per-replica handling lives in Caches.InvalidatePrefix; this helper

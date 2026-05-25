@@ -2,7 +2,7 @@
 // +build integration
 
 // Stage 8 — admin catalog CRUD (POST/PATCH/DELETE/restore for both
-// /v1/admin/beverages and /v1/admin/breweries) + admin user exact-match
+// /v1/admin/beverages and /v1/admin/producers) + admin user exact-match
 // search.
 //
 // Each end-to-end test:
@@ -35,24 +35,24 @@ func seedCategoryID(t *testing.T) string {
 	return id
 }
 
-// seedBreweryRow inserts a brewery directly via SQL and returns the id.
+// seedProducerRow inserts a producer directly via SQL and returns the id.
 // Used as a precondition for beverage tests; the admin endpoints have
 // their own dedicated create flow exercised below.
-func seedBreweryRow(t *testing.T, enName, jaName string) string {
+func seedProducerRow(t *testing.T, enName, jaName string) string {
 	t.Helper()
 	nameJSON, _ := json.Marshal(map[string]string{"en": enName, "ja": jaName})
 	var id string
 	if err := getPool(t).QueryRow(context.Background(),
-		`INSERT INTO breweries (name_i18n) VALUES ($1::jsonb) RETURNING id;`,
+		`INSERT INTO producers (name_i18n) VALUES ($1::jsonb) RETURNING id;`,
 		string(nameJSON)).Scan(&id); err != nil {
-		t.Fatalf("seed brewery: %v", err)
+		t.Fatalf("seed producer: %v", err)
 	}
 	return id
 }
 
-// TestAdminBrewery_CreateListSearch — admin creates → public list
+// TestAdminProducer_CreateListSearch — admin creates → public list
 // includes the new row → admin FTS search finds it.
-func TestAdminBrewery_CreateListSearch(t *testing.T) {
+func TestAdminProducer_CreateListSearch(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
@@ -68,14 +68,14 @@ func TestAdminBrewery_CreateListSearch(t *testing.T) {
 		"prefecture_slug": "yamaguchi",
 		"founded_year":    1948,
 	}
-	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, createBody)
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/producers", adminTok, createBody)
 	if code != http.StatusCreated {
 		t.Fatalf("create: %d body=%s", code, raw)
 	}
 	var created map[string]any
 	_ = json.Unmarshal(raw, &created)
-	breweryID, _ := created["id"].(string)
-	if breweryID == "" {
+	producerID, _ := created["id"].(string)
+	if producerID == "" {
 		t.Fatalf("no id in create response: %s", raw)
 	}
 
@@ -98,7 +98,7 @@ func TestAdminBrewery_CreateListSearch(t *testing.T) {
 	}
 
 	// Public list returns the new row.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/breweries", "", nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/producers", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("public list: %d body=%s", code, raw)
 	}
@@ -106,27 +106,27 @@ func TestAdminBrewery_CreateListSearch(t *testing.T) {
 		Items []map[string]any `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &page)
-	if !hasID(page.Items, breweryID) {
-		t.Errorf("public list missing new brewery %s", breweryID)
+	if !hasID(page.Items, producerID) {
+		t.Errorf("public list missing new producer %s", producerID)
 	}
 
 	// Admin FTS search hits the GIN index.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/admin/breweries?q=Dassai", adminTok, nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/admin/producers?q=Dassai", adminTok, nil)
 	if code != http.StatusOK {
 		t.Fatalf("admin search: %d body=%s", code, raw)
 	}
 	_ = json.Unmarshal(raw, &page)
-	if !hasID(page.Items, breweryID) {
+	if !hasID(page.Items, producerID) {
 		t.Errorf("admin FTS missed: %s", raw)
 	}
 
-	// moderation_log row written with target_type='brewery' action='create'.
+	// moderation_log row written with target_type='producer' action='create'.
 	var count int
 	if err := getPool(t).QueryRow(context.Background(), `
 SELECT COUNT(*) FROM moderation_log
-WHERE target_type::text='brewery' AND target_id=$1::uuid
+WHERE target_type::text='producer' AND target_id=$1::uuid
   AND action::text='create' AND moderator_id=$2;`,
-		breweryID, adminID).Scan(&count); err != nil {
+		producerID, adminID).Scan(&count); err != nil {
 		t.Fatalf("log count: %v", err)
 	}
 	if count != 1 {
@@ -134,10 +134,10 @@ WHERE target_type::text='brewery' AND target_id=$1::uuid
 	}
 }
 
-// TestAdminBrewery_PatchAndRestore — patch then soft-delete then
+// TestAdminProducer_PatchAndRestore — patch then soft-delete then
 // restore; verify deleted_at flips and public list excludes the
 // tombstoned row.
-func TestAdminBrewery_SoftDeleteAndRestore(t *testing.T) {
+func TestAdminProducer_SoftDeleteAndRestore(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
@@ -145,16 +145,16 @@ func TestAdminBrewery_SoftDeleteAndRestore(t *testing.T) {
 	adminTok, adminID := mustRegister(t, srv, "del_admin", "del_admin@example.com", "password-123")
 	promoteToAdmin(t, adminID)
 
-	breweryID := seedBreweryRow(t, "Soon Gone Kura", "もうすぐ消える酒造")
+	producerID := seedProducerRow(t, "Soon Gone Kura", "もうすぐ消える酒造")
 
 	// Soft-delete.
-	code, raw := doReq(t, srv, http.MethodDelete, "/v1/admin/breweries/"+breweryID, adminTok, nil)
+	code, raw := doReq(t, srv, http.MethodDelete, "/v1/admin/producers/"+producerID, adminTok, nil)
 	if code != http.StatusNoContent {
 		t.Fatalf("delete: %d body=%s", code, raw)
 	}
 
 	// Public list excludes.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/breweries", "", nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/producers", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("public list: %d", code)
 	}
@@ -162,53 +162,53 @@ func TestAdminBrewery_SoftDeleteAndRestore(t *testing.T) {
 		Items []map[string]any `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &page)
-	if hasID(page.Items, breweryID) {
-		t.Errorf("public list still has tombstoned brewery: %s", raw)
+	if hasID(page.Items, producerID) {
+		t.Errorf("public list still has tombstoned producer: %s", raw)
 	}
 
 	// Admin list (default) excludes.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/admin/breweries", adminTok, nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/admin/producers", adminTok, nil)
 	if code != http.StatusOK {
 		t.Fatalf("admin list default: %d", code)
 	}
 	_ = json.Unmarshal(raw, &page)
-	if hasID(page.Items, breweryID) {
-		t.Errorf("admin list (default) included tombstoned brewery")
+	if hasID(page.Items, producerID) {
+		t.Errorf("admin list (default) included tombstoned producer")
 	}
 
 	// Admin list with include_deleted=1 includes.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/admin/breweries?include_deleted=1", adminTok, nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/admin/producers?include_deleted=1", adminTok, nil)
 	if code != http.StatusOK {
 		t.Fatalf("admin list include_deleted: %d", code)
 	}
 	_ = json.Unmarshal(raw, &page)
-	if !hasID(page.Items, breweryID) {
-		t.Errorf("admin list include_deleted missing tombstoned brewery: %s", raw)
+	if !hasID(page.Items, producerID) {
+		t.Errorf("admin list include_deleted missing tombstoned producer: %s", raw)
 	}
 
 	// Restore.
-	code, raw = doReq(t, srv, http.MethodPost, "/v1/admin/breweries/"+breweryID+"/restore", adminTok, nil)
+	code, raw = doReq(t, srv, http.MethodPost, "/v1/admin/producers/"+producerID+"/restore", adminTok, nil)
 	if code != http.StatusOK {
 		t.Fatalf("restore: %d body=%s", code, raw)
 	}
 
 	// Public list now includes again.
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/breweries", "", nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/producers", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("public list after restore: %d", code)
 	}
 	_ = json.Unmarshal(raw, &page)
-	if !hasID(page.Items, breweryID) {
-		t.Errorf("public list still missing restored brewery: %s", raw)
+	if !hasID(page.Items, producerID) {
+		t.Errorf("public list still missing restored producer: %s", raw)
 	}
 
-	// moderation_log has both soft_delete + restore for this brewery.
+	// moderation_log has both soft_delete + restore for this producer.
 	var rows int
 	if err := getPool(t).QueryRow(context.Background(), `
 SELECT COUNT(*) FROM moderation_log
-WHERE target_type::text='brewery' AND target_id=$1::uuid
+WHERE target_type::text='producer' AND target_id=$1::uuid
   AND action::text IN ('soft_delete','restore');`,
-		breweryID).Scan(&rows); err != nil {
+		producerID).Scan(&rows); err != nil {
 		t.Fatalf("log query: %v", err)
 	}
 	if rows != 2 {
@@ -216,10 +216,10 @@ WHERE target_type::text='brewery' AND target_id=$1::uuid
 	}
 }
 
-// TestAdminBrewery_SoftDeletePreflight — DELETE returns 409
-// BREWERY_HAS_LIVE_BEVERAGES when a live beverage references the
-// brewery.
-func TestAdminBrewery_SoftDeletePreflight(t *testing.T) {
+// TestAdminProducer_SoftDeletePreflight — DELETE returns 409
+// PRODUCER_HAS_LIVE_BEVERAGES when a live beverage references the
+// producer.
+func TestAdminProducer_SoftDeletePreflight(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
@@ -227,36 +227,36 @@ func TestAdminBrewery_SoftDeletePreflight(t *testing.T) {
 	adminTok, adminID := mustRegister(t, srv, "pre_admin", "pre_admin@example.com", "password-123")
 	promoteToAdmin(t, adminID)
 
-	// Seed brewery + beverage.
-	breweryID := seedBreweryRow(t, "Preflight Kura", "プリ蔵")
+	// Seed producer + beverage.
+	producerID := seedProducerRow(t, "Preflight Kura", "プリ蔵")
 	catID := seedCategoryID(t)
 	nameJSON, _ := json.Marshal(map[string]string{"en": "Child Sake", "ja": "子供酒"})
 	var bevID string
 	if err := getPool(t).QueryRow(context.Background(), `
-INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n)
+INSERT INTO beverages (producer_id, category_id, category_slug, name_i18n)
 VALUES ($1, $2, 'nihonshu', $3::jsonb) RETURNING id;`,
-		breweryID, catID, string(nameJSON)).Scan(&bevID); err != nil {
+		producerID, catID, string(nameJSON)).Scan(&bevID); err != nil {
 		t.Fatalf("seed beverage: %v", err)
 	}
 
-	code, raw := doReq(t, srv, http.MethodDelete, "/v1/admin/breweries/"+breweryID, adminTok, nil)
+	code, raw := doReq(t, srv, http.MethodDelete, "/v1/admin/producers/"+producerID, adminTok, nil)
 	if code != http.StatusConflict {
 		t.Fatalf("delete: %d body=%s (want 409)", code, raw)
 	}
 	var e errBodyShape
 	_ = json.Unmarshal(raw, &e)
-	if e.Code != "BREWERY_HAS_LIVE_BEVERAGES" {
-		t.Errorf("code=%q want BREWERY_HAS_LIVE_BEVERAGES", e.Code)
+	if e.Code != "PRODUCER_HAS_LIVE_BEVERAGES" {
+		t.Errorf("code=%q want PRODUCER_HAS_LIVE_BEVERAGES", e.Code)
 	}
 
-	// Tombstone the child beverage, then the brewery delete succeeds.
+	// Tombstone the child beverage, then the producer delete succeeds.
 	code, raw = doReq(t, srv, http.MethodDelete, "/v1/admin/beverages/"+bevID, adminTok, nil)
 	if code != http.StatusNoContent {
 		t.Fatalf("delete child: %d body=%s", code, raw)
 	}
-	code, raw = doReq(t, srv, http.MethodDelete, "/v1/admin/breweries/"+breweryID, adminTok, nil)
+	code, raw = doReq(t, srv, http.MethodDelete, "/v1/admin/producers/"+producerID, adminTok, nil)
 	if code != http.StatusNoContent {
-		t.Fatalf("delete brewery: %d body=%s", code, raw)
+		t.Fatalf("delete producer: %d body=%s", code, raw)
 	}
 }
 
@@ -269,12 +269,12 @@ func TestAdminBeverage_CreateUpdateDeleteRestore(t *testing.T) {
 	adminTok, adminID := mustRegister(t, srv, "bev_admin", "bev_admin@example.com", "password-123")
 	promoteToAdmin(t, adminID)
 
-	breweryID := seedBreweryRow(t, "Test Brewery", "テスト酒造")
+	producerID := seedProducerRow(t, "Test Producer", "テスト酒造")
 	catID := seedCategoryID(t)
 
 	// Create.
 	createBody := map[string]any{
-		"brewery_id":  breweryID,
+		"producer_id": producerID,
 		"category_id": catID,
 		"name_i18n":   map[string]string{"en": "Junmai Nu", "ja": "純米ヌ"},
 		"abv":         15.5,
@@ -304,8 +304,8 @@ func TestAdminBeverage_CreateUpdateDeleteRestore(t *testing.T) {
 	}
 
 	// PATCH abv. Migration 016 dropped beverages.prefecture / region —
-	// the patch only adjusts the per-beverage abv now; brewery-level
-	// locality is curated via PATCH /v1/admin/breweries/{id}.
+	// the patch only adjusts the per-beverage abv now; producer-level
+	// locality is curated via PATCH /v1/admin/producers/{id}.
 	patchBody := map[string]any{"abv": 16.0}
 	code, raw = doReq(t, srv, http.MethodPatch, "/v1/admin/beverages/"+bevID, adminTok, patchBody)
 	if code != http.StatusOK {
@@ -602,12 +602,12 @@ func TestReferenceRegions_Shape(t *testing.T) {
 	}
 }
 
-// TestAdminBrewery_InvalidPrefectureSlug — POST and PATCH both return
+// TestAdminProducer_InvalidPrefectureSlug — POST and PATCH both return
 // 422 INVALID_PREFECTURE_SLUG when the slug doesn't resolve. Also
 // verifies that an explicit empty slug on Create (which the OpenAPI
 // `^[a-z0-9_]+$` pattern disallows) is rejected with the same code so
 // the contract and the runtime agree.
-func TestAdminBrewery_InvalidPrefectureSlug(t *testing.T) {
+func TestAdminProducer_InvalidPrefectureSlug(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
@@ -620,7 +620,7 @@ func TestAdminBrewery_InvalidPrefectureSlug(t *testing.T) {
 		"name_i18n":       map[string]string{"en": "Atlantis Kura", "ja": "アトランティス酒造"},
 		"prefecture_slug": "atlantis",
 	}
-	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, createBody)
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/admin/producers", adminTok, createBody)
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("create unknown slug: %d body=%s (want 422)", code, raw)
 	}
@@ -630,10 +630,10 @@ func TestAdminBrewery_InvalidPrefectureSlug(t *testing.T) {
 		t.Errorf("create code=%q want INVALID_PREFECTURE_SLUG (body=%s)", e.Code, raw)
 	}
 
-	// 2) PATCH with an unknown slug on a real brewery → same 422.
-	breweryID := seedBreweryRow(t, "Patch Target", "パッチ対象")
+	// 2) PATCH with an unknown slug on a real producer → same 422.
+	producerID := seedProducerRow(t, "Patch Target", "パッチ対象")
 	patchBody := map[string]any{"prefecture_slug": "atlantis"}
-	code, raw = doReq(t, srv, http.MethodPatch, "/v1/admin/breweries/"+breweryID, adminTok, patchBody)
+	code, raw = doReq(t, srv, http.MethodPatch, "/v1/admin/producers/"+producerID, adminTok, patchBody)
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("patch unknown slug: %d body=%s (want 422)", code, raw)
 	}
@@ -650,7 +650,7 @@ func TestAdminBrewery_InvalidPrefectureSlug(t *testing.T) {
 		"name_i18n":       map[string]string{"en": "Empty Slug Kura", "ja": "空スラッグ酒造"},
 		"prefecture_slug": "",
 	}
-	code, raw = doReq(t, srv, http.MethodPost, "/v1/admin/breweries", adminTok, emptyBody)
+	code, raw = doReq(t, srv, http.MethodPost, "/v1/admin/producers", adminTok, emptyBody)
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("create empty slug: %d body=%s (want 422)", code, raw)
 	}

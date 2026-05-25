@@ -24,9 +24,9 @@ func (r *FeedRepo) Page(ctx context.Context, viewerID string, cursorTs *time.Tim
 	// feed ships actual photo URLs (not just a count). The only
 	// remaining per-viewer correlated lookup is `you_toasted` — it
 	// can't be denormalized because the answer is per-requesting-user.
-	// Migration 016: brewery.region is replaced by the nested
+	// Migration 016: producer.region is replaced by the nested
 	// prefecture (via the LEFT JOIN on prefectures + regions). The
-	// BreweryRef embedding in the feed item exposes a *Prefecture so
+	// ProducerRef embedding in the feed item exposes a *Prefecture so
 	// the feed card can render locality without a second fetch.
 	const q = `
 SELECT
@@ -41,7 +41,7 @@ SELECT
   b.category_slug,
   b.label_image_url,
   cat.name_i18n,
-  br.id, br.name_i18n,` + breweryPrefectureSelectCols + `,
+  br.id, br.name_i18n,` + producerPrefectureSelectCols + `,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
   ci.comment_count,
@@ -53,8 +53,8 @@ LEFT JOIN follows f
   AND f.status = 'accepted'
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.deleted_at IS NULL
   AND (ci.user_id = $1 OR f.followed_id IS NOT NULL)
@@ -123,7 +123,7 @@ LIMIT $4;`
 		it.Beverage = domain.BeverageRef{
 			ID:            beverageID,
 			Name:          bn,
-			Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
+			Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 			LabelImageURL: bevLabel,
 		}

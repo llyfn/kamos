@@ -267,7 +267,7 @@ func mustLogin(t *testing.T, srv *httptest.Server, email, password string) strin
 	return resp.AccessToken
 }
 
-// seedBeverage inserts a brewery + beverage and returns the beverage id.
+// seedBeverage inserts a producer + beverage and returns the beverage id.
 // `extra` is a map of column overrides written directly into the JSONB
 // name field — used by the ko-fallback test.
 func seedBeverage(t *testing.T, name string) string {
@@ -291,21 +291,21 @@ func seedBeverageWithNames(t *testing.T, enName, jaName, koName string) string {
 		nameI18n["ko"] = koName
 	}
 	nameJSON, _ := json.Marshal(nameI18n)
-	breweryNameJSON, _ := json.Marshal(map[string]string{
-		"en": "Test Brewery",
+	producerNameJSON, _ := json.Marshal(map[string]string{
+		"en": "Test Producer",
 		"ja": "テスト酒造",
 	})
 
-	var breweryID string
+	var producerID string
 	if err := p.QueryRow(ctx, `
-INSERT INTO breweries (name_i18n) VALUES ($1::jsonb) RETURNING id;`, string(breweryNameJSON)).Scan(&breweryID); err != nil {
-		t.Fatalf("seed brewery: %v", err)
+INSERT INTO producers (name_i18n) VALUES ($1::jsonb) RETURNING id;`, string(producerNameJSON)).Scan(&producerID); err != nil {
+		t.Fatalf("seed producer: %v", err)
 	}
 	var bevID string
 	if err := p.QueryRow(ctx, `
-INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n)
+INSERT INTO beverages (producer_id, category_id, category_slug, name_i18n)
 VALUES ($1, $2, 'nihonshu', $3::jsonb) RETURNING id;`,
-		breweryID, catID, string(nameJSON)).Scan(&bevID); err != nil {
+		producerID, catID, string(nameJSON)).Scan(&bevID); err != nil {
 		t.Fatalf("seed beverage: %v", err)
 	}
 	return bevID

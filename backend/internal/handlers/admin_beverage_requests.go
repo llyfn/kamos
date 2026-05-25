@@ -80,7 +80,7 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 	}
 	bevID, err := h.Repos.Admin.ApproveBeverageRequest(r.Context(), repository.ApproveBeverageRequestParams{
 		RequestID:       requestID,
-		BreweryID:       body.BreweryID,
+		ProducerID:      body.ProducerID,
 		CategoryID:      categoryID,
 		NameI18n:        body.NameI18n,
 		Subcategory:     body.Subcategory,
@@ -96,19 +96,19 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		h.writeErr(w, "AdminApproveBeverageRequest", err)
 		return
 	}
-	// a new beverage just landed under this brewery. The brewery's
+	// a new beverage just landed under this producer. The producer's
 	// detail response shape doesn't actually change (the LRU caches the
-	// brewery row only, not the inline beverages page), so this is
+	// producer row only, not the inline beverages page), so this is
 	// belt-and-braces: if the response ever embeds beverage_count or a
 	// preview, the cache stays consistent. Stage 4: also fire NOTIFY so
 	// peer replicas bust their copies.
-	if body.BreweryID != "" {
+	if body.ProducerID != "" {
 		if h.Caches != nil {
-			h.Caches.BreweryDetail.InvalidatePrefix(body.BreweryID + ":")
+			h.Caches.ProducerDetail.InvalidatePrefix(body.ProducerID + ":")
 		}
 		// WithoutCancel: keep the request trace context but don't let a client
 		// disconnect skip the peer-replica invalidation. See invalidateBeverageDetail.
-		cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "brewery:"+body.BreweryID)
+		cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "producer:"+body.ProducerID)
 	}
 	httperr.WriteJSON(w, http.StatusOK, map[string]string{
 		"request_id":  requestID,

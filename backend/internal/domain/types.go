@@ -8,7 +8,7 @@
 //   - types_user.go        — User, PublicUser, Me, RegisterRequest, UpdateMeRequest, UserStats
 //   - types_auth.go        — LoginRequest, GoogleLoginRequest, VerifyEmail, PasswordChange,
 //     EmailChange, AuthResponse, RefreshToken, LogoutRequest
-//   - types_beverage.go    — Brewery, BreweryRef, Beverage, BeverageDetail, BeverageRef,
+//   - types_beverage.go    — Producer, ProducerRef, Beverage, BeverageDetail, BeverageRef,
 //     CategoryLabel, FlavorAggregate, FlavorTag
 //   - types_checkin.go     — Price, Create/Update CheckinRequest, Checkin, CheckinUser,
 //     PhotoRef, CheckinSummary, FeedItem, ToastState, ValidRating

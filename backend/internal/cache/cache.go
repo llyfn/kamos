@@ -4,7 +4,7 @@
 //
 // metrics established that reads on KAMOS are <4ms p95 — caching
 // here is NOT a user-latency play. It's a SCALE play: cut DB load on the
-// hot taxonomy / beverage / brewery rows, keep Foursquare quota in line,
+// hot taxonomy / beverage / producer rows, keep Foursquare quota in line,
 // and absorb spikes from popular events without scaling Postgres.
 //
 // Design choice (per the roadmap entry): SKIP Redis. The default

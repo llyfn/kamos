@@ -34,7 +34,7 @@ import (
 //
 // Query params:
 //   - q: optional websearch query (FTS via idx_beverages_name_tsv)
-//   - brewery_id, category_id, category_slug: optional filters
+//   - producer_id, category_id, category_slug: optional filters
 //   - id: optional UUID exact-match (short-circuits cursor)
 //   - include_deleted=1: include soft-deleted rows
 //   - cursor: opaque cursor
@@ -47,7 +47,7 @@ func (h *Handler) AdminListBeverages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := optString(r.URL.Query().Get("q"))
-	breweryID := optString(r.URL.Query().Get("brewery_id"))
+	producerID := optString(r.URL.Query().Get("producer_id"))
 	categoryID := optString(r.URL.Query().Get("category_id"))
 	categorySlug := optString(r.URL.Query().Get("category_slug"))
 	id := optString(r.URL.Query().Get("id"))
@@ -55,7 +55,7 @@ func (h *Handler) AdminListBeverages(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.Repos.Beverages.AdminList(r.Context(), repository.AdminBeverageListParams{
 		Q:              q,
-		BreweryID:      breweryID,
+		ProducerID:     producerID,
 		CategoryID:     categoryID,
 		CategorySlug:   categorySlug,
 		IDExact:        id,
@@ -126,10 +126,10 @@ func (h *Handler) AdminCreateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminCreateBeverage refetch", err)
 		return
 	}
-	// The new beverage's brewery cache no longer reflects the freshly-
-	// added child; bust it so the brewery detail page reflects the new
+	// The new beverage's producer cache no longer reflects the freshly-
+	// added child; bust it so the producer detail page reflects the new
 	// count on next read.
-	h.invalidateBrewery(r.Context(), body.BreweryID)
+	h.invalidateProducer(r.Context(), body.ProducerID)
 	httperr.WriteJSON(w, http.StatusCreated, out)
 }
 
@@ -162,9 +162,9 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeCategoryErr(w, "AdminUpdateBeverage", err)
 		return
 	}
-	// Capture the current brewery_id before the update so we can bust the
-	// brewery's detail cache afterwards. If body.BreweryID points to a
-	// different brewery the new owner's cache is invalidated too.
+	// Capture the current producer_id before the update so we can bust the
+	// producer's detail cache afterwards. If body.ProducerID points to a
+	// different producer the new owner's cache is invalidated too.
 	prev, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
 	if err != nil {
 		h.writeErr(w, "AdminUpdateBeverage prefetch", err)
@@ -178,9 +178,9 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.Caches.BeverageDetail.InvalidatePrefix(id + ":")
 	}
 	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "beverage:"+id)
-	h.invalidateBrewery(r.Context(), prev.Brewery.ID)
-	if body.BreweryID != nil && *body.BreweryID != "" && *body.BreweryID != prev.Brewery.ID {
-		h.invalidateBrewery(r.Context(), *body.BreweryID)
+	h.invalidateProducer(r.Context(), prev.Producer.ID)
+	if body.ProducerID != nil && *body.ProducerID != "" && *body.ProducerID != prev.Producer.ID {
+		h.invalidateProducer(r.Context(), *body.ProducerID)
 	}
 
 	out, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
@@ -202,8 +202,8 @@ func (h *Handler) AdminSoftDeleteBeverage(w http.ResponseWriter, r *http.Request
 		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing beverage id")
 		return
 	}
-	// Capture the brewery_id before soft-delete so we can bust the
-	// brewery's detail cache (its beverage_count drops by one).
+	// Capture the producer_id before soft-delete so we can bust the
+	// producer's detail cache (its beverage_count drops by one).
 	prev, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
 	if err != nil {
 		h.writeErr(w, "AdminSoftDeleteBeverage prefetch", err)
@@ -217,7 +217,7 @@ func (h *Handler) AdminSoftDeleteBeverage(w http.ResponseWriter, r *http.Request
 		h.Caches.BeverageDetail.InvalidatePrefix(id + ":")
 	}
 	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "beverage:"+id)
-	h.invalidateBrewery(r.Context(), prev.Brewery.ID)
+	h.invalidateProducer(r.Context(), prev.Producer.ID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -246,10 +246,10 @@ func (h *Handler) AdminRestoreBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminRestoreBeverage refetch", err)
 		return
 	}
-	// The restored beverage is live again under its brewery; bust the
-	// brewery's detail cache so beverage_count + listings reflect the
+	// The restored beverage is live again under its producer; bust the
+	// producer's detail cache so beverage_count + listings reflect the
 	// revival on the next read.
-	h.invalidateBrewery(r.Context(), out.Brewery.ID)
+	h.invalidateProducer(r.Context(), out.Producer.ID)
 	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
@@ -263,7 +263,7 @@ func (h *Handler) createBeverageTx(ctx context.Context, adminID, categoryID stri
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	bevID, err := h.Repos.Beverages.Create(ctx, tx, repository.BeverageCreateInput{
-		BreweryID:      body.BreweryID,
+		ProducerID:     body.ProducerID,
 		CategoryID:     categoryID,
 		Name:           body.NameI18n,
 		Subcategory:    body.SubcategoryI18n,
@@ -279,8 +279,8 @@ func (h *Handler) createBeverageTx(ctx context.Context, adminID, categoryID stri
 	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "beverage", bevID, "create",
 		nil,
 		map[string]any{
-			"name_en":    body.NameI18n.EN,
-			"brewery_id": body.BreweryID,
+			"name_en":     body.NameI18n.EN,
+			"producer_id": body.ProducerID,
 		}); err != nil {
 		return "", err
 	}
@@ -298,7 +298,7 @@ func (h *Handler) updateBeverageTx(ctx context.Context, adminID, id string, cate
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := h.Repos.Beverages.Update(ctx, tx, id, repository.BeverageUpdateInput{
-		BreweryID:      body.BreweryID,
+		ProducerID:     body.ProducerID,
 		CategoryID:     categoryID,
 		Name:           body.NameI18n,
 		Subcategory:    body.SubcategoryI18n,
@@ -348,21 +348,21 @@ func (h *Handler) restoreBeverageTx(ctx context.Context, adminID, id string) err
 	return tx.Commit(ctx)
 }
 
-// invalidateBrewery busts the per-brewery LRU entry and notifies peer
+// invalidateProducer busts the per-producer LRU entry and notifies peer
 // replicas. Used by Create / Update / SoftDelete / Restore so the
-// brewery detail page (and any cached aggregate that includes
+// producer detail page (and any cached aggregate that includes
 // beverage_count) reflects the change on the next read. No-op when
 // id is empty.
-func (h *Handler) invalidateBrewery(ctx context.Context, id string) {
+func (h *Handler) invalidateProducer(ctx context.Context, id string) {
 	if id == "" {
 		return
 	}
 	if h.Caches != nil {
-		h.Caches.BreweryDetail.InvalidatePrefix(id + ":")
+		h.Caches.ProducerDetail.InvalidatePrefix(id + ":")
 	}
 	// WithoutCancel: a client disconnect must not skip the peer-replica
 	// invalidation. Mirrors invalidateBeverageDetail's pattern.
-	cache.NotifyInvalidation(context.WithoutCancel(ctx), h.DB, h.Log, "brewery:"+id)
+	cache.NotifyInvalidation(context.WithoutCancel(ctx), h.DB, h.Log, "producer:"+id)
 }
 
 // ---- category resolution ----

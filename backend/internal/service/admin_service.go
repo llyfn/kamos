@@ -83,8 +83,8 @@ func (s *AdminService) ApproveBeverageRequest(ctx context.Context, p repository.
 	if err != nil {
 		return "", err
 	}
-	if p.BreweryID != "" {
-		s.caches.InvalidateBreweryDetail(ctx, p.BreweryID)
+	if p.ProducerID != "" {
+		s.caches.InvalidateProducerDetail(ctx, p.ProducerID)
 	}
 	return bevID, nil
 }

@@ -161,7 +161,7 @@ func main() {
 		log.Info("foursquare enabled")
 	}
 
-	// Phase 7 — in-process LRU bundle for taxonomy/beverage/brewery hot
+	// Phase 7 — in-process LRU bundle for taxonomy/beverage/producer hot
 	// rows. Default sizing + TTLs live in cache.NewCaches. Each named
 	// cache emits hit/miss into the Prometheus cache_requests_total
 	// counter via the observer hooks — see observability.RecordCacheHit.

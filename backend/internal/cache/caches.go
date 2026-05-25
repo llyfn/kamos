@@ -25,11 +25,11 @@ import (
 // stale ratings to the user. Write-path invalidation (commit 4) plus
 // the 5m ceiling keeps drift bounded.
 //
-// - BreweryDetail: smaller catalog (~hundreds). Size 500, TTL 10m —
-// check-in counts roll up here too but a brewery's aggregate moves
+// - ProducerDetail: smaller catalog (~hundreds). Size 500, TTL 10m —
+// check-in counts roll up here too but a producer's aggregate moves
 // slower than a single beverage's.
 //
-// BeverageDetail and BreweryDetail store VALUE
+// BeverageDetail and ProducerDetail store VALUE
 // types (not pointers). Go semantics guarantee Get returns a struct
 // copy, which prevents a future per-viewer overlay from leaking
 // mutations across viewers. The copy cost is ~1 KB per Get/Set —
@@ -39,7 +39,7 @@ type Caches struct {
 	FlavorTags     *LRU[string, []domain.FlavorTag]
 	Regions        *LRU[string, []domain.RegionWithPrefectures]
 	BeverageDetail *LRU[string, domain.BeverageDetail]
-	BreweryDetail  *LRU[string, domain.Brewery]
+	ProducerDetail *LRU[string, domain.Producer]
 }
 
 // sizing tuples lifted to named constants so future
@@ -63,8 +63,8 @@ const (
 	beverageDetailCacheSize = 1000
 	beverageDetailCacheTTL  = 5 * time.Minute
 
-	breweryDetailCacheSize = 500
-	breweryDetailCacheTTL  = 10 * time.Minute
+	producerDetailCacheSize = 500
+	producerDetailCacheTTL  = 10 * time.Minute
 )
 
 // NewCaches constructs the bundle with the sizing.
@@ -74,7 +74,7 @@ func NewCaches() *Caches {
 		FlavorTags:     NewLRU[string, []domain.FlavorTag]("flavor_tags", flavorTagsCacheSize, flavorTagsCacheTTL),
 		Regions:        NewLRU[string, []domain.RegionWithPrefectures]("regions", regionsCacheSize, regionsCacheTTL),
 		BeverageDetail: NewLRU[string, domain.BeverageDetail]("beverage_detail", beverageDetailCacheSize, beverageDetailCacheTTL),
-		BreweryDetail:  NewLRU[string, domain.Brewery]("brewery_detail", breweryDetailCacheSize, breweryDetailCacheTTL),
+		ProducerDetail: NewLRU[string, domain.Producer]("producer_detail", producerDetailCacheSize, producerDetailCacheTTL),
 	}
 }
 
@@ -85,7 +85,7 @@ func (c *Caches) SetObservers(onHit, onMiss func(name string)) {
 	c.FlavorTags.SetObservers(onHit, onMiss)
 	c.Regions.SetObservers(onHit, onMiss)
 	c.BeverageDetail.SetObservers(onHit, onMiss)
-	c.BreweryDetail.SetObservers(onHit, onMiss)
+	c.ProducerDetail.SetObservers(onHit, onMiss)
 }
 
 // InvalidatePrefix is the cross-replica entry point used by the
@@ -96,7 +96,7 @@ func (c *Caches) SetObservers(onHit, onMiss func(name string)) {
 // Payload grammar:
 //
 //	"beverage:<id>" → BeverageDetail.InvalidatePrefix(id + ":")
-//	"brewery:<id>" → BreweryDetail.InvalidatePrefix(id + ":")
+//	"producer:<id>" → ProducerDetail.InvalidatePrefix(id + ":")
 //	"taxonomy" → Categories.InvalidatePrefix("") + FlavorTags.InvalidatePrefix("")
 //
 // Empty payloads, unknown prefixes, and nil receivers all no-op — the
@@ -115,10 +115,10 @@ func (c *Caches) InvalidatePrefix(payload string) {
 		if id != "" {
 			c.BeverageDetail.InvalidatePrefix(id + ":")
 		}
-	case strings.HasPrefix(payload, "brewery:"):
-		id := strings.TrimPrefix(payload, "brewery:")
+	case strings.HasPrefix(payload, "producer:"):
+		id := strings.TrimPrefix(payload, "producer:")
 		if id != "" {
-			c.BreweryDetail.InvalidatePrefix(id + ":")
+			c.ProducerDetail.InvalidatePrefix(id + ":")
 		}
 	}
 }

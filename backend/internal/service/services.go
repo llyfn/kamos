@@ -73,7 +73,7 @@ func New(d Deps) *Bundle {
 //   - nil (handlers' nil-Caches → invalidate becomes a no-op)
 type CacheInvalidator interface {
 	InvalidateBeverageDetail(ctx context.Context, beverageID string)
-	InvalidateBreweryDetail(ctx context.Context, breweryID string)
+	InvalidateProducerDetail(ctx context.Context, producerID string)
 }
 
 // cacheAdapter wraps the cache bundle + pool. Each Invalidate* call does
@@ -97,14 +97,14 @@ func (a cacheAdapter) InvalidateBeverageDetail(ctx context.Context, id string) {
 	cache.NotifyInvalidation(ctx, a.db, a.log, "beverage:"+id)
 }
 
-func (a cacheAdapter) InvalidateBreweryDetail(ctx context.Context, id string) {
+func (a cacheAdapter) InvalidateProducerDetail(ctx context.Context, id string) {
 	if id == "" {
 		return
 	}
 	if a.c != nil {
-		a.c.BreweryDetail.InvalidatePrefix(id + ":")
+		a.c.ProducerDetail.InvalidatePrefix(id + ":")
 	}
-	cache.NotifyInvalidation(ctx, a.db, a.log, "brewery:"+id)
+	cache.NotifyInvalidation(ctx, a.db, a.log, "producer:"+id)
 }
 
 // observe is the centralized hook for business counters. Services call it

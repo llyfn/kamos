@@ -34,23 +34,23 @@ type BeverageListParams struct {
 }
 
 type beverageRow struct {
-	id             string
-	nameJSON       []byte
-	subcatJSON     []byte
-	categorySlug   string
-	categoryName   []byte
-	categoryID     string
-	abv            *float64
-	polRatio       *int
-	descJSON       []byte
-	labelImgURL    *string
-	avgRating      *float64
-	checkInCount   int
-	flavorProfile  []string
-	createdAt      time.Time
-	breweryID      string
-	breweryNameRaw []byte
-	breweryPref    prefectureScan
+	id              string
+	nameJSON        []byte
+	subcatJSON      []byte
+	categorySlug    string
+	categoryName    []byte
+	categoryID      string
+	abv             *float64
+	polRatio        *int
+	descJSON        []byte
+	labelImgURL     *string
+	avgRating       *float64
+	checkInCount    int
+	flavorProfile   []string
+	createdAt       time.Time
+	producerID      string
+	producerNameRaw []byte
+	producerPref    prefectureScan
 }
 
 // beverageSelect is the full projection used by /v1/beverages/{id}.
@@ -58,8 +58,8 @@ type beverageRow struct {
 // description_i18n) that are needed on the detail screen.
 //
 // Migration 016 dropped beverages.prefecture / beverages.region; the
-// row's locality is now derived via the brewery's prefecture chain
-// (LEFT JOIN prefectures + regions on breweries.prefecture_id).
+// row's locality is now derived via the producer's prefecture chain
+// (LEFT JOIN prefectures + regions on producers.prefecture_id).
 const beverageSelect = `
 SELECT
   b.id,
@@ -76,15 +76,15 @@ SELECT
   b.check_in_count,
   b.flavor_profile,
   b.created_at,
-  br.id           AS brewery_id,
-  br.name_i18n    AS brewery_name_i18n,` + breweryPrefectureSelectCols + `
+  br.id           AS producer_id,
+  br.name_i18n    AS producer_name_i18n,` + producerPrefectureSelectCols + `
 FROM beverages b
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
 
 // beverageListSelect is the slim projection used by list/search paths:
 // it drops the two JSONB blobs (subcategory_i18n, description_i18n)
-// because list cards only show name + category + brewery + counts.
+// because list cards only show name + category + producer + counts.
 // Dropping the JSONB cuts list-response payload size by ~30%
 // (PERF-017). The corresponding scan helper is scanBeverageList.
 const beverageListSelect = `
@@ -101,15 +101,15 @@ SELECT
   b.check_in_count,
   b.flavor_profile,
   b.created_at,
-  br.id           AS brewery_id,
-  br.name_i18n    AS brewery_name_i18n,` + breweryPrefectureSelectCols + `
+  br.id           AS producer_id,
+  br.name_i18n    AS producer_name_i18n,` + producerPrefectureSelectCols + `
 FROM beverages b
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
 
 func scanBeverage(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
-	prefArgs := b.breweryPref.scanArgs()
+	prefArgs := b.producerPref.scanArgs()
 	args := make([]any, 0, 16+len(prefArgs))
 	args = append(args,
 		&b.id,
@@ -126,8 +126,8 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 		&b.checkInCount,
 		&b.flavorProfile,
 		&b.createdAt,
-		&b.breweryID,
-		&b.breweryNameRaw,
+		&b.producerID,
+		&b.producerNameRaw,
 	)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
@@ -142,7 +142,7 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 // len-0 as "absent", so the API response omits those fields.
 func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
-	prefArgs := b.breweryPref.scanArgs()
+	prefArgs := b.producerPref.scanArgs()
 	args := make([]any, 0, 14+len(prefArgs))
 	args = append(args,
 		&b.id,
@@ -157,8 +157,8 @@ func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 		&b.checkInCount,
 		&b.flavorProfile,
 		&b.createdAt,
-		&b.breweryID,
-		&b.breweryNameRaw,
+		&b.producerID,
+		&b.producerNameRaw,
 	)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
@@ -172,7 +172,7 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 	if err != nil {
 		return domain.Beverage{}, err
 	}
-	brewName, err := domain.I18nFromJSON(row.breweryNameRaw)
+	prodName, err := domain.I18nFromJSON(row.producerNameRaw)
 	if err != nil {
 		return domain.Beverage{}, err
 	}
@@ -183,10 +183,10 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 	out := domain.Beverage{
 		ID:   row.id,
 		Name: name,
-		Brewery: domain.Brewery{
-			ID:         row.breweryID,
-			Name:       brewName,
-			Prefecture: row.breweryPref.toPrefecture(),
+		Producer: domain.Producer{
+			ID:         row.producerID,
+			Name:       prodName,
+			Prefecture: row.producerPref.toPrefecture(),
 		},
 		Category:       domain.CategoryLabel{Slug: row.categorySlug, LabelI18n: catLabel},
 		ABV:            row.abv,
@@ -258,7 +258,7 @@ LIMIT $6;`
 	return out, rows.Err()
 }
 
-// Detail returns one beverage by id along with brewery + category info.
+// Detail returns one beverage by id along with producer + category info.
 //
 // Stage 8: rows with deleted_at set are treated as not found on the public
 // read path. The admin GET handler uses AdminDetail to surface soft-deleted
@@ -324,7 +324,7 @@ LIMIT 12;`
 // handler can compute has_more.
 func (r *BeverageRepo) RecentCheckins(ctx context.Context, beverageID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.CheckinSummary, error) {
 	const q = `
-SELECT ci.id, ci.rating, ci.review_text, ci.serving_style, ci.created_at,
+SELECT ci.id, ci.rating, ci.review_text, ci.created_at,
        u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
@@ -343,7 +343,7 @@ LIMIT $4;`
 	for rows.Next() {
 		var s domain.CheckinSummary
 		var rating *float64
-		if err := rows.Scan(&s.ID, &rating, &s.Review, &s.ServingStyle, &s.CreatedAt,
+		if err := rows.Scan(&s.ID, &rating, &s.Review, &s.CreatedAt,
 			&s.User.ID, &s.User.Username, &s.User.DisplayUsername, &s.User.DisplayName, &s.User.AvatarURL); err != nil {
 			return nil, fmt.Errorf("BeverageRepo.RecentCheckins scan: %w", err)
 		}
@@ -427,30 +427,30 @@ func (r *BeverageRepo) SubmitAdditionRequest(ctx context.Context, userID *string
 	return id, nil
 }
 
-// ---- breweries ----
+// ---- producers ----
 
-type BreweryRepo struct{ db *pgxpool.Pool }
+type ProducerRepo struct{ db *pgxpool.Pool }
 
-func (r *BreweryRepo) List(ctx context.Context, q *string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Brewery, error) {
+func (r *ProducerRepo) List(ctx context.Context, q *string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Producer, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	// Stage 5 (PERF-015): beverage_count comes from the denormalized
-	// column on breweries (migration 011) instead of a correlated
+	// column on producers (migration 011) instead of a correlated
 	// subquery per row. The ordering switches from id-only (which is
 	// pseudo-random for v7 UUIDs) to (created_at DESC, id DESC) so
 	// the list paginates in a meaningful order.
 	//
 	// Stage 8 (admin catalog soft-delete, migration 014): rows with
 	// deleted_at set are excluded from the public catalog. The partial
-	// idx_breweries_name_tsv keeps FTS index-friendly.
+	// idx_producers_name_tsv keeps FTS index-friendly.
 	//
 	// Migration 016: prefecture comes from a LEFT JOIN on
-	// prefectures + regions via breweries.prefecture_id; nullable.
+	// prefectures + regions via producers.prefecture_id; nullable.
 	const sql = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,
-       b.beverage_count,` + breweryPrefectureSelectCols + `
-FROM breweries b` + breweriesPrefectureJoinClause + `
+       b.beverage_count,` + producerPrefectureSelectCols + `
+FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
   AND ($1::text IS NULL OR
        to_tsvector('simple',
@@ -463,52 +463,52 @@ ORDER BY b.created_at DESC, b.id DESC
 LIMIT $4;`
 	rows, err := r.db.Query(ctx, sql, q, cursorTs, cursorID, limit+1)
 	if err != nil {
-		return nil, fmt.Errorf("BreweryRepo.List: %w", err)
+		return nil, fmt.Errorf("ProducerRepo.List: %w", err)
 	}
 	defer rows.Close()
-	return scanBreweriesWithCount(rows)
+	return scanProducersWithCount(rows)
 }
 
-func (r *BreweryRepo) Detail(ctx context.Context, id string) (*domain.Brewery, error) {
+func (r *ProducerRepo) Detail(ctx context.Context, id string) (*domain.Producer, error) {
 	const sql = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,
-       b.beverage_count,` + breweryPrefectureSelectCols + `
-FROM breweries b` + breweriesPrefectureJoinClause + `
+       b.beverage_count,` + producerPrefectureSelectCols + `
+FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.id = $1 AND b.deleted_at IS NULL;`
 	row := r.db.QueryRow(ctx, sql, id)
-	out, err := scanBreweryWithCount(row)
+	out, err := scanProducerWithCount(row)
 	if err != nil {
-		return nil, wrapNoRows("BreweryRepo.Detail", err)
+		return nil, wrapNoRows("ProducerRepo.Detail", err)
 	}
 	return out, nil
 }
 
-// Beverages lists beverages by brewery, cursor-paginated on
-// (created_at, id) so a brewery detail page shows newest first
+// Beverages lists beverages by producer, cursor-paginated on
+// (created_at, id) so a producer detail page shows newest first
 // instead of the v7-UUID-pseudo-random id order.
 //
 // Stage 8: public path filters soft-deleted rows on both joined tables.
-func (r *BreweryRepo) Beverages(ctx context.Context, breweryID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Beverage, error) {
+func (r *ProducerRepo) Beverages(ctx context.Context, producerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Beverage, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	q := beverageListSelect + `
-WHERE b.brewery_id = $1
+WHERE b.producer_id = $1
   AND b.deleted_at IS NULL
   AND br.deleted_at IS NULL
   AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
 ORDER BY b.created_at DESC, b.id DESC
 LIMIT $4;`
-	rows, err := r.db.Query(ctx, q, breweryID, cursorTs, cursorID, limit+1)
+	rows, err := r.db.Query(ctx, q, producerID, cursorTs, cursorID, limit+1)
 	if err != nil {
-		return nil, fmt.Errorf("BreweryRepo.Beverages: %w", err)
+		return nil, fmt.Errorf("ProducerRepo.Beverages: %w", err)
 	}
 	defer rows.Close()
 	out := make([]domain.Beverage, 0, limit+1)
 	for rows.Next() {
 		bv, err := scanBeverageList(rows)
 		if err != nil {
-			return nil, fmt.Errorf("BreweryRepo.Beverages scan: %w", err)
+			return nil, fmt.Errorf("ProducerRepo.Beverages scan: %w", err)
 		}
 		br := BeverageRepo{db: r.db}
 		d, err := br.toBeverage(bv)
@@ -520,13 +520,13 @@ LIMIT $4;`
 	return out, rows.Err()
 }
 
-// scanBrewery scans the count-free brewery projection used by
+// scanProducer scans the count-free producer projection used by
 // /v1/search. Column order:
 //
 //	id, name_i18n, founded_year, website, description_i18n, created_at,
-//	+ breweryPrefectureSelectCols (8 join columns).
-func scanBrewery(row pgx.Row) (*domain.Brewery, error) {
-	var b domain.Brewery
+//	+ producerPrefectureSelectCols (8 join columns).
+func scanProducer(row pgx.Row) (*domain.Producer, error) {
+	var b domain.Producer
 	var nameJSON, descJSON []byte
 	var pref prefectureScan
 	prefArgs := pref.scanArgs()
@@ -545,14 +545,14 @@ func scanBrewery(row pgx.Row) (*domain.Brewery, error) {
 	return &b, nil
 }
 
-// scanBreweryWithCount scans the brewery row plus a trailing beverage_count
-// column. Used by BreweryRepo.List/Detail; search.go still uses the count-
+// scanProducerWithCount scans the producer row plus a trailing beverage_count
+// column. Used by ProducerRepo.List/Detail; search.go still uses the count-
 // free variant. Column order:
 //
 //	id, name_i18n, founded_year, website, description_i18n, created_at,
-//	beverage_count, + breweryPrefectureSelectCols (8 join columns).
-func scanBreweryWithCount(row pgx.Row) (*domain.Brewery, error) {
-	var b domain.Brewery
+//	beverage_count, + producerPrefectureSelectCols (8 join columns).
+func scanProducerWithCount(row pgx.Row) (*domain.Producer, error) {
+	var b domain.Producer
 	var nameJSON, descJSON []byte
 	var count int
 	var pref prefectureScan
@@ -573,24 +573,24 @@ func scanBreweryWithCount(row pgx.Row) (*domain.Brewery, error) {
 	return &b, nil
 }
 
-func scanBreweries(rows pgx.Rows) ([]domain.Brewery, error) {
-	var out []domain.Brewery
+func scanProducers(rows pgx.Rows) ([]domain.Producer, error) {
+	var out []domain.Producer
 	for rows.Next() {
-		b, err := scanBrewery(rows)
+		b, err := scanProducer(rows)
 		if err != nil {
-			return nil, fmt.Errorf("scanBreweries: %w", err)
+			return nil, fmt.Errorf("scanProducers: %w", err)
 		}
 		out = append(out, *b)
 	}
 	return out, rows.Err()
 }
 
-func scanBreweriesWithCount(rows pgx.Rows) ([]domain.Brewery, error) {
-	var out []domain.Brewery
+func scanProducersWithCount(rows pgx.Rows) ([]domain.Producer, error) {
+	var out []domain.Producer
 	for rows.Next() {
-		b, err := scanBreweryWithCount(rows)
+		b, err := scanProducerWithCount(rows)
 		if err != nil {
-			return nil, fmt.Errorf("scanBreweriesWithCount: %w", err)
+			return nil, fmt.Errorf("scanProducersWithCount: %w", err)
 		}
 		out = append(out, *b)
 	}

@@ -11,11 +11,11 @@ import (
 
 type SearchRepo struct{ db *pgxpool.Pool }
 
-// SearchResult is a sum type: only one of Beverage/Brewery is non-nil.
+// SearchResult is a sum type: only one of Beverage/Producer is non-nil.
 type SearchResult struct {
-	Type     string           `json:"type"` // 'beverage' | 'brewery'
+	Type     string           `json:"type"` // 'beverage' | 'producer'
 	Beverage *domain.Beverage `json:"beverage,omitempty"`
-	Brewery  *domain.Brewery  `json:"brewery,omitempty"`
+	Producer *domain.Producer `json:"producer,omitempty"`
 }
 
 // SearchBeverages fetches up to limit+1 beverages matching q, keyset-
@@ -59,17 +59,17 @@ LIMIT $3;`
 	return out, rows.Err()
 }
 
-// SearchBreweries fetches up to limit+1 breweries matching q.
-func (r *SearchRepo) SearchBreweries(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
+// SearchProducers fetches up to limit+1 producers matching q.
+func (r *SearchRepo) SearchProducers(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	// Stage 8: exclude tombstoned rows from public search.
 	// Migration 016: prefecture is nested via the LEFT JOIN to
-	// prefectures + regions (brewery.prefecture_id is nullable).
+	// prefectures + regions (producer.prefecture_id is nullable).
 	const brq = `
-SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,` + breweryPrefectureSelectCols + `
-FROM breweries b` + breweriesPrefectureJoinClause + `
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,` + producerPrefectureSelectCols + `
+FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
   AND to_tsvector('simple',
         coalesce(b.name_i18n->>'en','') || ' ' ||
@@ -81,16 +81,16 @@ ORDER BY b.id DESC
 LIMIT $3;`
 	rows, err := r.db.Query(ctx, brq, q, cursorID, limit+1)
 	if err != nil {
-		return nil, fmt.Errorf("SearchBreweries: %w", err)
+		return nil, fmt.Errorf("SearchProducers: %w", err)
 	}
 	defer rows.Close()
 	var out []SearchResult
 	for rows.Next() {
-		b, err := scanBrewery(rows)
+		b, err := scanProducer(rows)
 		if err != nil {
-			return nil, fmt.Errorf("SearchBreweries scan: %w", err)
+			return nil, fmt.Errorf("SearchProducers scan: %w", err)
 		}
-		out = append(out, SearchResult{Type: "brewery", Brewery: b})
+		out = append(out, SearchResult{Type: "producer", Producer: b})
 	}
 	return out, rows.Err()
 }
