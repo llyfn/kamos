@@ -190,6 +190,45 @@ Both tables follow the same `JSONB name_i18n` pattern as `beverage_categories` a
 
 Country dimension is intentionally **not** introduced: MVP is Japan-only. A `countries` table can be added later above `regions` without disturbing existing FKs. `venues.prefecture` (Phase 4, Foursquare-backed) is independent and was not touched — that column is third-party-sourced free text.
 
+### 9c. Notifications (019)
+
+SPEC §5.4 defines an in-app notifications inbox with five event types: `toast`, `comment`, `follow`, `follow_request`, `follow_approved`. Push notifications are deferred to v1.1. The schema is intentionally one wide table — splitting per-type tables would bloat the read path with `UNION ALL` for the unified-inbox cursor.
+
+**Emit strategy: app layer, in-transaction.** No triggers. Every emit path lives in the repository code wrapping the source mutation in the same `pgx.Tx`:
+
+| Source event | Emit |
+|---|---|
+| `INSERT INTO toasts` | `notifications(type='toast', actor=toaster, recipient=check_in.user_id, check_in_id)` |
+| `INSERT INTO comments` | `notifications(type='comment', actor=commenter, recipient=check_in.user_id, check_in_id, comment_id)` |
+| `INSERT INTO follows (status='accepted')` (public target) | `notifications(type='follow', actor=follower, recipient=followed_id)` |
+| `INSERT INTO follows (status='pending')` (private target) | `notifications(type='follow_request', actor=follower, recipient=followed_id)` |
+| `UPDATE follows SET status='accepted' WHERE status='pending'` | `notifications(type='follow_approved', actor=approver, recipient=requester)` AND `DELETE` the original `follow_request` notification |
+| `DELETE FROM follows WHERE status='pending'` (decline) | `DELETE` the `follow_request` notification |
+
+Triggers were rejected: review surface gets harder, the `follows`-side `INSERT` is conditionally `pending` or `accepted` and that branching belongs in service code, and the comment-author emit needs both `check_in.user_id` and `comment.id` which only the service knows after the comment write. Mirrors the pattern set by `comments` in 009 (also trigger-free).
+
+**Self-action filter.** SPEC §5.4: "Self-actions never produce a notification." Service layer filters before insert. The DB still carries `notifications_no_self` as a belt-and-suspenders CHECK so a bug that bypasses the service filter is rejected at write time.
+
+**Soft-delete propagation.**
+
+- `recipient_user_id` is `ON DELETE CASCADE`: when a user is hard-purged (post 30-day username hold), their inbox vanishes with them. Recipient soft-delete does NOT wipe the inbox — the rows stay until hard purge.
+- `actor_user_id` is `ON DELETE SET NULL`: a deleted (soft- or hard-) actor leaves the row in place; the UI renders the localized "Deleted user" placeholder per SPEC §5.4.
+- `check_in_id` and `comment_id` are `ON DELETE SET NULL`: a deleted source preserves the notification; the row no longer has a tap target but the user still sees the event happened.
+
+**Dedupe matrix.**
+
+| Type | DB dedupe | Rationale |
+|---|---|---|
+| `toast` | Partial unique on `(recipient, actor, check_in_id) WHERE type='toast'` | Toggling a toast off and back on must not spam the recipient. Re-insert is `ON CONFLICT DO NOTHING`. |
+| `comment` | None | Every comment is its own event. Multiple comments from the same actor on the same check-in produce multiple notifications. |
+| `follow` | Partial unique on `(recipient, actor) WHERE type='follow'` | Unfollow + re-follow does NOT re-notify in MVP. Revisit if user feedback requests it. |
+| `follow_request` | None | Lifecycle requires the row to be deletable on approve/decline/cancel so a later re-request can re-notify. The "row exists only while the underlying follow is pending" invariant cannot be expressed in a partial unique predicate (would need a subquery, which is not `IMMUTABLE`). The application owns deletion — service code DELETEs the `follow_request` row on each terminal transition. |
+| `follow_approved` | Partial unique on `(recipient, actor) WHERE type='follow_approved'` | One row per pair per approval-event for MVP. Re-approval after a future unfollow → re-request → approve cycle is swallowed by `ON CONFLICT DO NOTHING`; same logical "your follow was approved" event for the requester. |
+
+**Reference-shape CHECK.** A single `notifications_refs_match_type` CHECK enforces per-type which of `check_in_id` and `comment_id` must be NULL or NOT NULL. Catches misuse at write time instead of letting a malformed row reach a Flutter `null!` crash.
+
+**Read-state.** `read_at TIMESTAMPTZ NULL` — set on (a) row scrolls into view, (b) row tapped, (c) "Mark all read". The partial index `idx_notifications_recipient_unread WHERE read_at IS NULL` keeps the badge-dot lookup index-only and the unread-count aggregate cheap; in a healthy inbox where most rows are read it stays tiny.
+
 ### 10. UUID, not bigint, primary keys
 
 `pgcrypto.gen_random_uuid()` everywhere. Trade-offs:
@@ -223,6 +262,7 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `collections` | User-owned lists. | `deleted_at` | Name 1..50 chars, unique per user (case-insensitive) among live rows. |
 | `collection_entries` | Beverage × collection. | — | Note ≤200. Composite PK. |
 | `beverage_addition_requests` | SPEC §2.4 user feedback. | — | Status enum. |
+| `notifications` | In-app inbox (SPEC §5.4). | — (recipient hard-delete CASCADEs the row; soft-delete of actor/check-in/comment SET NULLs the FK and keeps the row visible). | `type` ∈ {`toast`,`comment`,`follow`,`follow_request`,`follow_approved`}. Per-type CHECK on which references must be populated. `actor_user_id <> recipient_user_id`. Partial unique indexes dedupe `toast` per (recipient, actor, check_in) and `follow` / `follow_approved` per (recipient, actor). `comment` and `follow_request` deliberately have no DB dedupe — see "Notifications" section. |
 
 ---
 

@@ -221,6 +221,39 @@ CREATE INDEX idx_beverage_addition_requests_status
   ON beverage_addition_requests (status, created_at DESC);
 ```
 
+### notifications (019)
+
+| Index | Purpose | SPEC |
+|---|---|---|
+| `idx_notifications_recipient_created` | Cursor pagination for `GET /v1/notifications`. Composite `(recipient_user_id, created_at DESC, id DESC)` matches the planner's tuple comparison `(created_at, id) < ($cursor_ts, $cursor_id)` so backward index scan returns rows in cursor order without a sort. | §5.4 |
+| `idx_notifications_recipient_unread` (partial) | `GET /v1/notifications/unread-count` and the per-replica "any unread?" dot. `WHERE read_at IS NULL` — tiny in a healthy inbox where most rows are read. Aggregate is index-only. | §5.4 |
+| `idx_notifications_toast_unique` (unique, partial) | Dedupe: one toast notification per (recipient, actor, check_in). Toggle-toggle does not spam. `WHERE type = 'toast'`. | §5.4 |
+| `idx_notifications_follow_unique` (unique, partial) | Dedupe: one follow notification per (recipient, actor). Re-follow does not re-notify in MVP. `WHERE type = 'follow'`. | §5.4 |
+| `idx_notifications_follow_approved_unique` (unique, partial) | Dedupe: one follow_approved notification per (recipient, actor). `WHERE type = 'follow_approved'`. | §5.4 |
+
+```sql
+CREATE INDEX idx_notifications_recipient_created
+  ON notifications (recipient_user_id, created_at DESC, id DESC);
+
+CREATE INDEX idx_notifications_recipient_unread
+  ON notifications (recipient_user_id)
+  WHERE read_at IS NULL;
+
+CREATE UNIQUE INDEX idx_notifications_toast_unique
+  ON notifications (recipient_user_id, actor_user_id, check_in_id)
+  WHERE type = 'toast';
+
+CREATE UNIQUE INDEX idx_notifications_follow_unique
+  ON notifications (recipient_user_id, actor_user_id)
+  WHERE type = 'follow';
+
+CREATE UNIQUE INDEX idx_notifications_follow_approved_unique
+  ON notifications (recipient_user_id, actor_user_id)
+  WHERE type = 'follow_approved';
+```
+
+No index for `comment` or `follow_request` dedupe — both are intentionally non-deduped at the DB. `comment` is naturally unique by `comment_id` FK; `follow_request` is deletable on every terminal transition by the application so re-requests can re-notify (see schema.md §9c).
+
 ## Index size & write-cost notes
 
 - **Hottest write paths**: `check_ins.INSERT` updates three indexes (`user_created`, `beverage_created`, `created_global`) plus the aggregate trigger on `beverages`. The trigger does one extra `UPDATE` on `beverages`, which is acceptable at expected MVP write volume (~order of magnitude under 10/sec sustained).
