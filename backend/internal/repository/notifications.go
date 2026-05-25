@@ -151,9 +151,9 @@ LIMIT $4;`
 	out := make([]domain.Notification, 0, limit+1)
 	for rows.Next() {
 		var (
-			n                                              domain.Notification
+			n                                               domain.Notification
 			actorID, username, displayUsername, displayName *string
-			avatarURL                                      *string
+			avatarURL                                       *string
 		)
 		if err := rows.Scan(
 			&n.ID, &n.Type,

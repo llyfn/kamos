@@ -171,7 +171,9 @@ func buildServerWithTTL(
 	// Add() call rather than waiting for the periodic refresh.
 	softDelete := auth.NewSoftDeleteCache(p, 30*time.Second, jwtTTL+time.Hour)
 	h := handlers.New(cfg, log, repos, signer, google).
-		WithSoftDeleteCache(softDelete)
+		WithSoftDeleteCache(softDelete).
+		WithDB(p).
+		EnsureServices()
 	mux := server.New(log, signer, softDelete, h)
 	return httptest.NewServer(mux)
 }
