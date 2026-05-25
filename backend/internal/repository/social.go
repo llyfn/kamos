@@ -17,27 +17,53 @@ type SocialRepo struct{ db *pgxpool.Pool }
 // Follow handles both public (instant) and private (request) flows. Returns
 // the resulting status ('accepted' or 'pending'). If the relationship already
 // exists, the existing status is returned (idempotent).
+//
+// Self-managed transaction — the legacy (pre-service) handler path uses
+// this. The service path uses FollowTx so the notification emit can
+// participate in the same transaction.
 func (r *SocialRepo) Follow(ctx context.Context, follower, followed string) (string, error) {
 	if follower == followed {
 		return "", domain.ErrFollowSelf
 	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("Follow begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	status, _, err := r.FollowTx(ctx, tx, follower, followed)
+	if err != nil {
+		return "", err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("Follow commit: %w", err)
+	}
+	return status, nil
+}
 
-	// Determine target privacy.
+// FollowTx is the tx-aware variant. Returns the resulting status plus a
+// `created` flag — true only when this call INSERTed a fresh `follows` row
+// (caller-side condition for emitting a `follow` / `follow_request`
+// notification; an idempotent no-op returns created=false).
+func (r *SocialRepo) FollowTx(ctx context.Context, tx pgx.Tx, follower, followed string) (status string, created bool, err error) {
+	if follower == followed {
+		return "", false, domain.ErrFollowSelf
+	}
+
 	var privacy string
-	err := r.db.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`SELECT privacy_mode FROM users WHERE id = $1 AND deleted_at IS NULL;`, followed,
 	).Scan(&privacy)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", domain.ErrNotFound
+		return "", false, domain.ErrNotFound
 	}
 	if err != nil {
-		return "", fmt.Errorf("Follow lookup: %w", err)
+		return "", false, fmt.Errorf("FollowTx lookup: %w", err)
 	}
 
-	status := "accepted"
+	wantStatus := "accepted"
 	var acceptedAt *time.Time
 	if privacy == "private" {
-		status = "pending"
+		wantStatus = "pending"
 	} else {
 		now := time.Now()
 		acceptedAt = &now
@@ -47,31 +73,57 @@ INSERT INTO follows (follower_id, followed_id, status, accepted_at)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (follower_id, followed_id) DO NOTHING
 RETURNING status;`
-	var out string
-	err = r.db.QueryRow(ctx, q, follower, followed, status, acceptedAt).Scan(&out)
+	err = tx.QueryRow(ctx, q, follower, followed, wantStatus, acceptedAt).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
-		// Row already existed — read its current status.
-		err = r.db.QueryRow(ctx,
+		err = tx.QueryRow(ctx,
 			`SELECT status FROM follows WHERE follower_id = $1 AND followed_id = $2;`,
-			follower, followed).Scan(&out)
+			follower, followed).Scan(&status)
 		if err != nil {
-			return "", fmt.Errorf("Follow existing: %w", err)
+			return "", false, fmt.Errorf("FollowTx existing: %w", err)
 		}
-		return out, nil
+		return status, false, nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("Follow insert: %w", err)
+		return "", false, fmt.Errorf("FollowTx insert: %w", err)
 	}
-	return out, nil
+	return status, true, nil
 }
 
-// Unfollow deletes the row regardless of status.
+// Unfollow deletes the row regardless of status. Self-managed transaction.
+// Legacy path; the service uses UnfollowTx so the notification cleanup can
+// run in the same transaction.
 func (r *SocialRepo) Unfollow(ctx context.Context, follower, followed string) error {
-	const q = `DELETE FROM follows WHERE follower_id = $1 AND followed_id = $2;`
-	if _, err := r.db.Exec(ctx, q, follower, followed); err != nil {
-		return fmt.Errorf("Unfollow: %w", err)
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("Unfollow begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := r.UnfollowTx(ctx, tx, follower, followed); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("Unfollow commit: %w", err)
 	}
 	return nil
+}
+
+// UnfollowTx deletes the row inside the caller's tx and returns the
+// previous status (empty when no row existed) so the service can decide
+// whether to also drop a `follow_request` notification (only when the row
+// was `pending` — i.e. the requester withdrew before approval).
+func (r *SocialRepo) UnfollowTx(ctx context.Context, tx pgx.Tx, follower, followed string) (prevStatus string, err error) {
+	const q = `
+DELETE FROM follows
+WHERE follower_id = $1 AND followed_id = $2
+RETURNING status;`
+	err = tx.QueryRow(ctx, q, follower, followed).Scan(&prevStatus)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("UnfollowTx: %w", err)
+	}
+	return prevStatus, nil
 }
 
 // FollowState returns the relationship status of viewer→target, or empty.
@@ -117,14 +169,32 @@ LIMIT $4;`
 	return out, rows.Err()
 }
 
-// Approve flips a pending request to accepted.
+// Approve flips a pending request to accepted. Self-managed transaction;
+// the service uses ApproveTx so the notification emit can run in the same
+// transaction.
 func (r *SocialRepo) Approve(ctx context.Context, followedID, followerID string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("Approve begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := r.ApproveTx(ctx, tx, followedID, followerID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("Approve commit: %w", err)
+	}
+	return nil
+}
+
+// ApproveTx is the tx-aware variant.
+func (r *SocialRepo) ApproveTx(ctx context.Context, tx pgx.Tx, followedID, followerID string) error {
 	const q = `
 UPDATE follows SET status = 'accepted', accepted_at = NOW()
 WHERE follower_id = $1 AND followed_id = $2 AND status = 'pending';`
-	ct, err := r.db.Exec(ctx, q, followerID, followedID)
+	ct, err := tx.Exec(ctx, q, followerID, followedID)
 	if err != nil {
-		return fmt.Errorf("Approve: %w", err)
+		return fmt.Errorf("ApproveTx: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
 		return domain.ErrNotFound
@@ -132,12 +202,30 @@ WHERE follower_id = $1 AND followed_id = $2 AND status = 'pending';`
 	return nil
 }
 
-// Decline removes a pending request.
+// Decline removes a pending request. Self-managed transaction; the
+// service uses DeclineTx so the notification cleanup can run in the same
+// transaction.
 func (r *SocialRepo) Decline(ctx context.Context, followedID, followerID string) error {
-	const q = `DELETE FROM follows WHERE follower_id = $1 AND followed_id = $2 AND status = 'pending';`
-	ct, err := r.db.Exec(ctx, q, followerID, followedID)
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("Decline: %w", err)
+		return fmt.Errorf("Decline begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := r.DeclineTx(ctx, tx, followedID, followerID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("Decline commit: %w", err)
+	}
+	return nil
+}
+
+// DeclineTx is the tx-aware variant.
+func (r *SocialRepo) DeclineTx(ctx context.Context, tx pgx.Tx, followedID, followerID string) error {
+	const q = `DELETE FROM follows WHERE follower_id = $1 AND followed_id = $2 AND status = 'pending';`
+	ct, err := tx.Exec(ctx, q, followerID, followedID)
+	if err != nil {
+		return fmt.Errorf("DeclineTx: %w", err)
 	}
 	if ct.RowsAffected() == 0 {
 		return domain.ErrNotFound

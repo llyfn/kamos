@@ -29,18 +29,39 @@ type CommentRepo struct{ db *pgxpool.Pool }
 // the FK INSERT would otherwise return a generic SQLSTATE 23503 that gets
 // wrapped as 500 by the handler. The pre-check is one indexed PK lookup,
 // cheaper than the 23503 path.
+//
+// Self-managed transaction — the legacy (pre-service) handler path uses
+// this. The service path uses CreateTx so the notification emit can
+// participate in the same transaction.
 func (r *CommentRepo) Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error) {
-	// Ensure the parent check-in is alive (the FK cascades on hard-delete,
-	// but flips most check-ins to soft-deleted via moderation).
-	var alive bool
-	if err := r.db.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM check_ins WHERE id = $1 AND deleted_at IS NULL);`,
-		checkInID,
-	).Scan(&alive); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create check parent: %w", err)
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CommentRepo.Create begin: %w", err)
 	}
-	if !alive {
-		return nil, domain.ErrNotFound
+	defer func() { _ = tx.Rollback(ctx) }()
+	out, _, err := r.CreateTx(ctx, tx, checkInID, userID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("CommentRepo.Create commit: %w", err)
+	}
+	return out, nil
+}
+
+// CreateTx is the tx-aware variant. Returns the hydrated comment plus the
+// owner of the parent check-in (so the service can emit a notification to
+// the right recipient without a follow-up query).
+func (r *CommentRepo) CreateTx(ctx context.Context, tx pgx.Tx, checkInID, userID, body string) (*domain.Comment, string, error) {
+	var ownerID string
+	if err := tx.QueryRow(ctx,
+		`SELECT user_id FROM check_ins WHERE id = $1 AND deleted_at IS NULL;`,
+		checkInID,
+	).Scan(&ownerID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", domain.ErrNotFound
+		}
+		return nil, "", fmt.Errorf("CommentRepo.CreateTx parent: %w", err)
 	}
 
 	const ins = `
@@ -51,22 +72,19 @@ RETURNING id, check_in_id, user_id, body, created_at;`
 		id, checkInIDOut, userIDOut, bodyOut string
 		createdAt                            time.Time
 	)
-	if err := r.db.QueryRow(ctx, ins, checkInID, userID, body).Scan(
+	if err := tx.QueryRow(ctx, ins, checkInID, userID, body).Scan(
 		&id, &checkInIDOut, &userIDOut, &bodyOut, &createdAt,
 	); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create insert: %w", err)
+		return nil, "", fmt.Errorf("CommentRepo.CreateTx insert: %w", err)
 	}
 
-	// Hydrate the author row for the response. INSERT cannot succeed with
-	// a NULL user_id (the writer is always the authed caller), so the
-	// JOIN partner here is always present — no LEFT JOIN needed.
 	var u domain.CheckinUser
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 SELECT id, username, display_username, display_name, avatar_url
 FROM users WHERE id = $1;`,
 		userIDOut,
 	).Scan(&u.ID, &u.Username, &u.DisplayUsername, &u.DisplayName, &u.AvatarURL); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create hydrate user: %w", err)
+		return nil, "", fmt.Errorf("CommentRepo.CreateTx hydrate user: %w", err)
 	}
 
 	return &domain.Comment{
@@ -75,7 +93,7 @@ FROM users WHERE id = $1;`,
 		User:      &u,
 		Body:      bodyOut,
 		CreatedAt: createdAt,
-	}, nil
+	}, ownerID, nil
 }
 
 // List returns the comments on a check-in, most-recent-first. Soft-deleted

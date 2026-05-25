@@ -78,7 +78,15 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateComment validate", err)
 		return
 	}
-	out, err := h.Repos.Comments.Create(r.Context(), checkInID, uid, req.Body)
+	var (
+		out *domain.Comment
+		err error
+	)
+	if h.Services != nil && h.Services.Comment != nil {
+		out, err = h.Services.Comment.Create(r.Context(), checkInID, uid, req.Body)
+	} else {
+		out, err = h.Repos.Comments.Create(r.Context(), checkInID, uid, req.Body)
+	}
 	if err != nil {
 		h.writeErr(w, "CreateComment", err)
 		return

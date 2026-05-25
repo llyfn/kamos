@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/observability"
@@ -16,9 +20,11 @@ import (
 // call → respond.
 type CheckinService struct {
 	log       *slog.Logger
+	db        *pgxpool.Pool
 	checkins  CheckinRepo
 	beverages CheckinBeverageRepo
 	venues    CheckinVenueRepo
+	notifs    *NotificationService
 	caches    cacheAdapter
 	onCreated counterFn
 }
@@ -30,7 +36,11 @@ type CheckinRepo interface {
 	Update(ctx context.Context, p repository.UpdateCheckinParams) error
 	SoftDelete(ctx context.Context, id, userID string) error
 	AddPhoto(ctx context.Context, checkinID, userID, photoURL string) (domain.PhotoRef, error)
-	ToggleToast(ctx context.Context, userID, checkinID string) (domain.ToastState, error)
+	// ToggleToastTx runs the full toggle in the supplied tx and reports
+	// the new state plus the check-in owner (for the notification emit on
+	// the "added" branch). owner == "" when the row was just removed —
+	// the service skips the emit in that case.
+	ToggleToastTx(ctx context.Context, tx pgx.Tx, userID, checkinID string) (state domain.ToastState, added bool, ownerID string, err error)
 }
 
 // CheckinBeverageRepo is the slice of repository.BeverageRepo this service
@@ -45,9 +55,11 @@ type CheckinVenueRepo interface {
 	GetByID(ctx context.Context, id string) (*domain.Venue, error)
 }
 
-func newCheckinService(d Deps) *CheckinService {
+func newCheckinService(d Deps, notifs *NotificationService) *CheckinService {
 	s := &CheckinService{
 		log:       d.Log,
+		db:        d.DB,
+		notifs:    notifs,
 		caches:    cacheAdapter{c: d.Caches, db: d.DB, log: d.Log},
 		onCreated: observability.IncCheckinsCreated,
 	}
@@ -152,10 +164,34 @@ func (s *CheckinService) Delete(ctx context.Context, userID, id string) error {
 	return nil
 }
 
-// ToggleToast is a thin pass-through; included on the service so handlers
-// don't depend on the repo directly for write paths.
+// ToggleToast wraps the toast toggle in a single transaction so the
+// notification emit on the "added" branch lands atomically with the
+// toasts row INSERT. The DB pool is required to begin the tx; without it
+// (tests that don't wire a pool), the call returns an error so the
+// missing dependency is loud.
 func (s *CheckinService) ToggleToast(ctx context.Context, userID, checkinID string) (domain.ToastState, error) {
-	return s.checkins.ToggleToast(ctx, userID, checkinID)
+	if s.db == nil {
+		return domain.ToastState{}, errors.New("CheckinService.ToggleToast: nil db pool")
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return domain.ToastState{}, fmt.Errorf("CheckinService.ToggleToast begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	state, added, ownerID, err := s.checkins.ToggleToastTx(ctx, tx, userID, checkinID)
+	if err != nil {
+		return domain.ToastState{}, err
+	}
+	if added && ownerID != "" && ownerID != userID {
+		if err := s.notifs.EmitToast(ctx, tx, ownerID, userID, checkinID); err != nil {
+			return domain.ToastState{}, fmt.Errorf("CheckinService.ToggleToast emit: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.ToastState{}, fmt.Errorf("CheckinService.ToggleToast commit: %w", err)
+	}
+	return state, nil
 }
 
 // AddPhoto is a thin pass-through. The full presign + attach flow lives

@@ -2,8 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/repository"
@@ -14,14 +19,16 @@ import (
 // shrink to decode → validate → call → respond.
 type CommentService struct {
 	log      *slog.Logger
+	db       *pgxpool.Pool
 	comments CommentRepo
 	checkins CommentCheckinRepo
 	users    CommentUserRepo
+	notifs   *NotificationService
 }
 
 // CommentRepo is the slice of repository.CommentRepo this service uses.
 type CommentRepo interface {
-	Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error)
+	CreateTx(ctx context.Context, tx pgx.Tx, checkInID, userID, body string) (*domain.Comment, string, error)
 	Get(ctx context.Context, id string) (*domain.Comment, error)
 	List(ctx context.Context, checkInID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Comment, error)
 	ListForAdmin(ctx context.Context, onlyDeleted bool, cursorTs *time.Time, cursorID *string, limit int) ([]repository.AdminCommentRow, error)
@@ -39,8 +46,8 @@ type CommentUserRepo interface {
 	GetUserRole(ctx context.Context, userID string) (domain.UserRole, error)
 }
 
-func newCommentService(d Deps) *CommentService {
-	s := &CommentService{log: d.Log}
+func newCommentService(d Deps, notifs *NotificationService) *CommentService {
+	s := &CommentService{log: d.Log, db: d.DB, notifs: notifs}
 	if d.Repos != nil {
 		s.comments = d.Repos.Comments
 		s.checkins = d.Repos.Checkins
@@ -57,9 +64,32 @@ func (s *CommentService) List(ctx context.Context, checkInID, viewerID string, c
 	return s.comments.List(ctx, checkInID, cursorTs, cursorID, limit)
 }
 
-// Create orchestrates the insert. (Rate-limiting lives at the router.)
+// Create orchestrates the insert in a single transaction with the
+// notification emit so the inbox row lands atomically with the comment.
+// (Rate-limiting lives at the router.)
 func (s *CommentService) Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error) {
-	return s.comments.Create(ctx, checkInID, userID, body)
+	if s.db == nil {
+		return nil, errors.New("CommentService.Create: nil db pool")
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CommentService.Create begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	out, ownerID, err := s.comments.CreateTx(ctx, tx, checkInID, userID, body)
+	if err != nil {
+		return nil, err
+	}
+	if ownerID != userID {
+		if err := s.notifs.EmitComment(ctx, tx, ownerID, userID, checkInID, out.ID); err != nil {
+			return nil, fmt.Errorf("CommentService.Create emit: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("CommentService.Create commit: %w", err)
+	}
+	return out, nil
 }
 
 // Delete owns the role-aware soft-delete: owner is always allowed; non-
