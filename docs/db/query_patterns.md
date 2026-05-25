@@ -119,9 +119,8 @@ SELECT
   ci.beverage_id,
   b.name_i18n         AS beverage_name_i18n,
   b.category_slug     AS beverage_category,
-  br.id               AS brewery_id,
-  br.name_i18n        AS brewery_name_i18n,
-  br.region           AS brewery_region,
+  br.id               AS producer_id,
+  br.name_i18n        AS producer_name_i18n,
   COALESCE(tc.cnt, 0) AS toast_count,
   EXISTS (
     SELECT 1 FROM toasts tt
@@ -138,8 +137,8 @@ JOIN users u
   AND u.deleted_at IS NULL
 JOIN beverages b
   ON b.id = ci.beverage_id
-JOIN breweries br
-  ON br.id = b.brewery_id
+JOIN producers br
+  ON br.id = b.producer_id
 LEFT JOIN LATERAL (
   SELECT COUNT(*) AS cnt FROM toasts t WHERE t.check_in_id = ci.id
 ) tc ON TRUE
@@ -157,6 +156,7 @@ LIMIT 21;                                            -- 20 + 1 to compute has_mo
 Indexes used:
 - `idx_follows_follower_accepted` for the JOIN.
 - `idx_check_ins_user_created` for the ORDER BY per-user.
+- `idx_beverages_producer` for the `b.producer_id → producers.id` join.
 - Tuple comparison `(created_at, id) <` allows Postgres to perform a backward index scan with an "index condition" that prunes already-seen rows.
 
 Go-side:
@@ -311,12 +311,12 @@ INSERT INTO check_ins (
   user_id, beverage_id,
   rating, review_text,
   price_amount, price_currency, price_unit,
-  purchase_type, serving_style
+  purchase_type
 ) VALUES (
   $1, $2,
   $3, $4,
   $5, $6, $7,
-  $8, $9
+  $8
 )
 RETURNING id, created_at;
 ```
@@ -353,10 +353,9 @@ UPDATE check_ins SET
   price_amount    = $4,
   price_currency  = $5,
   price_unit      = $6,
-  purchase_type   = $7,
-  serving_style   = $8
+  purchase_type   = $7
 WHERE id = $1
-  AND user_id = $9
+  AND user_id = $8
   AND deleted_at IS NULL
 RETURNING id, updated_at;
 ```
@@ -408,14 +407,17 @@ A scheduled job (out of scope for this migration) eventually hard-purges users w
 ```sql
 SELECT
   b.id, b.name_i18n, b.category_slug, b.subcategory_i18n,
-  b.abv, b.polishing_ratio, b.prefecture, b.region,
+  b.abv, b.polishing_ratio,
   b.description_i18n, b.label_image_url,
   b.avg_rating, b.check_in_count,
-  br.id AS brewery_id,
-  br.name_i18n AS brewery_name_i18n,
-  br.region    AS brewery_region
+  br.id AS producer_id,
+  br.name_i18n AS producer_name_i18n,
+  pf.name_i18n AS prefecture_name_i18n,
+  rg.name_i18n AS region_name_i18n
 FROM beverages b
-JOIN breweries br ON br.id = b.brewery_id
+JOIN producers br ON br.id = b.producer_id
+LEFT JOIN prefectures pf ON pf.id = br.prefecture_id
+LEFT JOIN regions rg ON rg.id = pf.region_id
 WHERE b.id = $1;
 ```
 
@@ -459,9 +461,9 @@ Cross-locale lexeme matching via the GIN tsvector index. Cursor is `(checkins, i
 
 ```sql
 SELECT b.id, b.name_i18n, b.category_slug, b.avg_rating, b.check_in_count,
-       br.name_i18n AS brewery_name_i18n
+       br.name_i18n AS producer_name_i18n
 FROM beverages b
-JOIN breweries br ON br.id = b.brewery_id
+JOIN producers br ON br.id = b.producer_id
 WHERE
   ($1::text IS NULL OR
    to_tsvector('simple',
@@ -496,10 +498,10 @@ ORDER BY c.created_at ASC;
 -- 12b. Collection detail (entries).
 SELECT ce.beverage_id, ce.note, ce.added_at,
        b.name_i18n, b.category_slug, b.label_image_url,
-       br.name_i18n AS brewery_name_i18n
+       br.name_i18n AS producer_name_i18n
 FROM collection_entries ce
 JOIN beverages b ON b.id = ce.beverage_id
-JOIN breweries br ON br.id = b.brewery_id
+JOIN producers br ON br.id = b.producer_id
 WHERE ce.collection_id = $1
   AND ($2::timestamptz IS NULL OR ce.added_at < $2)
 ORDER BY ce.added_at DESC
@@ -562,7 +564,7 @@ For everything else — edit profile, change email, change password, account del
 
 KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass through three coherence tiers:
 
-1. **L1 — per-replica typed `cache.Caches`** (`backend/internal/cache/caches.go`). In-process LRU + TTL for taxonomy, beverage detail, and brewery detail. Each replica holds its own copy; writes invalidate the local copy synchronously.
+1. **L1 — per-replica typed `cache.Caches`** (`backend/internal/cache/caches.go`). In-process LRU + TTL for taxonomy, beverage detail, and producer detail. Each replica holds its own copy; writes invalidate the local copy synchronously.
 2. **L2 — `cache.Backend`** (`backend/internal/cache/backend.go`). Optional shared adapter. Default `in_process` (per-replica only); production multi-replica deploys set `CACHE_BACKEND=redis` + `CACHE_REDIS_URL` for cross-replica visibility. The Redis adapter uses SCAN + UNLINK for prefix busts.
 3. **Cross-replica bus — Postgres `LISTEN/NOTIFY`** on the `kamos_cache_invalidate` channel. Every write path that busts L1 also calls `cache.NotifyInvalidation(ctx, db, log, payload)`. Each replica runs one `cache.Invalidator` goroutine that holds a hijacked pgx connection, listens, and routes arriving payloads to `Caches.InvalidatePrefix`.
 
@@ -572,13 +574,13 @@ KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass throu
 | ----------------------- | ----------------------------------------------- |
 | `taxonomy`              | Bust `Categories` + `FlavorTags`                |
 | `beverage:<uuid>`       | Bust `BeverageDetail` rows prefixed `<uuid>:`   |
-| `brewery:<uuid>`        | Bust `BreweryDetail` rows prefixed `<uuid>:`    |
+| `producer:<uuid>`       | Bust `ProducerDetail` rows prefixed `<uuid>:`   |
 
 **Eventual-consistency window:** the write-path local L1 bust is immediate; peer replicas observe the bust on the order of single-digit milliseconds under nominal load (NOTIFY → backend forwarding → `WaitForNotification` deliver). Combined with HTTP `Cache-Control` ceilings (`max-age=300` on beverages, `max-age=3600` on taxonomy), the cross-replica stale-read ceiling is **sub-second in normal operation, bounded at the HTTP TTL in the pathological case** (e.g. a downed invalidator that hasn't reconnected yet — the loop self-heals with 500ms → 30s exponential backoff).
 
 **Failure modes & guarantees:**
 
 - A failed `NotifyInvalidation` logs `cache_notify_failed` and returns; the local write is already committed and the local replica is already coherent.
-- A disconnected invalidator logs `cache_invalidator_disconnected` and reconnects with backoff. While disconnected, peer replicas drift up to the L1 TTL ceiling on the relevant key (`5m` beverage, `10m` brewery, `1h` taxonomy).
+- A disconnected invalidator logs `cache_invalidator_disconnected` and reconnects with backoff. While disconnected, peer replicas drift up to the L1 TTL ceiling on the relevant key (`5m` beverage, `10m` producer, `1h` taxonomy).
 - Schema additions that introduce new prefixes do NOT crash the invalidator — `Caches.InvalidatePrefix` no-ops on unknown payloads.
 - The pgx connection is hijacked out of the pool (`Conn.Hijack()`) so the listener cannot be silently recycled mid-flight. Closed explicitly during shutdown.
