@@ -26,6 +26,10 @@ local.env
 
 ### Claude Code runtime ###
 .claude/scheduled_tasks.lock
+.claude/worktrees/
+
+### Cloudflare Wrangler ###
+.wrangler/
 
 ### Node (root tooling only — commitlint + lefthook) ###
 /node_modules/
