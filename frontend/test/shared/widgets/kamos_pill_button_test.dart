@@ -133,6 +133,57 @@ void main() {
           reason: 'secondary InkWell must be inert when disabled');
     });
 
+    testWidgets(
+        'default expand differs by variant — primary expands, secondary is intrinsic',
+        (tester) async {
+      // Primary defaults to expand:true (Expanded); secondary defaults
+      // to expand:false (intrinsic-width). Pins the asymmetric default
+      // so the primary CTA is wider than the secondary action.
+      await tester.pumpWidget(
+        _wrap(
+          Row(
+            children: [
+              KamosPillButton.primary(
+                key: const Key('primary-default'),
+                label: 'Edit profile',
+                onPressed: () {},
+              ),
+              const SizedBox(width: 8),
+              KamosPillButton.secondary(
+                key: const Key('secondary-default'),
+                label: 'Settings',
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('primary-default')),
+          matching: find.byType(Expanded),
+        ),
+        findsOneWidget,
+        reason: 'primary should default to Expanded',
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('secondary-default')),
+          matching: find.byType(Expanded),
+        ),
+        findsNothing,
+        reason: 'secondary should default to intrinsic width',
+      );
+      final primary = _pillSize(tester, const Key('primary-default'));
+      final secondary = _pillSize(tester, const Key('secondary-default'));
+      expect(primary.width, greaterThan(secondary.width),
+          reason: 'primary CTA should render wider than the secondary');
+      expect(primary.height, secondary.height,
+          reason: 'asymmetric width must not break the matched-height contract');
+    });
+
     testWidgets('expand: false yields a bare button (no Expanded)',
         (tester) async {
       await tester.pumpWidget(

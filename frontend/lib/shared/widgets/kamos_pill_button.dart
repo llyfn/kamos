@@ -38,12 +38,19 @@ class KamosPillButton extends StatelessWidget {
   /// Outlined variant — transparent background, `t.border1` border,
   /// `t.fg1` foreground. Use for the secondary action that lives next
   /// to a [KamosPillButton.primary].
+  ///
+  /// Defaults to `expand: false` so the secondary pill sizes to its
+  /// label intrinsic width while the primary pill (default `expand: true`)
+  /// fills the remaining row space. The visual asymmetry — wide primary
+  /// CTA next to a snug secondary — is the established KAMOS rhythm; the
+  /// matched-height contract is preserved because both variants share
+  /// padding, shape, and `minHeight: 44`.
   const KamosPillButton.secondary({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-    this.expand = true,
+    this.expand = false,
   }) : _variant = _Variant.secondary;
 
   /// Button label. Rendered with the theme's `labelLarge` style so both
