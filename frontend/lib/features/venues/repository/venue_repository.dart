@@ -94,5 +94,5 @@ class VenueRepository {
 }
 
 final venueRepositoryProvider = Provider<VenueRepository>(
-  (ref) => VenueRepository(ref.read(dioProvider)),
+  (ref) => VenueRepository(ref.watch(dioProvider)),
 );

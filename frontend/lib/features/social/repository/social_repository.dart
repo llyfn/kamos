@@ -42,5 +42,5 @@ class SocialRepository {
 }
 
 final socialRepositoryProvider = Provider<SocialRepository>(
-  (ref) => SocialRepository(dio: ref.read(dioProvider)),
+  (ref) => SocialRepository(dio: ref.watch(dioProvider)),
 );

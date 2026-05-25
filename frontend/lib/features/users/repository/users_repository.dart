@@ -59,5 +59,5 @@ class UsersRepository {
 }
 
 final usersRepositoryProvider = Provider<UsersRepository>(
-  (ref) => UsersRepository(dio: ref.read(dioProvider)),
+  (ref) => UsersRepository(dio: ref.watch(dioProvider)),
 );

@@ -42,5 +42,5 @@ class BeverageRepository {
 }
 
 final beverageRepositoryProvider = Provider<BeverageRepository>(
-  (ref) => BeverageRepository(dio: ref.read(dioProvider)),
+  (ref) => BeverageRepository(dio: ref.watch(dioProvider)),
 );

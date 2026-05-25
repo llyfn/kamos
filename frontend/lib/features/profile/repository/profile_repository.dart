@@ -70,5 +70,5 @@ class ProfileRepository {
 }
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
-  (ref) => ProfileRepository(dio: ref.read(dioProvider)),
+  (ref) => ProfileRepository(dio: ref.watch(dioProvider)),
 );

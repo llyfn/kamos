@@ -245,5 +245,5 @@ class CheckInRepository {
 }
 
 final checkInRepositoryProvider = Provider<CheckInRepository>(
-  (ref) => CheckInRepository(dio: ref.read(dioProvider)),
+  (ref) => CheckInRepository(dio: ref.watch(dioProvider)),
 );

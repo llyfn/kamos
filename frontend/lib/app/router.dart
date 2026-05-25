@@ -46,6 +46,7 @@ import '../features/check_in/screens/check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
+import '../features/profile/providers/profile_providers.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
@@ -60,6 +61,25 @@ import '../shared/widgets/kamos_tab_bar.dart';
 /// animation. Centralised so individual routes don't repeat the key wiring.
 NoTransitionPage<void> _noTransition(GoRouterState state, Widget child) =>
     NoTransitionPage<void>(key: state.pageKey, child: child);
+
+/// Redirects `/users/:username[/lists]` to the viewer's own page when the
+/// path parameter resolves to their own username. Catches every entry point
+/// (search results, comment-author taps, deep links). Falls through to the
+/// OtherProfileScreen if `meProvider` hasn't loaded yet — the screen will
+/// render briefly with the viewer's own data but is harmless.
+String? _selfRedirect(
+  Ref ref,
+  GoRouterState state, {
+  required String selfTarget,
+}) {
+  final username = state.pathParameters['username'];
+  if (username == null) return null;
+  final me = ref.read(meProvider).asData?.value;
+  if (me == null) return null;
+  return me.user.username.toLowerCase() == username.toLowerCase()
+      ? selfTarget
+      : null;
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -161,6 +181,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/users/:username/lists',
+        redirect: (context, state) =>
+            _selfRedirect(ref, state, selfTarget: '/collections'),
         pageBuilder: (_, state) => _noTransition(
           state,
           OtherUserCollectionsScreen(
@@ -170,6 +192,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/users/:username',
+        redirect: (context, state) =>
+            _selfRedirect(ref, state, selfTarget: '/me'),
         pageBuilder: (_, state) => _noTransition(
           state,
           OtherProfileScreen(username: state.pathParameters['username']!),
