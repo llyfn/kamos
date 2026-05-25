@@ -14,6 +14,8 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
@@ -87,6 +89,17 @@ func (h *Handler) MarkNotificationsRead(w http.ResponseWriter, r *http.Request) 
 	if hasIDs == req.All {
 		httperr.WriteValidation(w, "exactly one of `ids` or `all` is required")
 		return
+	}
+
+	// Pre-validate UUIDs at the edge so a malformed string surfaces as
+	// 422 instead of a generic 500 from pgx's text→uuid cast failure.
+	if hasIDs {
+		for _, id := range req.IDs {
+			if _, err := uuid.Parse(id); err != nil {
+				httperr.WriteValidation(w, "ids contains a non-UUID value")
+				return
+			}
+		}
 	}
 
 	var (

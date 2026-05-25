@@ -372,7 +372,7 @@ func TestNotifications_MarkAllRead(t *testing.T) {
 }
 
 // TestNotifications_MarkReadRequestValidation: body must have exactly one
-// of ids|all.
+// of ids|all, and ids entries must be UUIDs.
 func TestNotifications_MarkReadRequestValidation(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -386,6 +386,10 @@ func TestNotifications_MarkReadRequestValidation(t *testing.T) {
 		{"empty", map[string]any{}},
 		{"both", map[string]any{"all": true, "ids": []string{"00000000-0000-0000-0000-000000000000"}}},
 		{"empty_ids", map[string]any{"ids": []string{}}},
+		{"non_uuid_id", map[string]any{"ids": []string{"not-a-uuid"}}},
+		{"mixed_uuid_and_garbage", map[string]any{"ids": []string{
+			"00000000-0000-0000-0000-000000000000", "garbage",
+		}}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
