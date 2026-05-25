@@ -223,15 +223,36 @@ WHERE recipient_user_id = $1
 }
 
 // MarkAllRead sets read_at = NOW() for every unread notification belonging
-// to the recipient. Returns the affected row count.
+// to the recipient. Returns the cumulative affected row count.
+//
+// PERF-001: chunk the UPDATE in batches of 1000 ids so a recipient with
+// tens of thousands of unread rows does not hold a single tx open long
+// enough to push lock-wait pressure on concurrent writers. Each chunk
+// runs in its own short autocommit Exec; an interrupted call leaves the
+// already-marked chunks read (partial success is the right behavior for
+// a "mark all" sweep — the user will just re-tap if it failed midway).
 func (r *NotificationRepo) MarkAllRead(ctx context.Context, recipientID string) (int, error) {
+	const chunkSize = 1000
 	const q = `
 UPDATE notifications
 SET read_at = NOW()
-WHERE recipient_user_id = $1 AND read_at IS NULL;`
-	ct, err := r.db.Exec(ctx, q, recipientID)
-	if err != nil {
-		return 0, fmt.Errorf("NotificationRepo.MarkAllRead: %w", err)
+WHERE recipient_user_id = $1
+  AND id IN (
+    SELECT id FROM notifications
+    WHERE recipient_user_id = $1 AND read_at IS NULL
+    LIMIT $2
+  );`
+	total := 0
+	for {
+		ct, err := r.db.Exec(ctx, q, recipientID, chunkSize)
+		if err != nil {
+			return total, fmt.Errorf("NotificationRepo.MarkAllRead: %w", err)
+		}
+		n := int(ct.RowsAffected())
+		total += n
+		if n < chunkSize {
+			break
+		}
 	}
-	return int(ct.RowsAffected()), nil
+	return total, nil
 }

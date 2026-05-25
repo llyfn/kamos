@@ -371,6 +371,52 @@ func TestNotifications_MarkAllRead(t *testing.T) {
 	}
 }
 
+// TestNotifications_MarkAllRead_Chunked — PERF-001. Seed 2500 unread rows
+// directly via SQL (the API path can't fan 2500 toasts in reasonable
+// time) and confirm one MarkAllRead call marks every one. The repo
+// chunks UPDATEs in 1000-row batches; the loop must iterate three times
+// (2500 = 1000 + 1000 + 500).
+func TestNotifications_MarkAllRead_Chunked(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tokRecipient, idRecipient := mustRegister(t, srv, "chunk_r", "chr@example.com", "password-123")
+	_, idActor := mustRegister(t, srv, "chunk_a", "cha@example.com", "password-123")
+
+	// Bulk-insert 2500 follow_request rows. follow_request has no DB-level
+	// dedupe (the lifecycle relies on app-level delete-on-resolve), so
+	// generate_series produces unique rows trivially. recipient and actor
+	// differ → the no-self CHECK is satisfied.
+	p := getPool(t)
+	if _, err := p.Exec(context.Background(),
+		`INSERT INTO notifications (recipient_user_id, type, actor_user_id, created_at)
+SELECT $1, 'follow_request', $2, NOW() - (g * INTERVAL '1 second')
+FROM generate_series(1, 2500) g;`,
+		idRecipient, idActor); err != nil {
+		t.Fatalf("seed 2500: %v", err)
+	}
+	if c := unreadCount(t, srv, tokRecipient); c != 2500 {
+		t.Fatalf("setup: unread=%d want 2500", c)
+	}
+
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/notifications/read", tokRecipient,
+		map[string]any{"all": true})
+	if code != http.StatusOK {
+		t.Fatalf("mark all: %d body=%s", code, raw)
+	}
+	var resp struct {
+		Marked int `json:"marked"`
+	}
+	_ = json.Unmarshal(raw, &resp)
+	if resp.Marked != 2500 {
+		t.Errorf("marked=%d want 2500", resp.Marked)
+	}
+	if c := unreadCount(t, srv, tokRecipient); c != 0 {
+		t.Errorf("after chunked mark-all: unread=%d want 0", c)
+	}
+}
+
 // TestNotifications_MarkReadRequestValidation: body must have exactly one
 // of ids|all, and ids entries must be UUIDs.
 func TestNotifications_MarkReadRequestValidation(t *testing.T) {
