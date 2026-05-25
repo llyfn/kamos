@@ -88,7 +88,6 @@ class ApiPaths {
 
   // collections
   static const collections = '/v1/collections';
-  static const collectionsPublic = '/v1/collections/public';
   static String collection(String id) => '/v1/collections/$id';
   static String collectionEntries(String collectionId) =>
       '/v1/collections/$collectionId/entries';
@@ -460,16 +459,6 @@ class KamosCollectionsApi {
 
   Future<Map<String, dynamic>> list() async {
     final res = await _dio.get<dynamic>(ApiPaths.collections);
-    return _asMap(res.data);
-  }
-
-  Future<Map<String, dynamic>> listPublic({String? cursor}) async {
-    final res = await _dio.get<dynamic>(
-      ApiPaths.collectionsPublic,
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-      },
-    );
     return _asMap(res.data);
   }
 
