@@ -338,6 +338,40 @@ class AppLocalizationsKo extends AppLocalizations {
   String get profileRecent => '최근 체크인';
 
   @override
+  String get profileFollow => '팔로우';
+
+  @override
+  String get profileFollowing => '팔로잉';
+
+  @override
+  String get profileFollowRequested => '요청됨';
+
+  @override
+  String get profileUnfollow => '언팔로우';
+
+  @override
+  String profileUnfollowConfirmTitle(String username) {
+    return '@$username 님을 언팔로우할까요?';
+  }
+
+  @override
+  String get profileUnfollowConfirmBody => '이 사용자의 체크인이 피드에 표시되지 않습니다.';
+
+  @override
+  String get userSearchTitle => '사용자 찾기';
+
+  @override
+  String get userSearchPlaceholder => '사용자 이름 또는 이름으로 검색';
+
+  @override
+  String get userSearchNoResults => '일치하는 사용자가 없습니다';
+
+  @override
+  String userCollectionsTitle(String username) {
+    return '@$username · 리스트';
+  }
+
+  @override
   String get settingsAccount => '계정';
 
   @override
@@ -467,9 +501,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String publicCollectionsByOwner(String username) {
     return '작성: $username';
   }
-
-  @override
-  String get publicCollectionsDiscoverCta => '공개 컬렉션 둘러보기';
 
   @override
   String get commentsTitle => '댓글';

@@ -338,6 +338,40 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileRecent => '最近のチェックイン';
 
   @override
+  String get profileFollow => 'フォロー';
+
+  @override
+  String get profileFollowing => 'フォロー中';
+
+  @override
+  String get profileFollowRequested => 'リクエスト中';
+
+  @override
+  String get profileUnfollow => 'フォロー解除';
+
+  @override
+  String profileUnfollowConfirmTitle(String username) {
+    return '@$username のフォローを解除しますか？';
+  }
+
+  @override
+  String get profileUnfollowConfirmBody => 'このユーザーのチェックインがフィードに表示されなくなります。';
+
+  @override
+  String get userSearchTitle => 'ユーザーを探す';
+
+  @override
+  String get userSearchPlaceholder => 'ユーザー名や名前で検索';
+
+  @override
+  String get userSearchNoResults => '該当するユーザーがいません';
+
+  @override
+  String userCollectionsTitle(String username) {
+    return '@$username · リスト';
+  }
+
+  @override
   String get settingsAccount => 'アカウント';
 
   @override
@@ -467,9 +501,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String publicCollectionsByOwner(String username) {
     return '作成: $username';
   }
-
-  @override
-  String get publicCollectionsDiscoverCta => '公開コレクションを見る';
 
   @override
   String get commentsTitle => 'コメント';

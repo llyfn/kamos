@@ -709,7 +709,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileStatUnique.
   ///
   /// In en, this message translates to:
-  /// **'Unique'**
+  /// **'Uniques'**
   String get profileStatUnique;
 
   /// No description provided for @profileStatFollowers.
@@ -729,6 +729,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recent check-ins'**
   String get profileRecent;
+
+  /// No description provided for @profileFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow'**
+  String get profileFollow;
+
+  /// No description provided for @profileFollowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Following'**
+  String get profileFollowing;
+
+  /// No description provided for @profileFollowRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get profileFollowRequested;
+
+  /// No description provided for @profileUnfollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfollow'**
+  String get profileUnfollow;
+
+  /// No description provided for @profileUnfollowConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfollow @{username}?'**
+  String profileUnfollowConfirmTitle(String username);
+
+  /// No description provided for @profileUnfollowConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t see their check-ins in your feed.'**
+  String get profileUnfollowConfirmBody;
+
+  /// No description provided for @userSearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find people'**
+  String get userSearchTitle;
+
+  /// No description provided for @userSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by username or name'**
+  String get userSearchPlaceholder;
+
+  /// No description provided for @userSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching users'**
+  String get userSearchNoResults;
+
+  /// No description provided for @userCollectionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'@{username} · Lists'**
+  String userCollectionsTitle(String username);
 
   /// No description provided for @settingsAccount.
   ///
@@ -975,12 +1035,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'by {username}'**
   String publicCollectionsByOwner(String username);
-
-  /// No description provided for @publicCollectionsDiscoverCta.
-  ///
-  /// In en, this message translates to:
-  /// **'Discover public collections'**
-  String get publicCollectionsDiscoverCta;
 
   /// No description provided for @commentsTitle.
   ///

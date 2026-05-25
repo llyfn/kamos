@@ -138,6 +138,19 @@
   "profileStatFollowers": "フォロワー",
   "profileStatFollowing": "フォロー中",
   "profileRecent": "最近のチェックイン",
+  "profileFollow": "フォロー",
+  "profileFollowing": "フォロー中",
+  "profileFollowRequested": "リクエスト中",
+  "profileUnfollow": "フォロー解除",
+  "profileUnfollowConfirmTitle": "@{username} のフォローを解除しますか？",
+  "@profileUnfollowConfirmTitle": { "placeholders": { "username": { "type": "String" } } },
+  "profileUnfollowConfirmBody": "このユーザーのチェックインがフィードに表示されなくなります。",
+
+  "userSearchTitle": "ユーザーを探す",
+  "userSearchPlaceholder": "ユーザー名や名前で検索",
+  "userSearchNoResults": "該当するユーザーがいません",
+  "userCollectionsTitle": "@{username} · リスト",
+  "@userCollectionsTitle": { "placeholders": { "username": { "type": "String" } } },
 
   "settingsAccount": "アカウント",
   "settingsEmail": "メール",
@@ -184,7 +197,6 @@
   "publicCollectionsEmpty": "まだ公開されているコレクションはありません",
   "publicCollectionsByOwner": "作成: {username}",
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
-  "publicCollectionsDiscoverCta": "公開コレクションを見る",
 
   "commentsTitle": "コメント",
   "commentsEmpty": "コメントはまだありません",

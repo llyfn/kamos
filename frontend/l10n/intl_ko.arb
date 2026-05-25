@@ -138,6 +138,19 @@
   "profileStatFollowers": "팔로워",
   "profileStatFollowing": "팔로잉",
   "profileRecent": "최근 체크인",
+  "profileFollow": "팔로우",
+  "profileFollowing": "팔로잉",
+  "profileFollowRequested": "요청됨",
+  "profileUnfollow": "언팔로우",
+  "profileUnfollowConfirmTitle": "@{username} 님을 언팔로우할까요?",
+  "@profileUnfollowConfirmTitle": { "placeholders": { "username": { "type": "String" } } },
+  "profileUnfollowConfirmBody": "이 사용자의 체크인이 피드에 표시되지 않습니다.",
+
+  "userSearchTitle": "사용자 찾기",
+  "userSearchPlaceholder": "사용자 이름 또는 이름으로 검색",
+  "userSearchNoResults": "일치하는 사용자가 없습니다",
+  "userCollectionsTitle": "@{username} · 리스트",
+  "@userCollectionsTitle": { "placeholders": { "username": { "type": "String" } } },
 
   "settingsAccount": "계정",
   "settingsEmail": "이메일",
@@ -184,7 +197,6 @@
   "publicCollectionsEmpty": "아직 공개된 컬렉션이 없습니다",
   "publicCollectionsByOwner": "작성: {username}",
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
-  "publicCollectionsDiscoverCta": "공개 컬렉션 둘러보기",
 
   "commentsTitle": "댓글",
   "commentsEmpty": "아직 댓글이 없습니다",

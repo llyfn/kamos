@@ -333,7 +333,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileStatCheckins => 'Check-ins';
 
   @override
-  String get profileStatUnique => 'Unique';
+  String get profileStatUnique => 'Uniques';
 
   @override
   String get profileStatFollowers => 'Followers';
@@ -343,6 +343,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileRecent => 'Recent check-ins';
+
+  @override
+  String get profileFollow => 'Follow';
+
+  @override
+  String get profileFollowing => 'Following';
+
+  @override
+  String get profileFollowRequested => 'Requested';
+
+  @override
+  String get profileUnfollow => 'Unfollow';
+
+  @override
+  String profileUnfollowConfirmTitle(String username) {
+    return 'Unfollow @$username?';
+  }
+
+  @override
+  String get profileUnfollowConfirmBody =>
+      'You won\'t see their check-ins in your feed.';
+
+  @override
+  String get userSearchTitle => 'Find people';
+
+  @override
+  String get userSearchPlaceholder => 'Search by username or name';
+
+  @override
+  String get userSearchNoResults => 'No matching users';
+
+  @override
+  String userCollectionsTitle(String username) {
+    return '@$username · Lists';
+  }
 
   @override
   String get settingsAccount => 'Account';
@@ -479,9 +514,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String publicCollectionsByOwner(String username) {
     return 'by $username';
   }
-
-  @override
-  String get publicCollectionsDiscoverCta => 'Discover public collections';
 
   @override
   String get commentsTitle => 'Comments';
