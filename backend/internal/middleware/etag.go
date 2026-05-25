@@ -32,7 +32,7 @@ func containsNoStore(cc string) bool {
 // can rely on the ETag for byte-exact caching.
 //
 // Cost: one full-body buffer per request on routes where ETag is mounted.
-// For our cacheable read endpoints (taxonomy, beverage / brewery detail,
+// For our cacheable read endpoints (taxonomy, beverage / producer detail,
 // public profile) the response is a few KB at most; the extra alloc is
 // invisible compared to the saved DB round-trip on a 304.
 //

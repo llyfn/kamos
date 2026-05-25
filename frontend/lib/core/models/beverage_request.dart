@@ -9,7 +9,7 @@
 //
 // {
 // "name": string, // beverage name as the user typed it
-// "brewery_name": string, // brewery/maker as the user typed it
+// "producer_name": string, // producer/maker as the user typed it
 // "category_slug": one of 'nihonshu' | 'shochu' | 'liqueur',
 // "notes": string? // optional free-form, omitted when empty
 // }
@@ -26,7 +26,7 @@ abstract class BeverageRequest with _$BeverageRequest {
   const BeverageRequest._();
   const factory BeverageRequest({
     required String name,
-    required String breweryName,
+    required String producerName,
     required String categorySlug,
     String? notes,
   }) = _BeverageRequest;
@@ -40,7 +40,7 @@ abstract class BeverageRequest with _$BeverageRequest {
     return {
       'payload': {
         'name': name,
-        'brewery_name': breweryName,
+        'producer_name': producerName,
         'category_slug': categorySlug,
         if (hasNotes) 'notes': n.trim(),
       },

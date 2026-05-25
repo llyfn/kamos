@@ -41,8 +41,8 @@ class CheckInDetailScreen extends ConsumerWidget {
         data: (checkin) {
           final when = parseIsoDateOrNull(checkin.createdAt);
           final beverageName = resolveI18n(checkin.beverage.name, locale);
-          final breweryName = resolveI18n(
-            checkin.beverage.brewery.name,
+          final producerName = resolveI18n(
+            checkin.beverage.producer.name,
             locale,
           );
           return ListView(
@@ -126,7 +126,7 @@ class CheckInDetailScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   Text(
-                                    breweryName,
+                                    producerName,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: t.fg2,

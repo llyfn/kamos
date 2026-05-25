@@ -1,6 +1,6 @@
-// KAMOS — SearchRepository. Beverage + brewery search (SPEC §7).
+// KAMOS — SearchRepository. Beverage + producer search (SPEC §7).
 //
-// Endpoint returns SearchResult union items with `type ∈ {beverage,brewery}`.
+// Endpoint returns SearchResult union items with `type ∈ {beverage,producer}`.
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,8 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage.dart';
-import '../../../core/models/brewery.dart';
 import '../../../core/models/page.dart';
+import '../../../core/models/producer.dart';
 
 class SearchResultItem {
 
@@ -20,18 +20,18 @@ class SearchResultItem {
       beverage: json['beverage'] is Map<String, dynamic>
           ? Beverage.fromJson(json['beverage'] as Map<String, dynamic>)
           : null,
-      brewery: json['brewery'] is Map<String, dynamic>
-          ? Brewery.fromJson(json['brewery'] as Map<String, dynamic>)
+      producer: json['producer'] is Map<String, dynamic>
+          ? Producer.fromJson(json['producer'] as Map<String, dynamic>)
           : null,
     );
   }
-  SearchResultItem({required this.type, this.beverage, this.brewery});
+  SearchResultItem({required this.type, this.beverage, this.producer});
   final String type;
   final Beverage? beverage;
-  final Brewery? brewery;
+  final Producer? producer;
 }
 
-/// Wraps the `search` tag of [KamosApi] (beverages, breweries, users)
+/// Wraps the `search` tag of [KamosApi] (beverages, producers, users)
 /// and lifts `DioException` into typed `core/api/api_exceptions.dart`
 /// exceptions. Used by the search feature's typeahead + results screen
 /// providers.

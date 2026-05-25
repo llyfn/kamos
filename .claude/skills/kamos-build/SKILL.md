@@ -86,7 +86,7 @@ TaskCreate(tasks: [
   { id: "db-1", title: "DB schema + migrations", assignee: "db-architect" },
   { id: "db-2", title: "DB indexes + query patterns", assignee: "db-architect", depends_on: ["db-1"] },
   { id: "be-auth",  title: "Go API: auth handlers",            assignee: "backend-engineer", depends_on: ["db-1"] },
-  { id: "be-bev",   title: "Go API: beverage + brewery",       assignee: "backend-engineer", depends_on: ["db-1"] },
+  { id: "be-bev",   title: "Go API: beverage + producer",      assignee: "backend-engineer", depends_on: ["db-1"] },
   { id: "be-ci",    title: "Go API: check-in handlers",        assignee: "backend-engineer", depends_on: ["db-1"] },
   { id: "be-feed",  title: "Go API: feed + social handlers",   assignee: "backend-engineer", depends_on: ["db-1"] },
   { id: "be-coll",  title: "Go API: collection handlers",      assignee: "backend-engineer", depends_on: ["db-1"] },

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BeverageRequest {
 
- String get name; String get breweryName; String get categorySlug; String? get notes;
+ String get name; String get producerName; String get categorySlug; String? get notes;
 /// Create a copy of BeverageRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $BeverageRequestCopyWith<BeverageRequest> get copyWith => _$BeverageRequestCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BeverageRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.breweryName, breweryName) || other.breweryName == breweryName)&&(identical(other.categorySlug, categorySlug) || other.categorySlug == categorySlug)&&(identical(other.notes, notes) || other.notes == notes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BeverageRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.producerName, producerName) || other.producerName == producerName)&&(identical(other.categorySlug, categorySlug) || other.categorySlug == categorySlug)&&(identical(other.notes, notes) || other.notes == notes));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,name,breweryName,categorySlug,notes);
+int get hashCode => Object.hash(runtimeType,name,producerName,categorySlug,notes);
 
 @override
 String toString() {
-  return 'BeverageRequest(name: $name, breweryName: $breweryName, categorySlug: $categorySlug, notes: $notes)';
+  return 'BeverageRequest(name: $name, producerName: $producerName, categorySlug: $categorySlug, notes: $notes)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $BeverageRequestCopyWith<$Res>  {
   factory $BeverageRequestCopyWith(BeverageRequest value, $Res Function(BeverageRequest) _then) = _$BeverageRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, String breweryName, String categorySlug, String? notes
+ String name, String producerName, String categorySlug, String? notes
 });
 
 
@@ -62,10 +62,10 @@ class _$BeverageRequestCopyWithImpl<$Res>
 
 /// Create a copy of BeverageRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? breweryName = null,Object? categorySlug = null,Object? notes = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? producerName = null,Object? categorySlug = null,Object? notes = freezed,}) {
   return _then(_self.copyWith(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,breweryName: null == breweryName ? _self.breweryName : breweryName // ignore: cast_nullable_to_non_nullable
+as String,producerName: null == producerName ? _self.producerName : producerName // ignore: cast_nullable_to_non_nullable
 as String,categorySlug: null == categorySlug ? _self.categorySlug : categorySlug // ignore: cast_nullable_to_non_nullable
 as String,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -153,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String breweryName,  String categorySlug,  String? notes)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String producerName,  String categorySlug,  String? notes)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BeverageRequest() when $default != null:
-return $default(_that.name,_that.breweryName,_that.categorySlug,_that.notes);case _:
+return $default(_that.name,_that.producerName,_that.categorySlug,_that.notes);case _:
   return orElse();
 
 }
@@ -174,10 +174,10 @@ return $default(_that.name,_that.breweryName,_that.categorySlug,_that.notes);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String breweryName,  String categorySlug,  String? notes)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String producerName,  String categorySlug,  String? notes)  $default,) {final _that = this;
 switch (_that) {
 case _BeverageRequest():
-return $default(_that.name,_that.breweryName,_that.categorySlug,_that.notes);case _:
+return $default(_that.name,_that.producerName,_that.categorySlug,_that.notes);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +194,10 @@ return $default(_that.name,_that.breweryName,_that.categorySlug,_that.notes);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String breweryName,  String categorySlug,  String? notes)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String producerName,  String categorySlug,  String? notes)?  $default,) {final _that = this;
 switch (_that) {
 case _BeverageRequest() when $default != null:
-return $default(_that.name,_that.breweryName,_that.categorySlug,_that.notes);case _:
+return $default(_that.name,_that.producerName,_that.categorySlug,_that.notes);case _:
   return null;
 
 }
@@ -209,11 +209,11 @@ return $default(_that.name,_that.breweryName,_that.categorySlug,_that.notes);cas
 
 
 class _BeverageRequest extends BeverageRequest {
-  const _BeverageRequest({required this.name, required this.breweryName, required this.categorySlug, this.notes}): super._();
+  const _BeverageRequest({required this.name, required this.producerName, required this.categorySlug, this.notes}): super._();
   
 
 @override final  String name;
-@override final  String breweryName;
+@override final  String producerName;
 @override final  String categorySlug;
 @override final  String? notes;
 
@@ -227,16 +227,16 @@ _$BeverageRequestCopyWith<_BeverageRequest> get copyWith => __$BeverageRequestCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BeverageRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.breweryName, breweryName) || other.breweryName == breweryName)&&(identical(other.categorySlug, categorySlug) || other.categorySlug == categorySlug)&&(identical(other.notes, notes) || other.notes == notes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BeverageRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.producerName, producerName) || other.producerName == producerName)&&(identical(other.categorySlug, categorySlug) || other.categorySlug == categorySlug)&&(identical(other.notes, notes) || other.notes == notes));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,name,breweryName,categorySlug,notes);
+int get hashCode => Object.hash(runtimeType,name,producerName,categorySlug,notes);
 
 @override
 String toString() {
-  return 'BeverageRequest(name: $name, breweryName: $breweryName, categorySlug: $categorySlug, notes: $notes)';
+  return 'BeverageRequest(name: $name, producerName: $producerName, categorySlug: $categorySlug, notes: $notes)';
 }
 
 
@@ -247,7 +247,7 @@ abstract mixin class _$BeverageRequestCopyWith<$Res> implements $BeverageRequest
   factory _$BeverageRequestCopyWith(_BeverageRequest value, $Res Function(_BeverageRequest) _then) = __$BeverageRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String breweryName, String categorySlug, String? notes
+ String name, String producerName, String categorySlug, String? notes
 });
 
 
@@ -264,10 +264,10 @@ class __$BeverageRequestCopyWithImpl<$Res>
 
 /// Create a copy of BeverageRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? breweryName = null,Object? categorySlug = null,Object? notes = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? producerName = null,Object? categorySlug = null,Object? notes = freezed,}) {
   return _then(_BeverageRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,breweryName: null == breweryName ? _self.breweryName : breweryName // ignore: cast_nullable_to_non_nullable
+as String,producerName: null == producerName ? _self.producerName : producerName // ignore: cast_nullable_to_non_nullable
 as String,categorySlug: null == categorySlug ? _self.categorySlug : categorySlug // ignore: cast_nullable_to_non_nullable
 as String,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
 as String?,

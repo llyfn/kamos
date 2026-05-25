@@ -63,7 +63,7 @@ Every list endpoint:
 ```bash
 # Go: response shape
 grep -rn "next_cursor\|NextCursor" backend/internal/handler/
-# Should appear for: /feed, /beverages, /breweries (list), /checkins/by-user, etc.
+# Should appear for: /feed, /beverages, /producers (list), /checkins/by-user, etc.
 
 # OpenAPI
 grep -n "next_cursor\|has_more" openapi.yaml

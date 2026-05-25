@@ -90,14 +90,14 @@ func TestTaxonomyFlavorTags(t *testing.T) {
 	}
 }
 
-// /v1/breweries lists + detail.
-func TestBreweries(t *testing.T) {
+// /v1/producers lists + detail.
+func TestProducers(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
-	_ = seedBeverage(t, "BrewListBev") // seeds a brewery as a side effect
+	_ = seedBeverage(t, "BrewListBev") // seeds a producer as a side effect
 
-	code, raw := doReq(t, srv, http.MethodGet, "/v1/breweries", "", nil)
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/producers", "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("list status=%d body=%s", code, raw)
 	}
@@ -108,13 +108,13 @@ func TestBreweries(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(page.Items) == 0 {
-		t.Fatalf("expected ≥ 1 brewery")
+		t.Fatalf("expected ≥ 1 producer")
 	}
 	bid, _ := page.Items[0]["id"].(string)
 	if bid == "" {
-		t.Fatalf("brewery id missing: %s", raw)
+		t.Fatalf("producer id missing: %s", raw)
 	}
-	code, raw = doReq(t, srv, http.MethodGet, "/v1/breweries/"+bid, "", nil)
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/producers/"+bid, "", nil)
 	if code != http.StatusOK {
 		t.Fatalf("detail status=%d body=%s", code, raw)
 	}
@@ -150,15 +150,15 @@ func TestSearchRequiresQuery(t *testing.T) {
 }
 
 // MIN-D 4 regression: typeless /v1/search must paginate cleanly through
-// beverages first then breweries, without skipping or duplicating items as
+// beverages first then producers, without skipping or duplicating items as
 // the cursor crosses the sub-stream boundary.
 //
-// Setup: 3 beverages + 3 breweries whose names all contain the token
+// Setup: 3 beverages + 3 producers whose names all contain the token
 // "Saketown" — FTS will surface all 6. With limit=2 we expect:
 //
 //	page 1 → 2 beverages, has_more=true
-//	page 2 → 1 beverage + 1 brewery (rollover), has_more=true
-//	page 3 → 2 breweries, has_more=false (last 2 of 3)
+//	page 2 → 1 beverage + 1 producer (rollover), has_more=true
+//	page 3 → 2 producers, has_more=false (last 2 of 3)
 //
 // Every item must appear exactly once across the three pages.
 func TestSearchTypelessCursor(t *testing.T) {
@@ -167,10 +167,10 @@ func TestSearchTypelessCursor(t *testing.T) {
 	defer srv.Close()
 
 	// Seed 3 beverages whose en name contains "Saketown" so FTS picks them.
-	// seedBeverage already creates a new brewery per beverage, but those
-	// breweries are named "Test Brewery" so they won't match "Saketown" —
-	// good, they shouldn't pollute the brewery results. We seed the three
-	// matching breweries below by direct SQL.
+	// seedBeverage already creates a new producer per beverage, but those
+	// producers are named "Test Producer" so they won't match "Saketown" —
+	// good, they shouldn't pollute the producer results. We seed the three
+	// matching producers below by direct SQL.
 	for i := 0; i < 3; i++ {
 		seedBeverage(t, "Saketown-Bev-"+string(rune('A'+i)))
 	}
@@ -178,13 +178,13 @@ func TestSearchTypelessCursor(t *testing.T) {
 	p := getPool(t)
 	for i := 0; i < 3; i++ {
 		nameJSON, _ := json.Marshal(map[string]string{
-			"en": "Saketown-Brewery-" + string(rune('A'+i)),
+			"en": "Saketown-Producer-" + string(rune('A'+i)),
 			"ja": "テスト酒造",
 		})
 		if _, err := p.Exec(context.Background(),
-			`INSERT INTO breweries (name_i18n) VALUES ($1::jsonb);`,
+			`INSERT INTO producers (name_i18n) VALUES ($1::jsonb);`,
 			string(nameJSON)); err != nil {
-			t.Fatalf("seed brewery %d: %v", i, err)
+			t.Fatalf("seed producer %d: %v", i, err)
 		}
 	}
 
@@ -192,7 +192,7 @@ func TestSearchTypelessCursor(t *testing.T) {
 		Items []struct {
 			Type     string         `json:"type"`
 			Beverage map[string]any `json:"beverage,omitempty"`
-			Brewery  map[string]any `json:"brewery,omitempty"`
+			Producer map[string]any `json:"producer,omitempty"`
 		} `json:"items"`
 		NextCursor string `json:"next_cursor"`
 		HasMore    bool   `json:"has_more"`
@@ -216,13 +216,13 @@ func TestSearchTypelessCursor(t *testing.T) {
 	itemID := func(it struct {
 		Type     string         `json:"type"`
 		Beverage map[string]any `json:"beverage,omitempty"`
-		Brewery  map[string]any `json:"brewery,omitempty"`
+		Producer map[string]any `json:"producer,omitempty"`
 	}) string {
 		switch it.Type {
 		case "beverage":
 			return it.Type + ":" + it.Beverage["id"].(string)
-		case "brewery":
-			return it.Type + ":" + it.Brewery["id"].(string)
+		case "producer":
+			return it.Type + ":" + it.Producer["id"].(string)
 		}
 		t.Fatalf("unknown item type: %q", it.Type)
 		return ""
@@ -253,7 +253,7 @@ func TestSearchTypelessCursor(t *testing.T) {
 			switch it.Type {
 			case "beverage":
 				totalBev++
-			case "brewery":
+			case "producer":
 				totalBrw++
 			}
 		}
@@ -273,11 +273,11 @@ func TestSearchTypelessCursor(t *testing.T) {
 		t.Errorf("beverage total: got %d want 3", totalBev)
 	}
 	if totalBrw != 3 {
-		t.Errorf("brewery total: got %d want 3", totalBrw)
+		t.Errorf("producer total: got %d want 3", totalBrw)
 	}
 	// We expect exactly 3 pages with limit=2: 2 + 2 + 2 = 6 items, but the
-	// rollover boundary means page 2 has 1 beverage + 1 brewery, page 3 has
-	// the remaining 2 breweries. Either way the page count is exactly 3.
+	// rollover boundary means page 2 has 1 beverage + 1 producer, page 3 has
+	// the remaining 2 producers. Either way the page count is exactly 3.
 	if pageNum != 3 {
 		t.Errorf("page count: got %d want 3", pageNum)
 	}
@@ -513,7 +513,7 @@ func TestSubmitBeverageRequest(t *testing.T) {
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/beverage-requests", tok, map[string]any{
 		"payload": map[string]string{
 			"name":          "New Sake",
-			"brewery_name":  "Some Brewery",
+			"producer_name": "Some Producer",
 			"category_slug": "nihonshu",
 		},
 	})

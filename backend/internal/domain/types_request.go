@@ -22,8 +22,8 @@ import (
 //
 // Migration 016: per-beverage `prefecture` / `region` were dropped — the
 // approval moderator UI (AdminApproveBeverageRequest) no longer accepts
-// them either, and brewery locality is now curated via
-// PATCH /v1/admin/breweries/{id}. We accordingly stopped declaring
+// them either, and producer locality is now curated via
+// PATCH /v1/admin/producers/{id}. We accordingly stopped declaring
 // `prefecture` / `region` as known fields on the user submission: a
 // client that still sends them will see the values round-trip into
 // PayloadRaw (no validation, no sanitization) for the moderator to see
@@ -62,7 +62,7 @@ type payloadField struct {
 
 var beverageRequestFields = []payloadField{
 	{key: "name", required: true, allowNewline: false, maxLen: 200},
-	{key: "brewery_name", required: true, allowNewline: false, maxLen: 200},
+	{key: "producer_name", required: true, allowNewline: false, maxLen: 200},
 	{key: "category_slug", required: true, allowNewline: false, maxLen: 200},
 	// Optional sanitized strings — only validated when present.
 	{key: "subcategory", required: false, allowNewline: false, maxLen: 200},

@@ -150,13 +150,13 @@ func (h *Handler) GetBeverageCheckins(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ListBreweries — GET /v1/breweries.
-func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
+// ListProducers — GET /v1/producers.
+func (h *Handler) ListProducers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
-		h.writeErr(w, "ListBreweries cursor", err)
+		h.writeErr(w, "ListProducers cursor", err)
 		return
 	}
 	var qPtr *string
@@ -165,58 +165,58 @@ func (h *Handler) ListBreweries(w http.ResponseWriter, r *http.Request) {
 	}
 	ts := optTimestamp(c)
 	cid := optString(c.ID)
-	rows, err := h.Repos.Breweries.List(r.Context(), qPtr, ts, cid, limit)
+	rows, err := h.Repos.Producers.List(r.Context(), qPtr, ts, cid, limit)
 	if err != nil {
-		h.writeErr(w, "ListBreweries", err)
+		h.writeErr(w, "ListProducers", err)
 		return
 	}
-	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(b domain.Brewery) cursor.Cursor {
+	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(b domain.Producer) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: b.CreatedAt, ID: b.ID}
 	})
-	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Brewery]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Producer]{
 		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
 
-// GetBrewery — GET /v1/breweries/{id}. Includes beverage list (first page).
+// GetProducer — GET /v1/producers/{id}. Includes beverage list (first page).
 //
-// only the brewery row itself is cached (LRU keyed on
+// only the producer row itself is cached (LRU keyed on
 // <id>:<locale>). The inline beverages page is intentionally NOT cached
 // here — it's cursor-paginated and adding the cursor to the cache key
 // would balloon the entry count. The beverage list query is already fast
-// (<2ms p95 per metrics) and the brewery row is the expensive
+// (<2ms p95 per metrics) and the producer row is the expensive
 // part (it carries the i18n description + beverage_count aggregate).
 //
-// BreweryDetail is now a value cache; Get returns a
+// ProducerDetail is now a value cache; Get returns a
 // struct copy. misses are coalesced via singleflight.
 //
 // ETag still hashes the combined response, so byte-identical repeat
 // requests still short-circuit at the middleware layer.
-func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetProducer(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cacheKey := id + ":" + localeKey(r)
 
 	//nolint:contextcheck // loader runs synchronously inside the request; it captures r.Context() (GetOrLoad's signature takes no ctx).
-	loader := func() (domain.Brewery, error) {
-		fetched, err := h.Repos.Breweries.Detail(r.Context(), id)
+	loader := func() (domain.Producer, error) {
+		fetched, err := h.Repos.Producers.Detail(r.Context(), id)
 		if err != nil {
-			return domain.Brewery{}, err
+			return domain.Producer{}, err
 		}
 		return *fetched, nil
 	}
 
-	var br domain.Brewery
+	var br domain.Producer
 	if h.Caches == nil {
 		got, err := loader()
 		if err != nil {
-			h.writeErr(w, "GetBrewery", err)
+			h.writeErr(w, "GetProducer", err)
 			return
 		}
 		br = got
 	} else {
-		got, err := h.Caches.BreweryDetail.GetOrLoad(cacheKey, loader)
+		got, err := h.Caches.ProducerDetail.GetOrLoad(cacheKey, loader)
 		if err != nil {
-			h.writeErr(w, "GetBrewery", err)
+			h.writeErr(w, "GetProducer", err)
 			return
 		}
 		br = got
@@ -225,25 +225,25 @@ func (h *Handler) GetBrewery(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
-		h.writeErr(w, "GetBrewery cursor", err)
+		h.writeErr(w, "GetProducer cursor", err)
 		return
 	}
 	ts := optTimestamp(c)
 	cid := optString(c.ID)
-	bevs, err := h.Repos.Breweries.Beverages(r.Context(), id, ts, cid, limit)
+	bevs, err := h.Repos.Producers.Beverages(r.Context(), id, ts, cid, limit)
 	if err != nil {
-		h.writeErr(w, "GetBrewery beverages", err)
+		h.writeErr(w, "GetProducer beverages", err)
 		return
 	}
 	items, next, hasMore := cursor.SliceAndCursor(bevs, limit, func(b domain.Beverage) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: b.CreatedAt, ID: b.ID}
 	})
 	type out struct {
-		domain.Brewery
+		domain.Producer
 		Beverages cursor.Page[domain.Beverage] `json:"beverages"`
 	}
 	httperr.WriteJSON(w, http.StatusOK, out{
-		Brewery:   br,
+		Producer:  br,
 		Beverages: cursor.Page[domain.Beverage]{Items: items, NextCursor: next, HasMore: hasMore},
 	})
 }

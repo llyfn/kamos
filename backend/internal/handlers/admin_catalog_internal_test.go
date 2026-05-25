@@ -15,7 +15,7 @@ func TestAdminBeverageCreateValidate(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 	base := func() AdminBeverageCreate {
 		return AdminBeverageCreate{
-			BreweryID:  "b-1",
+			ProducerID: "b-1",
 			CategoryID: strPtr("c-1"),
 			NameI18n:   domain.I18nText{EN: "X", JA: "Xj"},
 		}
@@ -27,7 +27,7 @@ func TestAdminBeverageCreateValidate(t *testing.T) {
 		valid bool   // true = expect Validate to return nil
 	}{
 		{"baseline", func(r *AdminBeverageCreate) {}, "", true},
-		{"missing brewery", func(r *AdminBeverageCreate) { r.BreweryID = "" }, "brewery_id", false},
+		{"missing producer", func(r *AdminBeverageCreate) { r.ProducerID = "" }, "producer_id", false},
 		{"missing category id and slug", func(r *AdminBeverageCreate) {
 			r.CategoryID = nil
 			r.CategorySlug = nil
@@ -113,48 +113,48 @@ func TestAdminBeverageUpdateValidate(t *testing.T) {
 	}
 }
 
-func TestAdminBreweryCreateValidate(t *testing.T) {
-	base := func() AdminBreweryCreate {
-		return AdminBreweryCreate{
-			NameI18n: domain.I18nText{EN: "Brewery", JA: "酒造"},
+func TestAdminProducerCreateValidate(t *testing.T) {
+	base := func() AdminProducerCreate {
+		return AdminProducerCreate{
+			NameI18n: domain.I18nText{EN: "Producer", JA: "酒造"},
 		}
 	}
 	cases := []struct {
 		name string
-		mut  func(*AdminBreweryCreate)
+		mut  func(*AdminProducerCreate)
 		want string
 		ok   bool
 	}{
-		{"baseline", func(r *AdminBreweryCreate) {}, "", true},
-		{"missing name.en", func(r *AdminBreweryCreate) { r.NameI18n.EN = "" }, "name_i18n", false},
-		{"missing name.ja", func(r *AdminBreweryCreate) { r.NameI18n.JA = "" }, "name_i18n", false},
-		{"founded year too old", func(r *AdminBreweryCreate) { y := 799; r.FoundedYear = &y }, "founded_year", false},
-		{"founded year too new", func(r *AdminBreweryCreate) { y := 2101; r.FoundedYear = &y }, "founded_year", false},
-		{"founded year 800 ok", func(r *AdminBreweryCreate) { y := 800; r.FoundedYear = &y }, "", true},
-		{"founded year 2100 ok", func(r *AdminBreweryCreate) { y := 2100; r.FoundedYear = &y }, "", true},
-		{"website wrong scheme", func(r *AdminBreweryCreate) { v := "ftp://x.test"; r.Website = &v }, "website", false},
-		{"website https ok", func(r *AdminBreweryCreate) { v := "https://kura.example"; r.Website = &v }, "", true},
-		{"website http ok", func(r *AdminBreweryCreate) { v := "http://kura.example"; r.Website = &v }, "", true},
-		{"website too long", func(r *AdminBreweryCreate) {
+		{"baseline", func(r *AdminProducerCreate) {}, "", true},
+		{"missing name.en", func(r *AdminProducerCreate) { r.NameI18n.EN = "" }, "name_i18n", false},
+		{"missing name.ja", func(r *AdminProducerCreate) { r.NameI18n.JA = "" }, "name_i18n", false},
+		{"founded year too old", func(r *AdminProducerCreate) { y := 799; r.FoundedYear = &y }, "founded_year", false},
+		{"founded year too new", func(r *AdminProducerCreate) { y := 2101; r.FoundedYear = &y }, "founded_year", false},
+		{"founded year 800 ok", func(r *AdminProducerCreate) { y := 800; r.FoundedYear = &y }, "", true},
+		{"founded year 2100 ok", func(r *AdminProducerCreate) { y := 2100; r.FoundedYear = &y }, "", true},
+		{"website wrong scheme", func(r *AdminProducerCreate) { v := "ftp://x.test"; r.Website = &v }, "website", false},
+		{"website https ok", func(r *AdminProducerCreate) { v := "https://kura.example"; r.Website = &v }, "", true},
+		{"website http ok", func(r *AdminProducerCreate) { v := "http://kura.example"; r.Website = &v }, "", true},
+		{"website too long", func(r *AdminProducerCreate) {
 			v := "https://" + strings.Repeat("a", 600)
 			r.Website = &v
 		}, "website", false},
-		{"bidi-override in name", func(r *AdminBreweryCreate) {
+		{"bidi-override in name", func(r *AdminProducerCreate) {
 			r.NameI18n.EN = "kura\u2067evil"
 		}, "bidi-override", false},
-		{"prefecture_slug valid lower", func(r *AdminBreweryCreate) {
+		{"prefecture_slug valid lower", func(r *AdminProducerCreate) {
 			v := "niigata"
 			r.PrefectureSlug = &v
 		}, "", true},
-		{"prefecture_slug empty allowed (no curated value)", func(r *AdminBreweryCreate) {
+		{"prefecture_slug empty allowed (no curated value)", func(r *AdminProducerCreate) {
 			v := ""
 			r.PrefectureSlug = &v
 		}, "", true},
-		{"prefecture_slug uppercase rejected", func(r *AdminBreweryCreate) {
+		{"prefecture_slug uppercase rejected", func(r *AdminProducerCreate) {
 			v := "Niigata"
 			r.PrefectureSlug = &v
 		}, "prefecture_slug", false},
-		{"prefecture_slug too long", func(r *AdminBreweryCreate) {
+		{"prefecture_slug too long", func(r *AdminProducerCreate) {
 			v := strings.Repeat("a", 65)
 			r.PrefectureSlug = &v
 		}, "prefecture_slug", false},
@@ -184,16 +184,16 @@ func TestAdminBreweryCreateValidate(t *testing.T) {
 	}
 }
 
-func TestAdminBreweryUpdateValidate(t *testing.T) {
+func TestAdminProducerUpdateValidate(t *testing.T) {
 	// Empty body is valid.
-	r := AdminBreweryUpdate{}
+	r := AdminProducerUpdate{}
 	if err := r.Validate(); err != nil {
 		t.Fatalf("empty update should validate: %v", err)
 	}
 
 	// Founded year out of range.
 	y := 100
-	bad := AdminBreweryUpdate{FoundedYear: &y}
+	bad := AdminProducerUpdate{FoundedYear: &y}
 	if err := bad.Validate(); err == nil || !strings.Contains(err.Error(), "founded_year") {
 		t.Errorf("want founded_year error, got %v", err)
 	}

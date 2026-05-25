@@ -64,7 +64,7 @@ void main() {
 
       await repo.submit(const BeverageRequest(
         name: 'Dassai 45',
-        breweryName: 'Asahi Shuzo',
+        producerName: 'Asahi Shuzo',
         categorySlug: 'nihonshu',
         notes: 'Junmai Daiginjo',
       ));
@@ -77,7 +77,7 @@ void main() {
       expect(decoded['payload'], isA<Map<String, dynamic>>());
       final payload = decoded['payload'] as Map<String, dynamic>;
       expect(payload['name'], 'Dassai 45');
-      expect(payload['brewery_name'], 'Asahi Shuzo');
+      expect(payload['producer_name'], 'Asahi Shuzo');
       expect(payload['category_slug'], 'nihonshu');
       expect(payload['notes'], 'Junmai Daiginjo');
     });
@@ -92,7 +92,7 @@ void main() {
       await expectLater(
         repo.submit(const BeverageRequest(
           name: 'X',
-          breweryName: 'Y',
+          producerName: 'Y',
           categorySlug: 'shochu',
         )),
         throwsA(isA<BeverageRequestSubmissionException>()),
@@ -109,7 +109,7 @@ void main() {
       await expectLater(
         repo.submit(const BeverageRequest(
           name: 'X',
-          breweryName: 'Y',
+          producerName: 'Y',
           categorySlug: 'liqueur',
         )),
         throwsA(isA<BeverageRequestSubmissionException>()),

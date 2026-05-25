@@ -25,7 +25,6 @@ type CreateCheckinParams struct {
 	PriceCcy     *string
 	PriceUnit    *string
 	PurchaseType *string
-	ServingStyle *string
 	PhotoURLs    []string
 	TagSlugs     []string
 	// VenueID is the optional Phase-4 venue FK. nil = no venue.
@@ -46,14 +45,14 @@ INSERT INTO check_ins (
   user_id, beverage_id,
   rating, review_text,
   price_amount, price_currency, price_unit,
-  purchase_type, serving_style,
+  purchase_type,
   venue_id
 ) VALUES (
   $1, $2,
   $3, $4,
   $5, $6, $7,
-  $8, $9,
-  $10
+  $8,
+  $9
 )
 RETURNING id, created_at;`
 	var id string
@@ -62,7 +61,7 @@ RETURNING id, created_at;`
 		p.UserID, p.BeverageID,
 		p.Rating, p.ReviewText,
 		p.PriceAmount, p.PriceCcy, p.PriceUnit,
-		p.PurchaseType, p.ServingStyle,
+		p.PurchaseType,
 		p.VenueID,
 	).Scan(&id, &createdAt); err != nil {
 		return "", time.Time{}, fmt.Errorf("CheckinRepo.Create insert: %w", err)
@@ -117,12 +116,12 @@ SELECT
   ci.id, ci.user_id, ci.beverage_id,
   ci.rating, ci.review_text,
   ci.price_amount, ci.price_currency, ci.price_unit,
-  ci.purchase_type, ci.serving_style,
+  ci.purchase_type,
   ci.created_at, ci.updated_at,
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id AS brewery_id, br.name_i18n AS brewery_name_i18n,` + breweryPrefectureSelectCols + `,
+  br.id AS producer_id, br.name_i18n AS producer_name_i18n,` + producerPrefectureSelectCols + `,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   ci.toast_count AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,
@@ -130,8 +129,8 @@ SELECT
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 
@@ -230,7 +229,6 @@ type UpdateCheckinParams struct {
 	PriceUnit    *string
 	ClearPrice   bool
 	PurchaseType *string
-	ServingStyle *string
 	Tags         *[]string // nil = no change; non-nil (even empty) = replace
 }
 
@@ -273,15 +271,14 @@ UPDATE check_ins SET
   price_unit     = CASE WHEN $6::boolean THEN NULL
                         WHEN $9::text IS NULL THEN price_unit
                         ELSE $9::text END,
-  purchase_type  = COALESCE($10, purchase_type),
-  serving_style  = COALESCE($11, serving_style)
+  purchase_type  = COALESCE($10, purchase_type)
 WHERE id = $1 AND deleted_at IS NULL;`
 	if _, err := tx.Exec(ctx, q,
 		p.ID,
 		p.ClearRating, p.Rating,
 		p.ClearReview, p.Review,
 		p.ClearPrice, p.PriceAmount, p.PriceCcy, p.PriceUnit,
-		p.PurchaseType, p.ServingStyle,
+		p.PurchaseType,
 	); err != nil {
 		return fmt.Errorf("CheckinRepo.Update: %w", err)
 	}
@@ -482,12 +479,12 @@ SELECT
   ci.id, ci.user_id, ci.beverage_id,
   ci.rating, ci.review_text,
   ci.price_amount, ci.price_currency, ci.price_unit,
-  ci.purchase_type, ci.serving_style,
+  ci.purchase_type,
   ci.created_at, ci.updated_at,
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id, br.name_i18n,` + breweryPrefectureSelectCols + `,
+  br.id, br.name_i18n,` + producerPrefectureSelectCols + `,
   v.id, v.name, v.locality, v.country,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
@@ -495,8 +492,8 @@ SELECT
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.user_id = $1
   AND ci.deleted_at IS NULL
@@ -543,7 +540,7 @@ type rowScanner interface {
 }
 
 // scanCheckinRow reads one row of the canonical check-in projection (the
-// 31-column shape shared by Get / UserCheckins / future listings) into a
+// 30-column shape shared by Get / UserCheckins / future listings) into a
 // hydrated domain.Checkin. The second return is the row's owner-privacy
 // mode, used by callers that gate on private-account visibility.
 //
@@ -568,12 +565,12 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		commentCnt               int64
 	)
 	prefArgs := brwPref.scanArgs()
-	scanArgs := make([]any, 0, 23+len(prefArgs)+7)
+	scanArgs := make([]any, 0, 22+len(prefArgs)+7)
 	scanArgs = append(scanArgs,
 		&c.ID, &userIDVal, &bevID,
 		&c.Rating, &c.Review,
 		&priceAmount, &priceCcy, &priceUnit,
-		&c.PurchaseType, &c.ServingStyle,
+		&c.PurchaseType,
 		&c.CreatedAt, &c.UpdatedAt,
 		&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
 		&bevName, &bevSlug, &bevLabel,
@@ -598,7 +595,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 	c.Beverage = domain.BeverageRef{
 		ID:            bevID,
 		Name:          bn,
-		Brewery:       domain.BreweryRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
+		Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
 		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 		LabelImageURL: bevLabel,
 	}

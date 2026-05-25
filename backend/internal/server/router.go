@@ -175,19 +175,19 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
 			Get("/reference/regions", h.Regions)
 
-		// Beverages / breweries — public reads. Beverage detail uses a
+		// Beverages / producers — public reads. Beverage detail uses a
 		// shorter TTL (5m) because avg_rating + check_in_count drift as
 		// new check-ins land; the in-process LRU invalidator (commit 4)
 		// busts the entry on write, but downstream caches honor the
 		// header for clients that don't replay our invalidation.
-		// Brewery TTL is 10m — same shape, slower-moving aggregates.
+		// Producer TTL is 10m — same shape, slower-moving aggregates.
 		r.Get("/beverages", h.ListBeverages)
 		r.With(middleware.CacheControl("public, max-age=300, stale-while-revalidate=86400")).
 			Get("/beverages/{id}", h.GetBeverage)
 		r.Get("/beverages/{id}/check-ins", h.GetBeverageCheckins)
-		r.Get("/breweries", h.ListBreweries)
+		r.Get("/producers", h.ListProducers)
 		r.With(middleware.CacheControl("public, max-age=600, stale-while-revalidate=86400")).
-			Get("/breweries/{id}", h.GetBrewery)
+			Get("/producers/{id}", h.GetProducer)
 
 		// Search — public.
 		r.Get("/search", h.Search)
@@ -368,12 +368,12 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(adminOnly).Delete("/beverages/{id}", h.AdminSoftDeleteBeverage)
 			r.With(adminOnly).Post("/beverages/{id}/restore", h.AdminRestoreBeverage)
 
-			r.With(adminOnly).Get("/breweries", h.AdminListBreweries)
-			r.With(adminOnly).Get("/breweries/{id}", h.AdminGetBrewery)
-			r.With(adminOnly).Post("/breweries", h.AdminCreateBrewery)
-			r.With(adminOnly).Patch("/breweries/{id}", h.AdminUpdateBrewery)
-			r.With(adminOnly).Delete("/breweries/{id}", h.AdminSoftDeleteBrewery)
-			r.With(adminOnly).Post("/breweries/{id}/restore", h.AdminRestoreBrewery)
+			r.With(adminOnly).Get("/producers", h.AdminListProducers)
+			r.With(adminOnly).Get("/producers/{id}", h.AdminGetProducer)
+			r.With(adminOnly).Post("/producers", h.AdminCreateProducer)
+			r.With(adminOnly).Patch("/producers/{id}", h.AdminUpdateProducer)
+			r.With(adminOnly).Delete("/producers/{id}", h.AdminSoftDeleteProducer)
+			r.With(adminOnly).Post("/producers/{id}/restore", h.AdminRestoreProducer)
 		})
 	})
 

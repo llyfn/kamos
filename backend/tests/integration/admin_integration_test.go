@@ -124,7 +124,7 @@ func TestAdmin_ApproveBeverageRequest(t *testing.T) {
 		"payload": map[string]any{
 			"name":          "Test Junmai",
 			"name_ja":       "テスト純米",
-			"brewery_name":  "Test Brewery",
+			"producer_name": "Test Producer",
 			"category_slug": "nihonshu",
 			"abv":           15.5,
 		},
@@ -144,15 +144,15 @@ func TestAdmin_ApproveBeverageRequest(t *testing.T) {
 	adminTok, adminID := mustRegister(t, srv, "admin_user", "adm@example.com", "password-123")
 	promoteToAdmin(t, adminID)
 
-	// We need a brewery_id and category_id — seed them.
+	// We need a producer_id and category_id — seed them.
 	pool := getPool(t)
-	var breweryID, categoryID string
+	var producerID, categoryID string
 	if err := pool.QueryRow(context.Background(),
-		`INSERT INTO breweries (name_i18n)
+		`INSERT INTO producers (name_i18n)
 		   VALUES ($1::jsonb)
 		   RETURNING id;`,
-		`{"en":"Approval Brewery","ja":"承認酒造"}`).Scan(&breweryID); err != nil {
-		t.Fatalf("seed brewery: %v", err)
+		`{"en":"Approval Producer","ja":"承認酒造"}`).Scan(&producerID); err != nil {
+		t.Fatalf("seed producer: %v", err)
 	}
 	if err := pool.QueryRow(context.Background(),
 		`SELECT id FROM beverage_categories WHERE slug = 'nihonshu';`).Scan(&categoryID); err != nil {
@@ -160,7 +160,7 @@ func TestAdmin_ApproveBeverageRequest(t *testing.T) {
 	}
 
 	approveBody := map[string]any{
-		"brewery_id":  breweryID,
+		"producer_id": producerID,
 		"category_id": categoryID,
 		"name_i18n":   map[string]string{"en": "Test Junmai", "ja": "テスト純米"},
 		"abv":         15.5,
@@ -215,7 +215,7 @@ func TestAdmin_RejectBeverageRequest(t *testing.T) {
 
 	userTok, _ := mustRegister(t, srv, "rej_submitter", "rs@example.com", "password-123")
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/beverage-requests", userTok, map[string]any{
-		"payload": map[string]any{"name": "Bad Submission", "brewery_name": "X Brewery", "category_slug": "nihonshu"},
+		"payload": map[string]any{"name": "Bad Submission", "producer_name": "X Producer", "category_slug": "nihonshu"},
 	})
 	if code != http.StatusAccepted {
 		t.Fatalf("submit: %d body=%s", code, raw)
@@ -243,7 +243,7 @@ func TestAdmin_RejectBeverageRequest(t *testing.T) {
 	// Rejection should not allow approval afterward.
 	code, _ = doReq(t, srv, http.MethodPost,
 		"/v1/admin/beverage-requests/"+requestID+"/approve", modTok, map[string]any{
-			"brewery_id":  "00000000-0000-0000-0000-000000000000",
+			"producer_id": "00000000-0000-0000-0000-000000000000",
 			"category_id": "00000000-0000-0000-0000-000000000000",
 			"name_i18n":   map[string]string{"en": "x", "ja": "x"},
 		})

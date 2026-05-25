@@ -80,7 +80,6 @@ func (s *CheckinService) Create(ctx context.Context, userID string, req domain.C
 		Rating:       req.Rating,
 		ReviewText:   req.Review,
 		PurchaseType: req.PurchaseType,
-		ServingStyle: req.ServingStyle,
 		PhotoURLs:    req.Photos,
 		TagSlugs:     req.Tags,
 		VenueID:      venueID,
@@ -119,7 +118,6 @@ func (s *CheckinService) Update(ctx context.Context, userID, id string, req doma
 		ClearReview:  req.ClearReview,
 		ClearPrice:   req.ClearPrice,
 		PurchaseType: req.PurchaseType,
-		ServingStyle: req.ServingStyle,
 		Tags:         req.Tags,
 	}
 	if req.Price != nil {

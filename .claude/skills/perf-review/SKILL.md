@@ -59,7 +59,7 @@ for i, ci := range checkins { ids[i] = ci.BeverageID }
 beverages, _ := repo.GetBeveragesByIDs(ctx, ids)  // single IN query
 ```
 
-The KAMOS feed query (`SPEC §5.2`) is the highest-risk N+1 — it joins users, beverages, breweries, and toasts. Verify the SQL in `query_patterns.md` does the joins server-side, not in Go.
+The KAMOS feed query (`SPEC §5.2`) is the highest-risk N+1 — it joins users, beverages, producers, and toasts. Verify the SQL in `query_patterns.md` does the joins server-side, not in Go.
 
 ## Index coverage
 

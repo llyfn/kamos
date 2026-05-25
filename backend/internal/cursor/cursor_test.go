@@ -243,7 +243,7 @@ func TestPageJSONShape(t *testing.T) {
 }
 
 // TestCursorRoundTripAllShapes exercises every Cursor field combination
-// that a handler emits (feed, search t=beverage, search t=brewery,
+// that a handler emits (feed, search t=beverage, search t=producer,
 // userCheckins, comments, popularity-with-CheckInCount). Each row is
 // encoded with the test signing key, decoded back, and asserted equal to
 // the original. Catches HMAC drift and field-omission regressions across
@@ -261,7 +261,7 @@ func TestCursorRoundTripAllShapes(t *testing.T) {
 		{"comments_keyset", Cursor{CreatedAt: ts, ID: "bb22"}},
 		{"user_checkins_keyset", Cursor{CreatedAt: ts, ID: "cc33"}},
 		{"search_beverage", Cursor{CreatedAt: ts, ID: "dd44", Type: "beverage"}},
-		{"search_brewery", Cursor{CreatedAt: ts, ID: "ee55", Type: "brewery"}},
+		{"search_producer", Cursor{CreatedAt: ts, ID: "ee55", Type: "producer"}},
 		{"search_with_score", Cursor{CreatedAt: ts, ID: "ff66", Score: &score, Type: "beverage"}},
 		{"popularity_triple", Cursor{CreatedAt: ts, ID: "gg77", CheckInCount: &count}},
 		{"empty_id_only_ts", Cursor{CreatedAt: ts}},

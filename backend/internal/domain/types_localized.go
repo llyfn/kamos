@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// I18nText is the JSONB shape used for beverage / brewery / category / tag
+// I18nText is the JSONB shape used for beverage / producer / category / tag
 // names and descriptions. We DO NOT pre-resolve based on Accept-Language —
 // the client owns locale selection (HANDOFF "client owns locale" is overridden
 // by SPEC §8 fallback discussion — we return the full object so the client can

@@ -1,12 +1,12 @@
-// KAMOS — Screen: Brewery Detail (SPEC §2.3, §7 "browse by brewery").
+// KAMOS — Screen: Producer Detail (SPEC §2.3, §7 "browse by producer").
 // Fields: i18n name, prefecture/region, founded year, website, description.
-// Lists all beverages from this brewery.
+// Lists all beverages from this producer.
 
-const BreweryScreen = ({ brewery, onBack, onOpenBeverage }) => {
+const ProducerScreen = ({ producer, onBack, onOpenBeverage }) => {
   const { tt } = useLocale();
-  if (!brewery) return null;
+  if (!producer) return null;
 
-  const beverages = (window.CATALOG || []).filter(b => brewery.beverageIds.includes(b.id));
+  const beverages = (window.CATALOG || []).filter(b => producer.beverageIds.includes(b.id));
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-page)' }}>
@@ -22,30 +22,30 @@ const BreweryScreen = ({ brewery, onBack, onOpenBeverage }) => {
         padding: '8px 20px 24px', textAlign: 'center',
       }}>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--fg-3)' }}>
-          {tt({ en: 'Brewery', ja: '蔵元', ko: '양조장' })}
+          {tt({ en: 'Producer', ja: '蔵元', ko: '생산자' })}
         </div>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 600, lineHeight: 1.15, marginTop: 6 }}>
-          {tt(brewery.name)}
+          {tt(producer.name)}
         </div>
         <div style={{ fontSize: 14, color: 'var(--fg-2)', marginTop: 4 }}>
-          <Icon name="pin" size={13}/> {tt(brewery.region)}
+          <Icon name="pin" size={13}/> {tt(producer.region)}
         </div>
-        {brewery.founded && (
+        {producer.founded && (
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-3)', marginTop: 4 }}>
-            {tt({ en: 'Founded', ja: '創業', ko: '창업' })} {brewery.founded}
+            {tt({ en: 'Founded', ja: '創業', ko: '창업' })} {producer.founded}
           </div>
         )}
       </div>
 
       <div style={{ padding: '20px' }}>
-        {brewery.description && (
+        {producer.description && (
           <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--fg-1)', margin: '0 0 14px' }}>
-            {tt(brewery.description)}
+            {tt(producer.description)}
           </p>
         )}
-        {brewery.website && (
-          <a href={brewery.website} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-link)', textDecoration: 'none' }}>
-            <Icon name="globe" size={14}/> {brewery.website.replace(/^https?:\/\//, '')}
+        {producer.website && (
+          <a href={producer.website} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-link)', textDecoration: 'none' }}>
+            <Icon name="globe" size={14}/> {producer.website.replace(/^https?:\/\//, '')}
           </a>
         )}
 
@@ -82,4 +82,4 @@ const BreweryScreen = ({ brewery, onBack, onOpenBeverage }) => {
   );
 };
 
-Object.assign(window, { BreweryScreen });
+Object.assign(window, { ProducerScreen });

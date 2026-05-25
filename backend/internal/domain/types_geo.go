@@ -8,10 +8,10 @@ import "time"
 //
 // `regions` carries the 8 traditional Japanese regions; `prefectures` the
 // 47 prefectures, each FK'd to a region. Both are seed-only reference
-// tables: there are no mutation endpoints. `breweries.prefecture_id`
-// references a single prefecture; the brewery's region is therefore
-// derivable via `breweries.prefecture_id → prefectures.region_id`. The
-// public Brewery response nests `Prefecture` (which carries its own
+// tables: there are no mutation endpoints. `producers.prefecture_id`
+// references a single prefecture; the producer's region is therefore
+// derivable via `producers.prefecture_id → prefectures.region_id`. The
+// public Producer response nests `Prefecture` (which carries its own
 // embedded `Region`) instead of the flat free-text columns the schema
 // used to expose.
 
@@ -27,7 +27,7 @@ type Region struct {
 }
 
 // Prefecture is one row of the `prefectures` reference table. The region
-// is embedded so a brewery's `prefecture` field carries enough context to
+// is embedded so a producer's `prefecture` field carries enough context to
 // render "Niigata (Chūbu)" without a second lookup.
 type Prefecture struct {
 	ID        string    `json:"id"`

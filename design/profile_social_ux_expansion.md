@@ -87,7 +87,7 @@ Whole row tappable → `context.push('/check-ins/${r.id}')`. Wrap the `KamosCard
 2. **Timestamp** — directly under the header row, 11px Noto Sans JP, `t.fg3`, format `elapsedShort(...)` (already exists in `shared/utils/elapsed_time.dart`, e.g. `2d`, `3w`). Aligned left under the username. Gap above: `KamosSpacing.xs` (4).
 3. **Review text** — 13/1.5, `t.fg1`. Truncate at 140 chars + ellipsis (no "more" link — the whole row taps through). Gap above: `KamosSpacing.sm` (8) when timestamp present.
 4. **Photo thumbnail strip** — sits **below** the text, full row width (under avatar column inset; align with text column for visual rhythm — i.e., start at the same x as the username). Gap above: `KamosSpacing.sm` (8).
-5. **Tag / serving chips** — `Wrap` with `KamosChip(kind: KamosChipKind.tag)`, spacing 6 / runSpacing 6. Gap above strip: `KamosSpacing.sm` (8). Serving style (if present) renders first in the wrap, prefixed by the localized serving label resolved client-side; otherwise tags only.
+5. **Tag chips** — `Wrap` with `KamosChip(kind: KamosChipKind.tag)`, spacing 6 / runSpacing 6. Gap above strip: `KamosSpacing.sm` (8). Tags only.
 
 ### Photo thumbnail strip
 

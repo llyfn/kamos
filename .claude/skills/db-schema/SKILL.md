@@ -121,7 +121,7 @@ beverage_categories (
   name_i18n JSONB NOT NULL              -- exact strings per SPEC §2.1
 )
 
-breweries (
+producers (
   id, name_i18n JSONB NOT NULL,         -- en + ja required at app layer
   region TEXT, prefecture TEXT,
   founded_year INT, website TEXT,
@@ -129,7 +129,7 @@ breweries (
 )
 
 beverages (
-  id, brewery_id FK,
+  id, producer_id FK,
   name_i18n JSONB NOT NULL,             -- en + ja required at app layer
   category_id FK,
   subcategory TEXT,                     -- free text from predefined list
@@ -161,7 +161,6 @@ check_ins (
   price_currency CHAR(3),
   price_unit TEXT CHECK (price_unit IN ('serving','bottle')),
   purchase_type TEXT CHECK (purchase_type IN ('on_premise','retail','gift','other')),
-  serving_style TEXT CHECK (serving_style IN ('glass','carafe','bottle','can','other')),
   -- venue_id FK NULLABLE  -- v1.1 only, do not include in MVP migrations
   deleted_at TIMESTAMPTZ
 )
@@ -236,9 +235,9 @@ CREATE INDEX idx_follows_followed      ON follows (followed_id) WHERE status = '
 
 -- Beverage search and browse
 CREATE INDEX idx_beverages_category    ON beverages (category_id);
-CREATE INDEX idx_beverages_brewery     ON beverages (brewery_id);
+CREATE INDEX idx_beverages_producer    ON beverages (producer_id);
 CREATE INDEX idx_beverages_name_gin    ON beverages USING GIN (name_i18n);
-CREATE INDEX idx_breweries_name_gin    ON breweries USING GIN (name_i18n);
+CREATE INDEX idx_producers_name_gin    ON producers USING GIN (name_i18n);
 
 -- User lookup (case-insensitive per SPEC §3.2)
 CREATE UNIQUE INDEX idx_users_username ON users (LOWER(username)) WHERE deleted_at IS NULL;
@@ -262,13 +261,13 @@ SELECT
   ci.id, ci.rating, ci.review_text, ci.created_at,
   u.id AS user_id, u.username, u.avatar_url,
   b.id AS beverage_id, b.name_i18n AS beverage_name,
-  br.name_i18n AS brewery_name,
+  pr.name_i18n AS producer_name,
   COALESCE(t_count.cnt, 0) AS toast_count
 FROM check_ins ci
 JOIN follows f ON f.followed_id = ci.user_id AND f.status = 'accepted'
 JOIN users u    ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
-JOIN breweries br ON br.id = b.brewery_id
+JOIN producers pr ON pr.id = b.producer_id
 LEFT JOIN LATERAL (SELECT COUNT(*) AS cnt FROM toasts t WHERE t.check_in_id = ci.id) t_count ON TRUE
 WHERE f.follower_id = $1
   AND ci.deleted_at IS NULL

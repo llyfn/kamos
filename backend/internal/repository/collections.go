@@ -220,12 +220,12 @@ func (r *CollectionRepo) Entries(ctx context.Context, userID, collectionID strin
 SELECT ce.beverage_id, ce.note, ce.added_at,
        b.name_i18n, b.category_slug, b.label_image_url,
        cat.name_i18n,
-       br.id, br.name_i18n,` + breweryPrefectureSelectCols + `
+       br.id, br.name_i18n,` + producerPrefectureSelectCols + `
 FROM collection_entries ce
 JOIN collections c ON c.id = ce.collection_id AND c.user_id = $1 AND c.deleted_at IS NULL
 JOIN beverages b ON b.id = ce.beverage_id
-JOIN breweries br ON br.id = b.brewery_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
+JOIN producers br ON br.id = b.producer_id
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
 WHERE ce.collection_id = $2
   AND ($3::timestamptz IS NULL OR (ce.added_at, ce.beverage_id) < ($3::timestamptz, $4::uuid))
 ORDER BY ce.added_at DESC, ce.beverage_id DESC
@@ -261,7 +261,7 @@ LIMIT $5;`
 		e.Beverage = domain.BeverageRef{
 			ID:            bevID,
 			Name:          bn,
-			Brewery:       domain.BreweryRef{ID: brwID, Name: brn, Prefecture: brwPref.toPrefecture()},
+			Producer:      domain.ProducerRef{ID: brwID, Name: brn, Prefecture: brwPref.toPrefecture()},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 			LabelImageURL: bevLabel,
 		}

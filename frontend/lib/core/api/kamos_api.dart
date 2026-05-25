@@ -72,8 +72,8 @@ class ApiPaths {
   static const beverages = '/v1/beverages';
   static String beverage(String id) => '/v1/beverages/$id';
 
-  // breweries
-  static String brewery(String id) => '/v1/breweries/$id';
+  // producers
+  static String producer(String id) => '/v1/producers/$id';
 
   // check-ins
   static const checkins = '/v1/check-ins';
@@ -126,7 +126,7 @@ class KamosApi {
     : auth = KamosAuthApi(_dio),
       users = KamosUsersApi(_dio),
       beverages = KamosBeveragesApi(_dio),
-      breweries = KamosBreweriesApi(_dio),
+      producers = KamosProducersApi(_dio),
       checkins = KamosCheckinsApi(_dio),
       comments = KamosCommentsApi(_dio),
       collections = KamosCollectionsApi(_dio),
@@ -144,7 +144,7 @@ class KamosApi {
   final KamosAuthApi auth;
   final KamosUsersApi users;
   final KamosBeveragesApi beverages;
-  final KamosBreweriesApi breweries;
+  final KamosProducersApi producers;
   final KamosCheckinsApi checkins;
   final KamosCommentsApi comments;
   final KamosCollectionsApi collections;
@@ -404,14 +404,14 @@ class KamosBeveragesApi {
 }
 
 // ---------------------------------------------------------------------------
-// breweries
+// producers
 
-class KamosBreweriesApi {
-  KamosBreweriesApi(this._dio);
+class KamosProducersApi {
+  KamosProducersApi(this._dio);
   final Dio _dio;
 
   Future<Map<String, dynamic>> get(String id) async {
-    final res = await _dio.get<dynamic>(ApiPaths.brewery(id));
+    final res = await _dio.get<dynamic>(ApiPaths.producer(id));
     return _asMap(res.data);
   }
 }

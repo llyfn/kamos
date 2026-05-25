@@ -175,6 +175,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Localized HTML landing page that consumes an email-verification token.
+         * @description Public, top-level route (NOT under `/v1`). The target of the link in
+         *     the verification email. Consumes the token server-side and renders a
+         *     small branded HTML page (Verified / AlreadyVerified / Invalid).
+         *     Mobile clients do not call this endpoint programmatically — the app
+         *     lands the user on a "Check your email" pending screen and polls
+         *     `/v1/users/me` for the verification flip.
+         */
+        get: operations["verifyEmailLandingPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/verify-email": {
         parameters: {
             query?: never;
@@ -255,6 +280,28 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/v1/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Case-insensitive user lookup ranked by match quality:
+         *     username prefix > display_name prefix > contains-either. Only
+         *     public-safe fields are returned (PublicUser); follower counts
+         *     and private data are not exposed.
+         */
+        get: operations["searchUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/{username}": {
         parameters: {
             query?: never;
@@ -286,6 +333,33 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getUserCheckins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/{username}/collections": {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * @description Visibility-gated page of the named user's collections.
+         *     Owner-as-viewer sees all live rows; every other viewer (including
+         *     anonymous) sees only `visibility = 'public'`. 404 when the
+         *     username does not resolve. Cursor on (created_at, id) DESC.
+         */
+        get: operations["getUserCollections"];
         put?: never;
         post?: never;
         delete?: never;
@@ -405,14 +479,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/breweries": {
+    "/v1/producers": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listBreweries"];
+        get: operations["listProducers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -421,7 +495,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/breweries/{id}": {
+    "/v1/producers/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -430,7 +504,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        get: operations["getBrewery"];
+        get: operations["getProducer"];
         put?: never;
         post?: never;
         delete?: never;
@@ -729,28 +803,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/collections/public": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Phase 6a. Public discovery feed of collections users have flipped to
-         *     visibility = 'public'. OptionalAuth: works with or without a Bearer
-         *     token (response shape is identical). Cursor pagination on
-         *     (created_at, id) DESC.
-         */
-        get: operations["listPublicCollections"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/collections": {
         parameters: {
             query?: never;
@@ -975,7 +1027,7 @@ export interface paths {
         /**
          * @description Approve a pending beverage request and insert a canonical beverage
          *     in the same transaction. Admin role required. The admin supplies
-         *     the canonical fields (brewery_id, category_id, name_i18n, ...)
+         *     the canonical fields (producer_id, category_id, name_i18n, ...)
          *     based on the user-submitted payload.
          */
         post: operations["adminApproveBeverageRequest"];
@@ -1191,7 +1243,7 @@ export interface paths {
         /**
          * @description List beverages for admin tooling. Optional FTS (`q`,
          *     websearch_to_tsquery against idx_beverages_name_tsv), exact
-         *     filters (`brewery_id`, `category_id`, `category_slug`, `id`).
+         *     filters (`producer_id`, `category_id`, `category_slug`, `id`).
          *     `id` short-circuits the cursor. `include_deleted=1` surfaces
          *     soft-deleted rows for the admin "trash" view.
          */
@@ -1263,7 +1315,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/admin/breweries": {
+    "/v1/admin/producers": {
         parameters: {
             query?: never;
             header?: never;
@@ -1271,46 +1323,46 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description List breweries for admin tooling. Optional FTS (`q`,
-         *     websearch_to_tsquery against idx_breweries_name_tsv) or exact
+         * @description List producers for admin tooling. Optional FTS (`q`,
+         *     websearch_to_tsquery against idx_producers_name_tsv) or exact
          *     UUID lookup (`id`). `include_deleted=1` surfaces soft-deleted
          *     rows.
          */
-        get: operations["adminListBreweries"];
+        get: operations["adminListProducers"];
         put?: never;
-        /** @description Insert a canonical brewery. Admin only. */
-        post: operations["adminCreateBrewery"];
+        /** @description Insert a canonical producer. Admin only. */
+        post: operations["adminCreateProducer"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/v1/admin/breweries/{id}": {
+    "/v1/admin/producers/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Return one brewery (including soft-deleted rows). */
-        get: operations["adminGetBrewery"];
+        /** @description Return one producer (including soft-deleted rows). */
+        get: operations["adminGetProducer"];
         put?: never;
         post?: never;
         /**
-         * @description Soft-delete a brewery (sets deleted_at = NOW()). Fails with
-         *     409 BREWERY_HAS_LIVE_BEVERAGES when at least one beverage
-         *     still references the brewery with deleted_at IS NULL — admin
+         * @description Soft-delete a producer (sets deleted_at = NOW()). Fails with
+         *     409 PRODUCER_HAS_LIVE_BEVERAGES when at least one beverage
+         *     still references the producer with deleted_at IS NULL — admin
          *     must soft-delete or reassign the dependent beverages first.
          */
-        delete: operations["adminSoftDeleteBrewery"];
+        delete: operations["adminSoftDeleteProducer"];
         options?: never;
         head?: never;
-        /** @description Partial-update a brewery. */
-        patch: operations["adminUpdateBrewery"];
+        /** @description Partial-update a producer. */
+        patch: operations["adminUpdateProducer"];
         trace?: never;
     };
-    "/v1/admin/breweries/{id}/restore": {
+    "/v1/admin/producers/{id}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -1319,8 +1371,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Clear deleted_at on a tombstoned brewery. */
-        post: operations["adminRestoreBrewery"];
+        /** @description Clear deleted_at on a tombstoned producer. */
+        post: operations["adminRestoreProducer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1516,7 +1568,7 @@ export interface components {
         };
         /**
          * @description Migration 016 — one row of the seed `prefectures` reference
-         *     table. `region` is embedded so a brewery's `prefecture` field
+         *     table. `region` is embedded so a producer's `prefecture` field
          *     carries enough context to render "Niigata (Chūbu)" without a
          *     second lookup.
          */
@@ -1526,7 +1578,7 @@ export interface components {
             /**
              * @description stable lowercase slug (e.g. `niigata`, `tokyo`,
              *     `kagoshima`); accepted by admin write paths as
-             *     `prefecture_slug` on AdminBreweryCreate / AdminBreweryUpdate.
+             *     `prefecture_slug` on AdminProducerCreate / AdminProducerUpdate.
              */
             slug: string;
             name: components["schemas"]["I18nText"];
@@ -1575,10 +1627,10 @@ export interface components {
          *
          *     Migration 016: `prefecture` is now a nested `Prefecture` object
          *     (which itself embeds its `Region`). The previous free-text
-         *     `prefecture` / `region` string fields are gone. The brewery's
-         *     region is derivable via `brewery.prefecture.region`.
+         *     `prefecture` / `region` string fields are gone. The producer's
+         *     region is derivable via `producer.prefecture.region`.
          */
-        Brewery: {
+        Producer: {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
@@ -1588,9 +1640,9 @@ export interface components {
             website?: string;
             description?: components["schemas"]["I18nText"];
             /**
-             * @description Number of beverages associated with this brewery. Populated by
-             *     `GetBrewery` and `ListBreweries`; absent in nested `BreweryRef`
-             *     embeddings and in `/v1/search` brewery results.
+             * @description Number of beverages associated with this producer. Populated by
+             *     `GetProducer` and `ListProducers`; absent in nested `ProducerRef`
+             *     embeddings and in `/v1/search` producer results.
              */
             beverage_count?: number;
             /** Format: date-time */
@@ -1606,9 +1658,9 @@ export interface components {
          *
          *     Migration 016 dropped the per-beverage `prefecture` / `region`
          *     free-text columns. A beverage's locality is now derived through
-         *     its `brewery.prefecture` (which itself nests `region`).
+         *     its `producer.prefecture` (which itself nests `region`).
          *
-         *     List endpoints (`GET /v1/beverages`, `GET /v1/breweries/{id}` inline
+         *     List endpoints (`GET /v1/beverages`, `GET /v1/producers/{id}` inline
          *     beverages page, `GET /v1/search` beverage results) ship a slim
          *     projection that **omits the i18n JSONB fields `subcategory` and
          *     `description`** on every row to cut payload size by ~30%. Both
@@ -1620,7 +1672,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
-            brewery: components["schemas"]["Brewery"];
+            producer: components["schemas"]["Producer"];
             category: components["schemas"]["CategoryLabel"];
             subcategory?: components["schemas"]["I18nText"];
             abv?: number;
@@ -1672,19 +1724,19 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
-            brewery: components["schemas"]["BreweryRef"];
+            producer: components["schemas"]["ProducerRef"];
             category: components["schemas"]["CategoryLabel"];
             /** Format: uri */
             label_image_url?: string;
         };
         /**
-         * @description Compact brewery embedding used by check-in / feed / collection
+         * @description Compact producer embedding used by check-in / feed / collection
          *     entries. `prefecture` (a nested Prefecture that itself embeds
          *     its Region) follows the absent-when-unknown convention (Go
          *     `omitempty`). Migration 016 replaced the free-text `region`
          *     string with this nested shape.
          */
-        BreweryRef: {
+        ProducerRef: {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
@@ -1718,8 +1770,6 @@ export interface components {
             price?: components["schemas"]["Price"];
             /** @enum {string|null} */
             purchase_type?: "on_premise" | "retail" | "gift" | "other" | null;
-            /** @enum {string|null} */
-            serving_style?: "glass" | "carafe" | "bottle" | "can" | "other" | null;
             /** @description Phase 4 venue projection. Absent when the check-in has no venue. */
             venue?: components["schemas"]["VenueRef"];
             toasts: number;
@@ -1738,6 +1788,11 @@ export interface components {
             rating?: number | null;
             review?: string | null;
             photos: components["schemas"]["PhotoRef"][];
+            /**
+             * @description Flavor-tag chips so the beverage detail "recent check-ins"
+             *     rows can render rich cards without a follow-up round trip.
+             */
+            tags: components["schemas"]["FlavorTag"][];
             /** Format: date-time */
             created_at: string;
         };
@@ -1751,8 +1806,6 @@ export interface components {
             price?: components["schemas"]["Price"];
             /** @enum {string} */
             purchase_type?: "on_premise" | "retail" | "gift" | "other";
-            /** @enum {string} */
-            serving_style?: "glass" | "carafe" | "bottle" | "can" | "other";
             /**
              * @description Phase 4 optional venue tag. Three accepted shapes:
              *       * { id }                    — attach an existing venue UUID.
@@ -1773,8 +1826,6 @@ export interface components {
             price?: components["schemas"]["Price"];
             /** @enum {string} */
             purchase_type?: "on_premise" | "retail" | "gift" | "other";
-            /** @enum {string} */
-            serving_style?: "glass" | "carafe" | "bottle" | "can" | "other";
         };
         ToastState: {
             toasts: number;
@@ -1929,7 +1980,8 @@ export interface components {
             /**
              * @description Phase 6a. New collections default to `private`. Toggle via
              *     PATCH /v1/collections/{id} with `{"visibility":"public"}`.
-             *     Public collections appear in GET /v1/collections/public.
+             *     Public collections appear in GET
+             *     /v1/users/{username}/collections for non-owners.
              * @default private
              * @enum {string}
              */
@@ -1938,22 +1990,6 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
-        };
-        /**
-         * @description Slim owner attribution embedded in each row of
-         *     GET /v1/collections/public. Privacy-safe — never carries email.
-         */
-        PublicCollectionOwner: {
-            /** Format: uuid */
-            id: string;
-            username: string;
-            display_username: string;
-            display_name: string;
-            /** Format: uri */
-            avatar_url?: string | null;
-        };
-        CollectionWithOwner: components["schemas"]["Collection"] & {
-            owner: components["schemas"]["PublicCollectionOwner"];
         };
         /**
          * @description PATCH /v1/collections/{id}. Both fields are optional in isolation;
@@ -1973,9 +2009,9 @@ export interface components {
         };
         SearchResult: {
             /** @enum {string} */
-            type: "beverage" | "brewery";
+            type: "beverage" | "producer";
             beverage?: components["schemas"]["Beverage"];
-            brewery?: components["schemas"]["Brewery"];
+            producer?: components["schemas"]["Producer"];
         };
         PageBase: {
             /** @description opaque keyset cursor; absent on last page */
@@ -1985,8 +2021,8 @@ export interface components {
         PageOfBeverage: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["Beverage"][];
         };
-        PageOfBrewery: components["schemas"]["PageBase"] & {
-            items?: components["schemas"]["Brewery"][];
+        PageOfProducer: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["Producer"][];
         };
         PageOfCheckin: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["Checkin"][];
@@ -2006,11 +2042,11 @@ export interface components {
         PageOfSocialUser: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["SocialUser"][];
         };
+        PageOfPublicUser: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["PublicUser"][];
+        };
         PageOfCollection: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["Collection"][];
-        };
-        PageOfCollectionWithOwner: components["schemas"]["PageBase"] & {
-            items?: components["schemas"]["CollectionWithOwner"][];
         };
         PageOfCollectionEntry: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["CollectionEntry"][];
@@ -2057,14 +2093,14 @@ export interface components {
          *     `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
          *
          *     Migration 016 dropped beverages.prefecture / beverages.region —
-         *     the beverage's locality is derived through the brewery's
+         *     the beverage's locality is derived through the producer's
          *     prefecture_id, so no per-beverage geo fields are accepted here.
-         *     Recurate the brewery via PATCH /v1/admin/breweries/{id} before
+         *     Recurate the producer via PATCH /v1/admin/producers/{id} before
          *     approving if the prefecture is wrong.
          */
         AdminBeverageRequestApproval: {
             /** Format: uuid */
-            brewery_id: string;
+            producer_id: string;
             /** Format: uuid */
             category_id?: string;
             /**
@@ -2125,7 +2161,7 @@ export interface components {
          */
         AdminBeverageCreate: {
             /** Format: uuid */
-            brewery_id: string;
+            producer_id: string;
             /**
              * Format: uuid
              * @description required if category_slug is not supplied
@@ -2163,7 +2199,7 @@ export interface components {
          */
         AdminBeverageUpdate: {
             /** Format: uuid */
-            brewery_id?: string;
+            producer_id?: string;
             /** Format: uuid */
             category_id?: string;
             /**
@@ -2186,13 +2222,13 @@ export interface components {
             next_cursor?: string | null;
             has_more: boolean;
         };
-        /** @description Admin variant of Brewery, exposing the nullable `deleted_at`. */
-        AdminBrewery: components["schemas"]["Brewery"] & {
+        /** @description Admin variant of Producer, exposing the nullable `deleted_at`. */
+        AdminProducer: components["schemas"]["Producer"] & {
             /** Format: date-time */
             deleted_at: string | null;
         };
         /**
-         * @description Payload for POST /v1/admin/breweries. `name_i18n.en` and
+         * @description Payload for POST /v1/admin/producers. `name_i18n.en` and
          *     `name_i18n.ja` are required; `ko` optional. `founded_year`
          *     must be between 800 and 2100 to match the DB CHECK.
          *
@@ -2202,13 +2238,13 @@ export interface components {
          *     of valid slugs is the 47 prefectures returned by
          *     `GET /v1/reference/regions`. Unknown slug returns
          *     `422 INVALID_PREFECTURE_SLUG`. Omit `prefecture_slug` to leave
-         *     the brewery without a curated prefecture.
+         *     the producer without a curated prefecture.
          */
-        AdminBreweryCreate: {
+        AdminProducerCreate: {
             name_i18n: components["schemas"]["I18nText"];
             /**
              * @description Stable slug from `GET /v1/reference/regions`. Omit or send
-             *     null when the brewery has no curated prefecture.
+             *     null when the producer has no curated prefecture.
              */
             prefecture_slug?: string | null;
             founded_year?: number | null;
@@ -2217,7 +2253,7 @@ export interface components {
             description_i18n?: components["schemas"]["I18nText"] | null;
         };
         /**
-         * @description Partial-update body for PATCH /v1/admin/breweries/{id}. Every
+         * @description Partial-update body for PATCH /v1/admin/producers/{id}. Every
          *     field is optional; omitted fields are left unchanged.
          *
          *     `prefecture_slug` semantics (mirrors `category_slug` on
@@ -2229,7 +2265,7 @@ export interface components {
          *
          *     Unknown slug returns `422 INVALID_PREFECTURE_SLUG`.
          */
-        AdminBreweryUpdate: {
+        AdminProducerUpdate: {
             name_i18n?: components["schemas"]["I18nText"];
             /**
              * @description Stable slug from `GET /v1/reference/regions`. Send `""` to
@@ -2241,8 +2277,8 @@ export interface components {
             website?: string | null;
             description_i18n?: components["schemas"]["I18nText"] | null;
         };
-        AdminBreweryList: {
-            items: components["schemas"]["AdminBrewery"][];
+        AdminProducerList: {
+            items: components["schemas"]["AdminProducer"][];
             next_cursor?: string | null;
             has_more: boolean;
         };
@@ -2264,7 +2300,7 @@ export interface components {
             /** @enum {string} */
             action: "soft_delete" | "role_change" | "suspend" | "approve" | "reject" | "create" | "update" | "restore";
             /** @enum {string} */
-            target_type: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "brewery";
+            target_type: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "producer";
             /** Format: uuid */
             target_id: string;
             notes?: string | null;
@@ -2567,6 +2603,39 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    verifyEmailLandingPage: {
+        parameters: {
+            query: {
+                token: string;
+                /** @description Locale for the rendered page. Defaults to `en` when omitted or unrecognized. */
+                lang?: "en" | "ja" | "ko";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description HTML page rendered (Verified or AlreadyVerified state). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": unknown;
+                };
+            };
+            /** @description HTML page rendered (Invalid or missing token). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": unknown;
+                };
+            };
+        };
+    };
     verifyEmail: {
         parameters: {
             query?: never;
@@ -2751,6 +2820,42 @@ export interface operations {
             422: components["responses"]["Validation"];
         };
     };
+    searchUsers: {
+        parameters: {
+            query: {
+                q: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of matching users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfPublicUser"];
+                };
+            };
+            /**
+             * @description INVALID_QUERY — `q` is missing, empty, or shorter than 2
+             *     characters.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getUser: {
         parameters: {
             query?: never;
@@ -2804,6 +2909,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PageOfCheckin"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getUserCollections: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of collections owned by the named user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfCollection"];
                 };
             };
             404: components["responses"]["NotFound"];
@@ -2942,7 +3073,7 @@ export interface operations {
             };
         };
     };
-    listBreweries: {
+    listProducers: {
         parameters: {
             query?: {
                 q?: string;
@@ -2955,18 +3086,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description page of breweries */
+            /** @description page of producers */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PageOfBrewery"];
+                    "application/json": components["schemas"]["PageOfProducer"];
                 };
             };
         };
     };
-    getBrewery: {
+    getProducer: {
         parameters: {
             query?: never;
             header?: never;
@@ -2977,21 +3108,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description brewery detail with beverage list */
+            /** @description producer detail with beverage list */
             200: {
                 headers: {
                     /**
                      * @description Stage 7 (M-3.5) — emitted by middleware:
                      *     `public, max-age=600, stale-while-revalidate=86400`.
                      *     Slower-moving aggregates than beverage detail; the
-                     *     in-process LRU is busted on writes to the brewery's
+                     *     in-process LRU is busted on writes to the producer's
                      *     beverages and downstream caches honor this header.
                      */
                     "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Brewery"] & {
+                    "application/json": components["schemas"]["Producer"] & {
                         beverages?: components["schemas"]["PageOfBeverage"];
                     };
                 };
@@ -3528,29 +3659,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    listPublicCollections: {
-        parameters: {
-            query?: {
-                cursor?: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description page of public collections with owner attribution */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PageOfCollectionWithOwner"];
-                };
-            };
-        };
-    };
     listCollections: {
         parameters: {
             query?: never;
@@ -3766,7 +3874,7 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                type?: "beverage" | "brewery";
+                type?: "beverage" | "producer";
                 cursor?: string;
                 limit?: number;
             };
@@ -4097,7 +4205,7 @@ export interface operations {
     adminListModerationLog: {
         parameters: {
             query?: {
-                target_type?: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "brewery";
+                target_type?: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "producer";
                 target_id?: string;
                 moderator_id?: string;
                 cursor?: string;
@@ -4248,7 +4356,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
-                brewery_id?: string;
+                producer_id?: string;
                 category_id?: string;
                 category_slug?: "nihonshu" | "shochu" | "liqueur";
                 id?: string;
@@ -4405,7 +4513,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    adminListBreweries: {
+    adminListProducers: {
         parameters: {
             query?: {
                 q?: string;
@@ -4420,20 +4528,20 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description page of breweries */
+            /** @description page of producers */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminBreweryList"];
+                    "application/json": components["schemas"]["AdminProducerList"];
                 };
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };
     };
-    adminCreateBrewery: {
+    adminCreateProducer: {
         parameters: {
             query?: never;
             header?: never;
@@ -4442,7 +4550,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AdminBreweryCreate"];
+                "application/json": components["schemas"]["AdminProducerCreate"];
             };
         };
         responses: {
@@ -4452,7 +4560,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminBrewery"];
+                    "application/json": components["schemas"]["AdminProducer"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -4460,7 +4568,7 @@ export interface operations {
             422: components["responses"]["Validation"];
         };
     };
-    adminGetBrewery: {
+    adminGetProducer: {
         parameters: {
             query?: never;
             header?: never;
@@ -4471,13 +4579,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description brewery */
+            /** @description producer */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminBrewery"];
+                    "application/json": components["schemas"]["AdminProducer"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -4485,7 +4593,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    adminSoftDeleteBrewery: {
+    adminSoftDeleteProducer: {
         parameters: {
             query?: never;
             header?: never;
@@ -4506,7 +4614,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description brewery still has live beverages (code BREWERY_HAS_LIVE_BEVERAGES) */
+            /** @description producer still has live beverages (code PRODUCER_HAS_LIVE_BEVERAGES) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4517,7 +4625,7 @@ export interface operations {
             };
         };
     };
-    adminUpdateBrewery: {
+    adminUpdateProducer: {
         parameters: {
             query?: never;
             header?: never;
@@ -4528,7 +4636,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AdminBreweryUpdate"];
+                "application/json": components["schemas"]["AdminProducerUpdate"];
             };
         };
         responses: {
@@ -4538,7 +4646,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminBrewery"];
+                    "application/json": components["schemas"]["AdminProducer"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -4547,7 +4655,7 @@ export interface operations {
             422: components["responses"]["Validation"];
         };
     };
-    adminRestoreBrewery: {
+    adminRestoreProducer: {
         parameters: {
             query?: never;
             header?: never;
@@ -4564,7 +4672,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminBrewery"];
+                    "application/json": components["schemas"]["AdminProducer"];
                 };
             };
             401: components["responses"]["Unauthorized"];

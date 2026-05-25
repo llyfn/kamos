@@ -42,7 +42,7 @@ const UI = {
   collections:  { en: 'Collections', ja: 'コレクション', ko: '컬렉션' },
   recentChk:    { en: 'Recent check-ins', ja: '最近のチェックイン', ko: '최근 체크인' },
   flavorAgg:    { en: 'Aggregated flavor', ja: 'フレーバー傾向', ko: '풍미 프로필' },
-  aboutBrewery: { en: 'About the brewery', ja: '蔵元について', ko: '양조장 소개' },
+  aboutProducer: { en: 'About the producer', ja: '蔵元について', ko: '생산자 소개' },
 
   // buttons / actions
   checkinBtn:  { en: 'Check in',     ja: 'チェックイン', ko: '체크인' },
@@ -65,7 +65,6 @@ const UI = {
   photosCap:     { en: 'Photos · up to 4', ja: '写真 · 4枚まで', ko: '사진 · 최대 4장' },
   price:         { en: 'Price · optional', ja: '価格 · 任意', ko: '가격 · 선택' },
   purchaseType:  { en: 'Purchase type', ja: '購入種別',       ko: '구매 유형' },
-  servingStyle:  { en: 'Serving style', ja: '提供スタイル',   ko: '서빙 스타일' },
   tapToRate:     { en: 'Tap a star to rate · half-steps allowed',
                    ja: 'スターをタップ · 0.5刻みで評価',
                    ko: '별을 탭하여 평가 · 0.5 단위' },
@@ -74,9 +73,9 @@ const UI = {
   emptyFeed:     { en: "No check-ins yet. Follow some people, or tap + to log your first.",
                    ja: 'まだチェックインがありません。誰かをフォローするか、＋から最初の一杯を記録しましょう。',
                    ko: '아직 체크인이 없습니다. 누군가를 팔로우하거나 ＋ 버튼으로 첫 기록을 남겨보세요.' },
-  emptySearch:   { en: 'Search breweries, beverages, prefectures.',
+  emptySearch:   { en: 'Search producers, beverages, prefectures.',
                    ja: '蔵元・銘柄・都道府県で検索',
-                   ko: '양조장 · 술 · 지역으로 검색' },
+                   ko: '생산자 · 술 · 지역으로 검색' },
   noResults:     { en: 'No matches. Try a different search.',
                    ja: '該当なし。別の言葉で試してください。',
                    ko: '결과가 없습니다. 다른 검색어를 시도해보세요.' },
@@ -94,15 +93,15 @@ const CATALOG = [
     id: 'dassai-23',
     name: { en: 'Dassai 23', ja: '獺祭 純米大吟醸 二割三分', ko: '닷사이 23' },
     kanji: '獺祭', labelRomaji: '23',
-    brewery: { en: 'Asahi Shuzo', ja: '旭酒造', ko: '아사히 주조' },
-    breweryId: 'asahi-shuzo',
+    producer: { en: 'Asahi Shuzo', ja: '旭酒造', ko: '아사히 주조' },
+    producerId: 'asahi-shuzo',
     region: { en: 'Yamaguchi', ja: '山口', ko: '야마구치' },
     category: 'nihonshu',
     subcategory: { en: 'Junmai Daiginjo', ja: '純米大吟醸', ko: '준마이 다이긴조' },
     abv: 16.0, seimai: 23, rating: 4.5, checkins: 2841, labelTone: 'navy',
     flavor: ['Fruity', 'Floral', 'Light', 'Crisp', 'Lingering', 'Pear'],
     about: {
-      en: 'Founded in 1948 in the mountains of Iwakuni. Asahi Shuzo polishes its rice further than almost any brewery — the name 23 refers to the percentage of grain remaining.',
+      en: 'Founded in 1948 in the mountains of Iwakuni. Asahi Shuzo polishes its rice further than almost any producer — the name 23 refers to the percentage of grain remaining.',
       ja: '1948年、岩国の山中にて創業。旭酒造の精米歩合は業界でも最も低い水準。「二割三分」は残された米の割合を指す。',
       ko: '1948년 이와쿠니의 산속에서 창업. 아사히 주조는 업계에서 가장 낮은 정미율로 유명하며, "23"은 깎인 후 남은 쌀의 비율을 의미한다.',
     },
@@ -116,8 +115,8 @@ const CATALOG = [
     id: 'kuromatsu',
     name: { en: 'Kuromatsu Kenbishi', ja: '黒松剣菱', ko: '쿠로마츠 켄비시' },
     kanji: '黒松', labelRomaji: '剣菱',
-    brewery: { en: 'Kenbishi Shuzo', ja: '剣菱酒造', ko: '켄비시 주조' },
-    breweryId: 'kenbishi-shuzo',
+    producer: { en: 'Kenbishi Shuzo', ja: '剣菱酒造', ko: '켄비시 주조' },
+    producerId: 'kenbishi-shuzo',
     region: { en: 'Hyōgo', ja: '兵庫', ko: '효고' },
     category: 'nihonshu',
     subcategory: { en: 'Junmai', ja: '純米', ko: '준마이' },
@@ -136,8 +135,8 @@ const CATALOG = [
     id: 'kuro-kirishima',
     name: { en: 'Kuro Kirishima', ja: '黒霧島', ko: '쿠로 키리시마' },
     kanji: '黒霧島', labelRomaji: '',
-    brewery: { en: 'Kirishima Shuzo', ja: '霧島酒造', ko: '키리시마 주조' },
-    breweryId: 'kirishima-shuzo',
+    producer: { en: 'Kirishima Shuzo', ja: '霧島酒造', ko: '키리시마 주조' },
+    producerId: 'kirishima-shuzo',
     region: { en: 'Miyazaki', ja: '宮崎', ko: '미야자키' },
     category: 'shochu',
     subcategory: { en: 'Imo Shochu', ja: '芋焼酎', ko: '이모쇼츄' },
@@ -156,8 +155,8 @@ const CATALOG = [
     id: 'iichiko',
     name: { en: 'Iichiko Silhouette', ja: 'いいちこ シルエット', ko: '이이치코 실루엣' },
     kanji: 'いいちこ', labelRomaji: '',
-    brewery: { en: 'Sanwa Shurui', ja: '三和酒類', ko: '산와 슈루이' },
-    breweryId: 'sanwa-shurui',
+    producer: { en: 'Sanwa Shurui', ja: '三和酒類', ko: '산와 슈루이' },
+    producerId: 'sanwa-shurui',
     region: { en: 'Ōita', ja: '大分', ko: '오이타' },
     category: 'shochu',
     subcategory: { en: 'Mugi Shochu', ja: '麦焼酎', ko: '무기쇼츄' },
@@ -174,8 +173,8 @@ const CATALOG = [
     id: 'choya-umeshu',
     name: { en: 'Choya Umeshu', ja: 'チョーヤ 梅酒', ko: '초야 매실주' },
     kanji: '梅酒', labelRomaji: '',
-    brewery: { en: 'Choya', ja: 'チョーヤ梅酒', ko: '초야' },
-    breweryId: 'choya',
+    producer: { en: 'Choya', ja: 'チョーヤ梅酒', ko: '초야' },
+    producerId: 'choya',
     region: { en: 'Osaka', ja: '大阪', ko: '오사카' },
     category: 'liqueur',
     subcategory: { en: 'Umeshu', ja: '梅酒', ko: '우메슈' },
@@ -192,8 +191,8 @@ const CATALOG = [
     id: 'kubota-senju',
     name: { en: 'Kubota Senjyu', ja: '久保田 千寿', ko: '쿠보타 센쥬' },
     kanji: '久保田', labelRomaji: '千寿',
-    brewery: { en: 'Asahi Shuzo (Niigata)', ja: '朝日酒造（新潟）', ko: '아사히 주조 (니가타)' },
-    breweryId: 'asahi-niigata',
+    producer: { en: 'Asahi Shuzo (Niigata)', ja: '朝日酒造（新潟）', ko: '아사히 주조 (니가타)' },
+    producerId: 'asahi-niigata',
     region: { en: 'Niigata', ja: '新潟', ko: '니가타' },
     category: 'nihonshu',
     subcategory: { en: 'Tokubetsu Honjozo', ja: '特別本醸造', ko: '토쿠베츠 혼조조' },
@@ -209,9 +208,9 @@ const CATALOG = [
 ];
 
 // ---------------------------------------------------------------------------
-// Breweries — used by BreweryScreen (SPEC §2.3, §7 "browse by brewery").
+// Producers — used by ProducerScreen (SPEC §2.3, §7 "browse by producer").
 // ---------------------------------------------------------------------------
-const BREWERIES = {
+const PRODUCERS = {
   'asahi-shuzo': {
     id: 'asahi-shuzo',
     name: { en: 'Asahi Shuzo', ja: '旭酒造', ko: '아사히 주조' },
@@ -219,9 +218,9 @@ const BREWERIES = {
     founded: 1948,
     website: 'https://asahishuzo.ne.jp',
     description: {
-      en: 'Iwakuni-based brewery responsible for Dassai. Polishes rice further than nearly any rival.',
+      en: 'Iwakuni-based producer responsible for Dassai. Polishes rice further than nearly any rival.',
       ja: '岩国に拠点を構える「獺祭」の蔵元。業界でもとりわけ低い精米歩合で知られる。',
-      ko: '이와쿠니에 자리한 "닷사이"의 양조장. 업계에서 가장 낮은 수준의 정미율로 유명하다.',
+      ko: '이와쿠니에 자리한 "닷사이"의 생산자. 업계에서 가장 낮은 수준의 정미율로 유명하다.',
     },
     beverageIds: ['dassai-23'],
   },
@@ -232,9 +231,9 @@ const BREWERIES = {
     founded: 1505,
     website: 'https://www.kenbishi.co.jp',
     description: {
-      en: 'One of the oldest continuously operating sake breweries in Japan. Kimoto-method, full-bodied, served warm.',
+      en: 'One of the oldest continuously operating sake producers in Japan. Kimoto-method, full-bodied, served warm.',
       ja: '日本最古級の酒蔵のひとつ。生酛仕込みの骨太な造り。',
-      ko: '일본에서 가장 오래된 사케 양조장 중 하나. 키모토 방식의 묵직한 맛.',
+      ko: '일본에서 가장 오래된 사케 생산자 중 하나. 키모토 방식의 묵직한 맛.',
     },
     beverageIds: ['kuromatsu'],
   },
@@ -331,6 +330,6 @@ const RECENT_SEARCHES = ['Dassai', 'Niigata', 'Junmai Ginjo', 'Kuro Kirishima'];
 
 Object.assign(window, {
   CATEGORY_LABELS, t, UI,
-  CATALOG, BREWERIES, FEED, COLLECTIONS, ME, MY_RECENT,
+  CATALOG, PRODUCERS, FEED, COLLECTIONS, ME, MY_RECENT,
   FOLLOW_REQUESTS, RECENT_SEARCHES,
 });

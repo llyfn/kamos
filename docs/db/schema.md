@@ -15,8 +15,8 @@ Migrations live in `migrations/`. **Append-only**: never edit a deployed migrati
                                   └─────────┬─────────────┘
                                             │ category_id
                                             ▼
-   ┌──────────────────┐ brewery_id ┌────────────────────┐
-   │ breweries        │◀───────────│ beverages          │───────┐
+   ┌──────────────────┐ producer_id┌────────────────────┐
+   │ producers        │◀───────────│ beverages          │───────┐
    │ name_i18n,       │            │ name_i18n, abv,    │       │
    │ prefecture_id ─┐ │            │ polishing_ratio,   │       │
    └──────────────┬─┘ │            │ avg_rating (denorm)│       │
@@ -67,7 +67,7 @@ Migrations live in `migrations/`. **Append-only**: never edit a deployed migrati
 
 ### 1. i18n storage: JSONB, not separate columns
 
-For `breweries`, `beverages`, `beverage_categories`, `flavor_tags`, and certain user-facing free-text fields on `beverages` (`subcategory_i18n`, `description_i18n`), names are stored as a JSONB object `{"en": "...", "ja": "...", "ko": "..."}`. This matches the JSX kit's data shape (`data.jsx::CATALOG`), enables a single GIN FTS index that covers all three locales at once, and means adding a fourth locale post-MVP is a data migration rather than a schema migration.
+For `producers`, `beverages`, `beverage_categories`, `flavor_tags`, and certain user-facing free-text fields on `beverages` (`subcategory_i18n`, `description_i18n`), names are stored as a JSONB object `{"en": "...", "ja": "...", "ko": "..."}`. This matches the JSX kit's data shape (`data.jsx::CATALOG`), enables a single GIN FTS index that covers all three locales at once, and means adding a fourth locale post-MVP is a data migration rather than a schema migration.
 
 Rejected alternative: three `name_en`/`name_ja`/`name_ko` columns. Forces three indexes for cross-locale search, and the schema balloons when more i18n fields are added.
 
@@ -149,7 +149,7 @@ No `is_default` column lives on `collections` — SPEC §6.1 explicitly says the
 
 ### 8. Soft-delete filtering policy
 
-Five tables soft-delete: `users`, `check_ins`, `collections`, `beverages` (014), `breweries` (014). Every list query against these MUST include `WHERE deleted_at IS NULL` unless it is an admin "include_deleted" path. The partial indexes on all five make this nearly free. The conventions are codified in `query_patterns.md`.
+Five tables soft-delete: `users`, `check_ins`, `collections`, `beverages` (014), `producers` (014). Every list query against these MUST include `WHERE deleted_at IS NULL` unless it is an admin "include_deleted" path. The partial indexes on all five make this nearly free. The conventions are codified in `query_patterns.md`.
 
 `collection_entries` does **not** soft-delete; removing a beverage from a collection is a hard delete (`DELETE FROM collection_entries`). The motivation: collection contents are transient by nature; users freely add/remove. Soft-delete adds friction without value.
 
@@ -157,7 +157,7 @@ Five tables soft-delete: `users`, `check_ins`, `collections`, `beverages` (014),
 
 `follows` does not soft-delete; unfollowing is a hard `DELETE`.
 
-**Catalog soft-delete (014).** `beverages.deleted_at` and `breweries.deleted_at` are nullable timestamps that the admin SPA sets on "delete" and clears on "restore". Both columns are filtered by every public read path (matches the `users.deleted_at` convention). All hot-path indexes on these tables are partial `WHERE deleted_at IS NULL`, and a small partial helper index `WHERE deleted_at IS NOT NULL` (`idx_{beverages,breweries}_deleted_at`) accelerates the admin "trash" view. The brewery soft-delete handler runs a preflight that returns `409 BREWERY_HAS_LIVE_BEVERAGES` if any live beverage still references the brewery — `beverages.brewery_id` is `ON DELETE RESTRICT`, so this preserves referential integrity without surprising the user.
+**Catalog soft-delete (014).** `beverages.deleted_at` and `producers.deleted_at` are nullable timestamps that the admin SPA sets on "delete" and clears on "restore". Both columns are filtered by every public read path (matches the `users.deleted_at` convention). All hot-path indexes on these tables are partial `WHERE deleted_at IS NULL`, and a small partial helper index `WHERE deleted_at IS NOT NULL` (`idx_{beverages,producers}_deleted_at`) accelerates the admin "trash" view. The producer soft-delete handler runs a preflight that returns `409 PRODUCER_HAS_LIVE_BEVERAGES` if any live beverage still references the producer — `beverages.producer_id` is `ON DELETE RESTRICT`, so this preserves referential integrity without surprising the user.
 
 ### 9. Category enum: lookup table, not Postgres `ENUM` type
 
@@ -175,7 +175,7 @@ Beverages also carry a denormalized `category_slug` column kept in sync by a tri
 
 ### 9b. Regions / prefectures as i18n reference tables (016)
 
-`breweries` originally carried free-text `prefecture` and `region` columns. In practice this drifted (mixed `'Niigata'` / `'新潟'` / `'新潟県'` for the same logical place) and made it impossible to drive admin filtering or grouped dropdowns without a controlled vocabulary.
+`producers` (`breweries` pre-017) originally carried free-text `prefecture` and `region` columns. In practice this drifted (mixed `'Niigata'` / `'新潟'` / `'新潟県'` for the same logical place) and made it impossible to drive admin filtering or grouped dropdowns without a controlled vocabulary.
 
 Migration 016 introduces:
 
@@ -184,9 +184,9 @@ Migration 016 introduces:
 
 Both tables follow the same `JSONB name_i18n` pattern as `beverage_categories` and `flavor_tags` (`{en, ja, ko}` all required by CHECK — these are seed-only, so all three locales are mandatory).
 
-`breweries` gets a nullable `prefecture_id UUID REFERENCES prefectures(id) ON DELETE RESTRICT`. The old `breweries.prefecture` and `breweries.region` columns were backfilled best-effort (case-insensitive match against `name_i18n->>'en'` or exact match against `name_i18n->>'ja'`) and then dropped. Rows that didn't match resolve to NULL — admin recuration is the explicit fallback rather than silently guessing.
+`producers` gets a nullable `prefecture_id UUID REFERENCES prefectures(id) ON DELETE RESTRICT`. The old free-text `prefecture` and `region` columns were backfilled best-effort (case-insensitive match against `name_i18n->>'en'` or exact match against `name_i18n->>'ja'`) and then dropped. Rows that didn't match resolve to NULL — admin recuration is the explicit fallback rather than silently guessing.
 
-`beverages.prefecture` and `beverages.region` were also dropped with no replacement: locality is derived through `beverages.brewery_id → breweries.prefecture_id → prefectures.region_id`. Two FK hops on a small catalog is cheap and removes the duplication.
+`beverages.prefecture` and `beverages.region` were also dropped with no replacement: locality is derived through `beverages.producer_id → producers.prefecture_id → prefectures.region_id`. Two FK hops on a small catalog is cheap and removes the duplication.
 
 Country dimension is intentionally **not** introduced: MVP is Japan-only. A `countries` table can be added later above `regions` without disturbing existing FKs. `venues.prefecture` (Phase 4, Foursquare-backed) is independent and was not touched — that column is third-party-sourced free text.
 
@@ -209,8 +209,8 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `users` | Accounts. | `deleted_at` + `username_release_at` | Lowercase username regex, en/ja/ko locale, public/private privacy, at least one auth method present. |
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
-| `breweries` | Maker catalog. | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. |
-| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `brewery_id → breweries.prefecture_id` (016); own `prefecture`/`region` columns dropped. |
+| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. |
+| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. |
 | `regions` | Japan's 8 traditional regions (seed). | — | `name_i18n` requires en+ja+ko. 8 seeded rows (016). |
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
 | `flavor_tags` | Admin taxonomy (SPEC §4.3). | — | 5 fixed dimensions. |
@@ -245,7 +245,6 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `check_ins.review_text` ≤ 500 | §4.1, §6.7 |
 | `check_in_photos.sort_order 0..3` + UNIQUE | §4.1, §6.7 |
 | `check_ins.purchase_type` enum | §4.1 |
-| `check_ins.serving_style` enum | §4.1 |
 | `check_ins.price_*` coherence | §4.1 |
 | `check_ins.deleted_at` | §4.4, §6.4 |
 | `follows.status IN ('pending','accepted')` | §5.1 |
@@ -255,8 +254,8 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `collection_entries.note` ≤ 200 | §6.2 |
 | Cursor pagination indexes | §5.2, §6.6 |
 | Default `Inventory` + `Wishlist` (app-layer) | §6.1, §6.8 |
-| `regions` / `prefectures` (i18n reference) | §2.3 (brewery prefecture display); 016 |
-| `breweries.prefecture_id` FK (replaces free-text) | §2.3; 016 |
+| `regions` / `prefectures` (i18n reference) | §2.3 (producer prefecture display); 016 |
+| `producers.prefecture_id` FK (replaces free-text) | §2.3; 016 + 017 |
 
 ---
 

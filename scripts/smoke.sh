@@ -107,9 +107,9 @@ if jq -e --arg id "$CAROL_COL_ID" '.items | map(.id == $id) | any' /tmp/p6_body.
 header "[11/18] bob creates a check-in; carol comments"
 BEV_ID=$(psql -At "$DB" -c "SELECT id FROM beverages LIMIT 1;")
 if [[ -z "$BEV_ID" || "$BEV_ID" == "null" ]]; then
-  BREW_ID=$(psql -At "$DB" -c "INSERT INTO breweries (name_i18n) VALUES ('{\"en\":\"Smoke Brewery\",\"ja\":\"スモーク酒造\"}'::jsonb) RETURNING id;")
+  PROD_ID=$(psql -At "$DB" -c "INSERT INTO producers (name_i18n) VALUES ('{\"en\":\"Smoke Producer\",\"ja\":\"スモーク酒造\"}'::jsonb) RETURNING id;")
   CAT_ID=$(psql -At "$DB" -c "SELECT id FROM beverage_categories LIMIT 1;")
-  BEV_ID=$(psql -At "$DB" -c "INSERT INTO beverages (brewery_id, category_id, name_i18n) VALUES ('$BREW_ID','$CAT_ID','{\"en\":\"Smoke Sake\"}'::jsonb) RETURNING id;")
+  BEV_ID=$(psql -At "$DB" -c "INSERT INTO beverages (producer_id, category_id, name_i18n) VALUES ('$PROD_ID','$CAT_ID','{\"en\":\"Smoke Sake\"}'::jsonb) RETURNING id;")
 fi
 code=$(req POST "/v1/check-ins" "$BOB_TOK" "{\"beverage_id\":\"$BEV_ID\",\"rating\":4.0,\"review\":\"smoke check-in $SUFFIX\"}")
 [[ "$code" == "201" ]] && BOB_CHECKIN_ID=$(jq -r '.id' /tmp/p6_body.json) && green "checkin=$BOB_CHECKIN_ID" || red "create checkin $code: $(cat /tmp/p6_body.json)"

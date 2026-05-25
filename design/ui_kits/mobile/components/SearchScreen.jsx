@@ -1,9 +1,9 @@
 // KAMOS — Screen: Search / Discover (SPEC §7).
-// - Full-text search across beverage + brewery names, all locales.
+// - Full-text search across beverage + producer names, all locales.
 // - Category chips render exact SPEC §2.1 strings, per locale.
 // - Empty state shows recent searches; no-results state shows a calm message.
 
-const SearchScreen = ({ catalog, onPickBeverage, onPickBrewery, recentSearches = [], placeholderMode = false }) => {
+const SearchScreen = ({ catalog, onPickBeverage, onPickProducer, recentSearches = [], placeholderMode = false }) => {
   const { tt, locale } = useLocale();
   const [q, setQ] = React.useState('');
   const [cat, setCat] = React.useState('all');
@@ -16,11 +16,11 @@ const SearchScreen = ({ catalog, onPickBeverage, onPickBrewery, recentSearches =
     { id: 'liqueur',   label: tt(CATEGORY_LABELS.liqueur) },
   ];
 
-  // Search matches name + brewery across all locales (SPEC §7).
+  // Search matches name + producer across all locales (SPEC §7).
   const matches = (b) => {
     if (!q) return true;
     const needle = q.toLowerCase();
-    const fields = [b.name, b.brewery, b.region].flatMap(n => Object.values(n || {}));
+    const fields = [b.name, b.producer, b.region].flatMap(n => Object.values(n || {}));
     return fields.some(s => typeof s === 'string' && s.toLowerCase().includes(needle));
   };
   const filtered = (catalog || []).filter(b => (cat === 'all' || b.category === cat) && matches(b));
@@ -84,7 +84,7 @@ const SearchScreen = ({ catalog, onPickBeverage, onPickBrewery, recentSearches =
                   <Label width={52} height={68} tone={b.labelTone} kanji={b.kanji} romaji={b.labelRomaji}/>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600 }}>{tt(b.name)}</div>
-                    <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>{tt(b.brewery)} · {tt(b.region)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>{tt(b.producer)} · {tt(b.region)}</div>
                     <div style={{ fontSize: 12, color: 'var(--fg-3)', marginTop: 2 }}>{tt(b.subcategory)} · {b.abv.toFixed(1)}%</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
                       <Stars value={b.rating} size={12}/>

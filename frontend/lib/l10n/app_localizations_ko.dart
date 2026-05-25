@@ -33,7 +33,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get tabLists => '리스트';
 
   @override
-  String get tabMe => '마이';
+  String get tabMe => '나';
 
   @override
   String get feedHeader => '활동';
@@ -51,7 +51,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get searchHeader => '둘러보기';
 
   @override
-  String get searchPlaceholder => '양조장 · 술 · 지역으로 검색';
+  String get searchPlaceholder => '생산자 · 술 · 지역으로 검색';
 
   @override
   String get searchNoResultsTitle => '결과 없음';
@@ -93,7 +93,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInReviewLabel => '리뷰';
 
   @override
-  String get checkInReviewPlaceholder => '배, 부드러운 쌀, 깔끔한 피니시…';
+  String get checkInReviewPlaceholder => '배, 부드러운 쌀, 깔끔한 여운…';
 
   @override
   String get checkInReviewTooLong => '리뷰가 너무 깁니다';
@@ -116,9 +116,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInPurchaseType => '구매 유형';
 
   @override
-  String get checkInServingStyle => '서빙 스타일';
-
-  @override
   String get checkInPriceServing => '잔당';
 
   @override
@@ -135,21 +132,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get checkInPurchaseOther => '기타';
-
-  @override
-  String get checkInServingGlass => '잔';
-
-  @override
-  String get checkInServingCarafe => '카라페';
-
-  @override
-  String get checkInServingBottle => '병';
-
-  @override
-  String get checkInServingCan => '캔';
-
-  @override
-  String get checkInServingOther => '기타';
 
   @override
   String get checkInFirstToast => '첫 체크인을 기록했습니다. 건배!';
@@ -198,16 +180,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get flavorSweetness => '단맛';
 
   @override
-  String get flavorBody => '바디';
+  String get flavorBody => '바디감';
 
   @override
   String get flavorAcidity => '산미';
 
   @override
-  String get flavorCharacter => '캐릭터';
+  String get flavorCharacter => '개성';
 
   @override
-  String get flavorFinish => '피니시';
+  String get flavorFinish => '여운';
 
   @override
   String get authSignIn => '로그인';
@@ -326,7 +308,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get profileStatCheckins => '체크인';
 
   @override
-  String get profileStatUnique => '유니크';
+  String get profileStatUnique => '종류';
 
   @override
   String get profileStatFollowers => '팔로워';
@@ -415,7 +397,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get settingsConfirmDeleteBody =>
-      '계정이 삭제됩니다. 사용자 이름은 30일간 보류된 후 다른 사용자가 사용할 수 있습니다. 체크인과 컬렉션은 다른 사용자에게 더 이상 표시되지 않습니다.';
+      '계정이 삭제됩니다. 사용자 이름은 30일간 보류된 후 다른 사용자가 사용할 수 있습니다. 체크인과 리스트는 다른 사용자에게 더 이상 표시되지 않습니다.';
 
   @override
   String get settingsSignOut => '로그아웃';
@@ -430,25 +412,25 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsVersion => 'KAMOS · v0.1.0';
 
   @override
-  String get collectionsHeader => '컬렉션';
+  String get collectionsHeader => '리스트';
 
   @override
   String get collectionsNewList => '새 리스트';
 
   @override
-  String get collectionsEmptyTitle => '아직 컬렉션이 없습니다';
+  String get collectionsEmptyTitle => '아직 리스트가 없습니다';
 
   @override
-  String get collectionsEmptyBody => '\"새 리스트\"를 탭하여 컬렉션을 만들어보세요.';
+  String get collectionsEmptyBody => '\"새 리스트\"를 탭하여 리스트를 만들어보세요.';
 
   @override
-  String get collectionsAddTo => '컬렉션에 추가';
+  String get collectionsAddTo => '리스트에 추가';
 
   @override
-  String get collectionsCreateNew => '새 컬렉션 만들기';
+  String get collectionsCreateNew => '새 리스트 만들기';
 
   @override
-  String get collectionsNamePlaceholder => '컬렉션 이름';
+  String get collectionsNamePlaceholder => '리스트 이름';
 
   @override
   String get collectionsPrivate => '비공개';
@@ -467,35 +449,35 @@ class AppLocalizationsKo extends AppLocalizations {
   String get collectionsRename => '이름 변경';
 
   @override
-  String get collectionsDeleteAction => '컬렉션 삭제';
+  String get collectionsDeleteAction => '리스트 삭제';
 
   @override
-  String get collectionsEmptyEntries => '빈 컬렉션';
+  String get collectionsEmptyEntries => '빈 리스트';
 
   @override
   String get collectionsEmptyEntriesBody => '제품 페이지나 체크인 화면에서 추가하세요.';
 
   @override
-  String get collectionsConfirmDelete => '이 컬렉션을 삭제할까요?';
+  String get collectionsConfirmDelete => '이 리스트를 삭제할까요?';
 
   @override
   String get collectionsConfirmDeleteBody =>
-      '컬렉션과 모든 항목이 삭제됩니다. 제품 자체는 영향받지 않습니다.';
+      '리스트와 모든 항목이 삭제됩니다. 제품 자체는 영향받지 않습니다.';
 
   @override
-  String get collectionVisibilityPublicTitle => '공개 컬렉션';
+  String get collectionVisibilityPublicTitle => '공개 리스트';
 
   @override
-  String get collectionVisibilityPublicSubtitle => '이 컬렉션은 프로필에서 누구나 볼 수 있습니다';
+  String get collectionVisibilityPublicSubtitle => '이 리스트는 프로필에서 누구나 볼 수 있습니다';
 
   @override
-  String get collectionVisibilityPrivateSubtitle => '이 컬렉션은 본인만 볼 수 있습니다';
+  String get collectionVisibilityPrivateSubtitle => '이 리스트는 본인만 볼 수 있습니다';
 
   @override
-  String get publicCollectionsTitle => '공개 컬렉션';
+  String get publicCollectionsTitle => '공개 리스트';
 
   @override
-  String get publicCollectionsEmpty => '아직 공개된 컬렉션이 없습니다';
+  String get publicCollectionsEmpty => '아직 공개된 리스트가 없습니다';
 
   @override
   String publicCollectionsByOwner(String username) {
@@ -548,7 +530,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get collectionVisibilityChangeFailed =>
-      '공개 설정을 변경할 수 없습니다. 이 컬렉션의 소유자가 아닐 수 있습니다.';
+      '공개 설정을 변경할 수 없습니다. 이 리스트의 소유자가 아닐 수 있습니다.';
 
   @override
   String feedCardCommentsCountLabel(int count) {
@@ -589,7 +571,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get beverageDetailAggregatedFlavor => '풍미 프로필';
 
   @override
-  String get beverageDetailAbout => '양조장 소개';
+  String get beverageDetailAbout => '생산자 소개';
 
   @override
   String get beverageDetailRecent => '최근 체크인';
@@ -610,16 +592,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get beverageListSheetSaveFailed => '업데이트에 실패했습니다. 다시 시도하세요.';
 
   @override
-  String get breweryOverline => '양조장';
+  String get producerOverline => '생산자';
 
   @override
-  String get breweryFounded => '창업';
+  String get producerFounded => '창업';
 
   @override
-  String get breweryBeverages => '제품';
+  String get producerBeverages => '제품';
 
   @override
-  String get breweryNoBeverages => '아직 등록된 제품이 없습니다';
+  String get producerNoBeverages => '아직 등록된 제품이 없습니다';
 
   @override
   String get actionSave => '저장';
@@ -667,7 +649,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get submitBeverageRequestNameLabel => '이름';
 
   @override
-  String get submitBeverageRequestBreweryLabel => '양조장';
+  String get submitBeverageRequestProducerLabel => '생산자';
 
   @override
   String get submitBeverageRequestCategoryLabel => '카테고리';
@@ -688,7 +670,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get submitBeverageRequestNameRequired => '이름은 필수입니다.';
 
   @override
-  String get submitBeverageRequestBreweryRequired => '양조장은 필수입니다.';
+  String get submitBeverageRequestProducerRequired => '생산자는 필수입니다.';
 
   @override
   String get searchSuggestMissingCta => '찾으시는 음료가 없나요? 제안해 주세요.';

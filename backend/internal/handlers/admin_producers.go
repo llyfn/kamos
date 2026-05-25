@@ -1,20 +1,20 @@
-// admin_breweries.go — admin direct CRUD over breweries.
+// admin_producers.go — admin direct CRUD over producers.
 //
 // Stage 8 (admin catalog CRUD). Six endpoints, all admin-only:
 //
-//	GET    /v1/admin/breweries
-//	GET    /v1/admin/breweries/{id}
-//	POST   /v1/admin/breweries
-//	PATCH  /v1/admin/breweries/{id}
-//	DELETE /v1/admin/breweries/{id}
-//	POST   /v1/admin/breweries/{id}/restore
+//	GET    /v1/admin/producers
+//	GET    /v1/admin/producers/{id}
+//	POST   /v1/admin/producers
+//	PATCH  /v1/admin/producers/{id}
+//	DELETE /v1/admin/producers/{id}
+//	POST   /v1/admin/producers/{id}/restore
 //
 // Every mutation runs inside a single pgx.Tx that bundles the moderation
 // _log audit row, so the change + audit commit atomically. DELETE returns
-// 409 BREWERY_HAS_LIVE_BEVERAGES when at least one beverage still
-// references the brewery with deleted_at IS NULL.
+// 409 PRODUCER_HAS_LIVE_BEVERAGES when at least one beverage still
+// references the producer with deleted_at IS NULL.
 //
-// Migration 016: brewery locality is captured via `prefecture_id` (FK
+// Migration 016: producer locality is captured via `prefecture_id` (FK
 // into `prefectures`). Admin clients send `prefecture_slug`; this
 // handler resolves it to a UUID before the write. Unknown slug → 422
 // INVALID_PREFECTURE_SLUG (mirrors `category_slug` on beverages).
@@ -40,33 +40,33 @@ import (
 // slugs are seeded in migration 016).
 var errUnknownPrefectureSlug = errors.New("unknown prefecture_slug")
 
-// errEmptyPrefectureSlugOnCreate is returned when an AdminBreweryCreate
+// errEmptyPrefectureSlugOnCreate is returned when an AdminProducerCreate
 // payload sends `prefecture_slug: ""`. OpenAPI's Create pattern is
 // `^[a-z0-9_]+$` (non-empty); the contract is "omit the field if no
 // prefecture is intended". The handler maps this to the same 422
 // INVALID_PREFECTURE_SLUG response code with a more specific message.
 var errEmptyPrefectureSlugOnCreate = errors.New("empty prefecture_slug on create")
 
-// AdminListBreweries — GET /v1/admin/breweries
+// AdminListProducers — GET /v1/admin/producers
 //
 // Query params:
-//   - q: optional websearch query (FTS via idx_breweries_name_tsv)
+//   - q: optional websearch query (FTS via idx_producers_name_tsv)
 //   - id: optional UUID exact-match (short-circuits cursor)
 //   - include_deleted=1: include soft-deleted rows (admin "trash" view)
 //   - cursor: opaque cursor
 //   - limit: 1..50, default 20
-func (h *Handler) AdminListBreweries(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) AdminListProducers(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
-		h.writeErr(w, "AdminListBreweries cursor", err)
+		h.writeErr(w, "AdminListProducers cursor", err)
 		return
 	}
 	q := optString(r.URL.Query().Get("q"))
 	id := optString(r.URL.Query().Get("id"))
 	includeDeleted := r.URL.Query().Get("include_deleted") == "1"
 
-	items, err := h.Repos.Breweries.AdminList(r.Context(), repository.AdminBreweryListParams{
+	items, err := h.Repos.Producers.AdminList(r.Context(), repository.AdminProducerListParams{
 		Q:              q,
 		IDExact:        id,
 		IncludeDeleted: includeDeleted,
@@ -75,154 +75,154 @@ func (h *Handler) AdminListBreweries(w http.ResponseWriter, r *http.Request) {
 		Limit:          limit,
 	})
 	if err != nil {
-		h.writeErr(w, "AdminListBreweries", err)
+		h.writeErr(w, "AdminListProducers", err)
 		return
 	}
-	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(b repository.AdminBreweryRow) cursor.Cursor {
+	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(b repository.AdminProducerRow) cursor.Cursor {
 		return cursor.Cursor{CreatedAt: b.CreatedAt, ID: b.ID}
 	})
-	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.AdminBreweryRow]{
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[repository.AdminProducerRow]{
 		Items: page, NextCursor: next, HasMore: hasMore,
 	})
 }
 
-// AdminGetBrewery — GET /v1/admin/breweries/{id}
+// AdminGetProducer — GET /v1/admin/producers/{id}
 // Returns the row including soft-deleted (admin needs to see the
 // tombstone to restore it).
-func (h *Handler) AdminGetBrewery(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) AdminGetProducer(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing brewery id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing producer id")
 		return
 	}
-	row, err := h.Repos.Breweries.AdminDetail(r.Context(), id)
+	row, err := h.Repos.Producers.AdminDetail(r.Context(), id)
 	if err != nil {
-		h.writeErr(w, "AdminGetBrewery", err)
+		h.writeErr(w, "AdminGetProducer", err)
 		return
 	}
 	httperr.WriteJSON(w, http.StatusOK, row)
 }
 
-// AdminCreateBrewery — POST /v1/admin/breweries
-func (h *Handler) AdminCreateBrewery(w http.ResponseWriter, r *http.Request) {
+// AdminCreateProducer — POST /v1/admin/producers
+func (h *Handler) AdminCreateProducer(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
 	}
-	var body AdminBreweryCreate
+	var body AdminProducerCreate
 	if err := decodeJSON(r, &body); err != nil {
-		h.writeErr(w, "AdminCreateBrewery decode", err)
+		h.writeErr(w, "AdminCreateProducer decode", err)
 		return
 	}
 	if err := body.Validate(); err != nil {
-		h.writeErr(w, "AdminCreateBrewery validate", err)
+		h.writeErr(w, "AdminCreateProducer validate", err)
 		return
 	}
 	// Resolve prefecture_slug → prefecture_id before the write. Empty
 	// slug stays nil (no curated prefecture).
 	prefID, err := h.resolveOptionalPrefectureID(r.Context(), body.PrefectureSlug, false)
 	if err != nil {
-		h.writePrefectureErr(w, "AdminCreateBrewery", err)
+		h.writePrefectureErr(w, "AdminCreateProducer", err)
 		return
 	}
 
-	out, err := h.createBreweryTx(r.Context(), uid, body, prefID)
+	out, err := h.createProducerTx(r.Context(), uid, body, prefID)
 	if err != nil {
-		h.writeErr(w, "AdminCreateBrewery", err)
+		h.writeErr(w, "AdminCreateProducer", err)
 		return
 	}
 	httperr.WriteJSON(w, http.StatusCreated, out)
 }
 
-// AdminUpdateBrewery — PATCH /v1/admin/breweries/{id}
-func (h *Handler) AdminUpdateBrewery(w http.ResponseWriter, r *http.Request) {
+// AdminUpdateProducer — PATCH /v1/admin/producers/{id}
+func (h *Handler) AdminUpdateProducer(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing brewery id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing producer id")
 		return
 	}
-	var body AdminBreweryUpdate
+	var body AdminProducerUpdate
 	if err := decodeJSON(r, &body); err != nil {
-		h.writeErr(w, "AdminUpdateBrewery decode", err)
+		h.writeErr(w, "AdminUpdateProducer decode", err)
 		return
 	}
 	if err := body.Validate(); err != nil {
-		h.writeErr(w, "AdminUpdateBrewery validate", err)
+		h.writeErr(w, "AdminUpdateProducer validate", err)
 		return
 	}
 	// Resolve prefecture_slug → prefecture_id. allowClear=true since on
 	// update, an explicit empty slug clears the column to NULL.
 	prefID, err := h.resolveOptionalPrefectureID(r.Context(), body.PrefectureSlug, true)
 	if err != nil {
-		h.writePrefectureErr(w, "AdminUpdateBrewery", err)
+		h.writePrefectureErr(w, "AdminUpdateProducer", err)
 		return
 	}
 
-	out, err := h.updateBreweryTx(r.Context(), uid, id, body, prefID)
+	out, err := h.updateProducerTx(r.Context(), uid, id, body, prefID)
 	if err != nil {
-		h.writeErr(w, "AdminUpdateBrewery", err)
+		h.writeErr(w, "AdminUpdateProducer", err)
 		return
 	}
-	// Invalidate the brewery LRU + notify peer replicas so a stale row
+	// Invalidate the producer LRU + notify peer replicas so a stale row
 	// doesn't linger after the rename / description change.
 	if h.Caches != nil {
-		h.Caches.BreweryDetail.InvalidatePrefix(id + ":")
+		h.Caches.ProducerDetail.InvalidatePrefix(id + ":")
 	}
-	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "brewery:"+id)
+	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "producer:"+id)
 	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
-// AdminSoftDeleteBrewery — DELETE /v1/admin/breweries/{id}
-// Returns 409 BREWERY_HAS_LIVE_BEVERAGES if any live beverage still
-// references the brewery.
-func (h *Handler) AdminSoftDeleteBrewery(w http.ResponseWriter, r *http.Request) {
+// AdminSoftDeleteProducer — DELETE /v1/admin/producers/{id}
+// Returns 409 PRODUCER_HAS_LIVE_BEVERAGES if any live beverage still
+// references the producer.
+func (h *Handler) AdminSoftDeleteProducer(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing brewery id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing producer id")
 		return
 	}
-	if err := h.softDeleteBreweryTx(r.Context(), uid, id); err != nil {
-		h.writeErr(w, "AdminSoftDeleteBrewery", err)
+	if err := h.softDeleteProducerTx(r.Context(), uid, id); err != nil {
+		h.writeErr(w, "AdminSoftDeleteProducer", err)
 		return
 	}
 	if h.Caches != nil {
-		h.Caches.BreweryDetail.InvalidatePrefix(id + ":")
+		h.Caches.ProducerDetail.InvalidatePrefix(id + ":")
 	}
-	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "brewery:"+id)
+	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "producer:"+id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// AdminRestoreBrewery — POST /v1/admin/breweries/{id}/restore
-func (h *Handler) AdminRestoreBrewery(w http.ResponseWriter, r *http.Request) {
+// AdminRestoreProducer — POST /v1/admin/producers/{id}/restore
+func (h *Handler) AdminRestoreProducer(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing brewery id")
+		httperr.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "missing producer id")
 		return
 	}
-	if err := h.restoreBreweryTx(r.Context(), uid, id); err != nil {
-		h.writeErr(w, "AdminRestoreBrewery", err)
+	if err := h.restoreProducerTx(r.Context(), uid, id); err != nil {
+		h.writeErr(w, "AdminRestoreProducer", err)
 		return
 	}
 	if h.Caches != nil {
-		h.Caches.BreweryDetail.InvalidatePrefix(id + ":")
+		h.Caches.ProducerDetail.InvalidatePrefix(id + ":")
 	}
-	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "brewery:"+id)
+	cache.NotifyInvalidation(context.WithoutCancel(r.Context()), h.DB, h.Log, "producer:"+id)
 	// Return the freshly-restored row.
-	out, err := h.Repos.Breweries.AdminDetail(r.Context(), id)
+	out, err := h.Repos.Producers.AdminDetail(r.Context(), id)
 	if err != nil {
-		h.writeErr(w, "AdminRestoreBrewery refetch", err)
+		h.writeErr(w, "AdminRestoreProducer refetch", err)
 		return
 	}
 	httperr.WriteJSON(w, http.StatusOK, out)
@@ -233,16 +233,16 @@ func (h *Handler) AdminRestoreBrewery(w http.ResponseWriter, r *http.Request) {
 // Each helper opens a tx, executes the repo mutation, writes the
 // moderation_log row via AdminRepo.LogAction, and commits. They live
 // here (handler layer) rather than in the repo because the moderation
-// _log coupling is an admin concept, not a domain concept of breweries.
+// _log coupling is an admin concept, not a domain concept of producers.
 
-func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body AdminBreweryCreate, prefectureID *string) (*repository.AdminBreweryRow, error) {
+func (h *Handler) createProducerTx(ctx context.Context, adminID string, body AdminProducerCreate, prefectureID *string) (*repository.AdminProducerRow, error) {
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	out, err := h.Repos.Breweries.Create(ctx, tx, repository.BreweryCreateInput{
+	out, err := h.Repos.Producers.Create(ctx, tx, repository.ProducerCreateInput{
 		Name:         body.NameI18n,
 		PrefectureID: prefectureID,
 		FoundedYear:  body.FoundedYear,
@@ -252,7 +252,7 @@ func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body Admi
 	if err != nil {
 		return nil, err
 	}
-	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "brewery", out.ID, "create",
+	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "producer", out.ID, "create",
 		nil,
 		map[string]any{"name_en": body.NameI18n.EN}); err != nil {
 		return nil, err
@@ -263,14 +263,14 @@ func (h *Handler) createBreweryTx(ctx context.Context, adminID string, body Admi
 	return out, nil
 }
 
-func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body AdminBreweryUpdate, prefectureID *string) (*repository.AdminBreweryRow, error) {
+func (h *Handler) updateProducerTx(ctx context.Context, adminID, id string, body AdminProducerUpdate, prefectureID *string) (*repository.AdminProducerRow, error) {
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	out, err := h.Repos.Breweries.Update(ctx, tx, id, repository.BreweryUpdateInput{
+	out, err := h.Repos.Producers.Update(ctx, tx, id, repository.ProducerUpdateInput{
 		Name:         body.NameI18n,
 		PrefectureID: prefectureID,
 		FoundedYear:  body.FoundedYear,
@@ -280,7 +280,7 @@ func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body 
 	if err != nil {
 		return nil, err
 	}
-	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "brewery", id, "update",
+	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "producer", id, "update",
 		nil,
 		map[string]any{"name_en": out.Name.EN}); err != nil {
 		return nil, err
@@ -294,7 +294,7 @@ func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body 
 // ---- prefecture slug resolution ----
 
 // resolveOptionalPrefectureID converts a client-supplied prefecture_slug
-// to the FK id used by BreweryCreateInput / BreweryUpdateInput. Returns:
+// to the FK id used by ProducerCreateInput / ProducerUpdateInput. Returns:
 //
 //   - (nil, nil) when slug is nil → "leave column unchanged" on update,
 //     or "no curated prefecture" on create.
@@ -312,7 +312,7 @@ func (h *Handler) updateBreweryTx(ctx context.Context, adminID, id string, body 
 // allowClear=false on Create rejects an explicit empty slug — an unset
 // prefecture on create is achieved by omitting the field entirely. This
 // matches the OpenAPI `^[a-z0-9_]+$` (non-empty) pattern on
-// AdminBreweryCreate.prefecture_slug.
+// AdminProducerCreate.prefecture_slug.
 func (h *Handler) resolveOptionalPrefectureID(ctx context.Context, slug *string, allowClear bool) (*string, error) {
 	if slug == nil {
 		return nil, nil
@@ -351,33 +351,33 @@ func (h *Handler) writePrefectureErr(w http.ResponseWriter, op string, err error
 	h.writeErr(w, op, err)
 }
 
-func (h *Handler) softDeleteBreweryTx(ctx context.Context, adminID, id string) error {
+func (h *Handler) softDeleteProducerTx(ctx context.Context, adminID, id string) error {
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := h.Repos.Breweries.SoftDelete(ctx, tx, id); err != nil {
+	if err := h.Repos.Producers.SoftDelete(ctx, tx, id); err != nil {
 		return err
 	}
-	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "brewery", id, "soft_delete", nil, nil); err != nil {
+	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "producer", id, "soft_delete", nil, nil); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
-func (h *Handler) restoreBreweryTx(ctx context.Context, adminID, id string) error {
+func (h *Handler) restoreProducerTx(ctx context.Context, adminID, id string) error {
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := h.Repos.Breweries.Restore(ctx, tx, id); err != nil {
+	if err := h.Repos.Producers.Restore(ctx, tx, id); err != nil {
 		return err
 	}
-	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "brewery", id, "restore", nil, nil); err != nil {
+	if err := h.Repos.Admin.LogAction(ctx, tx, adminID, "producer", id, "restore", nil, nil); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

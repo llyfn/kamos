@@ -1,6 +1,6 @@
 // KAMOS — Check-in card used in the feed list.
 //
-// Renders avatar + username, beverage label + name + brewery, rating, review
+// Renders avatar + username, beverage label + name + producer, rating, review
 // (truncated @140 chars), tag chips, photo placeholder, kanpai (toast) button.
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -32,12 +32,12 @@ class CheckInCard extends StatelessWidget {
     final t = context.tokens;
     final locale = Localizations.localeOf(context).languageCode;
     final beverageName = resolveI18n(item.beverage.name, locale);
-    final breweryName = resolveI18n(item.beverage.brewery.name, locale);
-    // Migration 016: BreweryRef.region (free-text) was replaced by
-    // BreweryRef.prefecture (nested Prefecture). Display the prefecture name.
-    final region = item.beverage.brewery.prefecture == null
+    final producerName = resolveI18n(item.beverage.producer.name, locale);
+    // Migration 016: ProducerRef.region (free-text) was replaced by
+    // ProducerRef.prefecture (nested Prefecture). Display the prefecture name.
+    final region = item.beverage.producer.prefecture == null
         ? ''
-        : resolveI18n(item.beverage.brewery.prefecture!.name, locale);
+        : resolveI18n(item.beverage.producer.prefecture!.name, locale);
     final when = parseIsoDateOrNull(item.createdAt);
 
     return Padding(
@@ -124,7 +124,7 @@ class CheckInCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           [
-                            breweryName,
+                            producerName,
                             if (region.isNotEmpty) region,
                           ].join(' · '),
                           style: TextStyle(fontSize: 12, color: t.fg2),

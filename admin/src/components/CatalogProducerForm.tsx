@@ -1,6 +1,6 @@
-// Create/edit form for a catalog brewery. The parent owns the modal
+// Create/edit form for a catalog producer. The parent owns the modal
 // shell and the mutation hook; this component is a pure controlled
-// form that emits a normalized AdminBreweryCreate/Update body via
+// form that emits a normalized AdminProducerCreate/Update body via
 // onSubmit. Constraints mirror backend/internal/handlers/admin.go:
 //
 //   * name_i18n.en + name_i18n.ja required, ko optional, each ≤ 200
@@ -14,17 +14,17 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { preferredName } from '@/components/BreweryPicker';
+import { preferredName } from '@/components/ProducerPicker';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
 
-type AdminBrewery = components['schemas']['AdminBrewery'];
-type CreateBody = components['schemas']['AdminBreweryCreate'];
-type UpdateBody = components['schemas']['AdminBreweryUpdate'];
+type AdminProducer = components['schemas']['AdminProducer'];
+type CreateBody = components['schemas']['AdminProducerCreate'];
+type UpdateBody = components['schemas']['AdminProducerUpdate'];
 type RegionWithPrefectures = components['schemas']['RegionWithPrefectures'];
 
-interface CatalogBreweryFormProps {
-  initial?: AdminBrewery | null;
+interface CatalogProducerFormProps {
+  initial?: AdminProducer | null;
   submitting?: boolean;
   submitLabel?: string;
   errorMessage?: string | null;
@@ -47,7 +47,7 @@ interface FormState {
   description_ko: string;
 }
 
-function initialState(b: AdminBrewery | null | undefined): FormState {
+function initialState(b: AdminProducer | null | undefined): FormState {
   return {
     name_en: b?.name.en ?? '',
     name_ja: b?.name.ja ?? '',
@@ -61,14 +61,14 @@ function initialState(b: AdminBrewery | null | undefined): FormState {
   };
 }
 
-export function CatalogBreweryForm({
+export function CatalogProducerForm({
   initial,
   submitting = false,
   submitLabel = 'Save',
   errorMessage,
   onSubmit,
   onCancel,
-}: CatalogBreweryFormProps) {
+}: CatalogProducerFormProps) {
   const [form, setForm] = useState<FormState>(() => initialState(initial));
   const [localError, setLocalError] = useState<string | null>(null);
 

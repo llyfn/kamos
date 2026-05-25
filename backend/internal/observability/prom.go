@@ -12,7 +12,7 @@ import (
 // dimensions:
 //
 //	cache — the named cache (categories, flavor_tags, beverage_detail,
-//	 brewery_detail). Cardinality bounded by what's registered
+//	 producer_detail). Cardinality bounded by what's registered
 //	 in cache.NewCaches.
 //	outcome — "hit" | "miss". Two values, fixed.
 //

@@ -30,11 +30,11 @@ import (
 // the INSERT runs.
 //
 // Migration 016 dropped beverages.prefecture / beverages.region — the
-// row's locality is now derived through the brewery's prefecture_id, so
-// per-beverage geo fields are no longer accepted. Re-curate the brewery
-// via PATCH /v1/admin/breweries/{id} if needed before approving.
+// row's locality is now derived through the producer's prefecture_id, so
+// per-beverage geo fields are no longer accepted. Re-curate the producer
+// via PATCH /v1/admin/producers/{id} if needed before approving.
 type AdminApproveBeverageRequest struct {
-	BreweryID       string           `json:"brewery_id"`
+	ProducerID      string           `json:"producer_id"`
 	CategoryID      *string          `json:"category_id,omitempty"`
 	CategorySlug    *string          `json:"category_slug,omitempty"`
 	NameI18n        domain.I18nText  `json:"name_i18n"`
@@ -48,8 +48,8 @@ type AdminApproveBeverageRequest struct {
 }
 
 func (r *AdminApproveBeverageRequest) Validate() error {
-	if r.BreweryID == "" {
-		return wrapV("brewery_id is required")
+	if r.ProducerID == "" {
+		return wrapV("producer_id is required")
 	}
 	hasID := r.CategoryID != nil && *r.CategoryID != ""
 	hasSlug := r.CategorySlug != nil && *r.CategorySlug != ""
@@ -99,7 +99,7 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 // Stage 8 — admin catalog CRUD request bodies
 // ============================================================================
 //
-// Both beverage + brewery use the same validation strategy: every text
+// Both beverage + producer use the same validation strategy: every text
 // field flows through domain.SanitizeText so the bidi-override /
 // control-char guards apply to admin-curated catalog data exactly the
 // way they apply to user-submitted check-in reviews. Numeric ranges
@@ -117,7 +117,7 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 // `category_id` stays for any direct DB-aware caller. If both are sent
 // `category_id` wins and `category_slug` is ignored.
 type AdminBeverageCreate struct {
-	BreweryID       string           `json:"brewery_id"`
+	ProducerID      string           `json:"producer_id"`
 	CategoryID      *string          `json:"category_id,omitempty"`
 	CategorySlug    *string          `json:"category_slug,omitempty"`
 	NameI18n        domain.I18nText  `json:"name_i18n"`
@@ -133,8 +133,8 @@ type AdminBeverageCreate struct {
 // sanitization + range checks are shared with Update via
 // validateBeverageFields.
 func (r *AdminBeverageCreate) Validate() error {
-	if r.BreweryID == "" {
-		return wrapV("brewery_id is required")
+	if r.ProducerID == "" {
+		return wrapV("producer_id is required")
 	}
 	hasID := r.CategoryID != nil && *r.CategoryID != ""
 	hasSlug := r.CategorySlug != nil && *r.CategorySlug != ""
@@ -158,7 +158,7 @@ func (r *AdminBeverageCreate) Validate() error {
 // are sent, `category_id` wins. If only `category_slug` is supplied the
 // handler resolves it to a UUID before the UPDATE runs.
 type AdminBeverageUpdate struct {
-	BreweryID       *string          `json:"brewery_id,omitempty"`
+	ProducerID      *string          `json:"producer_id,omitempty"`
 	CategoryID      *string          `json:"category_id,omitempty"`
 	CategorySlug    *string          `json:"category_slug,omitempty"`
 	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
@@ -216,7 +216,7 @@ func validateBeverageFields(
 	return validateLabelImageURL(labelImageURL)
 }
 
-// AdminBreweryCreate is the body for POST /v1/admin/breweries.
+// AdminProducerCreate is the body for POST /v1/admin/producers.
 //
 // Migration 016 replaced the free-text `prefecture` / `region` columns
 // with `prefecture_id`. The admin SPA works in slugs (GET
@@ -225,7 +225,7 @@ func validateBeverageFields(
 // resolves it to a UUID before the INSERT. Region is derived from the
 // prefecture (no separate input). Unknown slug → 422
 // INVALID_PREFECTURE_SLUG.
-type AdminBreweryCreate struct {
+type AdminProducerCreate struct {
 	NameI18n        domain.I18nText  `json:"name_i18n"`
 	PrefectureSlug  *string          `json:"prefecture_slug,omitempty"`
 	FoundedYear     *int             `json:"founded_year,omitempty"`
@@ -233,7 +233,7 @@ type AdminBreweryCreate struct {
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
 }
 
-func (r *AdminBreweryCreate) Validate() error {
+func (r *AdminProducerCreate) Validate() error {
 	if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
 		return wrapV("name_i18n.en and name_i18n.ja are required")
 	}
@@ -257,7 +257,7 @@ func (r *AdminBreweryCreate) Validate() error {
 	return nil
 }
 
-// AdminBreweryUpdate is the body for PATCH /v1/admin/breweries/{id}.
+// AdminProducerUpdate is the body for PATCH /v1/admin/producers/{id}.
 //
 // `prefecture_slug` semantics (mirrors how category_slug works on
 // AdminBeverageUpdate, plus the "explicit clear" use-case):
@@ -266,7 +266,7 @@ func (r *AdminBreweryCreate) Validate() error {
 //   - non-nil with empty string ("") → clear prefecture_id to NULL.
 //
 // Unknown slug → 422 INVALID_PREFECTURE_SLUG.
-type AdminBreweryUpdate struct {
+type AdminProducerUpdate struct {
 	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
 	PrefectureSlug  *string          `json:"prefecture_slug,omitempty"`
 	FoundedYear     *int             `json:"founded_year,omitempty"`
@@ -274,7 +274,7 @@ type AdminBreweryUpdate struct {
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
 }
 
-func (r *AdminBreweryUpdate) Validate() error {
+func (r *AdminProducerUpdate) Validate() error {
 	if r.NameI18n != nil {
 		if r.NameI18n.EN == "" || r.NameI18n.JA == "" {
 			return wrapV("name_i18n.en and name_i18n.ja are required")
@@ -304,7 +304,7 @@ func (r *AdminBreweryUpdate) Validate() error {
 // `prefecture_slug` so an obviously-malformed value (e.g. a 200-char
 // payload) gets a 422 VALIDATION before the resolver round-trips to the
 // DB. Existence + canonical-list membership is enforced by
-// BreweryRepo.PrefectureIDForSlug at resolve time (422
+// ProducerRepo.PrefectureIDForSlug at resolve time (422
 // INVALID_PREFECTURE_SLUG). Empty string is allowed at the format
 // layer — the resolver (resolveOptionalPrefectureID) is the one that
 // decides whether an explicit empty is legal: it's the "clear" signal on

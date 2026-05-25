@@ -44,7 +44,7 @@ func newTestServer(t *testing.T) (http.Handler, *auth.Signer) {
 	repos := &repository.Repos{
 		Users:         &repository.UserRepo{},
 		Beverages:     &repository.BeverageRepo{},
-		Breweries:     &repository.BreweryRepo{},
+		Producers:     &repository.ProducerRepo{},
 		Checkins:      &repository.CheckinRepo{},
 		Feed:          &repository.FeedRepo{},
 		Social:        &repository.SocialRepo{},

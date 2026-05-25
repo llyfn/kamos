@@ -55,7 +55,7 @@ type Handler struct {
 	// semantics). Production wiring lives in cmd/server/main.go.
 	SoftDelete *auth.SoftDeleteCache
 	// Caches is the in-process LRU bundle (taxonomy + beverage +
-	// brewery hot rows). Nil-safe — handlers null-check before using; tests
+	// producer hot rows). Nil-safe — handlers null-check before using; tests
 	// that don't care about caching pass nil and the path falls through to
 	// the DB on every call.
 	Caches *cache.Caches

@@ -1,8 +1,8 @@
 // prefecture_scan.go — shared helpers for scanning the nullable
-// brewery → prefecture → region join chain (migration 016).
+// producer → prefecture → region join chain (migration 016).
 //
-// Every brewery SELECT in this package joins LEFT against
-// `prefectures p` and `regions r` so a brewery without a curated
+// Every producer SELECT in this package joins LEFT against
+// `prefectures p` and `regions r` so a producer without a curated
 // `prefecture_id` still scans into a non-error result with all join
 // columns NULL. The helpers here keep the SELECT lists + scan helpers
 // in one place so a future column addition (or a switch back to a
@@ -12,35 +12,35 @@ package repository
 
 import "github.com/kamos/api/internal/domain"
 
-// breweryPrefectureSelectCols is the SELECT-list fragment that pulls
+// producerPrefectureSelectCols is the SELECT-list fragment that pulls
 // the prefecture + region columns needed to populate
-// domain.Brewery.Prefecture. Mounted INSIDE the brewery SELECT lists
-// after the brewery's own columns. The order is fixed; scanPrefecture
+// domain.Producer.Prefecture. Mounted INSIDE the producer SELECT lists
+// after the producer's own columns. The order is fixed; scanPrefecture
 // must consume exactly these eight columns in this order.
 //
 // NOTE: callers that JOIN with their own aliases must use these names:
 //   - `p` for prefectures
 //   - `r` for regions
-const breweryPrefectureSelectCols = `
+const producerPrefectureSelectCols = `
   p.id, p.slug, p.name_i18n, p.sort_order,
   r.id, r.slug, r.name_i18n, r.sort_order`
 
-// breweryPrefectureJoinClause is the LEFT JOIN suffix that produces
-// the columns scanPrefecture expects. Append this AFTER the breweries
-// alias in any query that includes breweryPrefectureSelectCols.
-const breweryPrefectureJoinClause = `
+// producerPrefectureJoinClause is the LEFT JOIN suffix that produces
+// the columns scanPrefecture expects. Append this AFTER the producers
+// alias in any query that includes producerPrefectureSelectCols.
+const producerPrefectureJoinClause = `
 LEFT JOIN prefectures p ON p.id = br.prefecture_id
 LEFT JOIN regions r ON r.id = p.region_id`
 
-// breweriesPrefectureJoinClause is the LEFT JOIN variant for queries
-// that alias the brewery table as `b` (e.g. the admin brewery list).
-const breweriesPrefectureJoinClause = `
+// producersPrefectureJoinClause is the LEFT JOIN variant for queries
+// that alias the producer table as `b` (e.g. the admin producer list).
+const producersPrefectureJoinClause = `
 LEFT JOIN prefectures p ON p.id = b.prefecture_id
 LEFT JOIN regions r ON r.id = p.region_id`
 
 // prefectureScan carries the raw join columns; the caller passes
 // pointers to these into Row.Scan and then calls toPrefecture to get
-// the domain object (nil when the brewery has no curated prefecture).
+// the domain object (nil when the producer has no curated prefecture).
 type prefectureScan struct {
 	prefID        *string
 	prefSlug      *string
@@ -53,7 +53,7 @@ type prefectureScan struct {
 }
 
 // scanArgs returns the eight pointers expected by Row.Scan for the
-// breweryPrefectureSelectCols block, in declaration order. Spread into
+// producerPrefectureSelectCols block, in declaration order. Spread into
 // Scan's variadic argument list with `...`.
 func (p *prefectureScan) scanArgs() []any {
 	return []any{
@@ -63,7 +63,7 @@ func (p *prefectureScan) scanArgs() []any {
 }
 
 // toPrefecture materializes a *domain.Prefecture, or returns nil when
-// the brewery has no curated prefecture_id (every join column is NULL).
+// the producer has no curated prefecture_id (every join column is NULL).
 func (p *prefectureScan) toPrefecture() *domain.Prefecture {
 	if p.prefID == nil || *p.prefID == "" {
 		return nil

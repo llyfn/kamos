@@ -26,7 +26,6 @@ type CreateCheckinRequest struct {
 	Photos       []string `json:"photos,omitempty"`
 	Price        *Price   `json:"price,omitempty"`
 	PurchaseType *string  `json:"purchase_type,omitempty"`
-	ServingStyle *string  `json:"serving_style,omitempty"`
 	// Venue is the optional Phase-4 venue tag. Three shapes are accepted:
 	//   - { id } existing venue UUID → attach as-is.
 	//   - { foursquare_id, name, ... } Foursquare hit → upsert by fsq id.
@@ -36,12 +35,11 @@ type CreateCheckinRequest struct {
 	Venue *CheckinVenue `json:"venue,omitempty"`
 }
 
-// allowedPurchase / allowedServing / allowedCurrency / allowedPriceMode are
-// the controlled vocabularies enforced by check-in validation. Kept package-
-// private so domain types alone define the SPEC sets.
+// allowedPurchase / allowedCurrency / allowedPriceMode are the controlled
+// vocabularies enforced by check-in validation. Kept package-private so
+// domain types alone define the SPEC sets.
 var (
 	allowedPurchase  = map[string]bool{"on_premise": true, "retail": true, "gift": true, "other": true}
-	allowedServing   = map[string]bool{"glass": true, "carafe": true, "bottle": true, "can": true, "other": true}
 	allowedCurrency  = map[string]bool{"JPY": true, "KRW": true, "USD": true}
 	allowedPriceMode = map[string]bool{"serving": true, "bottle": true}
 )
@@ -86,13 +84,6 @@ func (r *CreateCheckinRequest) Validate() error {
 		}
 		*r.PurchaseType = v
 	}
-	if r.ServingStyle != nil {
-		v := strings.ToLower(*r.ServingStyle)
-		if !allowedServing[v] {
-			return wrapValidation("serving_style must be one of: glass, carafe, bottle, can, other")
-		}
-		*r.ServingStyle = v
-	}
 	if r.Price != nil {
 		if !allowedCurrency[strings.ToUpper(r.Price.Currency)] {
 			return wrapValidation("price.currency must be one of: JPY, KRW, USD")
@@ -121,7 +112,6 @@ type UpdateCheckinRequest struct {
 	Price        *Price    `json:"price,omitempty"`
 	ClearPrice   bool      `json:"clear_price,omitempty"`
 	PurchaseType *string   `json:"purchase_type,omitempty"`
-	ServingStyle *string   `json:"serving_style,omitempty"`
 }
 
 func (r *UpdateCheckinRequest) Validate() error {
@@ -144,13 +134,6 @@ func (r *UpdateCheckinRequest) Validate() error {
 			return wrapValidation("purchase_type must be one of: on_premise, retail, gift, other")
 		}
 		*r.PurchaseType = v
-	}
-	if r.ServingStyle != nil {
-		v := strings.ToLower(*r.ServingStyle)
-		if !allowedServing[v] {
-			return wrapValidation("serving_style must be one of: glass, carafe, bottle, can, other")
-		}
-		*r.ServingStyle = v
 	}
 	if r.Price != nil {
 		if !allowedCurrency[strings.ToUpper(r.Price.Currency)] {
@@ -176,7 +159,6 @@ type Checkin struct {
 	Photos       []PhotoRef  `json:"photos"`
 	Price        *Price      `json:"price,omitempty"`
 	PurchaseType *string     `json:"purchase_type,omitempty"`
-	ServingStyle *string     `json:"serving_style,omitempty"`
 	Venue        *VenueRef   `json:"venue,omitempty"`
 	Toasts       int         `json:"toasts"`
 	YouToasted   bool        `json:"you_toasted"`
@@ -202,17 +184,16 @@ type PhotoRef struct {
 // Stage 5 (PERF-010): the summary carries Photos hydrated via the
 // PhotosFor batch helper so the beverage detail screen can render
 // thumbnails without a follow-up round trip. Profile-UX expansion: it
-// also carries Tags (flavor tag chips) and ServingStyle so the
-// beverage detail "recent check-ins" rows can render richer cards.
+// also carries Tags (flavor tag chips) so the beverage detail
+// "recent check-ins" rows can render richer cards.
 type CheckinSummary struct {
-	ID           string      `json:"id"`
-	User         CheckinUser `json:"user"`
-	Rating       *float64    `json:"rating"`
-	Review       *string     `json:"review"`
-	Photos       []PhotoRef  `json:"photos"`
-	Tags         []FlavorTag `json:"tags"`
-	ServingStyle *string     `json:"serving_style,omitempty"`
-	CreatedAt    time.Time   `json:"created_at"`
+	ID        string      `json:"id"`
+	User      CheckinUser `json:"user"`
+	Rating    *float64    `json:"rating"`
+	Review    *string     `json:"review"`
+	Photos    []PhotoRef  `json:"photos"`
+	Tags      []FlavorTag `json:"tags"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 // FeedItem matches HANDOFF's feedItem shape. Stage 5 (PERF-002):

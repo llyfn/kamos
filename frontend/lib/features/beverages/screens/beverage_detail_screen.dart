@@ -56,12 +56,12 @@ class _Body extends ConsumerWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final b = detail.beverage;
     final name = resolveI18n(b.name, locale);
-    final brewery = resolveI18n(b.brewery.name, locale);
+    final producer = resolveI18n(b.producer.name, locale);
     // Migration 016: per-beverage prefecture/region are gone; derive from the
-    // nested brewery.prefecture. Display the prefecture name (most specific).
-    final region = b.brewery.prefecture == null
+    // nested producer.prefecture. Display the prefecture name (most specific).
+    final region = b.producer.prefecture == null
         ? ''
-        : resolveI18n(b.brewery.prefecture!.name, locale);
+        : resolveI18n(b.producer.prefecture!.name, locale);
     final slug = categorySlugFromString(b.category.slug);
     final categoryLabelText = slug == null
         ? resolveI18n(b.category.labelI18n, locale)
@@ -112,9 +112,9 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: 4),
           Center(
             child: GestureDetector(
-              onTap: () => context.push('/breweries/${b.brewery.id}'),
+              onTap: () => context.push('/producers/${b.producer.id}'),
               child: Text(
-                [brewery, if (region.isNotEmpty) region].join(' · '),
+                [producer, if (region.isNotEmpty) region].join(' · '),
                 style: TextStyle(color: t.fgLink, fontSize: 14),
               ),
             ),
@@ -299,7 +299,7 @@ class _SectionHeader extends StatelessWidget {
 
 /// Recent check-in row on the beverage detail page. Renders header (avatar
 /// + username → user profile), timestamp, review, photo strip (up to 4),
-/// and tag/serving chips. The whole card taps to `/check-ins/:id`; the
+/// and tag chips. The whole card taps to `/check-ins/:id`; the
 /// avatar + username subtree has an opaque nested gesture that pushes to
 /// `/users/:username` instead. Designer spec: `profile_social_ux_expansion.md` §4.
 class _RecentCheckinRow extends StatelessWidget {
@@ -308,26 +308,11 @@ class _RecentCheckinRow extends StatelessWidget {
   final CheckinSummary summary;
   final String locale;
 
-  String? _servingLabel(BuildContext context) {
-    final s = summary.servingStyle;
-    if (s == null || s.isEmpty) return null;
-    final l = AppLocalizations.of(context);
-    return switch (s) {
-      'glass' => l.checkInServingGlass,
-      'carafe' => l.checkInServingCarafe,
-      'bottle' => l.checkInServingBottle,
-      'can' => l.checkInServingCan,
-      'other' => l.checkInServingOther,
-      _ => null,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final when = parseIsoDateOrNull(summary.createdAt);
-    final servingLabel = _servingLabel(context);
 
     return KamosCard(
       // Whole-card tap → check-in detail. The avatar + username subtree
@@ -402,17 +387,12 @@ class _RecentCheckinRow extends StatelessWidget {
                   const SizedBox(height: KamosSpacing.sm),
                   _PhotoStrip(photos: summary.photos),
                 ],
-                if (servingLabel != null || summary.tags.isNotEmpty) ...[
+                if (summary.tags.isNotEmpty) ...[
                   const SizedBox(height: KamosSpacing.sm),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      if (servingLabel != null)
-                        KamosChip(
-                          label: servingLabel,
-                          kind: KamosChipKind.tag,
-                        ),
                       ...summary.tags.map(
                         (tag) => KamosChip(
                           label: resolveI18n(tag.name, locale),

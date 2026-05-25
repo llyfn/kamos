@@ -53,7 +53,7 @@ These come from `SPEC.md` and must be enforced in handlers / validators, not def
 | §5.2 | Cursor pagination, page size 20 | Every list endpoint |
 | §5.3 | One toast per user per check-in | `INSERT ... ON CONFLICT DO NOTHING` or unique constraint |
 | §6.1 | New user gets Inventory + Wishlist collections | Registration handler creates them in the same transaction as the user |
-| §8 | i18n fallback: missing locale → `en` | Beverage/brewery name resolution helper used by every read endpoint |
+| §8 | i18n fallback: missing locale → `en` | Beverage/producer name resolution helper used by every read endpoint |
 
 ## Handler pattern
 
@@ -191,7 +191,7 @@ POST   /auth/logout                     invalidate token (client-side; optionall
 
 GET    /beverages                       list/search (cursor)
 GET    /beverages/:id                   detail (with flavor profile + recent check-ins)
-GET    /breweries/:id                   brewery detail with beverage list
+GET    /producers/:id                   producer detail with beverage list
 
 POST   /checkins                        create (auth)
 GET    /checkins/:id                    detail
@@ -221,7 +221,7 @@ POST   /users/me/collections/:id/items  add beverage
 DELETE /users/me/collections/:id/items/:beverage_id  remove beverage
 ```
 
-Every route except `/auth/*`, `GET /beverages*`, `GET /breweries/*`, and `GET /users/:username` (when public) requires the auth middleware.
+Every route except `/auth/*`, `GET /beverages*`, `GET /producers/*`, and `GET /users/:username` (when public) requires the auth middleware.
 
 ## Response conventions
 
@@ -246,7 +246,7 @@ Write `openapi.yaml` (3.1) covering every endpoint:
 - Request body schema (refs)
 - Response schemas for `200`, `400`, `401`, `403`, `404`, `422`
 - `security: [bearerAuth: []]` on protected routes
-- Component schemas for `Beverage`, `Brewery`, `Checkin`, `User`, `Collection`, `Page<T>`, `Error`
+- Component schemas for `Beverage`, `Producer`, `Checkin`, `User`, `Collection`, `Page<T>`, `Error`
 
 Keep `openapi.yaml` in sync with handlers as the source of truth — qa-inspector will grep both.
 
@@ -293,5 +293,5 @@ APP_BASE_URL=http://localhost:3000
 - [ ] `openapi.yaml` validates with a parser; `operationId` unique
 - [ ] Validation enforces SPEC caps (review 500, bio 200, photos 4, rating 0.5 steps)
 - [ ] Default Inventory + Wishlist created in registration handler (same transaction)
-- [ ] i18n fallback helper used in every beverage/brewery read
+- [ ] i18n fallback helper used in every beverage/producer read
 - [ ] `.env.example` complete; no secrets in code

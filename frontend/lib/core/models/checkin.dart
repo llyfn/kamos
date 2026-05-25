@@ -49,7 +49,6 @@ abstract class Checkin with _$Checkin {
     @Default(<PhotoRef>[]) List<PhotoRef> photos,
     Price? price,
     String? purchaseType,
-    String? servingStyle,
     VenueRef? venue,
     @Default(0) int toasts,
     @Default(false) bool youToasted,
@@ -82,7 +81,6 @@ abstract class Checkin with _$Checkin {
         ? Price.fromJson(json['price'] as Map<String, dynamic>)
         : null,
     purchaseType: json['purchase_type'] as String?,
-    servingStyle: json['serving_style'] as String?,
     venue: json['venue'] is Map<String, dynamic>
         ? VenueRef.fromJson(json['venue'] as Map<String, dynamic>)
         : null,

@@ -51,7 +51,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchHeader => 'Discover';
 
   @override
-  String get searchPlaceholder => 'Search breweries, beverages, prefectures.';
+  String get searchPlaceholder => 'Search producers, beverages, prefectures.';
 
   @override
   String get searchNoResultsTitle => 'No results';
@@ -116,9 +116,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPurchaseType => 'Purchase type';
 
   @override
-  String get checkInServingStyle => 'Serving style';
-
-  @override
   String get checkInPriceServing => 'Per serving';
 
   @override
@@ -135,21 +132,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkInPurchaseOther => 'Other';
-
-  @override
-  String get checkInServingGlass => 'Glass';
-
-  @override
-  String get checkInServingCarafe => 'Carafe';
-
-  @override
-  String get checkInServingBottle => 'Bottle';
-
-  @override
-  String get checkInServingCan => 'Can';
-
-  @override
-  String get checkInServingOther => 'Other';
 
   @override
   String get checkInFirstToast => 'First check-in saved. Kanpai!';
@@ -604,7 +586,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beverageDetailAggregatedFlavor => 'Aggregated flavor';
 
   @override
-  String get beverageDetailAbout => 'About the brewery';
+  String get beverageDetailAbout => 'About the producer';
 
   @override
   String get beverageDetailRecent => 'Recent check-ins';
@@ -625,16 +607,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beverageListSheetSaveFailed => 'Couldn\'t update. Try again.';
 
   @override
-  String get breweryOverline => 'Brewery';
+  String get producerOverline => 'Producer';
 
   @override
-  String get breweryFounded => 'Founded';
+  String get producerFounded => 'Founded';
 
   @override
-  String get breweryBeverages => 'Beverages';
+  String get producerBeverages => 'Beverages';
 
   @override
-  String get breweryNoBeverages => 'No beverages yet';
+  String get producerNoBeverages => 'No beverages yet';
 
   @override
   String get actionSave => 'Save';
@@ -682,7 +664,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get submitBeverageRequestNameLabel => 'Name';
 
   @override
-  String get submitBeverageRequestBreweryLabel => 'Brewery';
+  String get submitBeverageRequestProducerLabel => 'Producer';
 
   @override
   String get submitBeverageRequestCategoryLabel => 'Category';
@@ -705,7 +687,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get submitBeverageRequestNameRequired => 'Name is required.';
 
   @override
-  String get submitBeverageRequestBreweryRequired => 'Brewery is required.';
+  String get submitBeverageRequestProducerRequired => 'Producer is required.';
 
   @override
   String get searchSuggestMissingCta => 'Can\'t find it? Suggest it.';

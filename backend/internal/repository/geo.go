@@ -106,7 +106,7 @@ ORDER BY r.sort_order, p.sort_order, p.slug;`
 }
 
 // PrefectureIDForSlug resolves a prefectures.slug → id. Returns
-// domain.ErrNotFound when the slug is unknown; the admin brewery handler
+// domain.ErrNotFound when the slug is unknown; the admin producer handler
 // maps that to 422 INVALID_PREFECTURE_SLUG. Backed by the unique index
 // on prefectures.slug.
 func (r *GeoRepo) PrefectureIDForSlug(ctx context.Context, slug string) (string, error) {

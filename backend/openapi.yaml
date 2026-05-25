@@ -6,7 +6,7 @@ info:
   description: |
     REST API for the KAMOS mobile app. All responses are JSON.
 
-    **i18n contract:** beverage / brewery / category / flavor-tag names are
+    **i18n contract:** beverage / producer / category / flavor-tag names are
     returned as `{ "en": "...", "ja": "...", "ko": "..." }` objects. Per SPEC
     §6.5, clients fall back to `en` when the requested locale is missing.
     The server does NOT pre-resolve names based on `Accept-Language`.
@@ -29,7 +29,7 @@ tags:
   - name: auth
   - name: users
   - name: beverages
-  - name: breweries
+  - name: producers
   - name: checkins
   - name: feed
   - name: social
@@ -565,7 +565,7 @@ paths:
               schema: { $ref: "#/components/schemas/PageOfSocialUser" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ----- BEVERAGES / BREWERIES -----
+  # ----- BEVERAGES / PRODUCERS -----
   /v1/beverages:
     get:
       tags: [beverages]
@@ -647,10 +647,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PageOfCheckinSummary" }
 
-  /v1/breweries:
+  /v1/producers:
     get:
-      tags: [breweries]
-      operationId: listBreweries
+      tags: [producers]
+      operationId: listProducers
       security: []
       parameters:
         - in: query
@@ -664,38 +664,38 @@ paths:
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
       responses:
         "200":
-          description: page of breweries
+          description: page of producers
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/PageOfBrewery" }
+              schema: { $ref: "#/components/schemas/PageOfProducer" }
 
-  /v1/breweries/{id}:
+  /v1/producers/{id}:
     parameters:
       - in: path
         name: id
         required: true
         schema: { type: string, format: uuid }
     get:
-      tags: [breweries]
-      operationId: getBrewery
+      tags: [producers]
+      operationId: getProducer
       security: []
       responses:
         "200":
-          description: brewery detail with beverage list
+          description: producer detail with beverage list
           headers:
             Cache-Control:
               description: |
                 Stage 7 (M-3.5) — emitted by middleware:
                 `public, max-age=600, stale-while-revalidate=86400`.
                 Slower-moving aggregates than beverage detail; the
-                in-process LRU is busted on writes to the brewery's
+                in-process LRU is busted on writes to the producer's
                 beverages and downstream caches honor this header.
               schema: { type: string }
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/Brewery"
+                  - $ref: "#/components/schemas/Producer"
                   - type: object
                     properties:
                       beverages: { $ref: "#/components/schemas/PageOfBeverage" }
@@ -1328,7 +1328,7 @@ paths:
           schema: { type: string }
         - in: query
           name: type
-          schema: { type: string, enum: [beverage, brewery] }
+          schema: { type: string, enum: [beverage, producer] }
         - in: query
           name: cursor
           schema: { type: string }
@@ -1504,7 +1504,7 @@ paths:
       description: |
         Approve a pending beverage request and insert a canonical beverage
         in the same transaction. Admin role required. The admin supplies
-        the canonical fields (brewery_id, category_id, name_i18n, ...)
+        the canonical fields (producer_id, category_id, name_i18n, ...)
         based on the user-submitted payload.
       parameters:
         - in: path
@@ -1684,7 +1684,7 @@ paths:
         - in: query
           name: target_type
           required: false
-          schema: { type: string, enum: [check_in, comment, user, beverage_request, beverage, brewery] }
+          schema: { type: string, enum: [check_in, comment, user, beverage_request, beverage, producer] }
         - in: query
           name: target_id
           required: false
@@ -1849,7 +1849,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   # =========================================================================
-  # Stage 8 — admin direct catalog CRUD (beverages + breweries).
+  # Stage 8 — admin direct catalog CRUD (beverages + producers).
   # Admin role required on every endpoint. Each mutation bundles a
   # moderation_log audit row in the same transaction.
   # =========================================================================
@@ -1861,7 +1861,7 @@ paths:
       description: |
         List beverages for admin tooling. Optional FTS (`q`,
         websearch_to_tsquery against idx_beverages_name_tsv), exact
-        filters (`brewery_id`, `category_id`, `category_slug`, `id`).
+        filters (`producer_id`, `category_id`, `category_slug`, `id`).
         `id` short-circuits the cursor. `include_deleted=1` surfaces
         soft-deleted rows for the admin "trash" view.
       parameters:
@@ -1870,7 +1870,7 @@ paths:
           required: false
           schema: { type: string }
         - in: query
-          name: brewery_id
+          name: producer_id
           required: false
           schema: { type: string, format: uuid }
         - in: query
@@ -2020,13 +2020,13 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /v1/admin/breweries:
+  /v1/admin/producers:
     get:
       tags: [admin]
-      operationId: adminListBreweries
+      operationId: adminListProducers
       description: |
-        List breweries for admin tooling. Optional FTS (`q`,
-        websearch_to_tsquery against idx_breweries_name_tsv) or exact
+        List producers for admin tooling. Optional FTS (`q`,
+        websearch_to_tsquery against idx_producers_name_tsv) or exact
         UUID lookup (`id`). `include_deleted=1` surfaces soft-deleted
         rows.
       parameters:
@@ -2052,38 +2052,38 @@ paths:
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
       responses:
         "200":
-          description: page of breweries
+          description: page of producers
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminBreweryList" }
+              schema: { $ref: "#/components/schemas/AdminProducerList" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [admin]
-      operationId: adminCreateBrewery
+      operationId: adminCreateProducer
       description: |
-        Insert a canonical brewery. Admin only.
+        Insert a canonical producer. Admin only.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/AdminBreweryCreate" }
+            schema: { $ref: "#/components/schemas/AdminProducerCreate" }
       responses:
         "201":
           description: created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminBrewery" }
+              schema: { $ref: "#/components/schemas/AdminProducer" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/Validation" }
 
-  /v1/admin/breweries/{id}:
+  /v1/admin/producers/{id}:
     get:
       tags: [admin]
-      operationId: adminGetBrewery
+      operationId: adminGetProducer
       description: |
-        Return one brewery (including soft-deleted rows).
+        Return one producer (including soft-deleted rows).
       parameters:
         - in: path
           name: id
@@ -2091,18 +2091,18 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         "200":
-          description: brewery
+          description: producer
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminBrewery" }
+              schema: { $ref: "#/components/schemas/AdminProducer" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [admin]
-      operationId: adminUpdateBrewery
+      operationId: adminUpdateProducer
       description: |
-        Partial-update a brewery.
+        Partial-update a producer.
       parameters:
         - in: path
           name: id
@@ -2112,24 +2112,24 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/AdminBreweryUpdate" }
+            schema: { $ref: "#/components/schemas/AdminProducerUpdate" }
       responses:
         "200":
           description: updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminBrewery" }
+              schema: { $ref: "#/components/schemas/AdminProducer" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Validation" }
     delete:
       tags: [admin]
-      operationId: adminSoftDeleteBrewery
+      operationId: adminSoftDeleteProducer
       description: |
-        Soft-delete a brewery (sets deleted_at = NOW()). Fails with
-        409 BREWERY_HAS_LIVE_BEVERAGES when at least one beverage
-        still references the brewery with deleted_at IS NULL — admin
+        Soft-delete a producer (sets deleted_at = NOW()). Fails with
+        409 PRODUCER_HAS_LIVE_BEVERAGES when at least one beverage
+        still references the producer with deleted_at IS NULL — admin
         must soft-delete or reassign the dependent beverages first.
       parameters:
         - in: path
@@ -2143,17 +2143,17 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: brewery still has live beverages (code BREWERY_HAS_LIVE_BEVERAGES)
+          description: producer still has live beverages (code PRODUCER_HAS_LIVE_BEVERAGES)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /v1/admin/breweries/{id}/restore:
+  /v1/admin/producers/{id}/restore:
     post:
       tags: [admin]
-      operationId: adminRestoreBrewery
+      operationId: adminRestoreProducer
       description: |
-        Clear deleted_at on a tombstoned brewery.
+        Clear deleted_at on a tombstoned producer.
       parameters:
         - in: path
           name: id
@@ -2164,7 +2164,7 @@ paths:
           description: restored
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminBrewery" }
+              schema: { $ref: "#/components/schemas/AdminProducer" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -2444,7 +2444,7 @@ components:
       type: object
       description: |
         Migration 016 — one row of the seed `prefectures` reference
-        table. `region` is embedded so a brewery's `prefecture` field
+        table. `region` is embedded so a producer's `prefecture` field
         carries enough context to render "Niigata (Chūbu)" without a
         second lookup.
       required: [id, slug, name, sort_order, region]
@@ -2455,7 +2455,7 @@ components:
           description: |
             stable lowercase slug (e.g. `niigata`, `tokyo`,
             `kagoshima`); accepted by admin write paths as
-            `prefecture_slug` on AdminBreweryCreate / AdminBreweryUpdate.
+            `prefecture_slug` on AdminProducerCreate / AdminProducerUpdate.
         name:
           $ref: "#/components/schemas/I18nText"
         sort_order:
@@ -2501,7 +2501,7 @@ components:
           type: array
           items: { $ref: "#/components/schemas/PrefectureInline" }
 
-    Brewery:
+    Producer:
       type: object
       description: |
         Optional fields (`prefecture`, `founded_year`, `website`,
@@ -2512,8 +2512,8 @@ components:
 
         Migration 016: `prefecture` is now a nested `Prefecture` object
         (which itself embeds its `Region`). The previous free-text
-        `prefecture` / `region` string fields are gone. The brewery's
-        region is derivable via `brewery.prefecture.region`.
+        `prefecture` / `region` string fields are gone. The producer's
+        region is derivable via `producer.prefecture.region`.
       required: [id, name, created_at]
       properties:
         id: { type: string, format: uuid }
@@ -2526,9 +2526,9 @@ components:
           type: integer
           minimum: 0
           description: |
-            Number of beverages associated with this brewery. Populated by
-            `GetBrewery` and `ListBreweries`; absent in nested `BreweryRef`
-            embeddings and in `/v1/search` brewery results.
+            Number of beverages associated with this producer. Populated by
+            `GetProducer` and `ListProducers`; absent in nested `ProducerRef`
+            embeddings and in `/v1/search` producer results.
         created_at: { type: string, format: date-time }
 
     Beverage:
@@ -2543,20 +2543,20 @@ components:
 
         Migration 016 dropped the per-beverage `prefecture` / `region`
         free-text columns. A beverage's locality is now derived through
-        its `brewery.prefecture` (which itself nests `region`).
+        its `producer.prefecture` (which itself nests `region`).
 
-        List endpoints (`GET /v1/beverages`, `GET /v1/breweries/{id}` inline
+        List endpoints (`GET /v1/beverages`, `GET /v1/producers/{id}` inline
         beverages page, `GET /v1/search` beverage results) ship a slim
         projection that **omits the i18n JSONB fields `subcategory` and
         `description`** on every row to cut payload size by ~30%. Both
         fields are always present on `BeverageDetail` (the single-item
         detail response). Clients should treat the fields as optional on
         the wire and re-fetch detail when the user opens a beverage.
-      required: [id, name, brewery, category, flavor_profile, avg_rating, check_in_count, created_at]
+      required: [id, name, producer, category, flavor_profile, avg_rating, check_in_count, created_at]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
-        brewery: { $ref: "#/components/schemas/Brewery" }
+        producer: { $ref: "#/components/schemas/Producer" }
         category: { $ref: "#/components/schemas/CategoryLabel" }
         subcategory: { $ref: "#/components/schemas/I18nText" }
         abv: { type: number }
@@ -2617,18 +2617,18 @@ components:
         Compact beverage embedding used by check-in / feed / collection
         entries. `label_image_url` follows the absent-when-unknown
         convention (Go `omitempty`).
-      required: [id, name, brewery, category]
+      required: [id, name, producer, category]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
-        brewery: { $ref: "#/components/schemas/BreweryRef" }
+        producer: { $ref: "#/components/schemas/ProducerRef" }
         category: { $ref: "#/components/schemas/CategoryLabel" }
         label_image_url: { type: string, format: uri }
 
-    BreweryRef:
+    ProducerRef:
       type: object
       description: |
-        Compact brewery embedding used by check-in / feed / collection
+        Compact producer embedding used by check-in / feed / collection
         entries. `prefecture` (a nested Prefecture that itself embeds
         its Region) follows the absent-when-unknown convention (Go
         `omitempty`). Migration 016 replaced the free-text `region`
@@ -2679,7 +2679,6 @@ components:
           items: { $ref: "#/components/schemas/PhotoRef" }
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other], nullable: true }
-        serving_style: { type: string, enum: [glass, carafe, bottle, can, other], nullable: true }
         venue:
           $ref: "#/components/schemas/VenueRef"
           nullable: true
@@ -2711,10 +2710,6 @@ components:
             Flavor-tag chips so the beverage detail "recent check-ins"
             rows can render rich cards without a follow-up round trip.
           items: { $ref: "#/components/schemas/FlavorTag" }
-        serving_style:
-          type: string
-          enum: [glass, carafe, bottle, can, other]
-          nullable: true
         created_at: { type: string, format: date-time }
 
     CreateCheckinRequest:
@@ -2733,7 +2728,6 @@ components:
           items: { type: string, format: uri }
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
-        serving_style: { type: string, enum: [glass, carafe, bottle, can, other] }
         venue:
           $ref: "#/components/schemas/CheckinVenueInput"
           nullable: true
@@ -2757,7 +2751,6 @@ components:
           items: { type: string }
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
-        serving_style: { type: string, enum: [glass, carafe, bottle, can, other] }
 
     ToastState:
       type: object
@@ -2967,9 +2960,9 @@ components:
       type: object
       required: [type]
       properties:
-        type: { type: string, enum: [beverage, brewery] }
+        type: { type: string, enum: [beverage, producer] }
         beverage: { $ref: "#/components/schemas/Beverage", nullable: true }
-        brewery: { $ref: "#/components/schemas/Brewery", nullable: true }
+        producer: { $ref: "#/components/schemas/Producer", nullable: true }
 
     # ----- Page<T> envelopes -----
     PageBase:
@@ -2989,14 +2982,14 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/Beverage" }
-    PageOfBrewery:
+    PageOfProducer:
       allOf:
         - $ref: "#/components/schemas/PageBase"
         - type: object
           properties:
             items:
               type: array
-              items: { $ref: "#/components/schemas/Brewery" }
+              items: { $ref: "#/components/schemas/Producer" }
     PageOfCheckin:
       allOf:
         - $ref: "#/components/schemas/PageBase"
@@ -3136,13 +3129,13 @@ components:
         `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
 
         Migration 016 dropped beverages.prefecture / beverages.region —
-        the beverage's locality is derived through the brewery's
+        the beverage's locality is derived through the producer's
         prefecture_id, so no per-beverage geo fields are accepted here.
-        Recurate the brewery via PATCH /v1/admin/breweries/{id} before
+        Recurate the producer via PATCH /v1/admin/producers/{id} before
         approving if the prefecture is wrong.
-      required: [brewery_id, name_i18n]
+      required: [producer_id, name_i18n]
       properties:
-        brewery_id: { type: string, format: uuid }
+        producer_id: { type: string, format: uuid }
         category_id: { type: string, format: uuid }
         category_slug:
           type: string
@@ -3201,7 +3194,7 @@ components:
         role: { $ref: "#/components/schemas/UserRole" }
 
     # =======================================================================
-    # Stage 8 — admin catalog CRUD (beverages + breweries)
+    # Stage 8 — admin catalog CRUD (beverages + producers)
     # =======================================================================
 
     AdminBeverage:
@@ -3232,9 +3225,9 @@ components:
         `name_i18n.en` and `name_i18n.ja` are required; `ko` is optional.
         An unknown `category_slug` returns
         `422 INVALID_CATEGORY_SLUG`.
-      required: [brewery_id, name_i18n]
+      required: [producer_id, name_i18n]
       properties:
-        brewery_id: { type: string, format: uuid }
+        producer_id: { type: string, format: uuid }
         category_id:
           type: string
           format: uuid
@@ -3287,7 +3280,7 @@ components:
         If both are sent, `category_id` wins. An unknown
         `category_slug` returns `422 INVALID_CATEGORY_SLUG`.
       properties:
-        brewery_id: { type: string, format: uuid }
+        producer_id: { type: string, format: uuid }
         category_id: { type: string, format: uuid }
         category_slug:
           type: string
@@ -3332,11 +3325,11 @@ components:
         next_cursor: { type: string, nullable: true }
         has_more: { type: boolean }
 
-    AdminBrewery:
+    AdminProducer:
       description: |
-        Admin variant of Brewery, exposing the nullable `deleted_at`.
+        Admin variant of Producer, exposing the nullable `deleted_at`.
       allOf:
-        - $ref: "#/components/schemas/Brewery"
+        - $ref: "#/components/schemas/Producer"
         - type: object
           required: [deleted_at]
           properties:
@@ -3345,10 +3338,10 @@ components:
               format: date-time
               nullable: true
 
-    AdminBreweryCreate:
+    AdminProducerCreate:
       type: object
       description: |
-        Payload for POST /v1/admin/breweries. `name_i18n.en` and
+        Payload for POST /v1/admin/producers. `name_i18n.en` and
         `name_i18n.ja` are required; `ko` optional. `founded_year`
         must be between 800 and 2100 to match the DB CHECK.
 
@@ -3358,7 +3351,7 @@ components:
         of valid slugs is the 47 prefectures returned by
         `GET /v1/reference/regions`. Unknown slug returns
         `422 INVALID_PREFECTURE_SLUG`. Omit `prefecture_slug` to leave
-        the brewery without a curated prefecture.
+        the producer without a curated prefecture.
       required: [name_i18n]
       properties:
         name_i18n: { $ref: "#/components/schemas/I18nText" }
@@ -3369,7 +3362,7 @@ components:
           pattern: "^[a-z0-9_]+$"
           description: |
             Stable slug from `GET /v1/reference/regions`. Omit or send
-            null when the brewery has no curated prefecture.
+            null when the producer has no curated prefecture.
         founded_year:
           type: integer
           nullable: true
@@ -3385,10 +3378,10 @@ components:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
 
-    AdminBreweryUpdate:
+    AdminProducerUpdate:
       type: object
       description: |
-        Partial-update body for PATCH /v1/admin/breweries/{id}. Every
+        Partial-update body for PATCH /v1/admin/producers/{id}. Every
         field is optional; omitted fields are left unchanged.
 
         `prefecture_slug` semantics (mirrors `category_slug` on
@@ -3424,13 +3417,13 @@ components:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
 
-    AdminBreweryList:
+    AdminProducerList:
       type: object
       required: [items, has_more]
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/AdminBrewery" }
+          items: { $ref: "#/components/schemas/AdminProducer" }
         next_cursor: { type: string, nullable: true }
         has_more: { type: boolean }
 
@@ -3451,7 +3444,7 @@ components:
           nullable: true
           description: null when the moderator was hard-purged
         action: { type: string, enum: [soft_delete, role_change, suspend, approve, reject, create, update, restore] }
-        target_type: { type: string, enum: [check_in, comment, user, beverage_request, beverage, brewery] }
+        target_type: { type: string, enum: [check_in, comment, user, beverage_request, beverage, producer] }
         target_id: { type: string, format: uuid }
         notes:
           type: string

@@ -5,7 +5,7 @@
 // - Flavor tag chips, multi-select
 // - Up to 4 photos (UI cap; the server is the backstop)
 // - Price (amount + currency + per-serving|per-bottle)
-// - Purchase type, serving style
+// - Purchase type
 //
 // Photo upload: on submit, the check-in is created first; then each
 // selected photo is uploaded sequentially through the 3-step presign → PUT →
@@ -106,7 +106,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   String _currency = 'JPY';
   String _priceMode = 'serving';
   String? _purchase;
-  String? _serving;
   FoursquarePlace? _venue;
   bool _uploadingPhotos = false;
 
@@ -281,7 +280,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           tags: _tags.toList(),
           price: price,
           purchaseType: _purchase,
-          servingStyle: _serving,
           venue: _venue?.toCheckinVenueJson(),
         );
     if (posted == null) {
@@ -409,7 +407,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     final state = ref.watch(checkInControllerProvider);
     final locale = Localizations.localeOf(context).languageCode;
     final beverageName = resolveI18n(widget.beverage.name, locale);
-    final brewery = resolveI18n(widget.beverage.brewery.name, locale);
+    final producer = resolveI18n(widget.beverage.producer.name, locale);
     final slug = categorySlugFromString(widget.beverage.category.slug);
     final catLabel = slug == null
         ? resolveI18n(widget.beverage.category.labelI18n, locale)
@@ -484,7 +482,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                           ),
                         ),
                         Text(
-                          brewery,
+                          producer,
                           style: TextStyle(fontSize: 12, color: t.fg2),
                         ),
                         Padding(
@@ -638,29 +636,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
                           selected: _purchase == o.$1,
                           onTap: () => setState(() {
                             _purchase = _purchase == o.$1 ? null : o.$1;
-                          }),
-                        ),
-                      )
-                      .toList(),
-            ),
-            _Section(text: l.checkInServingStyle),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children:
-                  [
-                        ('glass', l.checkInServingGlass),
-                        ('carafe', l.checkInServingCarafe),
-                        ('bottle', l.checkInServingBottle),
-                        ('can', l.checkInServingCan),
-                        ('other', l.checkInServingOther),
-                      ]
-                      .map(
-                        (o) => KamosChip(
-                          label: o.$2,
-                          selected: _serving == o.$1,
-                          onTap: () => setState(() {
-                            _serving = _serving == o.$1 ? null : o.$1;
                           }),
                         ),
                       )

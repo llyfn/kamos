@@ -29,7 +29,7 @@ Do not introduce Markdown-only wireframes / spec / token files. Wireframes are r
 - **No emoji in UI.** The toast control uses the KAMOS kanpai mark (`assets/logo_white.png` active, `assets/logo_mark.png` inactive).
 - **No gradients, no repeating chrome patterns, no flat colored "feature" icons, no drawn illustrations of people.**
 - **Cards:** 1 px hairline border + `--shadow-1` + `--radius-md` + 16 px padding. No left-border accent, no top stripe.
-- **Casing:** sentence case for buttons / headers / menu items. Title Case only for proper nouns (beverage names, brewery names, places).
+- **Casing:** sentence case for buttons / headers / menu items. Title Case only for proper nouns (beverage names, producer names, places).
 - **SPEC category strings — exact, do not abbreviate:**
     - en: `Nihonshu (Sake)` · `Shochu` · `Liqueur`
     - ja: `日本酒` · `焼酎` · `リキュール`

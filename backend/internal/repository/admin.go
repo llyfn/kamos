@@ -150,13 +150,13 @@ LIMIT $4;`
 // admin fills in based on the original request payload.
 //
 // Migration 016 dropped beverages.prefecture / beverages.region — the
-// beverage's locality is now derived through the brewery's prefecture
+// beverage's locality is now derived through the producer's prefecture
 // chain, so there are no per-beverage geo fields to set here. If the
-// admin needs to recurate the brewery's prefecture they do it via
-// PATCH /v1/admin/breweries/{id} before approving.
+// admin needs to recurate the producer's prefecture they do it via
+// PATCH /v1/admin/producers/{id} before approving.
 type ApproveBeverageRequestParams struct {
 	RequestID       string
-	BreweryID       string
+	ProducerID      string
 	CategoryID      string
 	NameI18n        domain.I18nText
 	Subcategory     *domain.I18nText
@@ -231,14 +231,14 @@ func (r *AdminRepo) ApproveBeverageRequest(ctx context.Context, p ApproveBeverag
 	}
 
 	const insBev = `
-INSERT INTO beverages (brewery_id, category_id, category_slug, name_i18n,
+INSERT INTO beverages (producer_id, category_id, category_slug, name_i18n,
                        subcategory_i18n, abv, polishing_ratio,
                        label_image_url, flavor_profile, description_i18n)
 VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, COALESCE($9, '{}'::text[]), $10::jsonb)
 RETURNING id;`
 	var bevID string
 	if err := tx.QueryRow(ctx, insBev,
-		p.BreweryID, p.CategoryID, categorySlug, string(nameJSON),
+		p.ProducerID, p.CategoryID, categorySlug, string(nameJSON),
 		subJSON, p.ABV, p.PolishingRatio,
 		p.LabelImageURL, p.FlavorProfile, descJSON,
 	).Scan(&bevID); err != nil {

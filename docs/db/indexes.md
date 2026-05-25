@@ -34,18 +34,18 @@ This document explains every index in `migrations/001_initial.sql` and `migratio
 |---|---|
 | `idx_beverage_categories_slug` (unique) | Stable API key `nihonshu | shochu | liqueur` is the join target from `beverages.category_id` and a frequent slug-based lookup. |
 
-### breweries
+### producers
 
-The implicit PK plus the FTS index documented under "breweries (search)" cover all current read paths. Migration 014 added `breweries.deleted_at` and a tiny partial helper index for the admin "trash" view. Migration 016 added the prefecture FK and its partial index:
+The implicit PK plus the FTS index documented under "producers (search)" cover all current read paths. Migration 014 added `producers.deleted_at` and a tiny partial helper index for the admin "trash" view. Migration 016 added the prefecture FK and its partial index. Migration 017 renamed the table (`breweries` → `producers`) and these indexes:
 
 | Index | Purpose |
 |---|---|
-| `idx_breweries_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` keeps the index tiny — almost every row in the catalog is live. |
-| `idx_breweries_prefecture_id` (partial, 016) | Admin filtering by prefecture and brewery-detail prefecture/region joins on the public read path. `WHERE deleted_at IS NULL` keeps the index dense. |
+| `idx_producers_deleted_at` (partial, 014; renamed 017) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` keeps the index tiny — almost every row in the catalog is live. |
+| `idx_producers_prefecture_id` (partial, 016; renamed 017) | Admin filtering by prefecture and producer-detail prefecture/region joins on the public read path. `WHERE deleted_at IS NULL` keeps the index dense. |
 
 ```sql
-CREATE INDEX idx_breweries_prefecture_id
-  ON breweries (prefecture_id)
+CREATE INDEX idx_producers_prefecture_id
+  ON producers (prefecture_id)
   WHERE deleted_at IS NULL;
 ```
 
@@ -53,7 +53,7 @@ CREATE INDEX idx_breweries_prefecture_id
 
 | Index | Purpose | SPEC |
 |---|---|---|
-| `idx_beverages_brewery` (partial, rebuilt 014) | "All beverages from a brewery" — BreweryScreen. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_producer` (partial, rebuilt 014; renamed 017) | "All beverages from a producer" — ProducerScreen. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_category` (partial, rebuilt 014) | "Browse by category" — SearchScreen filter chips. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_name_gin` (partial, rebuilt 014) | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the `jsonb_path_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. For substring search, we **also** maintain a `tsvector` on `(name_i18n->>'en' || ' ' || name_i18n->>'ja' || ' ' || COALESCE(name_i18n->>'ko', ''))` — see the next row. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_name_tsv` (functional GIN, partial, rebuilt 014) | `tsvector` over the concatenation of all three locales' names. Supports the beverage search screen and the admin catalog `?q=` filter (via `websearch_to_tsquery('simple', $1)` to hit this index). Postgres FTS handles per-locale stemming poorly for Japanese/Korean — for MVP we use `'simple'` configuration (no stemming) which still gives prefix and lexeme matching. `WHERE deleted_at IS NULL`. | §7 |
@@ -63,8 +63,8 @@ CREATE INDEX idx_breweries_prefecture_id
 Canonical definitions live in `migrations/014_catalog_soft_delete.sql`. After 014, the index DDL is:
 
 ```sql
-CREATE INDEX idx_beverages_brewery
-  ON beverages (brewery_id)
+CREATE INDEX idx_beverages_producer
+  ON beverages (producer_id)
   WHERE deleted_at IS NULL;
 CREATE INDEX idx_beverages_category
   ON beverages (category_id)
@@ -87,14 +87,16 @@ CREATE INDEX idx_beverages_deleted_at
   WHERE deleted_at IS NOT NULL;
 ```
 
+> Note: migration 017 renames `idx_beverages_brewery` → `idx_beverages_producer` to track the `brewery_id → producer_id` column rename. The DDL above reflects the post-017 names.
+
 > Note: 014 DROPs the original (non-partial) indexes and recreates them with the `WHERE deleted_at IS NULL` predicate. During apply there is a brief window where these indexes are absent and public reads may seq-scan; acceptable for the current single-region hosted env per `docs/runbooks/deploy.md`.
 
-### breweries (search)
+### producers (search)
 
-After 014 the brewery FTS index is also partial:
+After 014 the producer FTS index is also partial; renamed in 017:
 
 ```sql
-CREATE INDEX idx_breweries_name_tsv ON breweries USING gin (
+CREATE INDEX idx_producers_name_tsv ON producers USING gin (
   to_tsvector('simple',
     coalesce(name_i18n->>'en','') || ' ' ||
     coalesce(name_i18n->>'ja','') || ' ' ||
@@ -201,8 +203,8 @@ Both tables are seed-only — read-heavy, write-effectively-never. Default PK + 
 | Index | Purpose |
 |---|---|
 | `regions_slug_key` (unique, implicit) | Slug lookup from the admin form. |
-| `prefectures_slug_key` (unique, implicit) | Slug lookup from the admin form and as the join target from `breweries`. |
-| `idx_prefectures_region_id` | "List prefectures in region X" for the admin grouped dropdown and any future region-filtered brewery query. |
+| `prefectures_slug_key` (unique, implicit) | Slug lookup from the admin form and as the join target from `producers`. |
+| `idx_prefectures_region_id` | "List prefectures in region X" for the admin grouped dropdown and any future region-filtered producer query. |
 
 ```sql
 CREATE INDEX idx_prefectures_region_id ON prefectures (region_id);
@@ -230,7 +232,7 @@ CREATE INDEX idx_beverage_addition_requests_status
 - `users.LOWER(display_username)` — never queried. Login uses `LOWER(?)` against `username`, never `display_username`.
 - `check_ins.deleted_at` — we use partial-index predicates everywhere instead of a separate index on the column.
 - `beverages.subcategory` — subcategory is admin free-text from a predefined list. Filtering by subcategory is a post-MVP feature.
-- Any index on `breweries.region`/`beverages.region` — these free-text columns were removed in 016. Locality is now derived through `breweries.prefecture_id → prefectures.region_id`; add a covering index on `(region_id, …)` of `prefectures` only if the brewery-list-by-region query becomes a hotspot (it does not today).
+- Any index on `producers.region`/`beverages.region` — these free-text columns were removed in 016. Locality is now derived through `producers.prefecture_id → prefectures.region_id`; add a covering index on `(region_id, …)` of `prefectures` only if the producer-list-by-region query becomes a hotspot (it does not today).
 
 ## Future migrations to consider
 

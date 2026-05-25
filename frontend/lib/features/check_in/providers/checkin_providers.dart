@@ -41,7 +41,6 @@ class CheckInControllerNotifier extends Notifier<CheckInControllerNotifierState>
     List<String> photos = const [],
     Price? price,
     String? purchaseType,
-    String? servingStyle,
     Map<String, dynamic>? venue,
   }) async {
     state = const CheckInControllerNotifierState(isSubmitting: true);
@@ -56,7 +55,6 @@ class CheckInControllerNotifier extends Notifier<CheckInControllerNotifierState>
             photos: photos,
             price: price,
             purchaseType: purchaseType,
-            servingStyle: servingStyle,
             venue: venue,
           );
       state = CheckInControllerNotifierState(posted: posted);
