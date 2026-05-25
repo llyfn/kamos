@@ -538,19 +538,10 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get inboxTitle => '팔로우 요청';
-
-  @override
   String get inboxApprove => '수락';
 
   @override
   String get inboxDecline => '거절';
-
-  @override
-  String get inboxEmptyTitle => '대기 중인 요청이 없습니다';
-
-  @override
-  String get inboxEmptyBody => '비공개 계정일 때 팔로우 요청이 여기에 표시됩니다.';
 
   @override
   String get notificationsTitle => '알림';

@@ -1096,12 +1096,6 @@ abstract class AppLocalizations {
   /// **'{count} comments'**
   String feedCardCommentsCountLabel(int count);
 
-  /// No description provided for @inboxTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Follow requests'**
-  String get inboxTitle;
-
   /// No description provided for @inboxApprove.
   ///
   /// In en, this message translates to:
@@ -1113,18 +1107,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Decline'**
   String get inboxDecline;
-
-  /// No description provided for @inboxEmptyTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'No pending requests'**
-  String get inboxEmptyTitle;
-
-  /// No description provided for @inboxEmptyBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Follow requests appear here while your account is private.'**
-  String get inboxEmptyBody;
 
   /// No description provided for @notificationsTitle.
   ///

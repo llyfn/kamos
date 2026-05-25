@@ -216,11 +216,8 @@
   "feedCardCommentsCountLabel": "{count}件のコメント",
   "@feedCardCommentsCountLabel": { "placeholders": { "count": { "type": "int" } } },
 
-  "inboxTitle": "フォローリクエスト",
   "inboxApprove": "承認",
   "inboxDecline": "辞退",
-  "inboxEmptyTitle": "保留中のリクエストはありません",
-  "inboxEmptyBody": "アカウントが非公開の間、リクエストはここに表示されます。",
 
   "notificationsTitle": "お知らせ",
   "notificationsMarkAllRead": "すべて既読",

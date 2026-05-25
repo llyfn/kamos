@@ -539,19 +539,10 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get inboxTitle => 'フォローリクエスト';
-
-  @override
   String get inboxApprove => '承認';
 
   @override
   String get inboxDecline => '辞退';
-
-  @override
-  String get inboxEmptyTitle => '保留中のリクエストはありません';
-
-  @override
-  String get inboxEmptyBody => 'アカウントが非公開の間、リクエストはここに表示されます。';
 
   @override
   String get notificationsTitle => 'お知らせ';

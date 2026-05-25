@@ -553,20 +553,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get inboxTitle => 'Follow requests';
-
-  @override
   String get inboxApprove => 'Approve';
 
   @override
   String get inboxDecline => 'Decline';
-
-  @override
-  String get inboxEmptyTitle => 'No pending requests';
-
-  @override
-  String get inboxEmptyBody =>
-      'Follow requests appear here while your account is private.';
 
   @override
   String get notificationsTitle => 'Notifications';

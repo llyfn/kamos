@@ -216,11 +216,8 @@
   "feedCardCommentsCountLabel": "댓글 {count}개",
   "@feedCardCommentsCountLabel": { "placeholders": { "count": { "type": "int" } } },
 
-  "inboxTitle": "팔로우 요청",
   "inboxApprove": "수락",
   "inboxDecline": "거절",
-  "inboxEmptyTitle": "대기 중인 요청이 없습니다",
-  "inboxEmptyBody": "비공개 계정일 때 팔로우 요청이 여기에 표시됩니다.",
 
   "notificationsTitle": "알림",
   "notificationsMarkAllRead": "모두 읽음",
