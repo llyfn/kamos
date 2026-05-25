@@ -61,9 +61,12 @@ class ApiPaths {
 
   // users
   static const usersMe = '/v1/users/me';
+  static const usersSearch = '/v1/users/search';
   static String user(String username) => '/v1/users/$username';
   static String userCheckins(String username) =>
       '/v1/users/$username/check-ins';
+  static String userCollections(String username) =>
+      '/v1/users/$username/collections';
 
   // beverages
   static const beverages = '/v1/beverages';
@@ -88,7 +91,6 @@ class ApiPaths {
 
   // collections
   static const collections = '/v1/collections';
-  static const collectionsPublic = '/v1/collections/public';
   static String collection(String id) => '/v1/collections/$id';
   static String collectionEntries(String collectionId) =>
       '/v1/collections/$collectionId/entries';
@@ -332,6 +334,42 @@ class KamosUsersApi {
     );
     return _asMap(res.data);
   }
+
+  /// Case-insensitive user search. The server enforces a 2-char minimum on
+  /// `q`; callers should mirror that so the user never sees a 400 toast.
+  Future<Map<String, dynamic>> searchUsers({
+    required String q,
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final res = await _dio.get<dynamic>(
+      ApiPaths.usersSearch,
+      queryParameters: {
+        'q': q,
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        'limit': limit,
+      },
+    );
+    return _asMap(res.data);
+  }
+
+  /// Visibility-gated page of the named user's collections. Owner-as-viewer
+  /// sees all; every other viewer sees only public rows. 404 when the
+  /// username does not resolve.
+  Future<Map<String, dynamic>> getUserCollections(
+    String username, {
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final res = await _dio.get<dynamic>(
+      ApiPaths.userCollections(username),
+      queryParameters: {
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        'limit': limit,
+      },
+    );
+    return _asMap(res.data);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -460,16 +498,6 @@ class KamosCollectionsApi {
 
   Future<Map<String, dynamic>> list() async {
     final res = await _dio.get<dynamic>(ApiPaths.collections);
-    return _asMap(res.data);
-  }
-
-  Future<Map<String, dynamic>> listPublic({String? cursor}) async {
-    final res = await _dio.get<dynamic>(
-      ApiPaths.collectionsPublic,
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-      },
-    );
     return _asMap(res.data);
   }
 

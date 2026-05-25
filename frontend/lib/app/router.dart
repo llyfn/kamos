@@ -8,12 +8,13 @@
 // /check-in modal (needs a Beverage extra)
 // /collections lists root
 // /collections/:id detail
-// /discover/public-collections public collections discovery
 // /me self profile
 // /me/edit edit profile
 // /me/settings settings
 // /inbox follow request inbox
+// /users/search search for users by username/display name
 // /users/:username other user
+// /users/:username/lists other user's public collections
 // /check-ins/:id check-in detail (— comments)
 // /beverages/:id beverage detail
 // /breweries/:id brewery detail
@@ -24,6 +25,10 @@
 // side: the mail link points at the backend's `/verify` HTML page, so
 // the mobile app has no token-consuming screen — only a post-signup
 // "check your mail" landing (`/auth/verify-pending`).
+//
+// Page transitions: every GoRoute uses `pageBuilder` returning
+// `NoTransitionPage` — KAMOS pushes feel instant; the calm design language
+// reads as a single surface morphing rather than a stack-slide.
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,14 +45,21 @@ import '../features/check_in/screens/check_in_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
-import '../features/discover/screens/public_collections_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/search/screens/search_screen.dart';
 import '../features/social/screens/inbox_screen.dart';
+import '../features/users/screens/other_user_collections_screen.dart';
+import '../features/users/screens/user_search_screen.dart';
 import '../shared/widgets/kamos_tab_bar.dart';
+
+/// Wraps [child] in [NoTransitionPage]. Used by every [GoRoute.pageBuilder]
+/// in this router so route pushes/replaces render without a slide / fade
+/// animation. Centralised so individual routes don't repeat the key wiring.
+NoTransitionPage<void> _noTransition(GoRouterState state, Widget child) =>
+    NoTransitionPage<void>(key: state.pageKey, child: child);
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -68,76 +80,126 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/auth', builder: (_, _) => const AuthScreen()),
+      GoRoute(
+        path: '/auth',
+        pageBuilder: (_, state) => _noTransition(state, const AuthScreen()),
+      ),
       GoRoute(
         path: '/auth/verify-pending',
-        builder: (_, state) {
+        pageBuilder: (_, state) {
           final extra = state.extra;
           final email = extra is String
               ? extra
               : state.uri.queryParameters['email'] ?? '';
-          return VerifyEmailPendingScreen(email: email);
+          return _noTransition(state, VerifyEmailPendingScreen(email: email));
         },
       ),
       ShellRoute(
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),
         routes: [
-          GoRoute(path: '/', builder: (_, _) => const FeedScreen()),
-          GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
+          GoRoute(
+            path: '/',
+            pageBuilder: (_, state) => _noTransition(state, const FeedScreen()),
+          ),
+          GoRoute(
+            path: '/search',
+            pageBuilder: (_, state) =>
+                _noTransition(state, const SearchScreen()),
+          ),
           GoRoute(
             path: '/collections',
-            builder: (_, _) => const CollectionsListScreen(),
+            pageBuilder: (_, state) =>
+                _noTransition(state, const CollectionsListScreen()),
           ),
-          GoRoute(path: '/me', builder: (_, _) => const MeProfileScreen()),
+          GoRoute(
+            path: '/me',
+            pageBuilder: (_, state) =>
+                _noTransition(state, const MeProfileScreen()),
+          ),
         ],
       ),
       GoRoute(
         path: '/check-in',
-        builder: (_, state) {
+        pageBuilder: (_, state) {
           final b = state.extra as Beverage?;
-          if (b == null) {
-            // Defensive: if launched without a beverage, bounce back to search.
-            return const SearchScreen();
-          }
-          return CheckInScreen(beverage: b);
+          // Defensive: if launched without a beverage, bounce back to search.
+          final child = b == null
+              ? const SearchScreen()
+              : CheckInScreen(beverage: b);
+          return _noTransition(state, child);
         },
       ),
       GoRoute(
         path: '/collections/:id',
-        builder: (_, state) =>
-            CollectionDetailScreen(collectionId: state.pathParameters['id']!),
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          CollectionDetailScreen(collectionId: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
-        path: '/discover/public-collections',
-        builder: (_, _) => const PublicCollectionsScreen(),
+        path: '/me/edit',
+        pageBuilder: (_, state) =>
+            _noTransition(state, const EditProfileScreen()),
       ),
-      GoRoute(path: '/me/edit', builder: (_, _) => const EditProfileScreen()),
-      GoRoute(path: '/me/settings', builder: (_, _) => const SettingsScreen()),
-      GoRoute(path: '/inbox', builder: (_, _) => const InboxScreen()),
+      GoRoute(
+        path: '/me/settings',
+        pageBuilder: (_, state) =>
+            _noTransition(state, const SettingsScreen()),
+      ),
+      GoRoute(
+        path: '/inbox',
+        pageBuilder: (_, state) => _noTransition(state, const InboxScreen()),
+      ),
+      // Static-segment routes (`/users/search`, `/users/:username/lists`)
+      // must precede `/users/:username` so go_router doesn't bind those
+      // segments to the path parameter.
+      GoRoute(
+        path: '/users/search',
+        pageBuilder: (_, state) =>
+            _noTransition(state, const UserSearchScreen()),
+      ),
+      GoRoute(
+        path: '/users/:username/lists',
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          OtherUserCollectionsScreen(
+            username: state.pathParameters['username']!,
+          ),
+        ),
+      ),
       GoRoute(
         path: '/users/:username',
-        builder: (_, state) =>
-            OtherProfileScreen(username: state.pathParameters['username']!),
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          OtherProfileScreen(username: state.pathParameters['username']!),
+        ),
       ),
       GoRoute(
         path: '/check-ins/:id',
-        builder: (_, state) =>
-            CheckInDetailScreen(checkInId: state.pathParameters['id']!),
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          CheckInDetailScreen(checkInId: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: '/beverages/:id',
-        builder: (_, state) =>
-            BeverageDetailScreen(beverageId: state.pathParameters['id']!),
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          BeverageDetailScreen(beverageId: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: '/breweries/:id',
-        builder: (_, state) =>
-            BreweryDetailScreen(breweryId: state.pathParameters['id']!),
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          BreweryDetailScreen(breweryId: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: '/beverage-requests/new',
-        builder: (_, _) => const SubmitBeverageRequestScreen(),
+        pageBuilder: (_, state) =>
+            _noTransition(state, const SubmitBeverageRequestScreen()),
       ),
     ],
   );

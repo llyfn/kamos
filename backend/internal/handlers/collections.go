@@ -12,35 +12,6 @@ import (
 	"github.com/kamos/api/internal/repository"
 )
 
-// ListPublicCollections — GET /v1/collections/public.
-//
-// Public discovery feed of collections users have flipped to visibility =
-// 'public'. OptionalAuth: the endpoint works without a Bearer token; when a
-// token is present, the handler does nothing extra (no follow-state hints
-// on collections — that's a profile-screen concern).
-//
-// Cursor-paginated on (created_at, id) DESC, page size default 20 / max 50.
-func (h *Handler) ListPublicCollections(w http.ResponseWriter, r *http.Request) {
-	limit := parseLimit(r, 20, 50)
-	c, err := parseCursor(r)
-	if err != nil {
-		h.writeErr(w, "ListPublicCollections cursor", err)
-		return
-	}
-	items, err := h.Repos.Collections.ListPublic(r.Context(),
-		optTimestamp(c), optString(c.ID), limit)
-	if err != nil {
-		h.writeErr(w, "ListPublicCollections", err)
-		return
-	}
-	page, next, hasMore := cursor.SliceAndCursor(items, limit, func(row domain.CollectionWithOwner) cursor.Cursor {
-		return cursor.Cursor{CreatedAt: row.CreatedAt, ID: row.ID}
-	})
-	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.CollectionWithOwner]{
-		Items: page, NextCursor: next, HasMore: hasMore,
-	})
-}
-
 // ListCollections — GET /v1/collections.
 func (h *Handler) ListCollections(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)

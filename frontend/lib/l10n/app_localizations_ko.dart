@@ -338,6 +338,40 @@ class AppLocalizationsKo extends AppLocalizations {
   String get profileRecent => '최근 체크인';
 
   @override
+  String get profileFollow => '팔로우';
+
+  @override
+  String get profileFollowing => '팔로잉';
+
+  @override
+  String get profileFollowRequested => '요청됨';
+
+  @override
+  String get profileUnfollow => '언팔로우';
+
+  @override
+  String profileUnfollowConfirmTitle(String username) {
+    return '@$username 님을 언팔로우할까요?';
+  }
+
+  @override
+  String get profileUnfollowConfirmBody => '이 사용자의 체크인이 피드에 표시되지 않습니다.';
+
+  @override
+  String get userSearchTitle => '사용자 찾기';
+
+  @override
+  String get userSearchPlaceholder => '사용자 이름 또는 이름으로 검색';
+
+  @override
+  String get userSearchNoResults => '일치하는 사용자가 없습니다';
+
+  @override
+  String userCollectionsTitle(String username) {
+    return '@$username · 리스트';
+  }
+
+  @override
   String get settingsAccount => '계정';
 
   @override
@@ -452,7 +486,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get collectionVisibilityPublicTitle => '공개 컬렉션';
 
   @override
-  String get collectionVisibilityPublicSubtitle => '이 컬렉션은 디스커버 탭에서 모두에게 표시됩니다';
+  String get collectionVisibilityPublicSubtitle => '이 컬렉션은 프로필에서 누구나 볼 수 있습니다';
 
   @override
   String get collectionVisibilityPrivateSubtitle => '이 컬렉션은 본인만 볼 수 있습니다';
@@ -467,9 +501,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String publicCollectionsByOwner(String username) {
     return '작성: $username';
   }
-
-  @override
-  String get publicCollectionsDiscoverCta => '공개 컬렉션 둘러보기';
 
   @override
   String get commentsTitle => '댓글';
@@ -661,4 +692,16 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get searchSuggestMissingCta => '찾으시는 음료가 없나요? 제안해 주세요.';
+
+  @override
+  String get profileRecentEmptyMeTitle => '아직 체크인이 없습니다';
+
+  @override
+  String get profileRecentEmptyMeBody => '첫 기록을 남기면 여기에 표시됩니다.';
+
+  @override
+  String get profileRecentEmptyOtherTitle => '아직 체크인이 없습니다';
+
+  @override
+  String get profileRecentEmptyOtherBody => '이 사용자가 기록하면 여기에 표시됩니다.';
 }

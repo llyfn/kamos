@@ -324,7 +324,7 @@ LIMIT 12;`
 // handler can compute has_more.
 func (r *BeverageRepo) RecentCheckins(ctx context.Context, beverageID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.CheckinSummary, error) {
 	const q = `
-SELECT ci.id, ci.rating, ci.review_text, ci.created_at,
+SELECT ci.id, ci.rating, ci.review_text, ci.serving_style, ci.created_at,
        u.id, u.username, u.display_username, u.display_name, u.avatar_url
 FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
@@ -343,7 +343,7 @@ LIMIT $4;`
 	for rows.Next() {
 		var s domain.CheckinSummary
 		var rating *float64
-		if err := rows.Scan(&s.ID, &rating, &s.Review, &s.CreatedAt,
+		if err := rows.Scan(&s.ID, &rating, &s.Review, &s.ServingStyle, &s.CreatedAt,
 			&s.User.ID, &s.User.Username, &s.User.DisplayUsername, &s.User.DisplayName, &s.User.AvatarURL); err != nil {
 			return nil, fmt.Errorf("BeverageRepo.RecentCheckins scan: %w", err)
 		}
@@ -356,8 +356,15 @@ LIMIT $4;`
 	}
 	// Stage 5 (PERF-010): batch-hydrate photos so the beverage detail
 	// "recent check-ins" strip can render thumbnails inline.
+	// Profile-UX expansion: also batch-hydrate flavor tags so the
+	// recent-check-ins rows can render chip arrays without a second
+	// round trip per row.
 	ck := CheckinRepo{db: r.db}
 	photos, err := ck.PhotosFor(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := ck.TagsFor(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -365,6 +372,10 @@ LIMIT $4;`
 		out[i].Photos = photos[out[i].ID]
 		if out[i].Photos == nil {
 			out[i].Photos = []domain.PhotoRef{}
+		}
+		out[i].Tags = tags[out[i].ID]
+		if out[i].Tags == nil {
+			out[i].Tags = []domain.FlavorTag{}
 		}
 	}
 	return out, nil

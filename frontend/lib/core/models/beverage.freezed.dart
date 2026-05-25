@@ -1315,7 +1315,7 @@ $BeverageCopyWith<$Res> get beverage {
 /// @nodoc
 mixin _$CheckinSummary {
 
- String get id; CheckinUser get user; double? get rating; String? get review; String get createdAt;
+ String get id; CheckinUser get user; double? get rating; String? get review; List<PhotoRef> get photos; List<FlavorTag> get tags; String? get servingStyle; String get createdAt;
 /// Create a copy of CheckinSummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1326,16 +1326,16 @@ $CheckinSummaryCopyWith<CheckinSummary> get copyWith => _$CheckinSummaryCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other.photos, photos)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.servingStyle, servingStyle) || other.servingStyle == servingStyle)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,user,rating,review,createdAt);
+int get hashCode => Object.hash(runtimeType,id,user,rating,review,const DeepCollectionEquality().hash(photos),const DeepCollectionEquality().hash(tags),servingStyle,createdAt);
 
 @override
 String toString() {
-  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, createdAt: $createdAt)';
+  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, photos: $photos, tags: $tags, servingStyle: $servingStyle, createdAt: $createdAt)';
 }
 
 
@@ -1346,7 +1346,7 @@ abstract mixin class $CheckinSummaryCopyWith<$Res>  {
   factory $CheckinSummaryCopyWith(CheckinSummary value, $Res Function(CheckinSummary) _then) = _$CheckinSummaryCopyWithImpl;
 @useResult
 $Res call({
- String id, CheckinUser user, double? rating, String? review, String createdAt
+ String id, CheckinUser user, double? rating, String? review, List<PhotoRef> photos, List<FlavorTag> tags, String? servingStyle, String createdAt
 });
 
 
@@ -1363,12 +1363,15 @@ class _$CheckinSummaryCopyWithImpl<$Res>
 
 /// Create a copy of CheckinSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? photos = null,Object? tags = null,Object? servingStyle = freezed,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as CheckinUser,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
 as double?,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
+as String?,photos: null == photos ? _self.photos : photos // ignore: cast_nullable_to_non_nullable
+as List<PhotoRef>,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
+as List<FlavorTag>,servingStyle: freezed == servingStyle ? _self.servingStyle : servingStyle // ignore: cast_nullable_to_non_nullable
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -1464,10 +1467,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String? servingStyle,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CheckinSummary() when $default != null:
-return $default(_that.id,_that.user,_that.rating,_that.review,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.servingStyle,_that.createdAt);case _:
   return orElse();
 
 }
@@ -1485,10 +1488,10 @@ return $default(_that.id,_that.user,_that.rating,_that.review,_that.createdAt);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  String createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String? servingStyle,  String createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _CheckinSummary():
-return $default(_that.id,_that.user,_that.rating,_that.review,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.servingStyle,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1505,10 +1508,10 @@ return $default(_that.id,_that.user,_that.rating,_that.review,_that.createdAt);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CheckinUser user,  double? rating,  String? review,  String createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String? servingStyle,  String createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _CheckinSummary() when $default != null:
-return $default(_that.id,_that.user,_that.rating,_that.review,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.servingStyle,_that.createdAt);case _:
   return null;
 
 }
@@ -1520,13 +1523,28 @@ return $default(_that.id,_that.user,_that.rating,_that.review,_that.createdAt);c
 
 
 class _CheckinSummary implements CheckinSummary {
-  const _CheckinSummary({required this.id, required this.user, this.rating, this.review, this.createdAt = ''});
+  const _CheckinSummary({required this.id, required this.user, this.rating, this.review, final  List<PhotoRef> photos = const <PhotoRef>[], final  List<FlavorTag> tags = const <FlavorTag>[], this.servingStyle, this.createdAt = ''}): _photos = photos,_tags = tags;
   
 
 @override final  String id;
 @override final  CheckinUser user;
 @override final  double? rating;
 @override final  String? review;
+ final  List<PhotoRef> _photos;
+@override@JsonKey() List<PhotoRef> get photos {
+  if (_photos is EqualUnmodifiableListView) return _photos;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_photos);
+}
+
+ final  List<FlavorTag> _tags;
+@override@JsonKey() List<FlavorTag> get tags {
+  if (_tags is EqualUnmodifiableListView) return _tags;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_tags);
+}
+
+@override final  String? servingStyle;
 @override@JsonKey() final  String createdAt;
 
 /// Create a copy of CheckinSummary
@@ -1539,16 +1557,16 @@ _$CheckinSummaryCopyWith<_CheckinSummary> get copyWith => __$CheckinSummaryCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other._photos, _photos)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.servingStyle, servingStyle) || other.servingStyle == servingStyle)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,user,rating,review,createdAt);
+int get hashCode => Object.hash(runtimeType,id,user,rating,review,const DeepCollectionEquality().hash(_photos),const DeepCollectionEquality().hash(_tags),servingStyle,createdAt);
 
 @override
 String toString() {
-  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, createdAt: $createdAt)';
+  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, photos: $photos, tags: $tags, servingStyle: $servingStyle, createdAt: $createdAt)';
 }
 
 
@@ -1559,7 +1577,7 @@ abstract mixin class _$CheckinSummaryCopyWith<$Res> implements $CheckinSummaryCo
   factory _$CheckinSummaryCopyWith(_CheckinSummary value, $Res Function(_CheckinSummary) _then) = __$CheckinSummaryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, CheckinUser user, double? rating, String? review, String createdAt
+ String id, CheckinUser user, double? rating, String? review, List<PhotoRef> photos, List<FlavorTag> tags, String? servingStyle, String createdAt
 });
 
 
@@ -1576,12 +1594,15 @@ class __$CheckinSummaryCopyWithImpl<$Res>
 
 /// Create a copy of CheckinSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? photos = null,Object? tags = null,Object? servingStyle = freezed,Object? createdAt = null,}) {
   return _then(_CheckinSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
 as CheckinUser,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
 as double?,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
+as String?,photos: null == photos ? _self._photos : photos // ignore: cast_nullable_to_non_nullable
+as List<PhotoRef>,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
+as List<FlavorTag>,servingStyle: freezed == servingStyle ? _self.servingStyle : servingStyle // ignore: cast_nullable_to_non_nullable
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));

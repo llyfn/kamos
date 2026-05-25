@@ -15,7 +15,9 @@ import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_pill_button.dart';
 import '../../../shared/widgets/state_views.dart';
+import '../../feed/providers/feed_providers.dart';
 import '../../feed/widgets/check_in_card.dart';
+import '../../social/repository/social_repository.dart';
 import '../providers/profile_providers.dart';
 
 class MeProfileScreen extends ConsumerWidget {
@@ -23,18 +25,39 @@ class MeProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
     final async = ref.watch(meProvider);
     return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: AsyncWidget(
-          value: async,
-          center: true,
-          onRetry: () => ref.invalidate(meProvider),
-          data: (me) =>
-              _ProfileBody(user: me.user, stats: me.stats, isMe: true),
+      // AppBar background matches the page so the shell + scroll surface read
+      // as a single quiet plane. Tints/elevations are zeroed so Material 3
+      // doesn't paint a surface seam on scroll.
+      appBar: AppBar(
+        backgroundColor: t.bgPage,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.person_search_outlined, size: 24),
+          tooltip: l.userSearchTitle,
+          color: t.fg1,
+          onPressed: () => context.push('/users/search'),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline, size: 24),
+            tooltip: l.tabLists,
+            color: t.fg1,
+            onPressed: () => context.push('/collections'),
+          ),
+        ],
+      ),
+      body: AsyncWidget(
+        value: async,
+        center: true,
+        onRetry: () => ref.invalidate(meProvider),
+        data: (me) =>
+            _ProfileBody(user: me.user, stats: me.stats, isMe: true),
       ),
     );
   }
@@ -46,14 +69,34 @@ class OtherProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
     final async = ref.watch(publicProfileProvider(username));
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        backgroundColor: t.bgPage,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline, size: 24),
+            tooltip: l.userCollectionsTitle(username),
+            color: t.fg1,
+            onPressed: () => context.push('/users/$username/lists'),
+          ),
+        ],
+      ),
       body: AsyncWidget(
         value: async,
         center: true,
         onRetry: () => ref.invalidate(publicProfileProvider(username)),
-        data: (p) => _ProfileBody(user: p.user, stats: p.stats, isMe: false),
+        data: (p) => _ProfileBody(
+          user: p.user,
+          stats: p.stats,
+          isMe: false,
+          followState: p.followState,
+        ),
       ),
     );
   }
@@ -64,11 +107,17 @@ class _ProfileBody extends StatelessWidget {
     required this.user,
     required this.stats,
     required this.isMe,
+    this.followState = '',
   });
 
   final User user;
   final UserStats stats;
   final bool isMe;
+
+  /// Viewer→target relationship: `none` ('') | `pending` | `accepted`. Only
+  /// consulted when `isMe == false`; the Me variant always renders the
+  /// Edit + Settings pair.
+  final String followState;
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +223,15 @@ class _ProfileBody extends StatelessWidget {
                   onPressed: () => context.push('/me/settings'),
                 ),
               ],
+            )
+          else
+            Row(
+              children: [
+                _FollowButton(
+                  username: user.username,
+                  followState: followState,
+                ),
+              ],
             ),
           const SizedBox(height: 18),
           Padding(
@@ -189,7 +247,7 @@ class _ProfileBody extends StatelessWidget {
               ),
             ),
           ),
-          _RecentCheckins(username: user.username),
+          _RecentCheckins(username: user.username, isMe: isMe),
         ],
       ),
     );
@@ -202,9 +260,10 @@ class _ProfileBody extends StatelessWidget {
 /// the surrounding profile chrome (avatar, name, stats, action pills)
 /// never disappears.
 class _RecentCheckins extends ConsumerWidget {
-  const _RecentCheckins({required this.username});
+  const _RecentCheckins({required this.username, required this.isMe});
 
   final String username;
+  final bool isMe;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -214,8 +273,12 @@ class _RecentCheckins extends ConsumerWidget {
       data: (items) {
         if (items.isEmpty) {
           return EmptyView(
-            title: l.beverageNoCheckinsTitle,
-            body: l.beverageNoCheckinsBody,
+            title: isMe
+                ? l.profileRecentEmptyMeTitle
+                : l.profileRecentEmptyOtherTitle,
+            body: isMe
+                ? l.profileRecentEmptyMeBody
+                : l.profileRecentEmptyOtherBody,
           );
         }
         return Column(
@@ -316,6 +379,151 @@ class _StatTile extends StatelessWidget {
                   color: t.fg3,
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Single-pill follow/unfollow control. State machine:
+///   * `''` / `none`  → primary "Follow" (one-tap follow).
+///   * `pending`      → secondary "Requested" (one-tap cancel — backend
+///     `DELETE /v1/users/{username}/follow` removes the row at any status).
+///   * `accepted`     → secondary "Following" (tap opens an unfollow
+///     confirmation sheet; confirming fires the same DELETE).
+///
+/// While a request is in flight `onPressed` is `null` so the pill renders
+/// in its disabled state. On settle, `publicProfileProvider(username)` is
+/// invalidated so the next `follow_state` flows from the source of truth.
+class _FollowButton extends ConsumerStatefulWidget {
+  const _FollowButton({required this.username, required this.followState});
+
+  final String username;
+  final String followState;
+
+  @override
+  ConsumerState<_FollowButton> createState() => _FollowButtonState();
+}
+
+class _FollowButtonState extends ConsumerState<_FollowButton> {
+  bool _inFlight = false;
+
+  Future<void> _run(Future<void> Function() body) async {
+    if (_inFlight) return;
+    setState(() => _inFlight = true);
+    try {
+      await body();
+    } finally {
+      if (mounted) {
+        setState(() => _inFlight = false);
+        ref.invalidate(publicProfileProvider(widget.username));
+        // Viewer's own "following" stat changes after an accepted follow
+        // or any unfollow — refresh meProvider so the Me page reflects it.
+        ref.invalidate(meProvider);
+        // Feed composition (own + followed users' check-ins) is now stale —
+        // invalidate so the feed re-fetches its first page on next view.
+        ref.invalidate(feedProvider);
+      }
+    }
+  }
+
+  Future<void> _follow() => _run(() async {
+    await ref.read(socialRepositoryProvider).follow(widget.username);
+  });
+
+  Future<void> _unfollow() => _run(() async {
+    await ref.read(socialRepositoryProvider).unfollow(widget.username);
+  });
+
+  Future<void> _confirmThenUnfollow() async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _UnfollowSheet(username: widget.username),
+    );
+    if (confirmed == true) await _unfollow();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final state = widget.followState;
+
+    if (state == 'accepted') {
+      return KamosPillButton.secondary(
+        label: l.profileFollowing,
+        expand: true,
+        onPressed: _inFlight ? null : _confirmThenUnfollow,
+      );
+    }
+    if (state == 'pending') {
+      return KamosPillButton.secondary(
+        label: l.profileFollowRequested,
+        expand: true,
+        onPressed: _inFlight ? null : _unfollow,
+      );
+    }
+    return KamosPillButton.primary(
+      label: l.profileFollow,
+      onPressed: _inFlight ? null : _follow,
+    );
+  }
+}
+
+/// Bottom sheet shown before unfollowing an accepted follow. Returns
+/// `true` from `Navigator.pop` on confirmation so the caller's
+/// `await showModalBottomSheet<bool>` resolves to the user's choice.
+class _UnfollowSheet extends StatelessWidget {
+  const _UnfollowSheet({required this.username});
+  final String username;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l.profileUnfollowConfirmTitle(username),
+              style: TextStyle(
+                fontFamily: 'ShipporiMincho',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: t.fg1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.profileUnfollowConfirmBody,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: t.fg2,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                KamosPillButton.secondary(
+                  label: l.actionCancel,
+                  expand: true,
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                const SizedBox(width: 8),
+                KamosPillButton.primary(
+                  label: l.profileUnfollow,
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+              ],
             ),
           ],
         ),

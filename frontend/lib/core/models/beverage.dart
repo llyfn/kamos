@@ -8,7 +8,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'brewery.dart';
 import 'category_label.dart';
+import 'flavor_tag.dart';
 import 'i18n_text.dart';
+import 'photo_ref.dart';
 
 part 'beverage.freezed.dart';
 
@@ -124,7 +126,9 @@ abstract class BeverageDetail with _$BeverageDetail {
 }
 
 // CheckinSummary lives here to avoid a circular import; the full Checkin is
-// in `checkin.dart`.
+// in `checkin.dart`. Stage post-MVP widened the projection to include
+// `photos`, `tags`, and `serving_style` so beverage-detail recent-check-in
+// rows render rich cards without a second round trip.
 @Freezed(fromJson: false, toJson: false)
 abstract class CheckinSummary with _$CheckinSummary {
   const factory CheckinSummary({
@@ -132,6 +136,9 @@ abstract class CheckinSummary with _$CheckinSummary {
     required CheckinUser user,
     double? rating,
     String? review,
+    @Default(<PhotoRef>[]) List<PhotoRef> photos,
+    @Default(<FlavorTag>[]) List<FlavorTag> tags,
+    String? servingStyle,
     @Default('') String createdAt,
   }) = _CheckinSummary;
 
@@ -142,6 +149,13 @@ abstract class CheckinSummary with _$CheckinSummary {
     ),
     rating: (json['rating'] as num?)?.toDouble(),
     review: json['review'] as String?,
+    photos: ((json['photos'] as List?) ?? const [])
+        .map((e) => PhotoRef.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    tags: ((json['tags'] as List?) ?? const [])
+        .map((e) => FlavorTag.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    servingStyle: json['serving_style'] as String?,
     createdAt: (json['created_at'] as String?) ?? '',
   );
 }

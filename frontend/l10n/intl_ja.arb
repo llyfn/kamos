@@ -138,6 +138,19 @@
   "profileStatFollowers": "フォロワー",
   "profileStatFollowing": "フォロー中",
   "profileRecent": "最近のチェックイン",
+  "profileFollow": "フォロー",
+  "profileFollowing": "フォロー中",
+  "profileFollowRequested": "リクエスト中",
+  "profileUnfollow": "フォロー解除",
+  "profileUnfollowConfirmTitle": "@{username} のフォローを解除しますか？",
+  "@profileUnfollowConfirmTitle": { "placeholders": { "username": { "type": "String" } } },
+  "profileUnfollowConfirmBody": "このユーザーのチェックインがフィードに表示されなくなります。",
+
+  "userSearchTitle": "ユーザーを探す",
+  "userSearchPlaceholder": "ユーザー名や名前で検索",
+  "userSearchNoResults": "該当するユーザーがいません",
+  "userCollectionsTitle": "@{username} · リスト",
+  "@userCollectionsTitle": { "placeholders": { "username": { "type": "String" } } },
 
   "settingsAccount": "アカウント",
   "settingsEmail": "メール",
@@ -178,13 +191,12 @@
   "collectionsConfirmDelete": "このコレクションを削除？",
   "collectionsConfirmDeleteBody": "コレクションとそのすべてのエントリが削除されます。銘柄自体には影響しません。",
   "collectionVisibilityPublicTitle": "公開コレクション",
-  "collectionVisibilityPublicSubtitle": "このコレクションは発見タブで誰でも見られます",
+  "collectionVisibilityPublicSubtitle": "このコレクションはあなたのプロフィールから誰でも見られます",
   "collectionVisibilityPrivateSubtitle": "このコレクションはあなただけが見られます",
   "publicCollectionsTitle": "公開コレクション",
   "publicCollectionsEmpty": "まだ公開されているコレクションはありません",
   "publicCollectionsByOwner": "作成: {username}",
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
-  "publicCollectionsDiscoverCta": "公開コレクションを見る",
 
   "commentsTitle": "コメント",
   "commentsEmpty": "コメントはまだありません",
@@ -260,5 +272,10 @@
   "submitBeverageRequestErrorGeneric": "送信できませんでした。再試行してください。",
   "submitBeverageRequestNameRequired": "名称は必須です。",
   "submitBeverageRequestBreweryRequired": "蔵元は必須です。",
-  "searchSuggestMissingCta": "見つからない場合は提案"
+  "searchSuggestMissingCta": "見つからない場合は提案",
+
+  "profileRecentEmptyMeTitle": "まだチェックインがありません",
+  "profileRecentEmptyMeBody": "最初の一本を記録するとここに表示されます。",
+  "profileRecentEmptyOtherTitle": "まだチェックインがありません",
+  "profileRecentEmptyOtherBody": "このユーザーが記録するとここに表示されます。"
 }

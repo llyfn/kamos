@@ -1,6 +1,7 @@
 // KAMOS — Beverage detail screen. Renders catalog info, avg rating,
 // aggregated flavor, recent check-ins.
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +10,9 @@ import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
 import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage.dart';
+import '../../../core/models/photo_ref.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
@@ -223,57 +226,7 @@ class _Body extends ConsumerWidget {
             ...detail.recentCheckIns.map(
               (r) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: KamosCard(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      KamosAvatar(
-                        initial: r.user.displayUsername,
-                        size: 32,
-                        imageUrl: r.user.avatarUrl,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  r.user.displayUsername,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                if (r.rating != null)
-                                  Text(
-                                    l.ratingValue(r.rating!.toStringAsFixed(1)),
-                                    style: const TextStyle(
-                                      fontFamily: 'JetBrainsMono',
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            if ((r.review ?? '').isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                r.review!,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child: _RecentCheckinRow(summary: r, locale: locale),
               ),
             ),
         ],
@@ -338,6 +291,193 @@ class _SectionHeader extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: t.fg1,
         ),
+      ),
+    );
+  }
+}
+
+/// Recent check-in row on the beverage detail page. Renders header (avatar
+/// + username → user profile), timestamp, review, photo strip (up to 4),
+/// and tag/serving chips. The whole card taps to `/check-ins/:id`; the
+/// avatar + username subtree has an opaque nested gesture that pushes to
+/// `/users/:username` instead. Designer spec: `profile_social_ux_expansion.md` §4.
+class _RecentCheckinRow extends StatelessWidget {
+  const _RecentCheckinRow({required this.summary, required this.locale});
+
+  final CheckinSummary summary;
+  final String locale;
+
+  String? _servingLabel(BuildContext context) {
+    final s = summary.servingStyle;
+    if (s == null || s.isEmpty) return null;
+    final l = AppLocalizations.of(context);
+    return switch (s) {
+      'glass' => l.checkInServingGlass,
+      'carafe' => l.checkInServingCarafe,
+      'bottle' => l.checkInServingBottle,
+      'can' => l.checkInServingCan,
+      'other' => l.checkInServingOther,
+      _ => null,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    final when = parseIsoDateOrNull(summary.createdAt);
+    final servingLabel = _servingLabel(context);
+
+    return KamosCard(
+      // Whole-card tap → check-in detail. The avatar + username subtree
+      // below has its own opaque GestureDetector that wins the gesture
+      // arena for that sub-region and pushes to the author's profile.
+      onTap: () => context.push('/check-ins/${summary.id}'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => context.push('/users/${summary.user.username}'),
+            child: KamosAvatar(
+              initial: summary.user.displayUsername,
+              size: 32,
+              imageUrl: summary.user.avatarUrl,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () =>
+                          context.push('/users/${summary.user.username}'),
+                      child: Text(
+                        summary.user.displayUsername,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (summary.rating != null)
+                      Text(
+                        l.ratingValue(summary.rating!.toStringAsFixed(1)),
+                        style: const TextStyle(
+                          fontFamily: 'JetBrainsMono',
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+                if (when != null) ...[
+                  const SizedBox(height: KamosSpacing.xs),
+                  Text(
+                    elapsedShort(when, l),
+                    style: TextStyle(
+                      fontFamily: 'NotoSansJP',
+                      fontSize: 11,
+                      color: t.fg3,
+                    ),
+                  ),
+                ],
+                if ((summary.review ?? '').isNotEmpty) ...[
+                  const SizedBox(height: KamosSpacing.sm),
+                  Text(
+                    _truncate(summary.review!, 140),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: t.fg1,
+                    ),
+                  ),
+                ],
+                if (summary.photos.isNotEmpty) ...[
+                  const SizedBox(height: KamosSpacing.sm),
+                  _PhotoStrip(photos: summary.photos),
+                ],
+                if (servingLabel != null || summary.tags.isNotEmpty) ...[
+                  const SizedBox(height: KamosSpacing.sm),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (servingLabel != null)
+                        KamosChip(
+                          label: servingLabel,
+                          kind: KamosChipKind.tag,
+                        ),
+                      ...summary.tags.map(
+                        (tag) => KamosChip(
+                          label: resolveI18n(tag.name, locale),
+                          kind: KamosChipKind.tag,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _truncate(String text, int max) {
+    if (text.length <= max) return text;
+    return '${text.substring(0, max)}…';
+  }
+}
+
+/// Horizontal strip of up to 4 square photo thumbnails (64×64). No
+/// scrolling — the row is fixed-width and the strip taps via the parent
+/// card to the full check-in detail (which renders the full gallery).
+class _PhotoStrip extends StatelessWidget {
+  const _PhotoStrip({required this.photos});
+
+  final List<PhotoRef> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final tiles = photos.take(4).toList();
+    return SizedBox(
+      height: 64,
+      child: Row(
+        children: [
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0) const SizedBox(width: KamosSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 64,
+                height: 64,
+                child: CachedNetworkImage(
+                  imageUrl: tiles[i].url,
+                  fit: BoxFit.cover,
+                  memCacheWidth: (64 * dpr).round(),
+                  placeholder: (_, _) => Container(color: t.gray100),
+                  errorWidget: (_, _, _) => Container(
+                    color: t.gray100,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      size: 18,
+                      color: t.fgMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

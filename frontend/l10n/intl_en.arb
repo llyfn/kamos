@@ -134,10 +134,23 @@
   "profileBioLabel": "Bio",
   "profileUsernameLocked": "Cannot be changed.",
   "profileStatCheckins": "Check-ins",
-  "profileStatUnique": "Unique",
+  "profileStatUnique": "Uniques",
   "profileStatFollowers": "Followers",
   "profileStatFollowing": "Following",
   "profileRecent": "Recent check-ins",
+  "profileFollow": "Follow",
+  "profileFollowing": "Following",
+  "profileFollowRequested": "Requested",
+  "profileUnfollow": "Unfollow",
+  "profileUnfollowConfirmTitle": "Unfollow @{username}?",
+  "@profileUnfollowConfirmTitle": { "placeholders": { "username": { "type": "String" } } },
+  "profileUnfollowConfirmBody": "You won't see their check-ins in your feed.",
+
+  "userSearchTitle": "Find people",
+  "userSearchPlaceholder": "Search by username or name",
+  "userSearchNoResults": "No matching users",
+  "userCollectionsTitle": "@{username} · Lists",
+  "@userCollectionsTitle": { "placeholders": { "username": { "type": "String" } } },
 
   "settingsAccount": "Account",
   "settingsEmail": "Email",
@@ -178,13 +191,12 @@
   "collectionsConfirmDelete": "Delete this collection?",
   "collectionsConfirmDeleteBody": "This removes the collection and all of its entries. The beverages themselves are unaffected.",
   "collectionVisibilityPublicTitle": "Public collection",
-  "collectionVisibilityPublicSubtitle": "Anyone can see this collection on the discover tab",
+  "collectionVisibilityPublicSubtitle": "Anyone can see this collection on your profile",
   "collectionVisibilityPrivateSubtitle": "Only you can see this collection",
   "publicCollectionsTitle": "Public collections",
   "publicCollectionsEmpty": "No public collections yet",
   "publicCollectionsByOwner": "by {username}",
   "@publicCollectionsByOwner": { "placeholders": { "username": { "type": "String" } } },
-  "publicCollectionsDiscoverCta": "Discover public collections",
 
   "commentsTitle": "Comments",
   "commentsEmpty": "No comments yet",
@@ -260,5 +272,10 @@
   "submitBeverageRequestErrorGeneric": "Could not submit. Try again.",
   "submitBeverageRequestNameRequired": "Name is required.",
   "submitBeverageRequestBreweryRequired": "Brewery is required.",
-  "searchSuggestMissingCta": "Can't find it? Suggest it."
+  "searchSuggestMissingCta": "Can't find it? Suggest it.",
+
+  "profileRecentEmptyMeTitle": "No check-ins yet",
+  "profileRecentEmptyMeBody": "Log your first bottle to see it here.",
+  "profileRecentEmptyOtherTitle": "No check-ins yet",
+  "profileRecentEmptyOtherBody": "When they log a bottle, it will show up here."
 }

@@ -338,6 +338,40 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileRecent => '最近のチェックイン';
 
   @override
+  String get profileFollow => 'フォロー';
+
+  @override
+  String get profileFollowing => 'フォロー中';
+
+  @override
+  String get profileFollowRequested => 'リクエスト中';
+
+  @override
+  String get profileUnfollow => 'フォロー解除';
+
+  @override
+  String profileUnfollowConfirmTitle(String username) {
+    return '@$username のフォローを解除しますか？';
+  }
+
+  @override
+  String get profileUnfollowConfirmBody => 'このユーザーのチェックインがフィードに表示されなくなります。';
+
+  @override
+  String get userSearchTitle => 'ユーザーを探す';
+
+  @override
+  String get userSearchPlaceholder => 'ユーザー名や名前で検索';
+
+  @override
+  String get userSearchNoResults => '該当するユーザーがいません';
+
+  @override
+  String userCollectionsTitle(String username) {
+    return '@$username · リスト';
+  }
+
+  @override
   String get settingsAccount => 'アカウント';
 
   @override
@@ -452,7 +486,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get collectionVisibilityPublicTitle => '公開コレクション';
 
   @override
-  String get collectionVisibilityPublicSubtitle => 'このコレクションは発見タブで誰でも見られます';
+  String get collectionVisibilityPublicSubtitle =>
+      'このコレクションはあなたのプロフィールから誰でも見られます';
 
   @override
   String get collectionVisibilityPrivateSubtitle => 'このコレクションはあなただけが見られます';
@@ -467,9 +502,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String publicCollectionsByOwner(String username) {
     return '作成: $username';
   }
-
-  @override
-  String get publicCollectionsDiscoverCta => '公開コレクションを見る';
 
   @override
   String get commentsTitle => 'コメント';
@@ -661,4 +693,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get searchSuggestMissingCta => '見つからない場合は提案';
+
+  @override
+  String get profileRecentEmptyMeTitle => 'まだチェックインがありません';
+
+  @override
+  String get profileRecentEmptyMeBody => '最初の一本を記録するとここに表示されます。';
+
+  @override
+  String get profileRecentEmptyOtherTitle => 'まだチェックインがありません';
+
+  @override
+  String get profileRecentEmptyOtherBody => 'このユーザーが記録するとここに表示されます。';
 }

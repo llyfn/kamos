@@ -199,16 +199,20 @@ type PhotoRef struct {
 }
 
 // CheckinSummary is a lighter shape for "recent check-ins" sections.
-// Stage 5 (PERF-010): the summary now carries Photos hydrated via the
+// Stage 5 (PERF-010): the summary carries Photos hydrated via the
 // PhotosFor batch helper so the beverage detail screen can render
-// thumbnails without a follow-up round trip.
+// thumbnails without a follow-up round trip. Profile-UX expansion: it
+// also carries Tags (flavor tag chips) and ServingStyle so the
+// beverage detail "recent check-ins" rows can render richer cards.
 type CheckinSummary struct {
-	ID        string      `json:"id"`
-	User      CheckinUser `json:"user"`
-	Rating    *float64    `json:"rating"`
-	Review    *string     `json:"review"`
-	Photos    []PhotoRef  `json:"photos"`
-	CreatedAt time.Time   `json:"created_at"`
+	ID           string      `json:"id"`
+	User         CheckinUser `json:"user"`
+	Rating       *float64    `json:"rating"`
+	Review       *string     `json:"review"`
+	Photos       []PhotoRef  `json:"photos"`
+	Tags         []FlavorTag `json:"tags"`
+	ServingStyle *string     `json:"serving_style,omitempty"`
+	CreatedAt    time.Time   `json:"created_at"`
 }
 
 // FeedItem matches HANDOFF's feedItem shape. Stage 5 (PERF-002):

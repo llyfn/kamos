@@ -54,22 +54,34 @@ class CheckInDetailScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          KamosAvatar(
-                            initial: checkin.user.displayUsername,
-                            size: 36,
-                            imageUrl: checkin.user.avatarUrl,
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => context.push(
+                              '/users/${checkin.user.username}',
+                            ),
+                            child: KamosAvatar(
+                              initial: checkin.user.displayUsername,
+                              size: 36,
+                              imageUrl: checkin.user.avatarUrl,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  checkin.user.displayUsername,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: t.fg1,
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => context.push(
+                                    '/users/${checkin.user.username}',
+                                  ),
+                                  child: Text(
+                                    checkin.user.displayUsername,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: t.fg1,
+                                    ),
                                   ),
                                 ),
                                 Text(

@@ -63,50 +63,6 @@ abstract class Collection with _$Collection {
   }
 }
 
-/// Owner attribution for a public collection (— `GET /v1/collections/public`).
-/// Mirrors the server's slim `PublicCollectionOwner` shape — privacy-safe (never
-/// carries email). `display_name` is `required` on the wire; defaults to the
-/// empty string only as a defensive fallback against older server builds.
-@Freezed(fromJson: false, toJson: false)
-abstract class CollectionOwner with _$CollectionOwner {
-  const factory CollectionOwner({
-    required String id,
-    required String username,
-    required String displayUsername,
-    @Default('') String displayName,
-    String? avatarUrl,
-  }) = _CollectionOwner;
-
-  factory CollectionOwner.fromJson(Map<String, dynamic> json) =>
-      CollectionOwner(
-        id: (json['id'] as String?) ?? '',
-        username: (json['username'] as String?) ?? '',
-        displayUsername:
-            (json['display_username'] as String?) ??
-            (json['username'] as String? ?? ''),
-        displayName: (json['display_name'] as String?) ?? '',
-        avatarUrl: json['avatar_url'] as String?,
-      );
-}
-
-/// A public collection paired with its owner. Returned by
-/// `GET /v1/collections/public`.
-@Freezed(fromJson: false, toJson: false)
-abstract class CollectionWithOwner with _$CollectionWithOwner {
-  const factory CollectionWithOwner({
-    required Collection collection,
-    required CollectionOwner owner,
-  }) = _CollectionWithOwner;
-
-  factory CollectionWithOwner.fromJson(Map<String, dynamic> json) =>
-      CollectionWithOwner(
-        collection: Collection.fromJson(json),
-        owner: CollectionOwner.fromJson(
-          (json['owner'] as Map<String, dynamic>?) ?? const {},
-        ),
-      );
-}
-
 @Freezed(fromJson: false, toJson: false)
 abstract class CollectionEntry with _$CollectionEntry {
   const factory CollectionEntry({

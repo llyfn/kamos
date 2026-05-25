@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -99,6 +100,72 @@ type publicProfile struct {
 	Restricted  bool             `json:"restricted"`             // private + caller not approved
 }
 
+// SearchUsers — GET /v1/users/search?q=...&cursor=...&limit=...
+//
+// OptionalAuth. Returns a page of PublicUser rows matching `q`:
+//   - username prefix > display_name prefix > contains-either (ranked at
+//     the SQL level so cursor pagination stays stable).
+//   - Soft-deleted users excluded.
+//   - No follower counts or private fields leak — the username is
+//     inherently public (it's the canonical key for the profile route).
+//
+// `q` is sanitized via SanitizeText (control + bidi-override rejected),
+// trimmed, and must be ≥ 2 chars; shorter queries return
+// 400 INVALID_QUERY. Empty `q` returns the same.
+//
+// The opaque cursor carries (rank, created_at, id). Rank lives in the
+// Cursor.Score slot — keyset pagination must order by rank first to
+// keep results stable across the (rank ASC, created_at DESC, id DESC)
+// outer sort. A 2-tuple of (created_at, id) would re-emit rows from
+// earlier rank tiers on page 2+ and skip newer rows in later tiers.
+func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimSpace(r.URL.Query().Get("q"))
+	q, err := domain.SanitizeText("q", raw, false, 100)
+	if err != nil {
+		h.writeErr(w, "SearchUsers sanitize", err)
+		return
+	}
+	if len([]rune(q)) < 2 {
+		httperr.WriteError(w, http.StatusBadRequest, "INVALID_QUERY",
+			"q must be at least 2 characters")
+		return
+	}
+	limit := parseLimit(r, 20, 50)
+	c, err := parseCursor(r)
+	if err != nil {
+		h.writeErr(w, "SearchUsers cursor", err)
+		return
+	}
+	var sc *repository.SearchCursor
+	if c.Score != nil && !c.CreatedAt.IsZero() && c.ID != "" {
+		sc = &repository.SearchCursor{
+			Rank:      int(*c.Score),
+			CreatedAt: c.CreatedAt,
+			ID:        c.ID,
+		}
+	}
+	rows, err := h.Repos.Users.SearchUsers(r.Context(), q, sc, limit)
+	if err != nil {
+		h.writeErr(w, "SearchUsers", err)
+		return
+	}
+	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(row repository.SearchRow) cursor.Cursor {
+		score := int64(row.Rank)
+		return cursor.Cursor{
+			Score:     &score,
+			CreatedAt: row.User.CreatedAt,
+			ID:        row.User.ID,
+		}
+	})
+	users := make([]domain.PublicUser, 0, len(items))
+	for _, row := range items {
+		users = append(users, row.User)
+	}
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.PublicUser]{
+		Items: users, NextCursor: next, HasMore: hasMore,
+	})
+}
+
 // GetUser — GET /v1/users/{username}. Public profile, optional auth for
 // follow-state hints. Private profiles return only basic fields to non-
 // followers and set `restricted: true` so the client hides check-ins.
@@ -167,6 +234,47 @@ func (h *Handler) GetUserCheckins(w http.ResponseWriter, r *http.Request) {
 	})
 	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Checkin]{
 		Items: rows, NextCursor: next, HasMore: hasMore,
+	})
+}
+
+// GetUserCollections — GET /v1/users/{username}/collections.
+//
+// OptionalAuth. Returns the page of collections belonging to the named
+// user, visibility-gated by the viewer:
+//   - viewer == owner: every live collection (public + private).
+//   - otherwise: only `visibility = 'public'` rows.
+//
+// 404 USER_NOT_FOUND when the username does not resolve to a live user.
+// Cursor on (created_at, id) DESC, default page 20 / max 50. The
+// response shape matches GET /v1/collections (PageOfCollection).
+func (h *Handler) GetUserCollections(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+	owner, err := h.Repos.Users.FindByUsername(r.Context(), username)
+	if err != nil {
+		h.writeErr(w, "GetUserCollections find", err)
+		return
+	}
+	viewerID := ""
+	if v := middleware.UserFromContext(r.Context()); v != nil {
+		viewerID = v.ID
+	}
+	limit := parseLimit(r, 20, 50)
+	c, err := parseCursor(r)
+	if err != nil {
+		h.writeErr(w, "GetUserCollections cursor", err)
+		return
+	}
+	rows, err := h.Repos.Collections.ListByUser(r.Context(),
+		owner.ID, viewerID, optTimestamp(c), optString(c.ID), limit)
+	if err != nil {
+		h.writeErr(w, "GetUserCollections", err)
+		return
+	}
+	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(row domain.Collection) cursor.Cursor {
+		return cursor.Cursor{CreatedAt: row.CreatedAt, ID: row.ID}
+	})
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Collection]{
+		Items: items, NextCursor: next, HasMore: hasMore,
 	})
 }
 

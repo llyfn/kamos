@@ -1,10 +1,8 @@
-// KAMOS — Public collections discovery.
+// KAMOS — Other user's public collections screen.
 //
-// Paginated list of public collections from `GET /v1/collections/public`. Each
-// row shows the collection name, bottle count, and the owner's display
-// username. Tapping a row navigates to `/collections/:id`, which already
-// renders the entries list — server-side access checks gate which entries are
-// visible (server still returns the full list for a public collection).
+// Cursor-paginated list of the named user's visible collections. Server-side
+// gating: owner-as-viewer sees all rows; every other viewer sees only public
+// rows (no client filtering needed). Tap navigates to `/collections/:id`.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,21 +11,22 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
-import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/state_views.dart';
-import '../providers/public_collections_providers.dart';
+import '../providers/users_providers.dart';
 
-class PublicCollectionsScreen extends ConsumerStatefulWidget {
-  const PublicCollectionsScreen({super.key});
+class OtherUserCollectionsScreen extends ConsumerStatefulWidget {
+  const OtherUserCollectionsScreen({super.key, required this.username});
+
+  final String username;
 
   @override
-  ConsumerState<PublicCollectionsScreen> createState() =>
-      _PublicCollectionsScreenState();
+  ConsumerState<OtherUserCollectionsScreen> createState() =>
+      _OtherUserCollectionsScreenState();
 }
 
-class _PublicCollectionsScreenState
-    extends ConsumerState<PublicCollectionsScreen> {
+class _OtherUserCollectionsScreenState
+    extends ConsumerState<OtherUserCollectionsScreen> {
   final _controller = ScrollController();
 
   @override
@@ -38,8 +37,9 @@ class _PublicCollectionsScreenState
 
   @override
   void dispose() {
-    _controller.removeListener(_onScroll);
-    _controller.dispose();
+    _controller
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
   }
 
@@ -47,7 +47,9 @@ class _PublicCollectionsScreenState
     if (!_controller.hasClients) return;
     final pos = _controller.position;
     if (pos.pixels >= pos.maxScrollExtent - 240) {
-      ref.read(publicCollectionsProvider.notifier).loadMore();
+      ref
+          .read(otherUserCollectionsProvider(widget.username).notifier)
+          .loadMore();
     }
   }
 
@@ -55,12 +57,12 @@ class _PublicCollectionsScreenState
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    final async = ref.watch(publicCollectionsProvider);
+    final async = ref.watch(otherUserCollectionsProvider(widget.username));
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          l.publicCollectionsTitle,
+          l.userCollectionsTitle(widget.username),
           style: TextStyle(
             fontFamily: 'ShipporiMincho',
             fontWeight: FontWeight.w600,
@@ -71,10 +73,14 @@ class _PublicCollectionsScreenState
       body: AsyncWidget(
         value: async,
         center: true,
-        onRetry: () => ref.read(publicCollectionsProvider.notifier).refresh(),
+        onRetry: () =>
+            ref.invalidate(otherUserCollectionsProvider(widget.username)),
         data: (state) {
           if (state.items.isEmpty) {
-            return EmptyView(glyph: '集', title: l.publicCollectionsEmpty);
+            return EmptyView(
+              glyph: '集',
+              title: l.publicCollectionsEmpty,
+            );
           }
           return ListView.builder(
             controller: _controller,
@@ -87,9 +93,7 @@ class _PublicCollectionsScreenState
                   hasMore: state.hasMore,
                 );
               }
-              final item = state.items[i];
-              final c = item.collection;
-              final owner = item.owner;
+              final c = state.items[i];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: KamosCard(
@@ -133,23 +137,6 @@ class _PublicCollectionsScreenState
                                   ? l.collectionsBottleCountOne(c.entryCount)
                                   : l.collectionsBottleCountOther(c.entryCount),
                               style: TextStyle(fontSize: 12, color: t.fg2),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                KamosAvatar(
-                                  initial: owner.displayUsername,
-                                  size: 18,
-                                  imageUrl: owner.avatarUrl,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  l.publicCollectionsByOwner(
-                                    owner.displayUsername,
-                                  ),
-                                  style: TextStyle(fontSize: 12, color: t.fg3),
-                                ),
-                              ],
                             ),
                           ],
                         ),
