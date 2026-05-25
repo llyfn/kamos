@@ -54,8 +54,17 @@ class AuthStateNotifier extends Notifier<AuthState> {
   }
 
   /// Called by the repository after a successful login/register. The tokens
-  /// are already written to secure storage; we only flip the flag here.
+  /// are already written to secure storage; we flip the flag and invalidate
+  /// the long-lived notification providers so any caller that reads
+  /// `notificationListProvider` or `unreadCountProvider` before the next
+  /// build sees a fresh fetch under the new identity rather than a value
+  /// left in memory from the previous session. Symmetric with the logout
+  /// and `onUnauthorized` invalidation lists; other per-viewer providers
+  /// (`meProvider`, `feedProvider`, `collectionsProvider`) rebuild
+  /// naturally from the router redirect when the auth flag flips.
   void signIn() {
+    ref.invalidate(notificationListProvider);
+    ref.invalidate(unreadCountProvider);
     state = const AuthState(isAuthenticated: true, isLoading: false);
   }
 
