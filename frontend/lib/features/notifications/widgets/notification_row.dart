@@ -19,11 +19,14 @@
 // types (follow / follow_approved) the tap is a no-op because there is no
 // user page to navigate to.
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/api/api_exceptions.dart';
+import '../../../core/api/api_toast.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
@@ -272,15 +275,19 @@ class _FollowRequestActionsState
 
   Future<void> _resolve({required bool approve}) async {
     if (_busy) return;
+    // Set busy uniformly across both branches so a double-tap (or a
+    // soft-deleted-actor row that resolves locally) cannot re-fire the
+    // handler before the first call completes.
+    setState(() => _busy = true);
     final n = widget.notification;
     final actor = n.actor;
     if (actor == null) {
-      // Soft-deleted actor — still attempt the call (server may have a
-      // tombstone-safe path), but the row will be hidden either way.
+      // Soft-deleted actor — no actor.id to send to the server, so we just
+      // hide the row locally; the underlying notification will be cleaned
+      // up server-side by the FK cascade if/when the actor is hard-purged.
       ref.read(notificationListProvider.notifier).removeLocal(n.id);
       return;
     }
-    setState(() => _busy = true);
     try {
       final repo = ref.read(socialRepositoryProvider);
       if (approve) {
@@ -294,6 +301,23 @@ class _FollowRequestActionsState
           .read(notificationListProvider.notifier)
           .markRead([n.id]);
       ref.read(notificationListProvider.notifier).removeLocal(n.id);
+    } on DioException catch (e) {
+      // SEC-004: a 404 means the underlying follow-request is gone
+      // (already resolved on another device, or the actor cancelled).
+      // Surface a localized toast and drop the now-meaningless row from
+      // the list instead of leaving the user staring at a stuck spinner.
+      final mapped = mapDioException(e);
+      if (mapped is NotFoundException) {
+        ref
+            .read(apiToastBusProvider.notifier)
+            .emit(ApiToastKind.notificationsRequestStale);
+        await ref
+            .read(notificationListProvider.notifier)
+            .markRead([n.id]);
+        ref.read(notificationListProvider.notifier).removeLocal(n.id);
+        return;
+      }
+      if (mounted) setState(() => _busy = false);
     } catch (_) {
       if (mounted) setState(() => _busy = false);
     }

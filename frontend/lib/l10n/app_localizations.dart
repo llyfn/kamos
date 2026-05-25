@@ -1150,6 +1150,12 @@ abstract class AppLocalizations {
   /// **'Deleted user'**
   String get notificationsDeletedActor;
 
+  /// No description provided for @notificationsRequestStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Request no longer pending.'**
+  String get notificationsRequestStale;
+
   /// No description provided for @notificationsVerbToast.
   ///
   /// In en, this message translates to:

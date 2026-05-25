@@ -97,6 +97,8 @@ class _ApiToastListener extends ConsumerWidget {
         ApiToastKind.network => l.errorNetwork,
         ApiToastKind.notificationsMarkAllFailed =>
           l.notificationsMarkAllError,
+        ApiToastKind.notificationsRequestStale =>
+          l.notificationsRequestStale,
       };
       messenger
         ..hideCurrentSnackBar()

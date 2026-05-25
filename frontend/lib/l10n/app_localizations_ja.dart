@@ -566,6 +566,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get notificationsDeletedActor => '削除されたユーザー';
 
   @override
+  String get notificationsRequestStale => 'このリクエストは既に処理済みです。';
+
+  @override
   String notificationsVerbToast(String actor) {
     return '$actorがあなたのチェックインに乾杯しました。';
   }

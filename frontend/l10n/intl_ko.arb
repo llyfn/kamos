@@ -226,6 +226,7 @@
   "notificationsEmptyTitle": "새 알림이 없습니다",
   "notificationsEmptyBody": "다른 사용자의 건배, 댓글, 팔로우가 여기에 표시됩니다.",
   "notificationsDeletedActor": "삭제된 사용자",
+  "notificationsRequestStale": "이미 처리된 요청입니다.",
   "notificationsVerbToast": "{actor}님이 회원님의 체크인에 건배했습니다.",
   "@notificationsVerbToast": { "placeholders": { "actor": { "type": "String" } } },
   "notificationsVerbComment": "{actor}님이 회원님의 체크인에 댓글을 남겼습니다.",

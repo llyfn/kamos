@@ -226,6 +226,7 @@
   "notificationsEmptyTitle": "Nothing new",
   "notificationsEmptyBody": "Toasts, comments, and follows from other people show up here.",
   "notificationsDeletedActor": "Deleted user",
+  "notificationsRequestStale": "Request no longer pending.",
   "notificationsVerbToast": "{actor} toasted your check-in.",
   "@notificationsVerbToast": { "placeholders": { "actor": { "type": "String" } } },
   "notificationsVerbComment": "{actor} commented on your check-in.",

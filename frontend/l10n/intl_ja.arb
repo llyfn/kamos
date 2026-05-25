@@ -226,6 +226,7 @@
   "notificationsEmptyTitle": "新着はありません",
   "notificationsEmptyBody": "他のユーザーからの乾杯・コメント・フォローがここに表示されます。",
   "notificationsDeletedActor": "削除されたユーザー",
+  "notificationsRequestStale": "このリクエストは既に処理済みです。",
   "notificationsVerbToast": "{actor}があなたのチェックインに乾杯しました。",
   "@notificationsVerbToast": { "placeholders": { "actor": { "type": "String" } } },
   "notificationsVerbComment": "{actor}があなたのチェックインにコメントしました。",

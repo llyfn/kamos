@@ -582,6 +582,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsDeletedActor => 'Deleted user';
 
   @override
+  String get notificationsRequestStale => 'Request no longer pending.';
+
+  @override
   String notificationsVerbToast(String actor) {
     return '$actor toasted your check-in.';
   }

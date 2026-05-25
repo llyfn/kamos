@@ -565,6 +565,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get notificationsDeletedActor => '삭제된 사용자';
 
   @override
+  String get notificationsRequestStale => '이미 처리된 요청입니다.';
+
+  @override
   String notificationsVerbToast(String actor) {
     return '$actor님이 회원님의 체크인에 건배했습니다.';
   }

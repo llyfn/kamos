@@ -10,10 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Reason for a cross-cutting toast surfaced from outside the widget tree.
 /// Mapped to localized copy at the widget layer (see `app.dart`). Most
-/// entries originate in the auth interceptor; `notificationsMarkAllFailed`
-/// is emitted by the notifications provider when the server rejects a
-/// "Mark all read" request (see design/notifications_ux.md §3.3).
-enum ApiToastKind { unauthorized, network, notificationsMarkAllFailed }
+/// entries originate in the auth interceptor; the `notifications*` entries
+/// are emitted by the notifications feature (see
+/// design/notifications_ux.md §3.3 and SEC-004).
+enum ApiToastKind {
+  unauthorized,
+  network,
+  notificationsMarkAllFailed,
+  notificationsRequestStale,
+}
 
 /// One-shot signal: the value is replaced each time a new toast should fire,
 /// then the listener clears it back to `null` after reading.
