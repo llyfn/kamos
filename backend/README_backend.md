@@ -40,7 +40,7 @@ migrations/                 (mirror of ../db/migrations)
 |---|---|
 | Auth | 7 |
 | Users (me + public profile + lists) | 7 |
-| Beverages / breweries | 5 |
+| Beverages / producers | 5 |
 | Check-ins (CRUD + photo + toast) | 6 |
 | Feed | 1 |
 | Social (follow + inbox) | 5 |
