@@ -30,7 +30,7 @@ class KamosApp extends ConsumerWidget {
       routerConfig: router,
       builder: (context, child) {
         return _ApiToastListener(
-          child: _ResumeRefresher(child: child ?? const SizedBox.shrink()),
+          child: ResumeRefresher(child: child ?? const SizedBox.shrink()),
         );
       },
     );
@@ -48,12 +48,16 @@ class KamosApp extends ConsumerWidget {
 /// cycles (notification-center pull-down, control-center toggle, screen-lock
 /// flicker). The first resume after sign-in always refreshes; subsequent
 /// resumes within the window are dropped.
-class _ResumeRefresher extends ConsumerStatefulWidget {
-  const _ResumeRefresher({required this.child});
+///
+/// Public-by-name for `@visibleForTesting` access — the only intended
+/// in-app construction site is the [KamosApp.builder] above.
+@visibleForTesting
+class ResumeRefresher extends ConsumerStatefulWidget {
+  const ResumeRefresher({super.key, required this.child});
   final Widget child;
 
   @override
-  ConsumerState<_ResumeRefresher> createState() => _ResumeRefresherState();
+  ConsumerState<ResumeRefresher> createState() => _ResumeRefresherState();
 }
 
 /// Cooldown between consecutive unread-count refreshes triggered by app
@@ -62,7 +66,7 @@ class _ResumeRefresher extends ConsumerStatefulWidget {
 @visibleForTesting
 const Duration kResumeRefreshDebounce = Duration(seconds: 30);
 
-class _ResumeRefresherState extends ConsumerState<_ResumeRefresher>
+class _ResumeRefresherState extends ConsumerState<ResumeRefresher>
     with WidgetsBindingObserver {
   DateTime? _lastRefresh;
 

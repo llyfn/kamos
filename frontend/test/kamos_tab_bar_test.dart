@@ -148,7 +148,7 @@ void main() {
 
     testWidgets('/ activates Feed (index 0)', (tester) async {
       await pumpAt(tester, '/');
-      final t = KamosTokens.light;
+      const t = KamosTokens.light;
       expect(iconColorFor(tester, Icons.home_outlined), t.ai);
       expect(iconColorFor(tester, Icons.bookmark_outline), t.fg3);
       expect(iconColorFor(tester, Icons.search), t.fg3);
@@ -158,14 +158,14 @@ void main() {
 
     testWidgets('/collections activates Lists (index 1)', (tester) async {
       await pumpAt(tester, '/collections');
-      final t = KamosTokens.light;
+      const t = KamosTokens.light;
       expect(iconColorFor(tester, Icons.bookmark_outline), t.ai);
       expect(iconColorFor(tester, Icons.home_outlined), t.fg3);
     });
 
     testWidgets('/discover activates Discover (index 2)', (tester) async {
       await pumpAt(tester, '/discover');
-      final t = KamosTokens.light;
+      const t = KamosTokens.light;
       expect(iconColorFor(tester, Icons.search), t.ai);
       expect(iconColorFor(tester, Icons.home_outlined), t.fg3);
     });
@@ -173,21 +173,21 @@ void main() {
     testWidgets('/notifications activates Notifications (index 3)',
         (tester) async {
       await pumpAt(tester, '/notifications');
-      final t = KamosTokens.light;
+      const t = KamosTokens.light;
       expect(iconColorFor(tester, Icons.notifications_outlined), t.ai);
       expect(iconColorFor(tester, Icons.home_outlined), t.fg3);
     });
 
     testWidgets('/me activates Me (index 4)', (tester) async {
       await pumpAt(tester, '/me');
-      final t = KamosTokens.light;
+      const t = KamosTokens.light;
       expect(iconColorFor(tester, Icons.person_outline), t.ai);
       expect(iconColorFor(tester, Icons.home_outlined), t.fg3);
     });
 
     testWidgets('unknown path falls back to Feed (index 0)', (tester) async {
       await pumpAt(tester, '/check-ins/abc');
-      final t = KamosTokens.light;
+      const t = KamosTokens.light;
       expect(iconColorFor(tester, Icons.home_outlined), t.ai);
     });
   });
