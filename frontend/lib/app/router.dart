@@ -129,7 +129,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/check-in',
         pageBuilder: (_, state) {
           final b = state.extra as Beverage?;
-          // Defensive: if launched without a beverage, bounce back to search.
+          // Defensive: if launched without a beverage, bounce back to discover.
           final child = b == null
               ? const SearchScreen()
               : CheckInScreen(beverage: b);
