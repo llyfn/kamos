@@ -67,9 +67,20 @@ func (s *CommentService) List(ctx context.Context, checkInID, viewerID string, c
 // Create orchestrates the insert in a single transaction with the
 // notification emit so the inbox row lands atomically with the comment.
 // (Rate-limiting lives at the router.)
+//
+// SEC-002: the visibility gate runs BEFORE the tx opens — a non-follower
+// of a private-account check-in must get the same 404 they get from
+// `GET /v1/check-ins/{id}/comments` (List) and `POST .../toast`
+// (ToggleToastTx). Without this gate, a non-follower with the check-in
+// UUID could both leak through the notification emit confirming the
+// target's ownership and add unwanted comments to a private owner's
+// thread.
 func (s *CommentService) Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error) {
 	if s.db == nil {
 		return nil, errors.New("CommentService.Create: nil db pool")
+	}
+	if err := s.checkins.AssertViewerCanSeeCheckin(ctx, checkInID, userID); err != nil {
+		return nil, err
 	}
 	tx, err := s.db.Begin(ctx)
 	if err != nil {

@@ -580,3 +580,53 @@ func TestAdminComments_SoftDeletedAuthorPII(t *testing.T) {
 		t.Errorf("admin display fields must be blanked, got user=%+v", page.Items[0].User)
 	}
 }
+
+// TestCreateComment_PrivateAccountNonFollower404 — SEC-002. A non-follower
+// of a private-account owner cannot post a comment on that owner's
+// check-in; the service returns the same 404 the other check-in surfaces
+// give them. Without this gate the notification emit would confirm the
+// private owner's user-id to an outsider.
+func TestCreateComment_PrivateAccountNonFollower404(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "Private Sake")
+	authorTok, authorID := mustRegister(t, srv, "priv_author", "pa@example.com", "password-123")
+	setUserPrivacy(t, authorID, "private")
+	outsiderTok, _ := mustRegister(t, srv, "outsider_c", "oc@example.com", "password-123")
+	ckID := createCheckin(t, srv, authorTok, bevID)
+
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/comments", outsiderTok,
+		map[string]any{"body": "ill-gotten comment"})
+	if code != http.StatusNotFound {
+		t.Errorf("non-follower post on private check-in: %d body=%s (want 404)", code, raw)
+	}
+
+	// The check-in's owner should see zero comments.
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", authorTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("owner list: %d body=%s", code, raw)
+	}
+	var page struct {
+		Items []map[string]any `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 0 {
+		t.Errorf("owner should see no comments after a rejected post: got %d", len(page.Items))
+	}
+
+	// And the owner's notifications inbox is empty (no comment notification
+	// leaked through the rejected path).
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/notifications", authorTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("owner inbox: %d body=%s", code, raw)
+	}
+	var inbox struct {
+		Items []map[string]any `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &inbox)
+	if len(inbox.Items) != 0 {
+		t.Errorf("owner inbox should be empty after a rejected comment: %+v", inbox.Items)
+	}
+}
