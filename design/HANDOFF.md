@@ -12,14 +12,20 @@ Single bridging document for `db-architect`, `backend-engineer`, and `flutter-en
 
 The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This document does not define it — it lists the data shapes each screen needs so the contract can be written from SPEC.md plus this index.
 
+## Feature add-on specs
+
+- **Notifications + nav rewrite (SPEC §5.4)** — `design/notifications_ux.md`. Defines the unified Notifications screen (5 row types, unread tint, Mark all read, inline Approve/Decline on `follow_request` rows), the bottom-nav rewrite (Feed · Lists · Discover · Notifications · Me, no center FAB), the Koh-dot unread indicator on the Notifications tab, mark-on-scroll behavior, soft-deleted actor rendering, and the EN ARB key list. Flutter engineer must read this end-to-end before touching `frontend/lib/features/notifications/` or `frontend/lib/app/router.dart`. Supersedes the `InboxScreen.jsx` flow.
+- **Profile / social UX expansion** — `design/profile_social_ux_expansion.md`.
+
 ## Screen → file map
 
 | User-facing surface | JSX file |
 |---|---|
 | Auth: sign in, create account, forgot password, verify email, Google OAuth | `components/AuthScreen.jsx` |
 | Feed (followed users' check-ins, cursor-paginated, page size 20) | `components/FeedScreen.jsx` |
-| Follow-request inbox (private accounts only) | `components/InboxScreen.jsx` |
-| Search / discover (full-text + category filter chips) | `components/SearchScreen.jsx` |
+| Notifications (all 5 types, replaces old Inbox) | `components/NotificationsScreen.jsx` |
+| [legacy] Follow-request inbox | `components/InboxScreen.jsx` — superseded by NotificationsScreen; kept for `/inbox` → `/notifications` redirect milestone |
+| Discover (formerly Search; full-text + category filter chips) | `components/SearchScreen.jsx` |
 | Beverage detail (catalog, avg rating, flavor aggregate, recent check-ins) | `components/BeverageScreen.jsx` |
 | Producer detail (i18n name, region, founded, website, beverage list) | `components/ProducerScreen.jsx` |
 | Check-in (rating, review, tags, photos, price, purchase type) | `components/CheckInScreen.jsx` |

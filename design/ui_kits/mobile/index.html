@@ -82,6 +82,7 @@
   <script type="text/babel" src="components/ProducerScreen.jsx"></script>
   <script type="text/babel" src="components/CollectionPickerSheet.jsx"></script>
   <script type="text/babel" src="components/CollectionDetailScreen.jsx"></script>
+  <script type="text/babel" src="components/NotificationsScreen.jsx"></script>
 
   <script type="text/babel">
     // -------------------------------------------------------------------
@@ -101,6 +102,12 @@
       const [pickedProducer, setPickedProducer] = React.useState(null);
       const [pickedCollection, setPickedCollection] = React.useState(null);
       const [pickerOpen, setPickerOpen] = React.useState(false);
+      // Drives the unread dot on the Notifications tab. Real app reads this from
+      // GET /notifications/unread; the live demo derives it from the seed data and
+      // clears as the user opens the tab + uses Mark all read.
+      const [hasUnread, setHasUnread] = React.useState(
+        (window.NOTIFICATIONS || []).some(n => !n.read)
+      );
 
       const push = (name) => setStack(s => [...s, name]);
       const pop  = () => setStack(s => s.slice(0, -1));
@@ -109,9 +116,15 @@
       const openCheckIn  = (b) => { setPicked(b); push('checkin'); };
       const openProducer = (id) => { setPickedProducer(window.PRODUCERS?.[id]); push('producer'); };
       const openCollection = (c) => { setPickedCollection(c); push('collection'); };
-      const openInbox    = () => push('inbox');
       const openEdit     = () => push('editprofile');
       const openSettings = () => push('settings');
+
+      // Auto-clear the unread dot when the user switches to the Notifications tab.
+      // (Mark-on-scroll + tap-to-open still apply per-row inside the screen.)
+      const handleSetTab = (t) => {
+        if (t === 'notifications') setHasUnread(false);
+        setTab(t);
+      };
 
       const top = stack[stack.length - 1];
 
@@ -123,8 +136,6 @@
                   onOpenProducer={openProducer}/>;
       } else if (top === 'checkin' && picked) {
         body = <CheckInScreen b={picked} onClose={pop} onSubmit={() => { setStack([]); setTab('feed'); }}/>;
-      } else if (top === 'inbox') {
-        body = <InboxScreen requests={FOLLOW_REQUESTS} onClose={pop}/>;
       } else if (top === 'editprofile') {
         body = <EditProfileScreen user={ME} onClose={pop} onSave={pop}/>;
       } else if (top === 'settings') {
@@ -136,11 +147,11 @@
       } else {
         body = (
           <>
-            {tab === 'feed'    && <FeedScreen data={FEED} onOpenBeverage={openBeverage} onOpenInbox={openInbox} pendingRequests={FOLLOW_REQUESTS.length}/>}
-            {tab === 'search'  && <SearchScreen catalog={CATALOG} onPickBeverage={openBeverage}/>}
-            {tab === 'checkin' && <SearchScreen catalog={CATALOG} onPickBeverage={openCheckIn}/>}
-            {tab === 'lists'   && <ListsScreen collections={COLLECTIONS} onOpenCollection={openCollection}/>}
-            {tab === 'me'      && <ProfileScreen user={ME} recent={MY_RECENT} onEditProfile={openEdit} onOpenSettings={openSettings}/>}
+            {tab === 'feed'          && <FeedScreen data={FEED} onOpenBeverage={openBeverage}/>}
+            {tab === 'lists'         && <ListsScreen collections={COLLECTIONS} onOpenCollection={openCollection}/>}
+            {tab === 'discover'      && <SearchScreen catalog={CATALOG} onPickBeverage={openBeverage}/>}
+            {tab === 'notifications' && <NotificationsScreen notifications={NOTIFICATIONS} onOpen={() => {}}/>}
+            {tab === 'me'            && <ProfileScreen user={ME} recent={MY_RECENT} onEditProfile={openEdit} onOpenSettings={openSettings}/>}
           </>
         );
       }
@@ -150,7 +161,7 @@
       return (
         <Phone>
           {body}
-          {showTabs && <TabBar tab={tab} setTab={setTab}/>}
+          {showTabs && <TabBar tab={tab} setTab={handleSetTab} hasUnread={hasUnread}/>}
           <CollectionPickerSheet
             open={pickerOpen}
             beverage={picked}
@@ -218,7 +229,7 @@
             <AuthDemo mode="forgot"/>
           </div>
 
-          <div className="group-label">Profile, settings, inbox</div>
+          <div className="group-label">Profile &amp; settings</div>
           <div className="stage">
             <div className="col">
               <Phone><EditProfileScreen user={ME} onClose={() => {}} onSave={() => {}}/></Phone>
@@ -230,7 +241,32 @@
             </div>
             <div className="col">
               <Phone><InboxScreen requests={FOLLOW_REQUESTS} onClose={() => {}}/></Phone>
-              <div className="label">Follow requests inbox</div>
+              <div className="label">Legacy: follow-request inbox (removed; replaced by Notifications)</div>
+            </div>
+          </div>
+
+          <div className="group-label">Notifications (SPEC §5.4)</div>
+          <div className="stage">
+            <div className="col">
+              <Phone>
+                <NotificationsScreen notifications={NOTIFICATIONS} onOpen={() => {}}/>
+                <TabBar tab="notifications" setTab={() => {}} hasUnread={false}/>
+              </Phone>
+              <div className="label">Notifications · mixed read/unread + all 5 types</div>
+            </div>
+            <div className="col">
+              <Phone>
+                <NotificationsScreen notifications={[]} onOpen={() => {}} emptyMode/>
+                <TabBar tab="notifications" setTab={() => {}} hasUnread={false}/>
+              </Phone>
+              <div className="label">Notifications · empty state</div>
+            </div>
+            <div className="col">
+              <Phone>
+                <FeedScreen data={FEED} onOpenBeverage={() => {}}/>
+                <TabBar tab="feed" setTab={() => {}} hasUnread/>
+              </Phone>
+              <div className="label">Feed · with unread-dot on Notifications tab</div>
             </div>
           </div>
 
@@ -253,7 +289,7 @@
           <div className="group-label">Empty &amp; loading states</div>
           <div className="stage">
             <div className="col">
-              <Phone><FeedScreen data={[]} onOpenBeverage={() => {}} onOpenInbox={() => {}}/></Phone>
+              <Phone><FeedScreen data={[]} onOpenBeverage={() => {}}/></Phone>
               <div className="label">Feed · empty</div>
             </div>
             <div className="col">
