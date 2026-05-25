@@ -25,7 +25,6 @@ import 'package:kamos/app/theme.dart';
 import 'package:kamos/core/models/beverage.dart';
 import 'package:kamos/core/models/page.dart' as models;
 import 'package:kamos/features/notifications/models/notification.dart';
-import 'package:kamos/features/notifications/providers/notification_providers.dart';
 import 'package:kamos/features/notifications/repository/notification_repository.dart';
 import 'package:kamos/features/notifications/screens/notifications_screen.dart';
 import 'package:kamos/features/notifications/widgets/notification_row.dart';
