@@ -229,7 +229,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/feed',                  builder: (_, __) => const FeedScreen()),
           GoRoute(path: '/search',                builder: (_, __) => const SearchScreen()),
           GoRoute(path: '/beverages/:id',         builder: (_, s) => BeverageDetailScreen(beverageId: s.pathParameters['id']!)),
-          GoRoute(path: '/breweries/:id',         builder: (_, s) => BreweryDetailScreen(breweryId: s.pathParameters['id']!)),
+          GoRoute(path: '/producers/:id',         builder: (_, s) => ProducerDetailScreen(producerId: s.pathParameters['id']!)),
           GoRoute(path: '/checkin/new',           builder: (_, s) => CheckInFormScreen(beverageId: s.uri.queryParameters['beverage_id'])),
           GoRoute(path: '/checkins/:id',          builder: (_, s) => CheckInDetailScreen(id: s.pathParameters['id']!)),
           GoRoute(path: '/profile/:username',     builder: (_, s) => ProfileScreen(username: s.pathParameters['username']!)),
@@ -333,7 +333,7 @@ Never round to integer. Never use 0.25 steps (Untappd does; KAMOS does not — s
 
 1. `BeverageSearchDelegate` → user picks a beverage → captures `beverageId`.
 2. Navigate to `/checkin/new?beverage_id=...`.
-3. Form: `StarRatingPicker` (optional), review text (max 500), flavor tag chips (multi-select from server-provided taxonomy), photo picker (max 4, enforced client-side), price + currency + per-serving toggle, purchase type, serving style.
+3. Form: `StarRatingPicker` (optional), review text (max 500), flavor tag chips (multi-select from server-provided taxonomy), photo picker (max 4, enforced client-side), price + currency + per-serving toggle, purchase type.
 4. Submit → `CheckInController.submit()` → on success, navigate to `/checkins/:newId`.
 
 Block submission of >4 photos client-side; show a snackbar. Server is backstop.

@@ -108,7 +108,7 @@ const ProfileScreen = ({ user, recent, onEditProfile, onOpenSettings }) => {
                         <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600 }}>{tt(b.name)}</span>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{r.when}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>{tt(b.brewery)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>{tt(b.producer)}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                         <Stars value={r.rating} size={11}/>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600 }}>{r.rating.toFixed(1)} / 5.0</span>

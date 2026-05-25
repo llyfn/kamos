@@ -22,7 +22,7 @@ KAMOS is to Japanese craft spirits what Untappd is to beer: a place to log what 
 - **Backend:** Go REST API + PostgreSQL.
 - **Locales:** English (`en`), 日本語 (`ja`), 한국어 (`ko`) — all three are first-class.
 - **Catalog scope:** Nihonshu (日本酒), Shochu (焼酎), Liqueur (リキュール — Umeshu, Yuzu, Amazake, craft).
-- **Core nouns:** Beverage · Brewery · User · Check-in · Toast (kanpai-mark reaction) · Collection (Inventory, Wishlist, custom).
+- **Core nouns:** Beverage · Producer · User · Check-in · Toast (kanpai-mark reaction) · Collection (Inventory, Wishlist, custom).
 - **Curation:** Admin-curated catalog at MVP; users request additions via feedback.
 
 ### Things the product is *not*
@@ -36,7 +36,7 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 
 ### Voice & tone
 - **Calm and confident.** No exclamation marks except in genuinely celebratory moments (a first check-in, a milestone toast).
-- **Specific over poetic.** "Junmai Ginjo from Akita" beats "elegant rice spirit." Names, regions, ratios, breweries are the texture.
+- **Specific over poetic.** "Junmai Ginjo from Akita" beats "elegant rice spirit." Names, regions, ratios, producers are the texture.
 - **Respectful, never reverent.** This is a daily-driver tracking app. We don't worship sake, we drink it.
 - **Bilingual literacy without translation.** Japanese terms keep their kanji + romaji on first appearance: *Nihonshu (日本酒)*, *Junmai Daiginjo (純米大吟醸)*. Romaji-only is fine after.
 
@@ -47,7 +47,7 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 
 ### Casing
 - **Sentence case** for everything: buttons, headers, menu items, navigation. ("Add to wishlist", not "Add To Wishlist".)
-- **Title Case for proper nouns only:** beverage names, brewery names, places. *Dassai 23, Kuromatsu Kenbishi, Niigata.*
+- **Title Case for proper nouns only:** beverage names, producer names, places. *Dassai 23, Kuromatsu Kenbishi, Niigata.*
 - Category labels in §2.1 of the spec are non-negotiable: **Nihonshu**, **Shochu**, **Liqueur** in EN; **日本酒**, **焼酎**, **リキュール** in JA; **니혼슈 (사케)**, **쇼츄**, **리큐어** in KO.
 
 ### Numbers & units
@@ -66,7 +66,7 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 |---|---|
 | "You toasted Aiko's check-in." | "Cheers! 🥂 You just toasted Aiko's amazing check-in! 🎉" |
 | "Tried 47 beverages this year." | "Wow, you've crushed 47 sakes this year! 🔥" |
-| "Search breweries, beverages, prefectures." | "Find your next favorite drink ✨" |
+| "Search producers, beverages, prefectures." | "Find your next favorite drink ✨" |
 | "No check-ins yet. Tap **+** to log your first." | "Looks a bit empty in here! Why not log your first sip?" |
 | "Kuromatsu Kenbishi · Hyōgo · Junmai" | "An incredible sake from Japan you HAVE to try" |
 
@@ -80,13 +80,13 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 ### Color
 - Built around four **traditional Japanese blues** (色名): **Mizu-iro** (水色, water), **Sora-iro** (空色, sky), **Hanada** (縹, mid), **Ai-iro** (藍, indigo — brand primary), with **Kon** (紺, deep navy) for grounding.
 - Page background is **Shironeri (白練)** `#FCFAF6` — undyed silk; never pure white.
-- Cards are pure white **or** **Kinari (生成)** `#F4EFE6` — unbleached paper — for warm-feeling surfaces (brewery profiles, hero cards).
+- Cards are pure white **or** **Kinari (生成)** `#F4EFE6` — unbleached paper — for warm-feeling surfaces (producer profiles, hero cards).
 - One accent: **Koh (香)** terracotta `#C97B5A`, retained from the original logo lineage. Only appears around **toast** and *kanpai* moments — not for general CTAs.
 - Status colors (matcha green, akane red, yamabuki gold) are dialed back, never neon.
 - Imagery is **cool-leaning, soft**, no heavy saturation. No grain. No black-and-white.
 
 ### Type
-- **Display / headings:** *Shippori Mincho* — a contemporary mincho with woodblock-cut character. Used for beverage names, hero numerics, brewery names.
+- **Display / headings:** *Shippori Mincho* — a contemporary mincho with woodblock-cut character. Used for beverage names, hero numerics, producer names.
 - **Body / UI:** *Noto Sans JP* — neutral, comprehensive CJK, identical metrics across `en` / `ja` / `ko`.
 - **Mono:** *JetBrains Mono* — only for IDs, polishing ratios, percentages.
 - Always pair with proper line-heights in `colors_and_type.css`. Never go below 14px.
@@ -100,14 +100,14 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 
 ### Backgrounds & textures
 - **No gradients.** Solid washes or hairline-bordered surfaces.
-- **No repeating patterns** in chrome. (One exception: a faint asanoha / hemp-leaf pattern is permitted as a brewery-page decorative band — opacity ≤ 6%.)
+- **No repeating patterns** in chrome. (One exception: a faint asanoha / hemp-leaf pattern is permitted as a producer-page decorative band — opacity ≤ 6%.)
 - **No drop-shadow elevation theatre.** Cards sit on the page via a 1px border + a single soft shadow `--shadow-1` — that's it.
-- **Imagery treatment:** beverage label photos are framed in white with a 1px hairline + `--radius-md`. Brewery hero images are full-bleed *only* on the brewery detail page.
+- **Imagery treatment:** beverage label photos are framed in white with a 1px hairline + `--radius-md`. Producer hero images are full-bleed *only* on the producer detail page.
 
 ### Borders & shadows
 - Borders are 1px hairlines (`--border-1`) by default; emphasise with `--border-2`.
 - Shadow scale is short and soft: `--shadow-1`, `--shadow-2`, `--shadow-3`.
-- A **"protection gradient"** (the dark wash behind hero text on photos) is allowed *only* on full-bleed brewery covers; everywhere else, use a card.
+- A **"protection gradient"** (the dark wash behind hero text on photos) is allowed *only* on full-bleed producer covers; everywhere else, use a card.
 
 ### Corner radii
 - Buttons & chips: **pill** (`--radius-pill`).
@@ -118,7 +118,7 @@ KAMOS sounds like a knowledgeable friend at the bar — never a sommelier lectur
 
 ### Cards
 - White or Kinari background, 1 px hairline border, `--shadow-1`, 12 px radius, 16 px internal padding. No colored top stripe, no left-border accent.
-- Beverage cards always include: label image (square, 56–64 px), name in Shippori Mincho, brewery + region in body small, rating + toast count in mono.
+- Beverage cards always include: label image (square, 56–64 px), name in Shippori Mincho, producer + region in body small, rating + toast count in mono.
 
 ### Motion
 - **Easing:** `--ease-out` (`cubic-bezier(0.2, 0.7, 0.2, 1)`) for entrance; `--ease-in-out` for transitions between states. **No bounces.**
@@ -179,7 +179,7 @@ ui_kits/
     README.md                      Component map + SPEC compliance notes
     index.html                     Demo: live 5-tab app + locale toggle + every flow rendered
     components/
-      data.jsx                     i18n catalog, breweries, feed, collections, follow requests, ME
+      data.jsx                     i18n catalog, producers, feed, collections, follow requests, ME
       Primitives.jsx               Avatar · Label · Stars · StarsInput (0.5 steps) · Btn · Chip · Card · Icon
                                    EmptyState · LoadingState · ErrorState · PagingFooter
                                    Toggle · FormField · TextField · TextArea · SegmentedControl
@@ -187,14 +187,14 @@ ui_kits/
       Shell.jsx                    Phone frame, TopBar, TabBar, Sheet
       FeedScreen.jsx               Following feed with toast reaction + bell badge → inbox
       SearchScreen.jsx             Discover · category chips (exact SPEC strings) · recent + no-results
-      BeverageScreen.jsx           Beverage detail · link to brewery · CTAs to check-in + collection picker
-      CheckInScreen.jsx            Modal check-in flow · 0.5-step rating · counter · 4-photo grid · price · purchase · serving
+      BeverageScreen.jsx           Beverage detail · link to producer · CTAs to check-in + collection picker
+      CheckInScreen.jsx            Modal check-in flow · 0.5-step rating · counter · 4-photo grid · price · purchase
       ProfileLists.jsx             Lists (Collections) + Profile (Me) with locale toggle
       AuthScreen.jsx               Sign in · Create account · Forgot password · Verify email · Google OAuth
       EditProfileScreen.jsx        Display name + bio + avatar
       SettingsScreen.jsx           Email + password · privacy toggle · locale · account-deletion confirm sheet
       InboxScreen.jsx              Follow request inbox · Approve / Decline
-      BreweryScreen.jsx            Brewery detail · listing of all beverages
+      ProducerScreen.jsx           Producer detail · listing of all beverages
       CollectionPickerSheet.jsx    Multi-select sheet with inline new-collection
       CollectionDetailScreen.jsx   Collection contents · rename + delete with confirmation
 
@@ -217,9 +217,9 @@ fonts/                     (empty — Google Fonts loaded via colors_and_type.cs
 | Account actions (§3.3) | Edit display name + bio + avatar; change email + password; delete account with 30-day hold | `EditProfileScreen.jsx`, `SettingsScreen.jsx` |
 | Privacy mode (§5.1) | Public/Private toggle, private pill on profile | `SettingsScreen.jsx`, `ProfileLists.jsx` |
 | Beverage catalog (§2.1–§2.2) | Category overline + chips with exact i18n strings | `data.jsx::CATEGORY_LABELS`, `SearchScreen.jsx`, `BeverageScreen.jsx` |
-| Beverage detail (§7) | Catalog info, avg rating, aggregated flavor, recent check-ins, brewery link | `BeverageScreen.jsx` |
-| Brewery detail (§2.3, §7) | i18n name + region + founded + website + beverage list | `BreweryScreen.jsx` |
-| Check-in (§4) | 0.5-step rating, 500-char review, ≤4 photos, price + currency, per-serving / per-bottle, purchase type, serving style | `CheckInScreen.jsx` |
+| Beverage detail (§7) | Catalog info, avg rating, aggregated flavor, recent check-ins, producer link | `BeverageScreen.jsx` |
+| Producer detail (§2.3, §7) | i18n name + region + founded + website + beverage list | `ProducerScreen.jsx` |
+| Check-in (§4) | 0.5-step rating, 500-char review, ≤4 photos, price + currency, per-serving / per-bottle, purchase type | `CheckInScreen.jsx` |
 | Rating widget (§4.2) | 0.5-step input + display | `Primitives.jsx::StarsInput` + `Primitives.jsx::Stars` |
 | Toast reactions (§5.3) | Kanpai-mark toggle with animation | `FeedScreen.jsx::FeedItem` |
 | Feed (§5.2) | Reverse-chronological list + cursor pagination footer | `FeedScreen.jsx`, `Primitives.jsx::PagingFooter` |

@@ -79,7 +79,7 @@
   <script type="text/babel" src="components/EditProfileScreen.jsx"></script>
   <script type="text/babel" src="components/SettingsScreen.jsx"></script>
   <script type="text/babel" src="components/InboxScreen.jsx"></script>
-  <script type="text/babel" src="components/BreweryScreen.jsx"></script>
+  <script type="text/babel" src="components/ProducerScreen.jsx"></script>
   <script type="text/babel" src="components/CollectionPickerSheet.jsx"></script>
   <script type="text/babel" src="components/CollectionDetailScreen.jsx"></script>
 
@@ -98,7 +98,7 @@
       const [tab, setTab] = React.useState('feed');
       const [stack, setStack] = React.useState([]); // overlay frames
       const [picked, setPicked] = React.useState(null);
-      const [pickedBrewery, setPickedBrewery] = React.useState(null);
+      const [pickedProducer, setPickedProducer] = React.useState(null);
       const [pickedCollection, setPickedCollection] = React.useState(null);
       const [pickerOpen, setPickerOpen] = React.useState(false);
 
@@ -107,7 +107,7 @@
 
       const openBeverage = (b) => { setPicked(b); push('beverage'); };
       const openCheckIn  = (b) => { setPicked(b); push('checkin'); };
-      const openBrewery  = (id) => { setPickedBrewery(window.BREWERIES?.[id]); push('brewery'); };
+      const openProducer = (id) => { setPickedProducer(window.PRODUCERS?.[id]); push('producer'); };
       const openCollection = (c) => { setPickedCollection(c); push('collection'); };
       const openInbox    = () => push('inbox');
       const openEdit     = () => push('editprofile');
@@ -120,7 +120,7 @@
         body = <BeverageScreen b={picked} onBack={pop}
                   onCheckIn={() => openCheckIn(picked)}
                   onAddToList={() => setPickerOpen(true)}
-                  onOpenBrewery={openBrewery}/>;
+                  onOpenProducer={openProducer}/>;
       } else if (top === 'checkin' && picked) {
         body = <CheckInScreen b={picked} onClose={pop} onSubmit={() => { setStack([]); setTab('feed'); }}/>;
       } else if (top === 'inbox') {
@@ -129,8 +129,8 @@
         body = <EditProfileScreen user={ME} onClose={pop} onSave={pop}/>;
       } else if (top === 'settings') {
         body = <SettingsScreen user={ME} onClose={pop}/>;
-      } else if (top === 'brewery' && pickedBrewery) {
-        body = <BreweryScreen brewery={pickedBrewery} onBack={pop} onOpenBeverage={openBeverage}/>;
+      } else if (top === 'producer' && pickedProducer) {
+        body = <ProducerScreen producer={pickedProducer} onBack={pop} onOpenBeverage={openBeverage}/>;
       } else if (top === 'collection' && pickedCollection) {
         body = <CollectionDetailScreen collection={pickedCollection} onBack={pop} onOpenBeverage={openBeverage}/>;
       } else {
@@ -186,11 +186,11 @@
         el.appendChild(wrap);
       }, [locale]);
 
-      // Sample beverage / collection / brewery used by the static demo phones
+      // Sample beverage / collection / producer used by the static demo phones
       const dassai   = CATALOG[0];
       const kuromatsu = CATALOG.find(b => b.id === 'kuromatsu');
       const inventory = COLLECTIONS.find(c => c.id === 'inv');
-      const asahi    = BREWERIES['asahi-shuzo'];
+      const asahi    = PRODUCERS['asahi-shuzo'];
 
       return (
         <LocaleProvider locale={locale} setLocale={setLocale}>
@@ -201,7 +201,7 @@
               <div className="label">Live · five-tab app ({locale.toUpperCase()})</div>
             </div>
             <div className="col">
-              <Phone><BeverageScreen b={dassai} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => {}} onOpenBrewery={() => {}}/></Phone>
+              <Phone><BeverageScreen b={dassai} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => {}} onOpenProducer={() => {}}/></Phone>
               <div className="label">Beverage detail · Dassai 23</div>
             </div>
             <div className="col">
@@ -237,8 +237,8 @@
           <div className="group-label">Discovery & collections</div>
           <div className="stage">
             <div className="col">
-              <Phone><BreweryScreen brewery={asahi} onBack={() => {}} onOpenBeverage={() => {}}/></Phone>
-              <div className="label">Brewery · Asahi Shuzo</div>
+              <Phone><ProducerScreen producer={asahi} onBack={() => {}} onOpenBeverage={() => {}}/></Phone>
+              <div className="label">Producer · Asahi Shuzo</div>
             </div>
             <div className="col">
               <Phone><CollectionDetailScreen collection={inventory} onBack={() => {}} onOpenBeverage={() => {}}/></Phone>
@@ -290,7 +290,7 @@
       const [open, setOpen] = React.useState(true);
       return (
         <Phone>
-          <BeverageScreen b={beverage} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => setOpen(true)} onOpenBrewery={() => {}}/>
+          <BeverageScreen b={beverage} onBack={() => {}} onCheckIn={() => {}} onAddToList={() => setOpen(true)} onOpenProducer={() => {}}/>
           <CollectionPickerSheet
             open={open}
             beverage={beverage}

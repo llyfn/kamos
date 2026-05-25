@@ -7,7 +7,7 @@
 /*
   Display / Headings: Shippori Mincho — a contemporary mincho
     (serif) that evokes hand-cut woodblock printing. Used sparingly
-    for hero moments, beverage names, brewery profiles.
+    for hero moments, beverage names, producer profiles.
   Body / UI: Noto Sans JP — neutral, broad CJK coverage, works
     across en/ja/ko (KAMOS is tri-lingual).
   Mono: JetBrains Mono — for IDs, codes, polishing ratios.
@@ -93,7 +93,7 @@
   --bg-surface:   #FFFFFF;
   --bg-sunken:    var(--c-gray-50);
   --bg-card:      #FFFFFF;
-  --bg-warm:      var(--c-kinari);      /* alt card / brewery profile */
+  --bg-warm:      var(--c-kinari);      /* alt card / producer profile */
   --bg-brand:     var(--c-ai);
   --bg-brand-deep:var(--c-kon);
   --bg-tint-mizu: #EAF3F8;              /* very light brand wash */

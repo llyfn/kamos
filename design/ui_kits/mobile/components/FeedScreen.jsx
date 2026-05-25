@@ -35,7 +35,7 @@ const FeedItem = ({ item, onToast, onOpenBeverage }) => {
             {tt(b.name)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>
-            {tt(b.brewery)} · {tt(b.region)}
+            {tt(b.producer)} · {tt(b.region)}
           </div>
           {item.rating != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>

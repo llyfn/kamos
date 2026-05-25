@@ -1,7 +1,7 @@
 // KAMOS — Screen: Beverage Detail (SPEC §7).
 // Renders catalog info, avg rating, aggregated flavor, recent check-ins.
 
-const BeverageScreen = ({ b, onBack, onCheckIn, onAddToList, onOpenBrewery }) => {
+const BeverageScreen = ({ b, onBack, onCheckIn, onAddToList, onOpenProducer }) => {
   const { tt } = useLocale();
   return (
     <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-page)' }}>
@@ -24,12 +24,12 @@ const BeverageScreen = ({ b, onBack, onCheckIn, onAddToList, onOpenBrewery }) =>
           {tt(b.name)}
         </div>
 
-        <button onClick={() => onOpenBrewery?.(b.breweryId)} style={{
+        <button onClick={() => onOpenProducer?.(b.producerId)} style={{
           display: 'block', margin: '4px auto 0', background: 'transparent', border: 'none',
           color: 'var(--fg-link)', cursor: 'pointer',
           fontFamily: 'var(--font-body)', fontSize: 14,
         }}>
-          {tt(b.brewery)} · {tt(b.region)}
+          {tt(b.producer)} · {tt(b.region)}
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14 }}>
@@ -61,7 +61,7 @@ const BeverageScreen = ({ b, onBack, onCheckIn, onAddToList, onOpenBrewery }) =>
           ))}
         </div>
 
-        <SectionHeader>{tt(UI.aboutBrewery)}</SectionHeader>
+        <SectionHeader>{tt(UI.aboutProducer)}</SectionHeader>
         <div style={{ fontSize: 14, color: 'var(--fg-1)', lineHeight: 1.6 }}>{tt(b.about)}</div>
 
         <SectionHeader>{tt(UI.recentChk)}</SectionHeader>

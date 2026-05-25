@@ -77,7 +77,7 @@ flowchart TD
   DIO --> HTTP{{HTTPS}}
 ```
 
-**Feature folders (`lib/features/<feature>/`)** — Each aggregate (`feed`, `check_in`, `collections`, `comments`, `profile`, `social`, `users`, `beverages`, `breweries`, `venues`, `auth`, `search`, `beverage_requests`) owns its screens, providers, and repositories. No cross-feature reach-throughs; shared widgets live in `lib/shared/widgets/`.
+**Feature folders (`lib/features/<feature>/`)** — Each aggregate (`feed`, `check_in`, `collections`, `comments`, `profile`, `social`, `users`, `beverages`, `producers`, `venues`, `auth`, `search`, `beverage_requests`) owns its screens, providers, and repositories. No cross-feature reach-throughs; shared widgets live in `lib/shared/widgets/`.
 
 **Typed API facade (`lib/core/api/kamos_api.dart`)** — Single source of truth for every `/v1/...` path the app speaks. `ApiPaths` holds the constants; per-tag sub-facades (`facade.auth`, `facade.feed`, `facade.checkins`, etc.) own the typed methods. A backend rename is a one-line change here. Hand-written rather than codegen — `openapi_generator` on pub.dev pins an `analyzer` range that conflicts with the project's `build_runner`. The hand-written facade tracks `openapi.yaml` 1:1 and is small enough (~80 methods) to maintain.
 

@@ -34,7 +34,7 @@ KAMOS lets users discover, rate, and log Japanese alcoholic beverages — primar
 | Field | Type | Notes |
 |-------|------|-------|
 | Name | i18n text | EN + JA required; KO optional |
-| Brewery / Maker | Relation | → §2.3 |
+| Producer / Maker | Relation | → §2.3 |
 | Category | Enum | See §2.1 |
 | Subcategory | Text | Free from predefined list |
 | Alcohol % | Decimal | e.g., 15.5% |
@@ -44,7 +44,7 @@ KAMOS lets users discover, rate, and log Japanese alcoholic beverages — primar
 | Description | i18n text | Optional |
 | Label image | URL | Canonical image, admin-managed |
 
-### 2.3 Brewery / Maker Fields
+### 2.3 Producer / Maker Fields
 
 | Field | Type |
 |-------|------|
@@ -58,11 +58,11 @@ KAMOS lets users discover, rate, and log Japanese alcoholic beverages — primar
 
 > **Recommended:** Admin-curated database for MVP. Users can *request* additions via a form (a simple feedback mechanism), but cannot directly add or edit canonical entries. This keeps data quality high and avoids moderation overhead at launch. User-contribution with moderation can be introduced post-MVP.
 
-**Admin curation tooling.** Admins manage the canonical catalog directly from the admin SPA at `/beverages` and `/breweries`: create, update, soft-delete, restore, and search (FTS on name across en/ja/ko, plus exact lookup by UUID, brewery, or category slug). The user-submission queue at `/v1/admin/beverage-requests` remains the path for non-admin contributors (post-MVP Phase 5).
+**Admin curation tooling.** Admins manage the canonical catalog directly from the admin SPA at `/beverages` and `/producers`: create, update, soft-delete, restore, and search (FTS on name across en/ja/ko, plus exact lookup by UUID, producer, or category slug). The user-submission queue at `/v1/admin/beverage-requests` remains the path for non-admin contributors (post-MVP Phase 5).
 
 - Catalog soft-delete uses `deleted_at TIMESTAMPTZ`. Public reads filter `deleted_at IS NULL`; user-history reads (feed, check-ins, collections) intentionally surface tombstoned catalog rows so historical context is preserved.
-- Brewery soft-delete returns `409 BREWERY_HAS_LIVE_BEVERAGES` while any live beverage still references the brewery — admins must tombstone or reassign the children first.
-- Every catalog mutation writes a row to `moderation_log` inside the same transaction as the write. `target_type` covers `beverage` and `brewery`; `action` covers `create`, `update`, `soft_delete`, and `restore`.
+- Producer soft-delete returns `409 PRODUCER_HAS_LIVE_BEVERAGES` while any live beverage still references the producer — admins must tombstone or reassign the children first.
+- Every catalog mutation writes a row to `moderation_log` inside the same transaction as the write. `target_type` covers `beverage` and `producer`; `action` covers `create`, `update`, `soft_delete`, and `restore`.
 - Admin user lookup is exact-match only on indexed columns: `id` (UUID), `username` (case-insensitive), `email` (case-insensitive).
 
 ---
@@ -117,7 +117,6 @@ A check-in is a user's log entry for a specific beverage at a specific moment.
 | Photos | No | Up to **4 photos** per check-in |
 | Price | No | Numeric amount + currency; per-serving or per-bottle toggle |
 | Purchase type | No | `on-premise` / `retail` / `gift` / `other` |
-| Serving style | No | `glass` / `carafe` / `bottle` / `can` / `other` |
 
 Venue is not included in MVP. See §9.
 
@@ -176,7 +175,7 @@ The feed shows the user's own check-ins plus check-ins from users the current us
 
 - **Ordering:** Reverse chronological (newest first). No algorithmic ranking for MVP.
 - **Pagination:** Cursor-based (infinite scroll); 20 items per page.
-- **Feed item content:** User avatar + username, beverage name + brewery, rating, review text (truncated at 140 chars with "more"), first photo if any, flavor tags, elapsed time ("2h ago").
+- **Feed item content:** User avatar + username, beverage name + producer, rating, review text (truncated at 140 chars with "more"), first photo if any, flavor tags, elapsed time ("2h ago").
 - Check-ins from private users only appear in the feed of approved followers.
 
 ### 5.3 Toasts (Reactions)
@@ -238,9 +237,9 @@ Collections are **private by default** — visible only to the owner, regardless
 
 Beyond the social feed, users can discover beverages through:
 
-- **Search**: full-text search by beverage name or brewery name, across all locales.
+- **Search**: full-text search by beverage name or producer name, across all locales.
 - **Browse by category**: tap a category to see all beverages in it, sortable by avg rating or newest.
-- **Browse by brewery**: all beverages from a brewery on its detail page.
+- **Browse by producer**: all beverages from a producer on its detail page.
 - **Beverage detail page**: shows catalog info, avg rating, flavor profile aggregated from all check-ins, and a list of recent check-ins.
 
 > **Recommended:** No personalized recommendations or editorial "featured" picks in MVP. These require either a recommendation engine or editorial ops — both out of scope.

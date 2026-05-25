@@ -21,8 +21,8 @@ The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This d
 | Follow-request inbox (private accounts only) | `components/InboxScreen.jsx` |
 | Search / discover (full-text + category filter chips) | `components/SearchScreen.jsx` |
 | Beverage detail (catalog, avg rating, flavor aggregate, recent check-ins) | `components/BeverageScreen.jsx` |
-| Brewery detail (i18n name, region, founded, website, beverage list) | `components/BreweryScreen.jsx` |
-| Check-in (rating, review, tags, photos, price, purchase type, serving) | `components/CheckInScreen.jsx` |
+| Producer detail (i18n name, region, founded, website, beverage list) | `components/ProducerScreen.jsx` |
+| Check-in (rating, review, tags, photos, price, purchase type) | `components/CheckInScreen.jsx` |
 | Profile (Me): stats, locale toggle, recent check-ins | `components/ProfileLists.jsx::ProfileScreen` |
 | Edit profile: display name, bio, avatar | `components/EditProfileScreen.jsx` |
 | Settings: email, password, privacy, locale, soft-delete | `components/SettingsScreen.jsx` |
@@ -38,15 +38,15 @@ The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This d
 - **Auth** — `POST /auth/register`, `POST /auth/login`, `POST /auth/forgot`, `GET /auth/verify?token=...`, `POST /auth/oauth/google`. Issue JWT (HS256). Response includes `{ user, access_token }`. `flutter_secure_storage` on device (SPEC §6.9).
 - **User (me)** — `GET /me`, `PATCH /me` (display_name, bio, avatar_url, locale, privacy). Body shape matches `data.jsx::ME`: `{ id, handle, display_username, display_name, email, email_verified, bio, avatar_url, locale, privacy, stats: { checkins, unique, followers, following } }`. Note both `handle` (lowercase) and `display_username` (case preserved) per SPEC §6.3.
 - **User actions** — `POST /me/email`, `POST /me/password`, `DELETE /me` (soft-delete, 30-day username hold).
-- **Beverage catalog** — `GET /beverages?q=&category=&cursor=`, `GET /beverages/:id`. Shape includes `{ id, name: {en, ja, ko?}, brewery: {id, name: {...}}, region: {...}, category, subcategory: {...}, abv, seimai?, flavor: [...], rating: number, checkins: number, description: {...}, recent: [...] }`. Category is one of `'nihonshu' | 'shochu' | 'liqueur'` (stable keys); display strings come from the locale-aware UI table (SPEC §2.1).
-- **Brewery** — `GET /breweries/:id`. Shape `{ id, name: {...}, region: {...}, founded?, website?, description?: {...}, beverages: [{id, name, ...}] }`.
-- **Check-in** — `POST /checkins`, `PATCH /checkins/:id`, `DELETE /checkins/:id` (soft-delete). Body: `{ beverage_id, rating?: 0.5..5.0 step 0.5 | null, review?: string (≤500), tags?: [string], photos?: [url] (≤4), price?: { amount: number, currency: 'JPY'|'KRW'|'USD', mode: 'serving'|'bottle' }, purchase_type?: 'on-premise'|'retail'|'gift'|'other', serving_style?: 'glass'|'carafe'|'bottle'|'can'|'other' }`. Rating is **optional**; a check-in with `rating === null` is valid (SPEC §4.2).
-- **Feed** — `GET /feed?cursor=&limit=20`. Reverse-chronological. Response `{ items: [feedItem], next_cursor: string|null, has_more: bool }`. Each `feedItem` includes `{ id, user: {handle, display_name, avatar}, beverage: {id, name, kanji, brewery, region}, rating?, review?, tags, toasts: count, you_toasted: bool, photo_count, created_at }`. Exclude the requester's own check-ins (SPEC §5.2).
+- **Beverage catalog** — `GET /beverages?q=&category=&cursor=`, `GET /beverages/:id`. Shape includes `{ id, name: {en, ja, ko?}, producer: {id, name: {...}}, region: {...}, category, subcategory: {...}, abv, seimai?, flavor: [...], rating: number, checkins: number, description: {...}, recent: [...] }`. Category is one of `'nihonshu' | 'shochu' | 'liqueur'` (stable keys); display strings come from the locale-aware UI table (SPEC §2.1).
+- **Producer** — `GET /producers/:id`. Shape `{ id, name: {...}, region: {...}, founded?, website?, description?: {...}, beverages: [{id, name, ...}] }`.
+- **Check-in** — `POST /checkins`, `PATCH /checkins/:id`, `DELETE /checkins/:id` (soft-delete). Body: `{ beverage_id, rating?: 0.5..5.0 step 0.5 | null, review?: string (≤500), tags?: [string], photos?: [url] (≤4), price?: { amount: number, currency: 'JPY'|'KRW'|'USD', mode: 'serving'|'bottle' }, purchase_type?: 'on-premise'|'retail'|'gift'|'other' }`. Rating is **optional**; a check-in with `rating === null` is valid (SPEC §4.2).
+- **Feed** — `GET /feed?cursor=&limit=20`. Reverse-chronological. Response `{ items: [feedItem], next_cursor: string|null, has_more: bool }`. Each `feedItem` includes `{ id, user: {handle, display_name, avatar}, beverage: {id, name, kanji, producer, region}, rating?, review?, tags, toasts: count, you_toasted: bool, photo_count, created_at }`. Exclude the requester's own check-ins (SPEC §5.2).
 - **Toast** — `POST /checkins/:id/toast`, `DELETE /checkins/:id/toast`. Idempotent. One per user per check-in (SPEC §5.3). Returns the new `{ toasts, you_toasted }`.
 - **Follow** — `POST /follow/:user_id`, `DELETE /follow/:user_id`. For private targets, `POST` creates a request; for public targets it's instant.
 - **Follow requests (inbox)** — `GET /follow/requests?cursor=`, `POST /follow/requests/:id/approve`, `POST /follow/requests/:id/decline`. Required only when the requester's privacy is `'private'`. Each request: `{ id, user: {handle, display_name, avatar, bio}, created_at }`. The bell-badge count in `FeedScreen` derives from `GET /follow/requests?status=pending` count.
 - **Collections** — `GET /collections`, `POST /collections`, `PATCH /collections/:id`, `DELETE /collections/:id`. `GET /collections/:id` returns the collection plus its beverages. `POST /collections/:id/items {beverage_id, note?}` adds; `DELETE /collections/:id/items/:beverage_id` removes. Default `Inventory` and `Wishlist` are seeded application-side on user creation (SPEC §6.8).
-- **Search** — `GET /search?q=&category=&cursor=`. Matches beverage and brewery names across all locales (SPEC §7).
+- **Search** — `GET /search?q=&category=&cursor=`. Matches beverage and producer names across all locales (SPEC §7).
 
 ## UI behaviors implying specific API ergonomics
 
@@ -58,7 +58,7 @@ The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This d
 - **Review character cap (500)** is UI-enforced and must be DB-enforced (`CHECK length(review) <= 500`) plus Go-validated. Same for the 4-photo cap.
 - **Username case** — `handle` is the lowercase unique form; `display_username` is the case-preserved form for rendering (SPEC §6.3). Login accepts either; lookup is `LOWER(?)`. Soft-deleted accounts hold the lowercase handle for 30 days.
 - **Default collection seeding** — at user-creation time, application-side seeds two rows (`Inventory`, `Wishlist`). They have no special flag in the API; the kit's `data.jsx::COLLECTIONS` carries an `isDefault: true` marker for the UI alone (used in `CollectionDetailScreen` to show "Default collection" overline copy). The DB does not need that column.
-- **i18n strings on user-generated content** are NOT translated (SPEC §8). Reviews and notes are stored as-entered. Catalog/brewery names are i18n objects; SPEC §6.5 fallback `ko→en`, `ja→en` is applied on the API response (server-side) **or** Flutter-side (client-side) — `backend-engineer` to decide. Server-side resolution is preferred because it keeps the contract simple (return resolved strings + locale tag).
+- **i18n strings on user-generated content** are NOT translated (SPEC §8). Reviews and notes are stored as-entered. Catalog/producer names are i18n objects; SPEC §6.5 fallback `ko→en`, `ja→en` is applied on the API response (server-side) **or** Flutter-side (client-side) — `backend-engineer` to decide. Server-side resolution is preferred because it keeps the contract simple (return resolved strings + locale tag).
 
 ## Tokens that downstream agents must consume verbatim
 

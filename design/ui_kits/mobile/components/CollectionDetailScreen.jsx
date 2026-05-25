@@ -63,7 +63,7 @@ const CollectionDetailScreen = ({ collection, onBack, onOpenBeverage, onRename, 
                   <Label width={48} height={64} tone={b.labelTone} kanji={b.kanji} romaji={b.labelRomaji}/>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600 }}>{tt(b.name)}</div>
-                    <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>{tt(b.brewery)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 2 }}>{tt(b.producer)}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                       <Stars value={b.rating} size={11}/>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600 }}>{b.rating.toFixed(1)} / 5.0</span>

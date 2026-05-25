@@ -14,11 +14,11 @@ KAMOS's design system is already established and lives under `design/`. Your job
 These are decided. Do not re-litigate them without an explicit user ask.
 
 - **Palette:** Japanese blues by traditional dye name — Mizu (水色), Sora (空色), Hanada (縹), Ai (藍, brand primary), Kon (紺, deep navy), Rurikon (瑠璃紺). Page background is Shironeri (白練 `#FCFAF6`); warm card surface is Kinari (生成 `#F4EFE6`). Never pure white pages. One warm accent only — **Koh** (香, terracotta `#C97B5A`), reserved for toast / kanpai moments, never a general CTA.
-- **Type:** Shippori Mincho for display (beverage names, brewery names, hero numerics) · Noto Sans JP for body and UI (covers en/ja/ko with identical metrics) · JetBrains Mono for IDs, ratios, percentages.
+- **Type:** Shippori Mincho for display (beverage names, producer names, hero numerics) · Noto Sans JP for body and UI (covers en/ja/ko with identical metrics) · JetBrains Mono for IDs, ratios, percentages.
 - **Iconography:** Phosphor regular @ 1.5 stroke, 20 px in UI / 24 px in tab bar — substitution flag pending Flutter set. KAMOS kanpai mark replaces any toast emoji.
 - **No emoji in UI.** Ever. Inline kanji glyphs in display type are encouraged.
 - **Five tabs:** Feed · Search · Check in · Lists · Me. The center "Check in" tab is a raised circular Ai-iro button; others are hairline icons.
-- **Voice:** calm, specific, bilingual-literate. Sentence case for buttons / headers / menu items. Title Case only for proper nouns (beverage names, brewery names, places). Second-person ("you") for instructions and empty states; first-person ("My") for owned things; third-person neutral for system text. No exclamation marks except true milestones.
+- **Voice:** calm, specific, bilingual-literate. Sentence case for buttons / headers / menu items. Title Case only for proper nouns (beverage names, producer names, places). Second-person ("you") for instructions and empty states; first-person ("My") for owned things; third-person neutral for system text. No exclamation marks except true milestones.
 - **Numbers:** rating shown as `4.0 / 5.0` (always one decimal); ABV `15.5%` (no space); polishing ratio in mono as `Seimai 60%`; currency localised (`¥1,200` / `₩9,800` / `$12`).
 - **Motion:** `--ease-out` for entrance, `--ease-in-out` between states, no bounces. Crossfade over slide. The only sanctioned "celebratory" motion is the toast tap (kanpai mark `1 → 1.15 → 1` over 240 ms).
 - **No gradients, no repeating chrome patterns, no drop-shadow theatre, no flat colored "feature" icons, no drawn illustrations of people.**

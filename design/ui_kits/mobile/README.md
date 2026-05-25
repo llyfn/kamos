@@ -7,7 +7,7 @@ Runnable recreation of the KAMOS Flutter app in HTML/JSX. Babel-standalone compi
 index.html                     ← live 5-tab app + locale toggle + every screen
 ios-frame.jsx                  ← phone chrome (loaded indirectly via Shell.jsx)
 components/
-  data.jsx                     i18n-ready catalog, breweries, feed, collections, follow requests, ME
+  data.jsx                     i18n-ready catalog, producers, feed, collections, follow requests, ME
   Primitives.jsx               Avatar, Label, Stars, StarsInput, Btn, Chip, Card, Icon,
                                EmptyState, LoadingState, ErrorState, PagingFooter,
                                Toggle, FormField, TextField, TextArea, SegmentedControl,
@@ -15,15 +15,15 @@ components/
   Shell.jsx                    Phone frame, TopBar, TabBar, Sheet
   FeedScreen.jsx               Following feed · kanpai-mark toast · cursor "Loading more"
   SearchScreen.jsx             Discover · category chips (exact SPEC strings) · recent searches · no-results
-  BeverageScreen.jsx           Beverage detail · brewery link · check-in / list CTAs
+  BeverageScreen.jsx           Beverage detail · producer link · check-in / list CTAs
   CheckInScreen.jsx            Modal flow · 0.5-step StarsInput · 500-char counter · 4-photo grid
-                               · price (¥/₩/$ + per-serving/per-bottle) · purchase + serving chips
+                               · price (¥/₩/$ + per-serving/per-bottle) · purchase chips
   ProfileLists.jsx             Lists (Collections) + Profile (Me) · in-profile locale toggle
   AuthScreen.jsx               Sign in · Create account · Forgot password · Verify email · Google OAuth
   EditProfileScreen.jsx        Display name + bio · avatar change · username read-only
   SettingsScreen.jsx           Email + password · privacy toggle · locale · soft-delete (30d hold)
   InboxScreen.jsx              Follow request inbox · Approve / Decline
-  BreweryScreen.jsx            Brewery detail (SPEC §2.3, §7) · listing of all beverages
+  ProducerScreen.jsx           Producer detail (SPEC §2.3, §7) · listing of all beverages
   CollectionPickerSheet.jsx    Multi-select sheet + inline new-collection
   CollectionDetailScreen.jsx   Collection contents · rename + delete with confirmation
 ```
@@ -35,11 +35,11 @@ components/
 ## What works (interactive)
 - Tab switching, search filtering with locale-correct category chips
 - Tap a beverage → detail page → back nav
-- "Check-in" → 0.5-step rating input, 500-char review counter, 4-photo grid with add/remove, price + currency + per-serving/bottle, purchase + serving chips
+- "Check-in" → 0.5-step rating input, 500-char review counter, 4-photo grid with add/remove, price + currency + per-serving/bottle, purchase chips
 - Toast reaction toggles the kanpai mark (`1 → 1.15 → 1` over 240 ms)
 - Bell icon in the feed opens the follow-request inbox with Approve / Decline
 - Profile → Edit profile / Settings (privacy toggle, delete-account confirmation sheet)
-- Beverage detail → brewery link → brewery page lists all beverages from that brewery
+- Beverage detail → producer link → producer page lists all beverages from that producer
 - Lists tab → Collection detail → rename / delete
 - Beverage detail "List" button opens the collection picker (multi-select + inline create)
 - Locale toggle in the heading (and on the profile) swaps EN ↔ JA ↔ KO across all screens

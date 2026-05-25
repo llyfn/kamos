@@ -1,8 +1,7 @@
 // KAMOS — Screen: Check-in flow (SPEC §4).
 // Fields: rating (optional, 0.5–5.0 in 0.5 steps), review (≤500), flavor tags,
 // photos (≤4), price (numeric + currency, per-serving | per-bottle),
-// purchase type (on-premise | retail | gift | other),
-// serving style (glass | carafe | bottle | can | other).
+// purchase type (on-premise | retail | gift | other).
 
 const CheckInScreen = ({ b, onClose, onSubmit }) => {
   const { tt } = useLocale();
@@ -14,7 +13,6 @@ const CheckInScreen = ({ b, onClose, onSubmit }) => {
   const [currency, setCurrency] = React.useState('JPY');
   const [priceMode, setPriceMode] = React.useState('serving'); // 'serving' | 'bottle'
   const [purchase, setPurchase] = React.useState(null);
-  const [serving, setServing] = React.useState(null);
 
   // Predefined flavor tag taxonomy (SPEC §4.3). Organised by dimension.
   const tagDimensions = [
@@ -46,7 +44,7 @@ const CheckInScreen = ({ b, onClose, onSubmit }) => {
         <div style={{ flex: 1, fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, textAlign: 'center' }}>
           {tt(UI.checkinBtn)}
         </div>
-        <button onClick={() => onSubmit?.({ rating: rating || null, review, tags: [...tags], photos: photos.length, price: price || null, currency, priceMode, purchase, serving })}
+        <button onClick={() => onSubmit?.({ rating: rating || null, review, tags: [...tags], photos: photos.length, price: price || null, currency, priceMode, purchase })}
                 disabled={!canPost} style={{
           background: !canPost ? 'var(--c-gray-200)' : 'var(--c-ai)',
           color: !canPost ? 'var(--c-gray-400)' : '#fff',
@@ -60,7 +58,7 @@ const CheckInScreen = ({ b, onClose, onSubmit }) => {
           <Label width={48} height={64} tone={b.labelTone} kanji={b.kanji} romaji={b.labelRomaji}/>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600 }}>{tt(b.name)}</div>
-            <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>{tt(b.brewery)} · {tt(b.region)}</div>
+            <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>{tt(b.producer)} · {tt(b.region)}</div>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--fg-3)', marginTop: 4 }}>
               {tt(CATEGORY_LABELS[b.category])}
             </div>
@@ -134,17 +132,6 @@ const CheckInScreen = ({ b, onClose, onSubmit }) => {
             { id: 'gift',       label: tt({ en: 'Gift',       ja: '贈物', ko: '선물' }) },
             { id: 'other',      label: tt({ en: 'Other',      ja: 'その他', ko: '기타' }) },
           ].map(o => <Chip key={o.id} on={purchase === o.id} onClick={() => setPurchase(o.id === purchase ? null : o.id)}>{o.label}</Chip>)}
-        </div>
-
-        <SectionLabel>{tt(UI.servingStyle)}</SectionLabel>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {[
-            { id: 'glass',   label: tt({ en: 'Glass',   ja: 'グラス',  ko: '잔' }) },
-            { id: 'carafe',  label: tt({ en: 'Carafe',  ja: '徳利',    ko: '카라페' }) },
-            { id: 'bottle',  label: tt({ en: 'Bottle',  ja: '瓶',      ko: '병' }) },
-            { id: 'can',     label: tt({ en: 'Can',     ja: '缶',      ko: '캔' }) },
-            { id: 'other',   label: tt({ en: 'Other',   ja: 'その他',  ko: '기타' }) },
-          ].map(o => <Chip key={o.id} on={serving === o.id} onClick={() => setServing(o.id === serving ? null : o.id)}>{o.label}</Chip>)}
         </div>
       </div>
     </div>

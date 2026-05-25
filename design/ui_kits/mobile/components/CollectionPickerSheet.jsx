@@ -34,7 +34,7 @@ const CollectionPickerSheet = ({ open, beverage, collections, onClose, onSave })
           <Label width={40} height={54} tone={beverage.labelTone} kanji={beverage.kanji}/>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600 }}>{tt(beverage.name)}</div>
-            <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{tt(beverage.brewery)}</div>
+            <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{tt(beverage.producer)}</div>
           </div>
         </div>
       )}
