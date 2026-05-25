@@ -87,24 +87,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.feedHeader,
-                          style: TextStyle(
-                            fontFamily: 'ShipporiMincho',
-                            fontSize: 26,
-                            fontWeight: FontWeight.w600,
-                            color: t.fg1,
-                            height: 1.1,
-                          ),
-                        ),
-                        Text(
-                          l.feedSubheader,
-                          style: TextStyle(fontSize: 12, color: t.fg3),
-                        ),
-                      ],
+                    child: Text(
+                      l.feedHeader,
+                      style: TextStyle(
+                        fontFamily: 'ShipporiMincho',
+                        fontSize: 26,
+                        fontWeight: FontWeight.w600,
+                        color: t.fg1,
+                        height: 1.1,
+                      ),
                     ),
                   ),
                   IconButton(

@@ -13,8 +13,7 @@
   "tabLists": "리스트",
   "tabMe": "마이",
 
-  "feedHeader": "팔로잉",
-  "feedSubheader": "팔로우 중인 사람들의 활동",
+  "feedHeader": "활동",
   "feedEmptyTitle": "아직 체크인이 없습니다",
   "feedEmptyBody": "누군가를 팔로우하거나 ＋ 버튼으로 첫 기록을 남겨보세요.",
   "feedMore": "더 보기",

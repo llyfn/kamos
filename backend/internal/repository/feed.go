@@ -47,7 +47,7 @@ SELECT
   ci.comment_count,
   v.id, v.name, v.locality, v.country
 FROM check_ins ci
-JOIN follows f
+LEFT JOIN follows f
   ON f.followed_id = ci.user_id
   AND f.follower_id = $1
   AND f.status = 'accepted'
@@ -57,7 +57,7 @@ JOIN breweries br ON br.id = b.brewery_id
 JOIN beverage_categories cat ON cat.id = b.category_id` + breweryPrefectureJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.deleted_at IS NULL
-  AND ci.user_id <> $1
+  AND (ci.user_id = $1 OR f.followed_id IS NOT NULL)
   AND ($2::timestamptz IS NULL OR (ci.created_at, ci.id) < ($2::timestamptz, $3::uuid))
 ORDER BY ci.created_at DESC, ci.id DESC
 LIMIT $4;`

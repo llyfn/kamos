@@ -13,8 +13,7 @@
   "tabLists": "リスト",
   "tabMe": "マイページ",
 
-  "feedHeader": "フォロー中",
-  "feedSubheader": "フォロー中の人から",
+  "feedHeader": "アクティビティ",
   "feedEmptyTitle": "まだチェックインがありません",
   "feedEmptyBody": "誰かをフォローするか、＋から最初の一杯を記録しましょう。",
   "feedMore": "もっと見る",

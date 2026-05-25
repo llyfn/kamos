@@ -36,10 +36,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get tabMe => '마이';
 
   @override
-  String get feedHeader => '팔로잉';
-
-  @override
-  String get feedSubheader => '팔로우 중인 사람들의 활동';
+  String get feedHeader => '활동';
 
   @override
   String get feedEmptyTitle => '아직 체크인이 없습니다';

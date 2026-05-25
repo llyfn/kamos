@@ -103,7 +103,7 @@ Indexes used: `idx_users_email_live`, `idx_users_google_sub_live`.
 **Endpoint**: `GET /feed?cursor=&limit=20`.
 **SPEC**: §5.2, §6.6.
 
-Reverse-chronological, from accepted-followed users only, excluding the requester's own check-ins. Keyset cursor on `(created_at, id)`.
+Reverse-chronological. Includes the requester's own check-ins plus accepted-followed users' check-ins (`LEFT JOIN follows` with an `OR ci.user_id = $1` predicate). Keyset cursor on `(created_at, id)`.
 
 ```sql
 SELECT
@@ -129,7 +129,7 @@ SELECT
   )                   AS you_toasted,
   ph.photo_count
 FROM check_ins ci
-JOIN follows f
+LEFT JOIN follows f
   ON f.followed_id = ci.user_id
   AND f.follower_id = $1
   AND f.status = 'accepted'
@@ -147,7 +147,7 @@ LEFT JOIN LATERAL (
   SELECT COUNT(*)::int AS photo_count FROM check_in_photos p WHERE p.check_in_id = ci.id
 ) ph ON TRUE
 WHERE ci.deleted_at IS NULL
-  AND ci.user_id <> $1                              -- exclude own
+  AND (ci.user_id = $1 OR f.followed_id IS NOT NULL) -- self or followed
   AND ($2::timestamptz IS NULL OR
        (ci.created_at, ci.id) < ($2, $3))           -- keyset cursor (NULL on first page)
 ORDER BY ci.created_at DESC, ci.id DESC

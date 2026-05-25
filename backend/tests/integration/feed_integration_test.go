@@ -109,8 +109,11 @@ func TestFeedCursorPagination(t *testing.T) {
 	}
 }
 
-// The viewer's own check-ins MUST NOT appear in their feed (SPEC §5.2).
-func TestFeedExcludesSelf(t *testing.T) {
+// The viewer's own check-ins MUST appear in their own feed (SPEC §5.2).
+// Prior to this test the feed query excluded self via `ci.user_id <> $1`;
+// SPEC was updated to include them so the feed doubles as a personal
+// activity log.
+func TestFeedIncludesSelf(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
@@ -135,9 +138,14 @@ func TestFeedExcludesSelf(t *testing.T) {
 		Items []map[string]any `json:"items"`
 	}
 	_ = json.Unmarshal(raw, &p)
+	var found bool
 	for _, it := range p.Items {
 		if it["id"] == myID {
-			t.Errorf("feed includes own check-in: %s", myID)
+			found = true
+			break
 		}
+	}
+	if !found {
+		t.Errorf("feed missing own check-in: %s", myID)
 	}
 }

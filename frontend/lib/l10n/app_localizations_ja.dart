@@ -36,10 +36,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tabMe => 'マイページ';
 
   @override
-  String get feedHeader => 'フォロー中';
-
-  @override
-  String get feedSubheader => 'フォロー中の人から';
+  String get feedHeader => 'アクティビティ';
 
   @override
   String get feedEmptyTitle => 'まだチェックインがありません';

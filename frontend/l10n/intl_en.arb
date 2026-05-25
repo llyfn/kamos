@@ -13,8 +13,7 @@
   "tabLists": "Lists",
   "tabMe": "Me",
 
-  "feedHeader": "Following",
-  "feedSubheader": "From people you follow",
+  "feedHeader": "Activities",
   "feedEmptyTitle": "No check-ins yet",
   "feedEmptyBody": "Follow some people, or tap + to log your first.",
   "feedMore": "more",

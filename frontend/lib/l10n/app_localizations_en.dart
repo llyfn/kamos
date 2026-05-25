@@ -36,10 +36,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabMe => 'Me';
 
   @override
-  String get feedHeader => 'Following';
-
-  @override
-  String get feedSubheader => 'From people you follow';
+  String get feedHeader => 'Activities';
 
   @override
   String get feedEmptyTitle => 'No check-ins yet';
