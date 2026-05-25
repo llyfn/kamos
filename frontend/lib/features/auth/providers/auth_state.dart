@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
+import '../../feed/providers/feed_providers.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../repository/auth_repository.dart';
 
 class AuthState {
@@ -65,22 +67,35 @@ class AuthStateNotifier extends Notifier<AuthState> {
   /// the singleton. The next provider read rebuilds a fresh Dio + fresh
   /// cache; the previous user's cached responses are unreachable even if
   /// the next user goes offline before their first authed fetch.
+  ///
+  /// `meProvider` + `feedProvider` are also invalidated. Both are long-lived
+  /// (NotifierProvider / FutureProvider, not `autoDispose`), so without an
+  /// explicit invalidation the next signed-in user would see the previous
+  /// user's profile + feed until something else triggered a refetch. The
+  /// `family`-keyed providers (userCheckinsProvider, public profile…) are
+  /// `autoDispose` and drop their cache on navigation, so they don't need
+  /// explicit handling here.
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
     final refresh = await storage.readRefreshToken();
     await ref.read(authRepositoryProvider).logout(refreshToken: refresh);
     await storage.clearAll();
     ref.invalidate(dioProvider);
+    ref.invalidate(meProvider);
+    ref.invalidate(feedProvider);
     state = const AuthState(isAuthenticated: false, isLoading: false);
   }
 
   /// Called by the Dio interceptor when refresh exchange has failed. Tokens
   /// have already been cleared by the interceptor at this point. Invalidating
-  /// `dioProvider` here too closes the cross-user offline-read hole described
-  /// on [logout]: a hard 401 wipes the cache the same way a clean logout does.
+  /// `dioProvider` + the session-scoped data providers closes the cross-user
+  /// offline-read hole described on [logout]: a hard 401 wipes the cache the
+  /// same way a clean logout does.
   void onUnauthorized() {
     if (state.isAuthenticated) {
       ref.invalidate(dioProvider);
+      ref.invalidate(meProvider);
+      ref.invalidate(feedProvider);
       state = const AuthState(isAuthenticated: false, isLoading: false);
     }
   }
