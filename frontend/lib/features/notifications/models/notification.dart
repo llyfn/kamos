@@ -1,19 +1,24 @@
 // KAMOS — Notification model (SPEC §5.4).
 //
-// Mirrors the OpenAPI `Notification` schema. The `actor` field is nullable
-// because the FK is ON DELETE SET NULL — when the original actor has been
-// hard-deleted by the username-hold sweep, the row survives and the UI
-// renders a localized "Deleted user" placeholder.
+// Mirrors the OpenAPI `Notification` schema.
 //
-// `check_in_id` / `comment_id` are present only for the types that carry the
-// matching source reference (`toast`, `comment`); they are absent for the
-// three `follow*` types. Both are also nullable for the soft-delete case
-// where the referenced check-in itself was removed.
+// `actor` is nullable. The server projects null when:
+//   * the actor was hard-deleted (FK `actor_user_id` is ON DELETE SET NULL), or
+//   * the actor was soft-deleted (`users.deleted_at IS NOT NULL`).
+// Both render the localized "Deleted user" placeholder client-side.
 //
-// Type comes off the wire as a string — we map to a Dart enum so switches in
-// widgets are exhaustive. Unknown strings fall back to [NotificationType.toast]
-// rather than throwing; the server-side enum is closed but the client must
-// not crash on a forward-compat value.
+// `check_in_id` and `comment_id` were CASCADE'd in migration 020. A
+// hard-delete of either source row wipes the entire notification row, so
+// these fields never arrive null at the wire for `toast` / `comment`. They
+// are simply absent (omitted) for the three `follow*` types since those
+// carry no source reference. A soft-delete of the check-in / comment does
+// NOT fire the CASCADE — the notification row stays, only its tap target
+// stops resolving here.
+//
+// `type` comes off the wire as a string — we map to a Dart enum so switches
+// in widgets are exhaustive. Unknown strings fall back to
+// [NotificationType.toast] rather than throwing; the server-side enum is
+// closed but the client must not crash on a forward-compat value.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 

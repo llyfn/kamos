@@ -2976,14 +2976,25 @@ components:
     Notification:
       type: object
       description: |
-        SPEC §5.4. In-app notification row. `actor` is nullable because the
-        FK is ON DELETE SET NULL — when the original actor has been
-        hard-deleted by the username-hold sweep, the row survives and
-        Flutter renders a localized "Deleted user" placeholder.
+        SPEC §5.4. In-app notification row.
 
-        `check_in_id` and `comment_id` are present only for the types that
-        carry the matching source reference (`toast`, `comment`); they are
-        absent for the three `follow*` types.
+        `actor` is nullable because the `actor_user_id` FK is
+        `ON DELETE SET NULL` — when the original actor has been hard-deleted
+        by the username-hold sweep, the row survives and the client renders
+        a localized "Deleted user" placeholder. The same nil-actor projection
+        is also applied when the actor is soft-deleted
+        (`users.deleted_at IS NOT NULL`), so the wire shape is identical for
+        both failure modes.
+
+        `check_in_id` and `comment_id` were `ON DELETE CASCADE` in migration
+        020: a hard-delete of the referenced check-in or comment wipes the
+        notification row entirely, so these columns never arrive null at the
+        wire for `toast` or `comment` rows. They are absent (omitted) for
+        the three `follow*` types since those carry no source reference.
+
+        Soft-deletes of a referenced check-in or comment do NOT fire the
+        CASCADE — the notification row stays, only its tap target stops
+        resolving on the client side.
       required: [id, type, actor, read_at, created_at]
       properties:
         id: { type: string, format: uuid }
@@ -2997,11 +3008,17 @@ components:
         check_in_id:
           type: string
           format: uuid
-          nullable: true
+          description: |
+            Present on `toast` and `comment` rows only. CASCADE'd on
+            hard-delete (the whole notification row is wiped), so the
+            field never arrives null at the wire for those types.
         comment_id:
           type: string
           format: uuid
-          nullable: true
+          description: |
+            Present on `comment` rows only. CASCADE'd on hard-delete
+            (the whole notification row is wiped), so the field never
+            arrives null at the wire.
         read_at:
           type: string
           format: date-time
