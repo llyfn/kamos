@@ -550,6 +550,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get notificationsMarkAllRead => '모두 읽음';
 
   @override
+  String get notificationsMarkAllError => '알림을 읽음으로 표시하지 못했습니다. 다시 시도해주세요.';
+
+  @override
+  String get notificationsEnd => '모두 확인했습니다.';
+
+  @override
   String get notificationsEmptyTitle => '새 알림이 없습니다';
 
   @override

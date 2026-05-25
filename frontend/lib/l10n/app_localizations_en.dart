@@ -565,6 +565,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsMarkAllRead => 'Mark all read';
 
   @override
+  String get notificationsMarkAllError =>
+      'Couldn\'t mark notifications as read. Try again.';
+
+  @override
+  String get notificationsEnd => 'You\'re all caught up.';
+
+  @override
   String get notificationsEmptyTitle => 'Nothing new';
 
   @override

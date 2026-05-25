@@ -221,6 +221,8 @@
 
   "notificationsTitle": "알림",
   "notificationsMarkAllRead": "모두 읽음",
+  "notificationsMarkAllError": "알림을 읽음으로 표시하지 못했습니다. 다시 시도해주세요.",
+  "notificationsEnd": "모두 확인했습니다.",
   "notificationsEmptyTitle": "새 알림이 없습니다",
   "notificationsEmptyBody": "다른 사용자의 건배, 댓글, 팔로우가 여기에 표시됩니다.",
   "notificationsDeletedActor": "삭제된 사용자",

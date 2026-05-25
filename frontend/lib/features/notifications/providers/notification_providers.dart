@@ -19,6 +19,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_toast.dart';
 import '../../../core/models/page.dart';
 import '../models/notification.dart';
 import '../repository/notification_repository.dart';
@@ -124,17 +125,17 @@ class NotificationListNotifier extends AsyncNotifier<NotificationListState> {
     ref.invalidate(unreadCountProvider);
   }
 
-  /// Marks every unread row read for the authed user. Updates the local
-  /// list optimistically (the button itself disables on next rebuild) and
-  /// invalidates the unread count provider.
+  /// Marks every unread row read for the authed user. Per
+  /// design/notifications_ux.md §3.3 the visual flip is optimistic —
+  /// the rows crossfade from unread → read in unison the moment the
+  /// button is tapped, and the unread-count provider is invalidated so
+  /// the tab dot clears in the same frame. On server failure the
+  /// optimistic patch is reverted (rows snap back to unread, count
+  /// re-fetches) and a localized toast is emitted via
+  /// [apiToastBusProvider] (`notificationsMarkAllError` per §3.3).
   Future<void> markAllRead() async {
     final current = state.asData?.value;
     if (current == null) return;
-    try {
-      await ref.read(notificationRepositoryProvider).markAllRead();
-    } catch (_) {
-      return;
-    }
     final nowIso = DateTime.now().toUtc().toIso8601String();
     final patched = [
       for (final n in current.items)
@@ -142,6 +143,18 @@ class NotificationListNotifier extends AsyncNotifier<NotificationListState> {
     ];
     state = AsyncValue.data(current.copyWith(items: patched));
     ref.invalidate(unreadCountProvider);
+    try {
+      await ref.read(notificationRepositoryProvider).markAllRead();
+    } catch (_) {
+      // Snap back to the pre-tap state. Re-invalidate the count so any
+      // value the optimistic flip may have driven (e.g. 0 cached for a
+      // sub-second window) gets refreshed against server truth.
+      state = AsyncValue.data(current);
+      ref.invalidate(unreadCountProvider);
+      ref
+          .read(apiToastBusProvider.notifier)
+          .emit(ApiToastKind.notificationsMarkAllFailed);
+    }
   }
 
   /// Local-only patch — removes a row from the loaded window. Used by the

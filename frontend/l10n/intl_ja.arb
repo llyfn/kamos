@@ -221,6 +221,8 @@
 
   "notificationsTitle": "お知らせ",
   "notificationsMarkAllRead": "すべて既読",
+  "notificationsMarkAllError": "既読にできませんでした。もう一度お試しください。",
+  "notificationsEnd": "ここまでです。",
   "notificationsEmptyTitle": "新着はありません",
   "notificationsEmptyBody": "他のユーザーからの乾杯・コメント・フォローがここに表示されます。",
   "notificationsDeletedActor": "削除されたユーザー",

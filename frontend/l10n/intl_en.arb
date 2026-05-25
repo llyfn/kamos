@@ -221,6 +221,8 @@
 
   "notificationsTitle": "Notifications",
   "notificationsMarkAllRead": "Mark all read",
+  "notificationsMarkAllError": "Couldn't mark notifications as read. Try again.",
+  "notificationsEnd": "You're all caught up.",
   "notificationsEmptyTitle": "Nothing new",
   "notificationsEmptyBody": "Toasts, comments, and follows from other people show up here.",
   "notificationsDeletedActor": "Deleted user",

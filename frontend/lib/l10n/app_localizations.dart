@@ -1120,6 +1120,18 @@ abstract class AppLocalizations {
   /// **'Mark all read'**
   String get notificationsMarkAllRead;
 
+  /// No description provided for @notificationsMarkAllError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t mark notifications as read. Try again.'**
+  String get notificationsMarkAllError;
+
+  /// No description provided for @notificationsEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all caught up.'**
+  String get notificationsEnd;
+
   /// No description provided for @notificationsEmptyTitle.
   ///
   /// In en, this message translates to:

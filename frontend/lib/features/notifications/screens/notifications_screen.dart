@@ -190,6 +190,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       return PagingFooter(
                         isLoading: state.isLoadingMore,
                         hasMore: state.hasMore,
+                        endLabel: l.notificationsEnd,
                       );
                     }
                     final n = state.items[i];

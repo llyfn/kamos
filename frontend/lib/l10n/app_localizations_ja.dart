@@ -551,6 +551,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get notificationsMarkAllRead => 'すべて既読';
 
   @override
+  String get notificationsMarkAllError => '既読にできませんでした。もう一度お試しください。';
+
+  @override
+  String get notificationsEnd => 'ここまでです。';
+
+  @override
   String get notificationsEmptyTitle => '新着はありません';
 
   @override

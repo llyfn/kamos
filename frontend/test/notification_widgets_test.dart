@@ -22,9 +22,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kamos/app/theme.dart';
+import 'package:kamos/core/api/api_toast.dart';
 import 'package:kamos/core/models/beverage.dart';
 import 'package:kamos/core/models/page.dart' as models;
 import 'package:kamos/features/notifications/models/notification.dart';
+import 'package:kamos/features/notifications/providers/notification_providers.dart';
 import 'package:kamos/features/notifications/repository/notification_repository.dart';
 import 'package:kamos/features/notifications/screens/notifications_screen.dart';
 import 'package:kamos/features/notifications/widgets/notification_row.dart';
@@ -39,8 +41,12 @@ import 'package:visibility_detector/visibility_detector.dart';
 /// unreadCount is derived from the seeded items so the screen's mark-all
 /// button-disabled assertion can drive the right state.
 class _FakeNotificationRepo implements NotificationRepository {
-  _FakeNotificationRepo(this.items);
+  _FakeNotificationRepo(this.items, {this.markAllRaises});
   final List<KamosNotification> items;
+
+  /// When non-null, [markAllRead] throws this object — used to drive the
+  /// markAllRead failure path (design §3.3 snap-back + toast).
+  final Object? markAllRaises;
 
   @override
   Future<models.Page<KamosNotification>> list({
@@ -54,7 +60,14 @@ class _FakeNotificationRepo implements NotificationRepository {
   Future<int> markRead(List<String> ids) async => ids.length;
 
   @override
-  Future<int> markAllRead() async => items.where((n) => n.isUnread).length;
+  Future<int> markAllRead() async {
+    final raise = markAllRaises;
+    if (raise != null) {
+      // ignore: only_throw_errors — test stub re-throws caller-supplied object.
+      throw raise;
+    }
+    return items.where((n) => n.isUnread).length;
+  }
 
   @override
   Future<int> unreadCount() async =>
@@ -309,6 +322,47 @@ void main() {
       );
       expect(button.onPressed, isNull,
           reason: 'no unread rows → mark-all button must be disabled');
+    });
+
+    testWidgets(
+        'markAllRead failure snaps rows back to unread and emits a toast',
+        (tester) async {
+      // Seed one unread row + a fake repo that throws on markAllRead.
+      // Design §3.3: the visual flip is optimistic; on server failure the
+      // patch is reverted and apiToastBusProvider emits
+      // notificationsMarkAllFailed (rendered as the localized
+      // notificationsMarkAllError copy by the listener in app.dart).
+      final unreadRow = _row(NotificationType.toast);
+      expect(unreadRow.isUnread, isTrue);
+      final container = ProviderContainer(
+        overrides: [
+          notificationRepositoryProvider.overrideWithValue(
+            _FakeNotificationRepo([unreadRow], markAllRaises: Exception('500')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(_wrap(container, const NotificationsScreen()));
+      await tester.pumpAndSettle();
+
+      // Tap "Mark all read".
+      await tester.tap(find.widgetWithText(TextButton, 'Mark all read'));
+      await tester.pumpAndSettle();
+
+      // (a) The row is still unread post-failure.
+      final listState = container.read(notificationListProvider).asData!.value;
+      expect(listState.items.single.isUnread, isTrue,
+          reason: 'on failure the optimistic patch must snap back');
+
+      // (b) The toast bus carries the dedicated failure kind. The full
+      // toast-render path through _ApiToastListener is exercised by the
+      // app-lifecycle integration; here we assert the bus emission, which
+      // is what the listener consumes.
+      expect(
+        container.read(apiToastBusProvider),
+        ApiToastKind.notificationsMarkAllFailed,
+      );
     });
   });
 }
