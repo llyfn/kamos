@@ -91,6 +91,16 @@ func (h *Handler) MarkNotificationsRead(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// SEC-003: cap the batch size before the UUID parse loop. 100 is
+	// comfortably above the SPEC page-size of 20 (a scroll-driven batch
+	// of "mark-read on view" rarely exceeds one page) and small enough
+	// that a malicious caller cannot push pgx into building a giant
+	// $2::uuid[] array.
+	if hasIDs && len(req.IDs) > 100 {
+		httperr.WriteValidation(w, "ids cannot exceed 100 entries")
+		return
+	}
+
 	// Pre-validate UUIDs at the edge so a malformed string surfaces as
 	// 422 instead of a generic 500 from pgx's text→uuid cast failure.
 	if hasIDs {

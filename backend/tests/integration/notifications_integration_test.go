@@ -379,6 +379,12 @@ func TestNotifications_MarkReadRequestValidation(t *testing.T) {
 	defer srv.Close()
 
 	tok, _ := mustRegister(t, srv, "validator_n", "vn@example.com", "password-123")
+
+	// SEC-003: build a 101-uuid payload to exercise the size cap.
+	oversized := make([]string, 101)
+	for i := range oversized {
+		oversized[i] = "00000000-0000-0000-0000-000000000000"
+	}
 	cases := []struct {
 		name string
 		body map[string]any
@@ -390,6 +396,7 @@ func TestNotifications_MarkReadRequestValidation(t *testing.T) {
 		{"mixed_uuid_and_garbage", map[string]any{"ids": []string{
 			"00000000-0000-0000-0000-000000000000", "garbage",
 		}}},
+		{"too_many_ids", map[string]any{"ids": oversized}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
