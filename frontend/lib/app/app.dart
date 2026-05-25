@@ -43,6 +43,11 @@ class KamosApp extends ConsumerWidget {
 /// third refresh hook called out in design/notifications_ux.md §3.5 ("fetched
 /// on app-start and on every tab-focus") so a user who backgrounded the app
 /// for hours sees an accurate dot on resume without having to navigate.
+///
+/// PERF-004: a 30-second debounce skips refreshes on rapid suspend/resume
+/// cycles (notification-center pull-down, control-center toggle, screen-lock
+/// flicker). The first resume after sign-in always refreshes; subsequent
+/// resumes within the window are dropped.
 class _ResumeRefresher extends ConsumerStatefulWidget {
   const _ResumeRefresher({required this.child});
   final Widget child;
@@ -51,8 +56,16 @@ class _ResumeRefresher extends ConsumerStatefulWidget {
   ConsumerState<_ResumeRefresher> createState() => _ResumeRefresherState();
 }
 
+/// Cooldown between consecutive unread-count refreshes triggered by app
+/// resume. Anything shorter than this is treated as the same foregrounding
+/// event (PERF-004).
+@visibleForTesting
+const Duration kResumeRefreshDebounce = Duration(seconds: 30);
+
 class _ResumeRefresherState extends ConsumerState<_ResumeRefresher>
     with WidgetsBindingObserver {
+  DateTime? _lastRefresh;
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +83,12 @@ class _ResumeRefresherState extends ConsumerState<_ResumeRefresher>
     if (state != AppLifecycleState.resumed) return;
     final auth = ref.read(authStateProvider);
     if (!auth.isAuthenticated) return;
+    final now = DateTime.now();
+    final last = _lastRefresh;
+    if (last != null && now.difference(last) < kResumeRefreshDebounce) {
+      return;
+    }
+    _lastRefresh = now;
     ref.read(unreadCountProvider.notifier).refresh();
   }
 
