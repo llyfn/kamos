@@ -176,7 +176,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             Expanded(
               child: state.isLoading && state.items.isEmpty
-                  ? Center(child: LoadingView(label: l.loadingLabel))
+                  ? const LogoLoader()
                   : state.error != null && state.items.isEmpty
                   ? Center(
                       child: ErrorView(

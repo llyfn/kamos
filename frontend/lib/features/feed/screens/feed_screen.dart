@@ -64,7 +64,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     // .bottom itself.
     final Widget body;
     if (state.isLoading && state.items.isEmpty) {
-      body = Center(child: LoadingView(label: l.actionLoadingMore));
+      body = const LogoLoader();
     } else if (state.error != null && state.items.isEmpty) {
       body = Center(
         child: ErrorView(

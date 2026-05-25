@@ -50,9 +50,15 @@ class AsyncWidget<T> extends StatelessWidget {
   /// `AppLocalizations.errorGeneric`.
   final String? errorMessage;
 
-  /// When true, the default loading + error views are wrapped in `Center`
-  /// — useful for screens that mount this directly under a Scaffold body.
-  /// Custom [loading] / [error] builders are never auto-wrapped.
+  /// When true, the default loading view is the full-page [LogoLoader]
+  /// (centered KAMOS mark with a slow pulse) and the default error view
+  /// is wrapped in `Center`. Use for screens that mount this directly
+  /// under a Scaffold body. When false, the default loading is the
+  /// inline [LoadingView] (small horizontal spinner) — appropriate for
+  /// sub-section / list-footer use.
+  ///
+  /// Custom [loading] / [error] builders are never auto-wrapped or
+  /// auto-substituted; pass them when a screen needs bespoke UI.
   final bool center;
 
   Widget _wrap(Widget child) => center ? Center(child: child) : child;
@@ -60,7 +66,8 @@ class AsyncWidget<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value.when(
-      loading: loading ?? () => _wrap(const LoadingView()),
+      loading: loading ??
+          () => center ? const LogoLoader() : const LoadingView(),
       error: (e, s) {
         if (error != null) return error!(e, s);
         final l = AppLocalizations.of(context);

@@ -5,6 +5,64 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_localizations.dart';
 
+/// Full-page loading state: the KAMOS cheers mark, centered, with a slow
+/// opacity pulse to signal that something is happening. Use this for
+/// page-level boot loaders (initial fetches that fill the screen).
+///
+/// For inline / footer / sub-section loading, prefer [LoadingView] (the
+/// small horizontal spinner) — the logo is overkill in tight spaces.
+/// [AsyncWidget] picks between the two automatically based on its
+/// `center` flag.
+class LogoLoader extends StatefulWidget {
+  const LogoLoader({super.key, this.size = 96});
+
+  /// Width and height in logical pixels. Defaults to 96 — the asset
+  /// renders cleanly at that size on every iPhone density bucket.
+  final double size;
+
+  @override
+  State<LogoLoader> createState() => _LogoLoaderState();
+}
+
+class _LogoLoaderState extends State<LogoLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(begin: 0.45, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: FadeTransition(
+        opacity: _opacity,
+        child: Image.asset(
+          'assets/images/logo_mark.png',
+          width: widget.size,
+          height: widget.size,
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+}
+
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key, this.label});
   final String? label;
