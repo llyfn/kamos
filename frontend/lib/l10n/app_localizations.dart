@@ -130,23 +130,23 @@ abstract class AppLocalizations {
   /// **'Feed'**
   String get tabFeed;
 
-  /// No description provided for @tabSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get tabSearch;
-
-  /// No description provided for @tabCheckIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Check-in'**
-  String get tabCheckIn;
-
   /// No description provided for @tabLists.
   ///
   /// In en, this message translates to:
   /// **'Lists'**
   String get tabLists;
+
+  /// No description provided for @tabDiscover.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover'**
+  String get tabDiscover;
+
+  /// No description provided for @tabNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get tabNotifications;
 
   /// No description provided for @tabMe.
   ///
@@ -169,7 +169,7 @@ abstract class AppLocalizations {
   /// No description provided for @feedEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Follow some people, or tap + to log your first.'**
+  /// **'Follow some people, or head to Discover to find your first.'**
   String get feedEmptyBody;
 
   /// No description provided for @feedMore.
@@ -1125,6 +1125,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow requests appear here while your account is private.'**
   String get inboxEmptyBody;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @notificationsMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get notificationsMarkAllRead;
+
+  /// No description provided for @notificationsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing new'**
+  String get notificationsEmptyTitle;
+
+  /// No description provided for @notificationsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Toasts, comments, and follows from other people show up here.'**
+  String get notificationsEmptyBody;
+
+  /// No description provided for @notificationsDeletedActor.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted user'**
+  String get notificationsDeletedActor;
+
+  /// No description provided for @notifVerbToast.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} toasted your check-in.'**
+  String notifVerbToast(String actor);
+
+  /// No description provided for @notifVerbComment.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} commented on your check-in.'**
+  String notifVerbComment(String actor);
+
+  /// No description provided for @notifVerbFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} started following you.'**
+  String notifVerbFollow(String actor);
+
+  /// No description provided for @notifVerbFollowRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} requested to follow you.'**
+  String notifVerbFollowRequest(String actor);
+
+  /// No description provided for @notifVerbFollowApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} approved your follow request.'**
+  String notifVerbFollowApproved(String actor);
 
   /// No description provided for @beverageDetailAbv.
   ///

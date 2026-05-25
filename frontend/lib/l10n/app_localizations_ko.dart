@@ -24,13 +24,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get tabFeed => '피드';
 
   @override
-  String get tabSearch => '검색';
-
-  @override
-  String get tabCheckIn => '체크인';
-
-  @override
   String get tabLists => '리스트';
+
+  @override
+  String get tabDiscover => '둘러보기';
+
+  @override
+  String get tabNotifications => '알림';
 
   @override
   String get tabMe => '나';
@@ -42,7 +42,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get feedEmptyTitle => '아직 체크인이 없습니다';
 
   @override
-  String get feedEmptyBody => '누군가를 팔로우하거나 ＋ 버튼으로 첫 기록을 남겨보세요.';
+  String get feedEmptyBody => '누군가를 팔로우하거나 둘러보기에서 첫 한 잔을 찾아보세요.';
 
   @override
   String get feedMore => '더 보기';
@@ -551,6 +551,46 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get inboxEmptyBody => '비공개 계정일 때 팔로우 요청이 여기에 표시됩니다.';
+
+  @override
+  String get notificationsTitle => '알림';
+
+  @override
+  String get notificationsMarkAllRead => '모두 읽음';
+
+  @override
+  String get notificationsEmptyTitle => '새 알림이 없습니다';
+
+  @override
+  String get notificationsEmptyBody => '다른 사용자의 건배, 댓글, 팔로우가 여기에 표시됩니다.';
+
+  @override
+  String get notificationsDeletedActor => '삭제된 사용자';
+
+  @override
+  String notifVerbToast(String actor) {
+    return '$actor님이 회원님의 체크인에 건배했습니다.';
+  }
+
+  @override
+  String notifVerbComment(String actor) {
+    return '$actor님이 회원님의 체크인에 댓글을 남겼습니다.';
+  }
+
+  @override
+  String notifVerbFollow(String actor) {
+    return '$actor님이 회원님을 팔로우하기 시작했습니다.';
+  }
+
+  @override
+  String notifVerbFollowRequest(String actor) {
+    return '$actor님이 팔로우 요청을 보냈습니다.';
+  }
+
+  @override
+  String notifVerbFollowApproved(String actor) {
+    return '$actor님이 회원님의 팔로우 요청을 수락했습니다.';
+  }
 
   @override
   String get beverageDetailAbv => '도수';

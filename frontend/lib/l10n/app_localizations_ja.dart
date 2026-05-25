@@ -24,13 +24,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tabFeed => 'フィード';
 
   @override
-  String get tabSearch => '探す';
-
-  @override
-  String get tabCheckIn => 'チェックイン';
-
-  @override
   String get tabLists => 'リスト';
+
+  @override
+  String get tabDiscover => '探す';
+
+  @override
+  String get tabNotifications => 'お知らせ';
 
   @override
   String get tabMe => 'マイページ';
@@ -42,7 +42,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get feedEmptyTitle => 'まだチェックインがありません';
 
   @override
-  String get feedEmptyBody => '誰かをフォローするか、＋から最初の一杯を記録しましょう。';
+  String get feedEmptyBody => '誰かをフォローするか、「探す」から最初の一杯を見つけましょう。';
 
   @override
   String get feedMore => 'もっと見る';
@@ -552,6 +552,46 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get inboxEmptyBody => 'アカウントが非公開の間、リクエストはここに表示されます。';
+
+  @override
+  String get notificationsTitle => 'お知らせ';
+
+  @override
+  String get notificationsMarkAllRead => 'すべて既読';
+
+  @override
+  String get notificationsEmptyTitle => '新着はありません';
+
+  @override
+  String get notificationsEmptyBody => '他のユーザーからの乾杯・コメント・フォローがここに表示されます。';
+
+  @override
+  String get notificationsDeletedActor => '削除されたユーザー';
+
+  @override
+  String notifVerbToast(String actor) {
+    return '$actorがあなたのチェックインに乾杯しました。';
+  }
+
+  @override
+  String notifVerbComment(String actor) {
+    return '$actorがあなたのチェックインにコメントしました。';
+  }
+
+  @override
+  String notifVerbFollow(String actor) {
+    return '$actorがあなたをフォローしました。';
+  }
+
+  @override
+  String notifVerbFollowRequest(String actor) {
+    return '$actorからフォローリクエストが届きました。';
+  }
+
+  @override
+  String notifVerbFollowApproved(String actor) {
+    return '$actorがあなたのフォローリクエストを承認しました。';
+  }
 
   @override
   String get beverageDetailAbv => '度数';
