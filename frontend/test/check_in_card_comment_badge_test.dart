@@ -7,10 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kamos/app/theme.dart';
 import 'package:kamos/core/models/beverage.dart';
-import 'package:kamos/core/models/brewery.dart';
 import 'package:kamos/core/models/category_label.dart';
 import 'package:kamos/core/models/checkin.dart';
 import 'package:kamos/core/models/i18n_text.dart';
+import 'package:kamos/core/models/producer.dart';
 import 'package:kamos/features/feed/widgets/check_in_card.dart';
 import 'package:kamos/l10n/app_localizations.dart';
 
@@ -25,9 +25,9 @@ FeedItem _feedItem({required int commentCount}) => FeedItem(
       beverage: BeverageRef(
         id: 'b1',
         name: I18nText.fromJson(const {'en': 'Junmai'}),
-        brewery: BreweryRef.fromJson(const {
+        producer: ProducerRef.fromJson(const {
           'id': 'br1',
-          'name': {'en': 'Sample Brewery'},
+          'name': {'en': 'Sample Producer'},
         }),
         category: CategoryLabel.fromJson(const {
           'slug': 'sake',

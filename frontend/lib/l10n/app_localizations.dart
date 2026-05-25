@@ -187,7 +187,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Search breweries, beverages, prefectures.'**
+  /// **'Search producers, beverages, prefectures.'**
   String get searchPlaceholder;
 
   /// No description provided for @searchNoResultsTitle.
@@ -298,12 +298,6 @@ abstract class AppLocalizations {
   /// **'Purchase type'**
   String get checkInPurchaseType;
 
-  /// No description provided for @checkInServingStyle.
-  ///
-  /// In en, this message translates to:
-  /// **'Serving style'**
-  String get checkInServingStyle;
-
   /// No description provided for @checkInPriceServing.
   ///
   /// In en, this message translates to:
@@ -339,36 +333,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get checkInPurchaseOther;
-
-  /// No description provided for @checkInServingGlass.
-  ///
-  /// In en, this message translates to:
-  /// **'Glass'**
-  String get checkInServingGlass;
-
-  /// No description provided for @checkInServingCarafe.
-  ///
-  /// In en, this message translates to:
-  /// **'Carafe'**
-  String get checkInServingCarafe;
-
-  /// No description provided for @checkInServingBottle.
-  ///
-  /// In en, this message translates to:
-  /// **'Bottle'**
-  String get checkInServingBottle;
-
-  /// No description provided for @checkInServingCan.
-  ///
-  /// In en, this message translates to:
-  /// **'Can'**
-  String get checkInServingCan;
-
-  /// No description provided for @checkInServingOther.
-  ///
-  /// In en, this message translates to:
-  /// **'Other'**
-  String get checkInServingOther;
 
   /// No description provided for @checkInFirstToast.
   ///
@@ -1201,7 +1165,7 @@ abstract class AppLocalizations {
   /// No description provided for @beverageDetailAbout.
   ///
   /// In en, this message translates to:
-  /// **'About the brewery'**
+  /// **'About the producer'**
   String get beverageDetailAbout;
 
   /// No description provided for @beverageDetailRecent.
@@ -1240,29 +1204,29 @@ abstract class AppLocalizations {
   /// **'Couldn\'t update. Try again.'**
   String get beverageListSheetSaveFailed;
 
-  /// No description provided for @breweryOverline.
+  /// No description provided for @producerOverline.
   ///
   /// In en, this message translates to:
-  /// **'Brewery'**
-  String get breweryOverline;
+  /// **'Producer'**
+  String get producerOverline;
 
-  /// No description provided for @breweryFounded.
+  /// No description provided for @producerFounded.
   ///
   /// In en, this message translates to:
   /// **'Founded'**
-  String get breweryFounded;
+  String get producerFounded;
 
-  /// No description provided for @breweryBeverages.
+  /// No description provided for @producerBeverages.
   ///
   /// In en, this message translates to:
   /// **'Beverages'**
-  String get breweryBeverages;
+  String get producerBeverages;
 
-  /// No description provided for @breweryNoBeverages.
+  /// No description provided for @producerNoBeverages.
   ///
   /// In en, this message translates to:
   /// **'No beverages yet'**
-  String get breweryNoBeverages;
+  String get producerNoBeverages;
 
   /// No description provided for @actionSave.
   ///
@@ -1354,11 +1318,11 @@ abstract class AppLocalizations {
   /// **'Name'**
   String get submitBeverageRequestNameLabel;
 
-  /// No description provided for @submitBeverageRequestBreweryLabel.
+  /// No description provided for @submitBeverageRequestProducerLabel.
   ///
   /// In en, this message translates to:
-  /// **'Brewery'**
-  String get submitBeverageRequestBreweryLabel;
+  /// **'Producer'**
+  String get submitBeverageRequestProducerLabel;
 
   /// No description provided for @submitBeverageRequestCategoryLabel.
   ///
@@ -1396,11 +1360,11 @@ abstract class AppLocalizations {
   /// **'Name is required.'**
   String get submitBeverageRequestNameRequired;
 
-  /// No description provided for @submitBeverageRequestBreweryRequired.
+  /// No description provided for @submitBeverageRequestProducerRequired.
   ///
   /// In en, this message translates to:
-  /// **'Brewery is required.'**
-  String get submitBeverageRequestBreweryRequired;
+  /// **'Producer is required.'**
+  String get submitBeverageRequestProducerRequired;
 
   /// No description provided for @searchSuggestMissingCta.
   ///

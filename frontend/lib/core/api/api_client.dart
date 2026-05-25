@@ -39,7 +39,7 @@ import 'auth_interceptor.dart';
 ///   - GET /v1/categories                    (max-age=3600, public)
 ///   - GET /v1/flavor-tags                   (max-age=3600, public)
 ///   - GET /v1/beverages/{id}                (max-age=300, public)
-///   - GET /v1/breweries/{id}                (max-age=600, public)
+///   - GET /v1/producers/{id}                (max-age=600, public)
 ///   - GET /v1/users/{username}              (private, must-revalidate)
 ///
 /// All other authenticated GETs get only the ETag round-trip — they

@@ -17,7 +17,7 @@
 // /users/:username/lists other user's public collections
 // /check-ins/:id check-in detail (— comments)
 // /beverages/:id beverage detail
-// /breweries/:id brewery detail
+// /producers/:id producer detail
 // /beverage-requests/new user-side "suggest a beverage" form
 //
 // Unauthenticated users are redirected to `/auth`; authenticated users on
@@ -40,12 +40,12 @@ import '../features/auth/screens/auth_screen.dart';
 import '../features/auth/screens/verify_email_pending_screen.dart';
 import '../features/beverage_requests/screens/submit_beverage_request_screen.dart';
 import '../features/beverages/screens/beverage_detail_screen.dart';
-import '../features/breweries/screens/brewery_detail_screen.dart';
 import '../features/check_in/screens/check_in_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
+import '../features/producers/screens/producer_detail_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
@@ -190,10 +190,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/breweries/:id',
+        path: '/producers/:id',
         pageBuilder: (_, state) => _noTransition(
           state,
-          BreweryDetailScreen(breweryId: state.pathParameters['id']!),
+          ProducerDetailScreen(producerId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(

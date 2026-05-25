@@ -1,6 +1,6 @@
 // KAMOS — Search / Discover (SPEC §7).
 //
-// Full-text search across beverage + brewery names. Category chips render
+// Full-text search across beverage + producer names. Category chips render
 // EXACT SPEC §2.1 strings per locale (`categoryLabel`).
 
 import 'dart:async';
@@ -253,7 +253,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                         ),
                                       ),
                                       Text(
-                                        resolveI18n(b.brewery.name, locale),
+                                        resolveI18n(b.producer.name, locale),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: t.fg2,

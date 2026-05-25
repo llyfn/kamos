@@ -1,4 +1,4 @@
-// KAMOS — Brewery detail screen. i18n name + region + founded + website +
+// KAMOS — Producer detail screen. i18n name + region + founded + website +
 // list of beverages.
 
 import 'package:flutter/material.dart';
@@ -14,33 +14,33 @@ import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../../shared/widgets/state_views.dart';
-import '../providers/brewery_providers.dart';
+import '../providers/producer_providers.dart';
 
-class BreweryDetailScreen extends ConsumerWidget {
-  const BreweryDetailScreen({super.key, required this.breweryId});
-  final String breweryId;
+class ProducerDetailScreen extends ConsumerWidget {
+  const ProducerDetailScreen({super.key, required this.producerId});
+  final String producerId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final locale = Localizations.localeOf(context).languageCode;
-    final async = ref.watch(breweryDetailProvider(breweryId));
+    final async = ref.watch(producerDetailProvider(producerId));
 
     return Scaffold(
       appBar: AppBar(),
       body: AsyncWidget(
         value: async,
         center: true,
-        onRetry: () => ref.invalidate(breweryDetailProvider(breweryId)),
+        onRetry: () => ref.invalidate(producerDetailProvider(producerId)),
         data: (detail) {
-          final brewery = detail.brewery;
-          final name = resolveI18n(brewery.name, locale);
+          final producer = detail.producer;
+          final name = resolveI18n(producer.name, locale);
           // Migration 016: prefecture is now a nested object that embeds its
           // region. Display the prefecture name (most specific locality).
-          final region = brewery.prefecture == null
+          final region = producer.prefecture == null
               ? ''
-              : resolveI18n(brewery.prefecture!.name, locale);
+              : resolveI18n(producer.prefecture!.name, locale);
           return ListView(
             padding: EdgeInsets.zero,
             children: [
@@ -50,7 +50,7 @@ class BreweryDetailScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     Text(
-                      l.breweryOverline.toUpperCase(),
+                      l.producerOverline.toUpperCase(),
                       style: TextStyle(
                         fontFamily: 'NotoSansJP',
                         fontSize: 11,
@@ -74,11 +74,11 @@ class BreweryDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(region, style: TextStyle(color: t.fg2)),
                     ],
-                    if (brewery.foundedYear != null)
+                    if (producer.foundedYear != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          '${l.breweryFounded} ${brewery.foundedYear}',
+                          '${l.producerFounded} ${producer.foundedYear}',
                           style: TextStyle(
                             fontFamily: 'JetBrainsMono',
                             fontSize: 12,
@@ -94,19 +94,19 @@ class BreweryDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (brewery.description != null)
+                    if (producer.description != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: Text(
-                          resolveI18n(brewery.description!, locale),
+                          resolveI18n(producer.description!, locale),
                           style: const TextStyle(fontSize: 14, height: 1.6),
                         ),
                       ),
-                    if ((brewery.website ?? '').isNotEmpty)
+                    if ((producer.website ?? '').isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: Text(
-                          brewery.website!.replaceFirst(
+                          producer.website!.replaceFirst(
                             RegExp(r'^https?://'),
                             '',
                           ),
@@ -118,7 +118,7 @@ class BreweryDetailScreen extends ConsumerWidget {
                         ),
                       ),
                     Text(
-                      l.breweryBeverages,
+                      l.producerBeverages,
                       style: TextStyle(
                         fontFamily: 'ShipporiMincho',
                         fontSize: 16,
@@ -128,7 +128,7 @@ class BreweryDetailScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     if (detail.beverages.items.isEmpty)
-                      EmptyView(title: l.breweryNoBeverages)
+                      EmptyView(title: l.producerNoBeverages)
                     else
                       ...detail.beverages.items.map((b) {
                         final n = resolveI18n(b.name, locale);

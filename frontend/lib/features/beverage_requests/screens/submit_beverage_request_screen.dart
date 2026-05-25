@@ -6,13 +6,13 @@
 //
 // Validation rules (mirror the backend's loose validation — server only
 // checks payload is non-empty):
-// * `name`, `brewery_name`: trimmed; required; ≤ 200 chars
+// * `name`, `producer_name`: trimmed; required; ≤ 200 chars
 // * `category_slug`: one of nihonshu | shochu | liqueur (SPEC §2.1)
 // * `notes`: optional; ≤ 500 chars; trimmed (matches review cap, since
 // this surface most resembles a check-in review than a profile bio)
 //
 // Control-character rejection: a single regex strips ASCII control bytes
-// (newlines kept in `notes` for paragraph entry; stripped in name/brewery).
+// (newlines kept in `notes` for paragraph entry; stripped in name/producer).
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,7 +29,7 @@ import '../providers/beverage_request_providers.dart';
 /// `beverages` (name ≤ 200) and `check_ins` (review ≤ 500). The server is
 /// the backstop and accepts anything non-empty today.
 const _nameMax = 200;
-const _breweryMax = 200;
+const _producerMax = 200;
 const _notesMax = 500;
 
 class SubmitBeverageRequestScreen extends ConsumerStatefulWidget {
@@ -51,7 +51,7 @@ class SubmitBeverageRequestScreen extends ConsumerStatefulWidget {
 class _SubmitBeverageRequestScreenState
     extends ConsumerState<SubmitBeverageRequestScreen> {
   final _name = TextEditingController();
-  final _brewery = TextEditingController();
+  final _producer = TextEditingController();
   final _notes = TextEditingController();
   CategorySlug _category = CategorySlug.nihonshu;
   bool _showValidation = false;
@@ -59,7 +59,7 @@ class _SubmitBeverageRequestScreenState
   @override
   void dispose() {
     _name.dispose();
-    _brewery.dispose();
+    _producer.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -70,14 +70,14 @@ class _SubmitBeverageRequestScreenState
     return null;
   }
 
-  String? _breweryError(AppLocalizations l) {
-    final t = _brewery.text.trim();
-    if (t.isEmpty) return l.submitBeverageRequestBreweryRequired;
+  String? _producerError(AppLocalizations l) {
+    final t = _producer.text.trim();
+    if (t.isEmpty) return l.submitBeverageRequestProducerRequired;
     return null;
   }
 
   bool get _isValid =>
-      _name.text.trim().isNotEmpty && _brewery.text.trim().isNotEmpty;
+      _name.text.trim().isNotEmpty && _producer.text.trim().isNotEmpty;
 
   Future<void> _submit() async {
     final l = AppLocalizations.of(context);
@@ -87,7 +87,7 @@ class _SubmitBeverageRequestScreenState
     }
     final req = BeverageRequest(
       name: _name.text.trim(),
-      breweryName: _brewery.text.trim(),
+      producerName: _producer.text.trim(),
       categorySlug: categorySlugToWire(_category),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
     );
@@ -142,16 +142,16 @@ class _SubmitBeverageRequestScreenState
                 errorText: _showValidation ? _nameError(l) : null,
               ),
             ),
-            _SectionLabel(text: l.submitBeverageRequestBreweryLabel),
+            _SectionLabel(text: l.submitBeverageRequestProducerLabel),
             TextField(
-              controller: _brewery,
-              maxLength: _breweryMax,
+              controller: _producer,
+              maxLength: _producerMax,
               inputFormatters: [
                 FilteringTextInputFormatter.deny(RegExp(r'[\x00-\x1F\x7F]')),
               ],
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                errorText: _showValidation ? _breweryError(l) : null,
+                errorText: _showValidation ? _producerError(l) : null,
               ),
             ),
             _SectionLabel(text: l.submitBeverageRequestCategoryLabel),

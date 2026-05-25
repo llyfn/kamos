@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Beverage {
 
- String get id; I18nText get name; Brewery get brewery; CategoryLabel get category; I18nText? get subcategory; double? get abv; int? get polishingRatio; List<String> get flavorProfile; I18nText? get description; String? get labelImageUrl; double? get avgRating; int get checkInCount; String get createdAt;
+ String get id; I18nText get name; Producer get producer; CategoryLabel get category; I18nText? get subcategory; double? get abv; int? get polishingRatio; List<String> get flavorProfile; I18nText? get description; String? get labelImageUrl; double? get avgRating; int get checkInCount; String get createdAt;
 /// Create a copy of Beverage
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $BeverageCopyWith<Beverage> get copyWith => _$BeverageCopyWithImpl<Beverage>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Beverage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.brewery, brewery) || other.brewery == brewery)&&(identical(other.category, category) || other.category == category)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.abv, abv) || other.abv == abv)&&(identical(other.polishingRatio, polishingRatio) || other.polishingRatio == polishingRatio)&&const DeepCollectionEquality().equals(other.flavorProfile, flavorProfile)&&(identical(other.description, description) || other.description == description)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.checkInCount, checkInCount) || other.checkInCount == checkInCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Beverage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.abv, abv) || other.abv == abv)&&(identical(other.polishingRatio, polishingRatio) || other.polishingRatio == polishingRatio)&&const DeepCollectionEquality().equals(other.flavorProfile, flavorProfile)&&(identical(other.description, description) || other.description == description)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.checkInCount, checkInCount) || other.checkInCount == checkInCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,brewery,category,subcategory,abv,polishingRatio,const DeepCollectionEquality().hash(flavorProfile),description,labelImageUrl,avgRating,checkInCount,createdAt);
+int get hashCode => Object.hash(runtimeType,id,name,producer,category,subcategory,abv,polishingRatio,const DeepCollectionEquality().hash(flavorProfile),description,labelImageUrl,avgRating,checkInCount,createdAt);
 
 @override
 String toString() {
-  return 'Beverage(id: $id, name: $name, brewery: $brewery, category: $category, subcategory: $subcategory, abv: $abv, polishingRatio: $polishingRatio, flavorProfile: $flavorProfile, description: $description, labelImageUrl: $labelImageUrl, avgRating: $avgRating, checkInCount: $checkInCount, createdAt: $createdAt)';
+  return 'Beverage(id: $id, name: $name, producer: $producer, category: $category, subcategory: $subcategory, abv: $abv, polishingRatio: $polishingRatio, flavorProfile: $flavorProfile, description: $description, labelImageUrl: $labelImageUrl, avgRating: $avgRating, checkInCount: $checkInCount, createdAt: $createdAt)';
 }
 
 
@@ -45,11 +45,11 @@ abstract mixin class $BeverageCopyWith<$Res>  {
   factory $BeverageCopyWith(Beverage value, $Res Function(Beverage) _then) = _$BeverageCopyWithImpl;
 @useResult
 $Res call({
- String id, I18nText name, Brewery brewery, CategoryLabel category, I18nText? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
+ String id, I18nText name, Producer producer, CategoryLabel category, I18nText? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
 });
 
 
-$I18nTextCopyWith<$Res> get name;$BreweryCopyWith<$Res> get brewery;$CategoryLabelCopyWith<$Res> get category;$I18nTextCopyWith<$Res>? get subcategory;$I18nTextCopyWith<$Res>? get description;
+$I18nTextCopyWith<$Res> get name;$ProducerCopyWith<$Res> get producer;$CategoryLabelCopyWith<$Res> get category;$I18nTextCopyWith<$Res>? get subcategory;$I18nTextCopyWith<$Res>? get description;
 
 }
 /// @nodoc
@@ -62,12 +62,12 @@ class _$BeverageCopyWithImpl<$Res>
 
 /// Create a copy of Beverage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? brewery = null,Object? category = null,Object? subcategory = freezed,Object? abv = freezed,Object? polishingRatio = freezed,Object? flavorProfile = null,Object? description = freezed,Object? labelImageUrl = freezed,Object? avgRating = freezed,Object? checkInCount = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? subcategory = freezed,Object? abv = freezed,Object? polishingRatio = freezed,Object? flavorProfile = null,Object? description = freezed,Object? labelImageUrl = freezed,Object? avgRating = freezed,Object? checkInCount = null,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as I18nText,brewery: null == brewery ? _self.brewery : brewery // ignore: cast_nullable_to_non_nullable
-as Brewery,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
+as Producer,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as CategoryLabel,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
 as I18nText?,abv: freezed == abv ? _self.abv : abv // ignore: cast_nullable_to_non_nullable
 as double?,polishingRatio: freezed == polishingRatio ? _self.polishingRatio : polishingRatio // ignore: cast_nullable_to_non_nullable
@@ -93,10 +93,10 @@ $I18nTextCopyWith<$Res> get name {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$BreweryCopyWith<$Res> get brewery {
+$ProducerCopyWith<$Res> get producer {
   
-  return $BreweryCopyWith<$Res>(_self.brewery, (value) {
-    return _then(_self.copyWith(brewery: value));
+  return $ProducerCopyWith<$Res>(_self.producer, (value) {
+    return _then(_self.copyWith(producer: value));
   });
 }/// Create a copy of Beverage
 /// with the given fields replaced by the non-null parameter values.
@@ -213,10 +213,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Brewery brewery,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Beverage() when $default != null:
-return $default(_that.id,_that.name,_that.brewery,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
   return orElse();
 
 }
@@ -234,10 +234,10 @@ return $default(_that.id,_that.name,_that.brewery,_that.category,_that.subcatego
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Brewery brewery,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _Beverage():
-return $default(_that.id,_that.name,_that.brewery,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -254,10 +254,10 @@ return $default(_that.id,_that.name,_that.brewery,_that.category,_that.subcatego
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Brewery brewery,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Beverage() when $default != null:
-return $default(_that.id,_that.name,_that.brewery,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
   return null;
 
 }
@@ -269,12 +269,12 @@ return $default(_that.id,_that.name,_that.brewery,_that.category,_that.subcatego
 
 
 class _Beverage implements Beverage {
-  const _Beverage({required this.id, required this.name, required this.brewery, required this.category, this.subcategory, this.abv, this.polishingRatio, final  List<String> flavorProfile = const <String>[], this.description, this.labelImageUrl, this.avgRating, this.checkInCount = 0, this.createdAt = ''}): _flavorProfile = flavorProfile;
+  const _Beverage({required this.id, required this.name, required this.producer, required this.category, this.subcategory, this.abv, this.polishingRatio, final  List<String> flavorProfile = const <String>[], this.description, this.labelImageUrl, this.avgRating, this.checkInCount = 0, this.createdAt = ''}): _flavorProfile = flavorProfile;
   
 
 @override final  String id;
 @override final  I18nText name;
-@override final  Brewery brewery;
+@override final  Producer producer;
 @override final  CategoryLabel category;
 @override final  I18nText? subcategory;
 @override final  double? abv;
@@ -302,16 +302,16 @@ _$BeverageCopyWith<_Beverage> get copyWith => __$BeverageCopyWithImpl<_Beverage>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Beverage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.brewery, brewery) || other.brewery == brewery)&&(identical(other.category, category) || other.category == category)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.abv, abv) || other.abv == abv)&&(identical(other.polishingRatio, polishingRatio) || other.polishingRatio == polishingRatio)&&const DeepCollectionEquality().equals(other._flavorProfile, _flavorProfile)&&(identical(other.description, description) || other.description == description)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.checkInCount, checkInCount) || other.checkInCount == checkInCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Beverage&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.abv, abv) || other.abv == abv)&&(identical(other.polishingRatio, polishingRatio) || other.polishingRatio == polishingRatio)&&const DeepCollectionEquality().equals(other._flavorProfile, _flavorProfile)&&(identical(other.description, description) || other.description == description)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl)&&(identical(other.avgRating, avgRating) || other.avgRating == avgRating)&&(identical(other.checkInCount, checkInCount) || other.checkInCount == checkInCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,brewery,category,subcategory,abv,polishingRatio,const DeepCollectionEquality().hash(_flavorProfile),description,labelImageUrl,avgRating,checkInCount,createdAt);
+int get hashCode => Object.hash(runtimeType,id,name,producer,category,subcategory,abv,polishingRatio,const DeepCollectionEquality().hash(_flavorProfile),description,labelImageUrl,avgRating,checkInCount,createdAt);
 
 @override
 String toString() {
-  return 'Beverage(id: $id, name: $name, brewery: $brewery, category: $category, subcategory: $subcategory, abv: $abv, polishingRatio: $polishingRatio, flavorProfile: $flavorProfile, description: $description, labelImageUrl: $labelImageUrl, avgRating: $avgRating, checkInCount: $checkInCount, createdAt: $createdAt)';
+  return 'Beverage(id: $id, name: $name, producer: $producer, category: $category, subcategory: $subcategory, abv: $abv, polishingRatio: $polishingRatio, flavorProfile: $flavorProfile, description: $description, labelImageUrl: $labelImageUrl, avgRating: $avgRating, checkInCount: $checkInCount, createdAt: $createdAt)';
 }
 
 
@@ -322,11 +322,11 @@ abstract mixin class _$BeverageCopyWith<$Res> implements $BeverageCopyWith<$Res>
   factory _$BeverageCopyWith(_Beverage value, $Res Function(_Beverage) _then) = __$BeverageCopyWithImpl;
 @override @useResult
 $Res call({
- String id, I18nText name, Brewery brewery, CategoryLabel category, I18nText? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
+ String id, I18nText name, Producer producer, CategoryLabel category, I18nText? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
 });
 
 
-@override $I18nTextCopyWith<$Res> get name;@override $BreweryCopyWith<$Res> get brewery;@override $CategoryLabelCopyWith<$Res> get category;@override $I18nTextCopyWith<$Res>? get subcategory;@override $I18nTextCopyWith<$Res>? get description;
+@override $I18nTextCopyWith<$Res> get name;@override $ProducerCopyWith<$Res> get producer;@override $CategoryLabelCopyWith<$Res> get category;@override $I18nTextCopyWith<$Res>? get subcategory;@override $I18nTextCopyWith<$Res>? get description;
 
 }
 /// @nodoc
@@ -339,12 +339,12 @@ class __$BeverageCopyWithImpl<$Res>
 
 /// Create a copy of Beverage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? brewery = null,Object? category = null,Object? subcategory = freezed,Object? abv = freezed,Object? polishingRatio = freezed,Object? flavorProfile = null,Object? description = freezed,Object? labelImageUrl = freezed,Object? avgRating = freezed,Object? checkInCount = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? subcategory = freezed,Object? abv = freezed,Object? polishingRatio = freezed,Object? flavorProfile = null,Object? description = freezed,Object? labelImageUrl = freezed,Object? avgRating = freezed,Object? checkInCount = null,Object? createdAt = null,}) {
   return _then(_Beverage(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as I18nText,brewery: null == brewery ? _self.brewery : brewery // ignore: cast_nullable_to_non_nullable
-as Brewery,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
+as Producer,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as CategoryLabel,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
 as I18nText?,abv: freezed == abv ? _self.abv : abv // ignore: cast_nullable_to_non_nullable
 as double?,polishingRatio: freezed == polishingRatio ? _self.polishingRatio : polishingRatio // ignore: cast_nullable_to_non_nullable
@@ -371,10 +371,10 @@ $I18nTextCopyWith<$Res> get name {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$BreweryCopyWith<$Res> get brewery {
+$ProducerCopyWith<$Res> get producer {
   
-  return $BreweryCopyWith<$Res>(_self.brewery, (value) {
-    return _then(_self.copyWith(brewery: value));
+  return $ProducerCopyWith<$Res>(_self.producer, (value) {
+    return _then(_self.copyWith(producer: value));
   });
 }/// Create a copy of Beverage
 /// with the given fields replaced by the non-null parameter values.
@@ -415,7 +415,7 @@ $I18nTextCopyWith<$Res>? get description {
 /// @nodoc
 mixin _$BeverageRef {
 
- String get id; I18nText get name; BreweryRef get brewery; CategoryLabel get category; String? get labelImageUrl;
+ String get id; I18nText get name; ProducerRef get producer; CategoryLabel get category; String? get labelImageUrl;
 /// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -426,16 +426,16 @@ $BeverageRefCopyWith<BeverageRef> get copyWith => _$BeverageRefCopyWithImpl<Beve
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.brewery, brewery) || other.brewery == brewery)&&(identical(other.category, category) || other.category == category)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,brewery,category,labelImageUrl);
+int get hashCode => Object.hash(runtimeType,id,name,producer,category,labelImageUrl);
 
 @override
 String toString() {
-  return 'BeverageRef(id: $id, name: $name, brewery: $brewery, category: $category, labelImageUrl: $labelImageUrl)';
+  return 'BeverageRef(id: $id, name: $name, producer: $producer, category: $category, labelImageUrl: $labelImageUrl)';
 }
 
 
@@ -446,11 +446,11 @@ abstract mixin class $BeverageRefCopyWith<$Res>  {
   factory $BeverageRefCopyWith(BeverageRef value, $Res Function(BeverageRef) _then) = _$BeverageRefCopyWithImpl;
 @useResult
 $Res call({
- String id, I18nText name, BreweryRef brewery, CategoryLabel category, String? labelImageUrl
+ String id, I18nText name, ProducerRef producer, CategoryLabel category, String? labelImageUrl
 });
 
 
-$I18nTextCopyWith<$Res> get name;$BreweryRefCopyWith<$Res> get brewery;$CategoryLabelCopyWith<$Res> get category;
+$I18nTextCopyWith<$Res> get name;$ProducerRefCopyWith<$Res> get producer;$CategoryLabelCopyWith<$Res> get category;
 
 }
 /// @nodoc
@@ -463,12 +463,12 @@ class _$BeverageRefCopyWithImpl<$Res>
 
 /// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? brewery = null,Object? category = null,Object? labelImageUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? labelImageUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as I18nText,brewery: null == brewery ? _self.brewery : brewery // ignore: cast_nullable_to_non_nullable
-as BreweryRef,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
+as ProducerRef,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as CategoryLabel,labelImageUrl: freezed == labelImageUrl ? _self.labelImageUrl : labelImageUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -486,10 +486,10 @@ $I18nTextCopyWith<$Res> get name {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$BreweryRefCopyWith<$Res> get brewery {
+$ProducerRefCopyWith<$Res> get producer {
   
-  return $BreweryRefCopyWith<$Res>(_self.brewery, (value) {
-    return _then(_self.copyWith(brewery: value));
+  return $ProducerRefCopyWith<$Res>(_self.producer, (value) {
+    return _then(_self.copyWith(producer: value));
   });
 }/// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
@@ -582,10 +582,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  BreweryRef brewery,  CategoryLabel category,  String? labelImageUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  String? labelImageUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BeverageRef() when $default != null:
-return $default(_that.id,_that.name,_that.brewery,_that.category,_that.labelImageUrl);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelImageUrl);case _:
   return orElse();
 
 }
@@ -603,10 +603,10 @@ return $default(_that.id,_that.name,_that.brewery,_that.category,_that.labelImag
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  BreweryRef brewery,  CategoryLabel category,  String? labelImageUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  String? labelImageUrl)  $default,) {final _that = this;
 switch (_that) {
 case _BeverageRef():
-return $default(_that.id,_that.name,_that.brewery,_that.category,_that.labelImageUrl);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelImageUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -623,10 +623,10 @@ return $default(_that.id,_that.name,_that.brewery,_that.category,_that.labelImag
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  BreweryRef brewery,  CategoryLabel category,  String? labelImageUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  String? labelImageUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _BeverageRef() when $default != null:
-return $default(_that.id,_that.name,_that.brewery,_that.category,_that.labelImageUrl);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelImageUrl);case _:
   return null;
 
 }
@@ -638,12 +638,12 @@ return $default(_that.id,_that.name,_that.brewery,_that.category,_that.labelImag
 
 
 class _BeverageRef implements BeverageRef {
-  const _BeverageRef({required this.id, required this.name, required this.brewery, required this.category, this.labelImageUrl});
+  const _BeverageRef({required this.id, required this.name, required this.producer, required this.category, this.labelImageUrl});
   
 
 @override final  String id;
 @override final  I18nText name;
-@override final  BreweryRef brewery;
+@override final  ProducerRef producer;
 @override final  CategoryLabel category;
 @override final  String? labelImageUrl;
 
@@ -657,16 +657,16 @@ _$BeverageRefCopyWith<_BeverageRef> get copyWith => __$BeverageRefCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.brewery, brewery) || other.brewery == brewery)&&(identical(other.category, category) || other.category == category)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,brewery,category,labelImageUrl);
+int get hashCode => Object.hash(runtimeType,id,name,producer,category,labelImageUrl);
 
 @override
 String toString() {
-  return 'BeverageRef(id: $id, name: $name, brewery: $brewery, category: $category, labelImageUrl: $labelImageUrl)';
+  return 'BeverageRef(id: $id, name: $name, producer: $producer, category: $category, labelImageUrl: $labelImageUrl)';
 }
 
 
@@ -677,11 +677,11 @@ abstract mixin class _$BeverageRefCopyWith<$Res> implements $BeverageRefCopyWith
   factory _$BeverageRefCopyWith(_BeverageRef value, $Res Function(_BeverageRef) _then) = __$BeverageRefCopyWithImpl;
 @override @useResult
 $Res call({
- String id, I18nText name, BreweryRef brewery, CategoryLabel category, String? labelImageUrl
+ String id, I18nText name, ProducerRef producer, CategoryLabel category, String? labelImageUrl
 });
 
 
-@override $I18nTextCopyWith<$Res> get name;@override $BreweryRefCopyWith<$Res> get brewery;@override $CategoryLabelCopyWith<$Res> get category;
+@override $I18nTextCopyWith<$Res> get name;@override $ProducerRefCopyWith<$Res> get producer;@override $CategoryLabelCopyWith<$Res> get category;
 
 }
 /// @nodoc
@@ -694,12 +694,12 @@ class __$BeverageRefCopyWithImpl<$Res>
 
 /// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? brewery = null,Object? category = null,Object? labelImageUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? labelImageUrl = freezed,}) {
   return _then(_BeverageRef(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as I18nText,brewery: null == brewery ? _self.brewery : brewery // ignore: cast_nullable_to_non_nullable
-as BreweryRef,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
+as ProducerRef,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as CategoryLabel,labelImageUrl: freezed == labelImageUrl ? _self.labelImageUrl : labelImageUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -718,10 +718,10 @@ $I18nTextCopyWith<$Res> get name {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$BreweryRefCopyWith<$Res> get brewery {
+$ProducerRefCopyWith<$Res> get producer {
   
-  return $BreweryRefCopyWith<$Res>(_self.brewery, (value) {
-    return _then(_self.copyWith(brewery: value));
+  return $ProducerRefCopyWith<$Res>(_self.producer, (value) {
+    return _then(_self.copyWith(producer: value));
   });
 }/// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
@@ -1315,7 +1315,7 @@ $BeverageCopyWith<$Res> get beverage {
 /// @nodoc
 mixin _$CheckinSummary {
 
- String get id; CheckinUser get user; double? get rating; String? get review; List<PhotoRef> get photos; List<FlavorTag> get tags; String? get servingStyle; String get createdAt;
+ String get id; CheckinUser get user; double? get rating; String? get review; List<PhotoRef> get photos; List<FlavorTag> get tags; String get createdAt;
 /// Create a copy of CheckinSummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1326,16 +1326,16 @@ $CheckinSummaryCopyWith<CheckinSummary> get copyWith => _$CheckinSummaryCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other.photos, photos)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.servingStyle, servingStyle) || other.servingStyle == servingStyle)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other.photos, photos)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,user,rating,review,const DeepCollectionEquality().hash(photos),const DeepCollectionEquality().hash(tags),servingStyle,createdAt);
+int get hashCode => Object.hash(runtimeType,id,user,rating,review,const DeepCollectionEquality().hash(photos),const DeepCollectionEquality().hash(tags),createdAt);
 
 @override
 String toString() {
-  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, photos: $photos, tags: $tags, servingStyle: $servingStyle, createdAt: $createdAt)';
+  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, photos: $photos, tags: $tags, createdAt: $createdAt)';
 }
 
 
@@ -1346,7 +1346,7 @@ abstract mixin class $CheckinSummaryCopyWith<$Res>  {
   factory $CheckinSummaryCopyWith(CheckinSummary value, $Res Function(CheckinSummary) _then) = _$CheckinSummaryCopyWithImpl;
 @useResult
 $Res call({
- String id, CheckinUser user, double? rating, String? review, List<PhotoRef> photos, List<FlavorTag> tags, String? servingStyle, String createdAt
+ String id, CheckinUser user, double? rating, String? review, List<PhotoRef> photos, List<FlavorTag> tags, String createdAt
 });
 
 
@@ -1363,7 +1363,7 @@ class _$CheckinSummaryCopyWithImpl<$Res>
 
 /// Create a copy of CheckinSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? photos = null,Object? tags = null,Object? servingStyle = freezed,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? photos = null,Object? tags = null,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
@@ -1371,8 +1371,7 @@ as CheckinUser,rating: freezed == rating ? _self.rating : rating // ignore: cast
 as double?,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
 as String?,photos: null == photos ? _self.photos : photos // ignore: cast_nullable_to_non_nullable
 as List<PhotoRef>,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
-as List<FlavorTag>,servingStyle: freezed == servingStyle ? _self.servingStyle : servingStyle // ignore: cast_nullable_to_non_nullable
-as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as List<FlavorTag>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -1467,10 +1466,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String? servingStyle,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CheckinSummary() when $default != null:
-return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.servingStyle,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.createdAt);case _:
   return orElse();
 
 }
@@ -1488,10 +1487,10 @@ return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String? servingStyle,  String createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _CheckinSummary():
-return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.servingStyle,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1508,10 +1507,10 @@ return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String? servingStyle,  String createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CheckinUser user,  double? rating,  String? review,  List<PhotoRef> photos,  List<FlavorTag> tags,  String createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _CheckinSummary() when $default != null:
-return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.servingStyle,_that.createdAt);case _:
+return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that.tags,_that.createdAt);case _:
   return null;
 
 }
@@ -1523,7 +1522,7 @@ return $default(_that.id,_that.user,_that.rating,_that.review,_that.photos,_that
 
 
 class _CheckinSummary implements CheckinSummary {
-  const _CheckinSummary({required this.id, required this.user, this.rating, this.review, final  List<PhotoRef> photos = const <PhotoRef>[], final  List<FlavorTag> tags = const <FlavorTag>[], this.servingStyle, this.createdAt = ''}): _photos = photos,_tags = tags;
+  const _CheckinSummary({required this.id, required this.user, this.rating, this.review, final  List<PhotoRef> photos = const <PhotoRef>[], final  List<FlavorTag> tags = const <FlavorTag>[], this.createdAt = ''}): _photos = photos,_tags = tags;
   
 
 @override final  String id;
@@ -1544,7 +1543,6 @@ class _CheckinSummary implements CheckinSummary {
   return EqualUnmodifiableListView(_tags);
 }
 
-@override final  String? servingStyle;
 @override@JsonKey() final  String createdAt;
 
 /// Create a copy of CheckinSummary
@@ -1557,16 +1555,16 @@ _$CheckinSummaryCopyWith<_CheckinSummary> get copyWith => __$CheckinSummaryCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other._photos, _photos)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.servingStyle, servingStyle) || other.servingStyle == servingStyle)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckinSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.user, user) || other.user == user)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.review, review) || other.review == review)&&const DeepCollectionEquality().equals(other._photos, _photos)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,user,rating,review,const DeepCollectionEquality().hash(_photos),const DeepCollectionEquality().hash(_tags),servingStyle,createdAt);
+int get hashCode => Object.hash(runtimeType,id,user,rating,review,const DeepCollectionEquality().hash(_photos),const DeepCollectionEquality().hash(_tags),createdAt);
 
 @override
 String toString() {
-  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, photos: $photos, tags: $tags, servingStyle: $servingStyle, createdAt: $createdAt)';
+  return 'CheckinSummary(id: $id, user: $user, rating: $rating, review: $review, photos: $photos, tags: $tags, createdAt: $createdAt)';
 }
 
 
@@ -1577,7 +1575,7 @@ abstract mixin class _$CheckinSummaryCopyWith<$Res> implements $CheckinSummaryCo
   factory _$CheckinSummaryCopyWith(_CheckinSummary value, $Res Function(_CheckinSummary) _then) = __$CheckinSummaryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, CheckinUser user, double? rating, String? review, List<PhotoRef> photos, List<FlavorTag> tags, String? servingStyle, String createdAt
+ String id, CheckinUser user, double? rating, String? review, List<PhotoRef> photos, List<FlavorTag> tags, String createdAt
 });
 
 
@@ -1594,7 +1592,7 @@ class __$CheckinSummaryCopyWithImpl<$Res>
 
 /// Create a copy of CheckinSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? photos = null,Object? tags = null,Object? servingStyle = freezed,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? user = null,Object? rating = freezed,Object? review = freezed,Object? photos = null,Object? tags = null,Object? createdAt = null,}) {
   return _then(_CheckinSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
@@ -1602,8 +1600,7 @@ as CheckinUser,rating: freezed == rating ? _self.rating : rating // ignore: cast
 as double?,review: freezed == review ? _self.review : review // ignore: cast_nullable_to_non_nullable
 as String?,photos: null == photos ? _self._photos : photos // ignore: cast_nullable_to_non_nullable
 as List<PhotoRef>,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
-as List<FlavorTag>,servingStyle: freezed == servingStyle ? _self.servingStyle : servingStyle // ignore: cast_nullable_to_non_nullable
-as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as List<FlavorTag>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

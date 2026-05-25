@@ -1,7 +1,7 @@
 // KAMOS — Prefecture model (OpenAPI `Prefecture`).
 //
 // One row of the seed `prefectures` reference table. `region` is embedded so
-// a brewery's `prefecture` field carries enough context to render
+// a producer's `prefecture` field carries enough context to render
 // "Niigata (Chūbu)" without a second lookup.
 
 import 'package:freezed_annotation/freezed_annotation.dart';

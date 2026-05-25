@@ -7,10 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kamos/app/theme.dart';
 import 'package:kamos/core/models/beverage.dart';
-import 'package:kamos/core/models/brewery.dart';
 import 'package:kamos/core/models/category_label.dart';
 import 'package:kamos/core/models/flavor_tag.dart';
 import 'package:kamos/core/models/i18n_text.dart';
+import 'package:kamos/core/models/producer.dart';
 import 'package:kamos/features/check_in/providers/checkin_providers.dart';
 import 'package:kamos/features/check_in/screens/check_in_screen.dart';
 import 'package:kamos/l10n/app_localizations.dart';
@@ -33,9 +33,9 @@ const _fakeTags = <FlavorTag>[
 const _beverage = Beverage(
   id: 'bev-1',
   name: I18nText(en: 'Test Sake', ja: 'テスト酒'),
-  brewery: Brewery(
-    id: 'brw-1',
-    name: I18nText(en: 'Test Brewery'),
+  producer: Producer(
+    id: 'prd-1',
+    name: I18nText(en: 'Test Producer'),
   ),
   category: CategoryLabel(
     slug: 'nihonshu',

@@ -1,4 +1,4 @@
-// KAMOS — Brewery models (OpenAPI `Brewery`, `BreweryRef`).
+// KAMOS — Producer models (OpenAPI `Producer`, `ProducerRef`).
 //
 // Optional fields are nullable. Per QA MINOR #2, some servers may emit
 // `omitempty` (absent) vs `nullable: true` (present-and-null); we treat both
@@ -6,33 +6,33 @@
 //
 // Migration 016: `prefecture` is now a nested `Prefecture` object (which
 // itself embeds its `Region`). The previous free-text `prefecture` / `region`
-// string fields are gone — the brewery's region is derivable via
-// `brewery.prefecture?.region`.
+// string fields are gone — the producer's region is derivable via
+// `producer.prefecture?.region`.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'i18n_text.dart';
 import 'prefecture.dart';
 
-part 'brewery.freezed.dart';
+part 'producer.freezed.dart';
 
 @Freezed(fromJson: false, toJson: false)
-abstract class Brewery with _$Brewery {
-  const factory Brewery({
+abstract class Producer with _$Producer {
+  const factory Producer({
     required String id,
     required I18nText name,
     Prefecture? prefecture,
     int? foundedYear,
     String? website,
     I18nText? description,
-    // Populated by `GET /v1/breweries/{id}` and `GET /v1/breweries`. Absent in
-    // nested `BreweryRef` embeddings (which use the BreweryRef model) and in
-    // /v1/search brewery results — `null` then.
+    // Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
+    // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
+    // /v1/search producer results — `null` then.
     int? beverageCount,
     @Default('') String createdAt,
-  }) = _Brewery;
+  }) = _Producer;
 
-  factory Brewery.fromJson(Map<String, dynamic> json) => Brewery(
+  factory Producer.fromJson(Map<String, dynamic> json) => Producer(
     id: (json['id'] as String?) ?? '',
     name: I18nText.fromJson(
       (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
@@ -51,14 +51,14 @@ abstract class Brewery with _$Brewery {
 }
 
 @Freezed(fromJson: false, toJson: false)
-abstract class BreweryRef with _$BreweryRef {
-  const factory BreweryRef({
+abstract class ProducerRef with _$ProducerRef {
+  const factory ProducerRef({
     required String id,
     required I18nText name,
     Prefecture? prefecture,
-  }) = _BreweryRef;
+  }) = _ProducerRef;
 
-  factory BreweryRef.fromJson(Map<String, dynamic> json) => BreweryRef(
+  factory ProducerRef.fromJson(Map<String, dynamic> json) => ProducerRef(
     id: (json['id'] as String?) ?? '',
     name: I18nText.fromJson(
       (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},

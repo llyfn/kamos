@@ -11,14 +11,14 @@ void main() {
     test('wraps fields in a payload object with notes included', () {
       const req = BeverageRequest(
         name: 'Dassai 45',
-        breweryName: 'Asahi Shuzo',
+        producerName: 'Asahi Shuzo',
         categorySlug: 'nihonshu',
         notes: 'Junmai Daiginjo',
       );
       expect(req.toJson(), {
         'payload': {
           'name': 'Dassai 45',
-          'brewery_name': 'Asahi Shuzo',
+          'producer_name': 'Asahi Shuzo',
           'category_slug': 'nihonshu',
           'notes': 'Junmai Daiginjo',
         },
@@ -28,7 +28,7 @@ void main() {
     test('omits notes when null', () {
       const req = BeverageRequest(
         name: 'Iichiko',
-        breweryName: 'Sanwa Shurui',
+        producerName: 'Sanwa Shurui',
         categorySlug: 'shochu',
       );
       final json = req.toJson();
@@ -41,7 +41,7 @@ void main() {
     test('omits notes when whitespace-only', () {
       const req = BeverageRequest(
         name: 'Choya Umeshu',
-        breweryName: 'Choya',
+        producerName: 'Choya',
         categorySlug: 'liqueur',
         notes: '   \n  ',
       );
@@ -52,7 +52,7 @@ void main() {
     test('trims notes when present', () {
       const req = BeverageRequest(
         name: 'X',
-        breweryName: 'Y',
+        producerName: 'Y',
         categorySlug: 'nihonshu',
         notes: '  fresh tasting  ',
       );

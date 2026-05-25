@@ -19,11 +19,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kamos/app/theme.dart';
 import 'package:kamos/core/models/beverage.dart';
-import 'package:kamos/core/models/brewery.dart';
 import 'package:kamos/core/models/category_label.dart';
 import 'package:kamos/core/models/checkin.dart';
 import 'package:kamos/core/models/flavor_tag.dart';
 import 'package:kamos/core/models/i18n_text.dart';
+import 'package:kamos/core/models/producer.dart';
 import 'package:kamos/core/models/venue.dart';
 import 'package:kamos/features/check_in/providers/checkin_providers.dart';
 import 'package:kamos/features/check_in/repository/checkin_repository.dart';
@@ -33,9 +33,9 @@ import 'package:kamos/l10n/app_localizations.dart';
 const _beverage = Beverage(
   id: 'bev-1',
   name: I18nText(en: 'Test Sake', ja: 'テスト酒'),
-  brewery: Brewery(
-    id: 'brw-1',
-    name: I18nText(en: 'Test Brewery'),
+  producer: Producer(
+    id: 'prd-1',
+    name: I18nText(en: 'Test Producer'),
   ),
   category: CategoryLabel(
     slug: 'nihonshu',
@@ -63,7 +63,6 @@ class _FakeRepo extends CheckInRepository {
     List<String> photos = const [],
     Price? price,
     String? purchaseType,
-    String? servingStyle,
     Map<String, dynamic>? venue,
   }) async {
     createCalls += 1;
@@ -79,7 +78,7 @@ class _FakeRepo extends CheckInRepository {
       beverage: BeverageRef(
         id: 'bev-1',
         name: I18nText(en: 'Test Sake'),
-        brewery: BreweryRef(id: 'brw-1', name: I18nText(en: 'Test Brewery')),
+        producer: ProducerRef(id: 'prd-1', name: I18nText(en: 'Test Producer')),
         category: CategoryLabel(
           slug: 'nihonshu',
           labelI18n: I18nText(en: 'Nihonshu (Sake)'),

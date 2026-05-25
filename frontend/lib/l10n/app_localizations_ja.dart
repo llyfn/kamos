@@ -116,9 +116,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPurchaseType => '購入種別';
 
   @override
-  String get checkInServingStyle => '提供スタイル';
-
-  @override
   String get checkInPriceServing => '一杯';
 
   @override
@@ -135,21 +132,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get checkInPurchaseOther => 'その他';
-
-  @override
-  String get checkInServingGlass => 'グラス';
-
-  @override
-  String get checkInServingCarafe => '徳利';
-
-  @override
-  String get checkInServingBottle => '瓶';
-
-  @override
-  String get checkInServingCan => '缶';
-
-  @override
-  String get checkInServingOther => 'その他';
 
   @override
   String get checkInFirstToast => '最初のチェックイン。乾杯！';
@@ -611,16 +593,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get beverageListSheetSaveFailed => '更新できませんでした。再度お試しください。';
 
   @override
-  String get breweryOverline => '蔵元';
+  String get producerOverline => '蔵元';
 
   @override
-  String get breweryFounded => '創業';
+  String get producerFounded => '創業';
 
   @override
-  String get breweryBeverages => '銘柄';
+  String get producerBeverages => '銘柄';
 
   @override
-  String get breweryNoBeverages => 'まだ銘柄がありません';
+  String get producerNoBeverages => 'まだ銘柄がありません';
 
   @override
   String get actionSave => '保存';
@@ -668,7 +650,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get submitBeverageRequestNameLabel => '名称';
 
   @override
-  String get submitBeverageRequestBreweryLabel => '蔵元';
+  String get submitBeverageRequestProducerLabel => '蔵元';
 
   @override
   String get submitBeverageRequestCategoryLabel => 'カテゴリー';
@@ -689,7 +671,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get submitBeverageRequestNameRequired => '名称は必須です。';
 
   @override
-  String get submitBeverageRequestBreweryRequired => '蔵元は必須です。';
+  String get submitBeverageRequestProducerRequired => '蔵元は必須です。';
 
   @override
   String get searchSuggestMissingCta => '見つからない場合は提案';

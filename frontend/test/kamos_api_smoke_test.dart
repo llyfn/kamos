@@ -52,7 +52,7 @@ void main() {
       expect(api.auth, isNotNull);
       expect(api.users, isNotNull);
       expect(api.beverages, isNotNull);
-      expect(api.breweries, isNotNull);
+      expect(api.producers, isNotNull);
       expect(api.checkins, isNotNull);
       expect(api.comments, isNotNull);
       expect(api.collections, isNotNull);
@@ -90,11 +90,11 @@ void main() {
       expect(adapter.requests.single.path, '/v1/beverages/bev-1');
     });
 
-    test('breweries.get → GET /v1/breweries/{id}', () async {
+    test('producers.get → GET /v1/producers/{id}', () async {
       final adapter = _RecordingAdapter();
       final api = _newApi(adapter);
-      await api.breweries.get('br-1');
-      expect(adapter.requests.single.path, '/v1/breweries/br-1');
+      await api.producers.get('br-1');
+      expect(adapter.requests.single.path, '/v1/producers/br-1');
     });
 
     test('checkins.toggleToast → POST /v1/check-ins/{id}/toast', () async {

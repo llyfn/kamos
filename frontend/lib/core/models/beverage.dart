@@ -1,16 +1,16 @@
 // KAMOS — Beverage models (OpenAPI `Beverage`, `BeverageRef`, `BeverageDetail`).
 //
 // Migration 016 dropped the per-beverage `prefecture` / `region` free-text
-// columns. A beverage's locality is derived through `brewery.prefecture`
+// columns. A beverage's locality is derived through `producer.prefecture`
 // (which itself nests `region`).
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'brewery.dart';
 import 'category_label.dart';
 import 'flavor_tag.dart';
 import 'i18n_text.dart';
 import 'photo_ref.dart';
+import 'producer.dart';
 
 part 'beverage.freezed.dart';
 
@@ -19,7 +19,7 @@ abstract class Beverage with _$Beverage {
   const factory Beverage({
     required String id,
     required I18nText name,
-    required Brewery brewery,
+    required Producer producer,
     required CategoryLabel category,
     I18nText? subcategory,
     double? abv,
@@ -37,8 +37,8 @@ abstract class Beverage with _$Beverage {
     name: I18nText.fromJson(
       (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
     ),
-    brewery: Brewery.fromJson(
-      (json['brewery'] as Map<String, dynamic>?) ?? const {},
+    producer: Producer.fromJson(
+      (json['producer'] as Map<String, dynamic>?) ?? const {},
     ),
     category: CategoryLabel.fromJson(
       (json['category'] as Map<String, dynamic>?) ?? const {},
@@ -66,7 +66,7 @@ abstract class BeverageRef with _$BeverageRef {
   const factory BeverageRef({
     required String id,
     required I18nText name,
-    required BreweryRef brewery,
+    required ProducerRef producer,
     required CategoryLabel category,
     String? labelImageUrl,
   }) = _BeverageRef;
@@ -76,8 +76,8 @@ abstract class BeverageRef with _$BeverageRef {
     name: I18nText.fromJson(
       (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
     ),
-    brewery: BreweryRef.fromJson(
-      (json['brewery'] as Map<String, dynamic>?) ?? const {},
+    producer: ProducerRef.fromJson(
+      (json['producer'] as Map<String, dynamic>?) ?? const {},
     ),
     category: CategoryLabel.fromJson(
       (json['category'] as Map<String, dynamic>?) ?? const {},
@@ -127,8 +127,8 @@ abstract class BeverageDetail with _$BeverageDetail {
 
 // CheckinSummary lives here to avoid a circular import; the full Checkin is
 // in `checkin.dart`. Stage post-MVP widened the projection to include
-// `photos`, `tags`, and `serving_style` so beverage-detail recent-check-in
-// rows render rich cards without a second round trip.
+// `photos` and `tags` so beverage-detail recent-check-in rows render rich
+// cards without a second round trip.
 @Freezed(fromJson: false, toJson: false)
 abstract class CheckinSummary with _$CheckinSummary {
   const factory CheckinSummary({
@@ -138,7 +138,6 @@ abstract class CheckinSummary with _$CheckinSummary {
     String? review,
     @Default(<PhotoRef>[]) List<PhotoRef> photos,
     @Default(<FlavorTag>[]) List<FlavorTag> tags,
-    String? servingStyle,
     @Default('') String createdAt,
   }) = _CheckinSummary;
 
@@ -155,7 +154,6 @@ abstract class CheckinSummary with _$CheckinSummary {
     tags: ((json['tags'] as List?) ?? const [])
         .map((e) => FlavorTag.fromJson(e as Map<String, dynamic>))
         .toList(),
-    servingStyle: json['serving_style'] as String?,
     createdAt: (json['created_at'] as String?) ?? '',
   );
 }

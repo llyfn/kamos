@@ -1,7 +1,7 @@
 // KAMOS — Widget test: SubmitBeverageRequestScreen (Phase 5 user-side).
 //
 // Covers:
-// * Validation: empty name/brewery shows inline errors and blocks submit.
+// * Validation: empty name/producer shows inline errors and blocks submit.
 // * Submit path: filled form invokes the fake repo with the wire-shape
 //   payload, then renders the success snackbar.
 // * Error path: a repo that throws shows the inline error message and the
@@ -58,7 +58,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Submit button is initially disabled (no name/brewery), so the tap
+    // Submit button is initially disabled (no name/producer), so the tap
     // does nothing — repo not called.
     final submit = find.text('Submit');
     expect(submit, findsOneWidget);
@@ -102,7 +102,7 @@ void main() {
     expect(repo.calls, 1);
     expect(repo.lastReq, isNotNull);
     expect(repo.lastReq!.name, 'Dassai 45');
-    expect(repo.lastReq!.breweryName, 'Asahi Shuzo');
+    expect(repo.lastReq!.producerName, 'Asahi Shuzo');
     expect(repo.lastReq!.categorySlug, 'nihonshu');
     expect(repo.lastReq!.notes, 'Junmai Daiginjo');
 
@@ -114,7 +114,7 @@ void main() {
     // Wire-shape assertion via toJson on the captured request.
     final body = repo.lastReq!.toJson();
     expect(body['payload'], isA<Map<String, dynamic>>());
-    expect((body['payload'] as Map)['brewery_name'], 'Asahi Shuzo');
+    expect((body['payload'] as Map)['producer_name'], 'Asahi Shuzo');
   });
 
   testWidgets('repo failure renders the inline error and keeps screen open',

@@ -190,7 +190,7 @@ class CollectionDetailScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  resolveI18n(e.beverage.brewery.name, locale),
+                                  resolveI18n(e.beverage.producer.name, locale),
                                   style: TextStyle(fontSize: 12, color: t.fg2),
                                 ),
                               ],
