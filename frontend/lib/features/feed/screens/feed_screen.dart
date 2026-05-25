@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
@@ -82,27 +81,20 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             controller: _scroll,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
+            // The header bell that pushed /inbox was removed alongside the
+            // post-MVP nav rewrite — follow-request notifications now live
+            // inline on the Notifications tab as `follow_request` rows.
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l.feedHeader,
-                      style: TextStyle(
-                        fontFamily: 'ShipporiMincho',
-                        fontSize: 26,
-                        fontWeight: FontWeight.w600,
-                        color: t.fg1,
-                        height: 1.1,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => context.push('/inbox'),
-                    icon: const Icon(Icons.notifications_none_outlined),
-                  ),
-                ],
+              child: Text(
+                l.feedHeader,
+                style: TextStyle(
+                  fontFamily: 'ShipporiMincho',
+                  fontSize: 26,
+                  fontWeight: FontWeight.w600,
+                  color: t.fg1,
+                  height: 1.1,
+                ),
               ),
             ),
             if (state.items.isEmpty)
