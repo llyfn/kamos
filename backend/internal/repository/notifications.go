@@ -110,9 +110,19 @@ WHERE recipient_user_id = $1
 
 // ListByRecipient pages through a user's inbox, newest first. Returns
 // limit+1 rows so the handler can compute has_more via
-// cursor.SliceAndCursor. The LEFT JOIN on users preserves rows whose
-// actor was hard-deleted (FK ON DELETE SET NULL) — Flutter renders a
-// localized "Deleted user" placeholder.
+// cursor.SliceAndCursor.
+//
+// SPEC §5.4: actor visibility has two failure modes, both of which leave
+// the row present and surface a localized "Deleted user" stub:
+//
+//   - Hard-delete: the FK ON DELETE SET NULL flips actor_user_id to NULL.
+//     The LEFT JOIN then has no match and `u.id` is NULL.
+//   - Soft-delete: actor_user_id still points at the row, but
+//     u.deleted_at IS NOT NULL. The Go layer treats this as equivalent to
+//     the hard-delete case.
+//
+// The JOIN intentionally does NOT add `AND u.deleted_at IS NULL` — that
+// would inner-join-filter the row out instead of stubbing the actor.
 func (r *NotificationRepo) ListByRecipient(
 	ctx context.Context,
 	recipientID string,
@@ -132,6 +142,7 @@ SELECT
   u.display_username,
   u.display_name,
   u.avatar_url,
+  u.deleted_at,
   n.check_in_id,
   n.comment_id,
   n.read_at,
@@ -154,15 +165,22 @@ LIMIT $4;`
 			n                                               domain.Notification
 			actorID, username, displayUsername, displayName *string
 			avatarURL                                       *string
+			actorDeletedAt                                  *time.Time
 		)
 		if err := rows.Scan(
 			&n.ID, &n.Type,
-			&actorID, &username, &displayUsername, &displayName, &avatarURL,
+			&actorID, &username, &displayUsername, &displayName, &avatarURL, &actorDeletedAt,
 			&n.CheckInID, &n.CommentID, &n.ReadAt, &n.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("NotificationRepo.ListByRecipient scan: %w", err)
 		}
-		n.Actor = hydrateCommentUser(actorID, username, displayUsername, displayName, avatarURL)
+		if actorDeletedAt != nil {
+			// Soft-deleted actor — drop the join columns so the
+			// hydrator returns nil and the client renders "Deleted user".
+			n.Actor = nil
+		} else {
+			n.Actor = hydrateCommentUser(actorID, username, displayUsername, displayName, avatarURL)
+		}
 		out = append(out, n)
 	}
 	return out, rows.Err()

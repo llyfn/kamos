@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -437,10 +438,10 @@ func TestNotifications_CursorPagination(t *testing.T) {
 	}
 }
 
-// TestNotifications_SoftDeletedActor a hard-deleted actor still surfaces
-// as a notification row with actor=null (SPEC §5.4: "Soft-deleting the
-// actor preserves the row").
-func TestNotifications_SoftDeletedActor(t *testing.T) {
+// TestNotifications_HardDeletedActor a hard-deleted actor still surfaces
+// as a notification row with actor=null. The FK ON DELETE SET NULL on
+// actor_user_id is what produces the null; the row itself survives.
+func TestNotifications_HardDeletedActor(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
@@ -465,6 +466,50 @@ func TestNotifications_SoftDeletedActor(t *testing.T) {
 	}
 	if pg.Items[0].Actor != nil {
 		t.Errorf("actor should be null after hard delete, got %+v", pg.Items[0].Actor)
+	}
+}
+
+// TestNotifications_SoftDeletedActor — SPEC §5.4 PII guarantee.
+// After the actor is soft-deleted (users.deleted_at IS NOT NULL), the
+// notification row must still surface in the recipient's inbox, but
+// actor must be null so the client renders the localized "Deleted user"
+// placeholder. The actor's username / display_name MUST NOT appear in
+// the response, even though actor_user_id still references a live users
+// row (soft-delete does not flip the FK).
+func TestNotifications_SoftDeletedActor(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tokAuthor, _ := mustRegister(t, srv, "author_sd", "asd@example.com", "password-123")
+	tokFan, idFan := mustRegister(t, srv, "fan_sd", "fsd@example.com", "password-123")
+	bevID := seedBeverage(t, "SoftDel Sake")
+	ckID := createCheckin(t, srv, tokAuthor, bevID)
+	doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/toast", tokFan, nil)
+
+	// Soft-delete: users.deleted_at = NOW(). FK unaffected — the join
+	// still matches a live users row.
+	p := getPool(t)
+	if _, err := p.Exec(context.Background(),
+		`UPDATE users SET deleted_at = NOW(), username_release_at = NOW() + INTERVAL '30 days' WHERE id = $1;`, idFan); err != nil {
+		t.Fatalf("soft delete fan: %v", err)
+	}
+
+	// Use the raw wire bytes so we can grep for PII directly.
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/notifications", tokAuthor, nil)
+	if code != http.StatusOK {
+		t.Fatalf("list: %d body=%s", code, raw)
+	}
+	if bytes.Contains(raw, []byte("fan_sd")) {
+		t.Errorf("soft-deleted actor's username leaked in response: %s", raw)
+	}
+	var pg notificationsPage
+	_ = json.Unmarshal(raw, &pg)
+	if len(pg.Items) != 1 {
+		t.Fatalf("got %d rows", len(pg.Items))
+	}
+	if pg.Items[0].Actor != nil {
+		t.Errorf("actor must be null for soft-deleted user, got %+v", pg.Items[0].Actor)
 	}
 }
 
