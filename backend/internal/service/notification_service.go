@@ -50,9 +50,18 @@ func newNotificationService(d Deps) *NotificationService {
 	return s
 }
 
+// skip centralizes the "this emit is a no-op" precondition every Emit*
+// method shares: SPEC §5.4's self-action exclusion + defensive guards
+// against a nil receiver / unwired repo / empty id from a misconfigured
+// caller. The DB CHECK notifications_no_self is the backstop.
+func (s *NotificationService) skip(recipientID, actorID string) bool {
+	return s == nil || s.notifications == nil ||
+		recipientID == "" || actorID == "" || recipientID == actorID
+}
+
 // EmitToast inserts a `toast` notification. No-op when recipient == actor.
 func (s *NotificationService) EmitToast(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID string) error {
-	if s == nil || s.notifications == nil || recipientID == "" || actorID == "" || recipientID == actorID {
+	if s.skip(recipientID, actorID) {
 		return nil
 	}
 	return s.notifications.InsertToast(ctx, tx, recipientID, actorID, checkInID)
@@ -60,7 +69,7 @@ func (s *NotificationService) EmitToast(ctx context.Context, tx pgx.Tx, recipien
 
 // EmitComment inserts a `comment` notification. No-op when recipient == actor.
 func (s *NotificationService) EmitComment(ctx context.Context, tx pgx.Tx, recipientID, actorID, checkInID, commentID string) error {
-	if s == nil || s.notifications == nil || recipientID == "" || actorID == "" || recipientID == actorID {
+	if s.skip(recipientID, actorID) {
 		return nil
 	}
 	return s.notifications.InsertComment(ctx, tx, recipientID, actorID, checkInID, commentID)
@@ -70,7 +79,7 @@ func (s *NotificationService) EmitComment(ctx context.Context, tx pgx.Tx, recipi
 // No-op when recipient == actor — should never happen; defensive guard
 // matches the repo's ErrFollowSelf gate.
 func (s *NotificationService) EmitFollow(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
-	if s == nil || s.notifications == nil || recipientID == "" || actorID == "" || recipientID == actorID {
+	if s.skip(recipientID, actorID) {
 		return nil
 	}
 	return s.notifications.InsertFollow(ctx, tx, recipientID, actorID)
@@ -78,7 +87,7 @@ func (s *NotificationService) EmitFollow(ctx context.Context, tx pgx.Tx, recipie
 
 // EmitFollowRequest inserts a `follow_request` notification (private path).
 func (s *NotificationService) EmitFollowRequest(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
-	if s == nil || s.notifications == nil || recipientID == "" || actorID == "" || recipientID == actorID {
+	if s.skip(recipientID, actorID) {
 		return nil
 	}
 	return s.notifications.InsertFollowRequest(ctx, tx, recipientID, actorID)
@@ -91,7 +100,7 @@ func (s *NotificationService) EmitFollowRequest(ctx context.Context, tx pgx.Tx, 
 // recipientID = original requester (the one who sent the follow request),
 // actorID    = the approver (the original `followed_id`).
 func (s *NotificationService) EmitFollowApproved(ctx context.Context, tx pgx.Tx, recipientID, actorID string) error {
-	if s == nil || s.notifications == nil || recipientID == "" || actorID == "" || recipientID == actorID {
+	if s.skip(recipientID, actorID) {
 		return nil
 	}
 	if err := s.notifications.InsertFollowApproved(ctx, tx, recipientID, actorID); err != nil {
