@@ -693,4 +693,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get searchSuggestMissingCta => '見つからない場合は提案';
+
+  @override
+  String get profileRecentEmptyMeTitle => 'まだチェックインがありません';
+
+  @override
+  String get profileRecentEmptyMeBody => '最初の一本を記録するとここに表示されます。';
+
+  @override
+  String get profileRecentEmptyOtherTitle => 'まだチェックインがありません';
+
+  @override
+  String get profileRecentEmptyOtherBody => 'このユーザーが記録するとここに表示されます。';
 }

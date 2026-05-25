@@ -1407,6 +1407,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Can\'t find it? Suggest it.'**
   String get searchSuggestMissingCta;
+
+  /// No description provided for @profileRecentEmptyMeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No check-ins yet'**
+  String get profileRecentEmptyMeTitle;
+
+  /// No description provided for @profileRecentEmptyMeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log your first bottle to see it here.'**
+  String get profileRecentEmptyMeBody;
+
+  /// No description provided for @profileRecentEmptyOtherTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No check-ins yet'**
+  String get profileRecentEmptyOtherTitle;
+
+  /// No description provided for @profileRecentEmptyOtherBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When they log a bottle, it will show up here.'**
+  String get profileRecentEmptyOtherBody;
 }
 
 class _AppLocalizationsDelegate

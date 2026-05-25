@@ -272,5 +272,10 @@
   "submitBeverageRequestErrorGeneric": "Could not submit. Try again.",
   "submitBeverageRequestNameRequired": "Name is required.",
   "submitBeverageRequestBreweryRequired": "Brewery is required.",
-  "searchSuggestMissingCta": "Can't find it? Suggest it."
+  "searchSuggestMissingCta": "Can't find it? Suggest it.",
+
+  "profileRecentEmptyMeTitle": "No check-ins yet",
+  "profileRecentEmptyMeBody": "Log your first bottle to see it here.",
+  "profileRecentEmptyOtherTitle": "No check-ins yet",
+  "profileRecentEmptyOtherBody": "When they log a bottle, it will show up here."
 }

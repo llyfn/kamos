@@ -709,4 +709,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchSuggestMissingCta => 'Can\'t find it? Suggest it.';
+
+  @override
+  String get profileRecentEmptyMeTitle => 'No check-ins yet';
+
+  @override
+  String get profileRecentEmptyMeBody =>
+      'Log your first bottle to see it here.';
+
+  @override
+  String get profileRecentEmptyOtherTitle => 'No check-ins yet';
+
+  @override
+  String get profileRecentEmptyOtherBody =>
+      'When they log a bottle, it will show up here.';
 }

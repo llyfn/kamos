@@ -692,4 +692,16 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get searchSuggestMissingCta => '찾으시는 음료가 없나요? 제안해 주세요.';
+
+  @override
+  String get profileRecentEmptyMeTitle => '아직 체크인이 없습니다';
+
+  @override
+  String get profileRecentEmptyMeBody => '첫 기록을 남기면 여기에 표시됩니다.';
+
+  @override
+  String get profileRecentEmptyOtherTitle => '아직 체크인이 없습니다';
+
+  @override
+  String get profileRecentEmptyOtherBody => '이 사용자가 기록하면 여기에 표시됩니다.';
 }

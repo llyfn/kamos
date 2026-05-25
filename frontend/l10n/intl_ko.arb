@@ -272,5 +272,10 @@
   "submitBeverageRequestErrorGeneric": "제출하지 못했습니다. 다시 시도하세요.",
   "submitBeverageRequestNameRequired": "이름은 필수입니다.",
   "submitBeverageRequestBreweryRequired": "양조장은 필수입니다.",
-  "searchSuggestMissingCta": "찾으시는 음료가 없나요? 제안해 주세요."
+  "searchSuggestMissingCta": "찾으시는 음료가 없나요? 제안해 주세요.",
+
+  "profileRecentEmptyMeTitle": "아직 체크인이 없습니다",
+  "profileRecentEmptyMeBody": "첫 기록을 남기면 여기에 표시됩니다.",
+  "profileRecentEmptyOtherTitle": "아직 체크인이 없습니다",
+  "profileRecentEmptyOtherBody": "이 사용자가 기록하면 여기에 표시됩니다."
 }

@@ -272,5 +272,10 @@
   "submitBeverageRequestErrorGeneric": "送信できませんでした。再試行してください。",
   "submitBeverageRequestNameRequired": "名称は必須です。",
   "submitBeverageRequestBreweryRequired": "蔵元は必須です。",
-  "searchSuggestMissingCta": "見つからない場合は提案"
+  "searchSuggestMissingCta": "見つからない場合は提案",
+
+  "profileRecentEmptyMeTitle": "まだチェックインがありません",
+  "profileRecentEmptyMeBody": "最初の一本を記録するとここに表示されます。",
+  "profileRecentEmptyOtherTitle": "まだチェックインがありません",
+  "profileRecentEmptyOtherBody": "このユーザーが記録するとここに表示されます。"
 }

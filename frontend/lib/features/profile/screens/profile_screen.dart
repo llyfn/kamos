@@ -246,7 +246,7 @@ class _ProfileBody extends StatelessWidget {
               ),
             ),
           ),
-          _RecentCheckins(username: user.username),
+          _RecentCheckins(username: user.username, isMe: isMe),
         ],
       ),
     );
@@ -259,9 +259,10 @@ class _ProfileBody extends StatelessWidget {
 /// the surrounding profile chrome (avatar, name, stats, action pills)
 /// never disappears.
 class _RecentCheckins extends ConsumerWidget {
-  const _RecentCheckins({required this.username});
+  const _RecentCheckins({required this.username, required this.isMe});
 
   final String username;
+  final bool isMe;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -271,8 +272,12 @@ class _RecentCheckins extends ConsumerWidget {
       data: (items) {
         if (items.isEmpty) {
           return EmptyView(
-            title: l.beverageNoCheckinsTitle,
-            body: l.beverageNoCheckinsBody,
+            title: isMe
+                ? l.profileRecentEmptyMeTitle
+                : l.profileRecentEmptyOtherTitle,
+            body: isMe
+                ? l.profileRecentEmptyMeBody
+                : l.profileRecentEmptyOtherBody,
           );
         }
         return Column(
@@ -413,6 +418,9 @@ class _FollowButtonState extends ConsumerState<_FollowButton> {
       if (mounted) {
         setState(() => _inFlight = false);
         ref.invalidate(publicProfileProvider(widget.username));
+        // Viewer's own "following" stat changes after an accepted follow
+        // or any unfollow — refresh meProvider so the Me page reflects it.
+        ref.invalidate(meProvider);
       }
     }
   }
