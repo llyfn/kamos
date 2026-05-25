@@ -21,6 +21,7 @@ import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/kamos_pill_button.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../../shared/widgets/state_views.dart';
+import '../../users/navigation.dart';
 import '../providers/beverage_providers.dart';
 import '../widgets/collection_picker_sheet.dart';
 
@@ -338,7 +339,7 @@ class _RecentCheckinRow extends StatelessWidget {
         children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () => context.push('/users/${summary.user.username}'),
+            onTap: () => pushUserProfile(context, summary.user.username),
             child: KamosAvatar(
               initial: summary.user.displayUsername,
               size: 32,
@@ -356,7 +357,7 @@ class _RecentCheckinRow extends StatelessWidget {
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () =>
-                          context.push('/users/${summary.user.username}'),
+                          pushUserProfile(context, summary.user.username),
                       child: Text(
                         summary.user.displayUsername,
                         style: const TextStyle(

@@ -89,8 +89,14 @@ class AuthControllerNotifier extends Notifier<AuthControllerState> {
 
   String _readError(DioException e) {
     final err = e.error;
-    if (err is ApiException) return err.message;
-    return e.message ?? 'Request failed';
+    final raw = err is ApiException
+        ? err.message
+        : (e.message ?? 'Request failed');
+    if (raw.isEmpty) return raw;
+    // Server error strings come back lowercase (Go convention). Capitalise
+    // the first character for display; locales without case (ja/ko) are
+    // unaffected because their codepoints don't change under toUpperCase.
+    return raw[0].toUpperCase() + raw.substring(1);
   }
 }
 

@@ -131,10 +131,39 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               if (controller.error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: KamosSpacing.md),
-                  child: Text(
-                    controller.error!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: t.fgDanger, fontSize: 13),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: KamosSpacing.md,
+                      vertical: KamosSpacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: t.fgDanger.withValues(alpha: 0.10),
+                      border: Border.all(
+                        color: t.fgDanger.withValues(alpha: 0.40),
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: t.fgDanger,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            controller.error!,
+                            style: TextStyle(
+                              color: t.fgDanger,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               const SizedBox(height: KamosSpacing.xxl),

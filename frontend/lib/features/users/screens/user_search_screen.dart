@@ -11,13 +11,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../../shared/widgets/state_views.dart';
+import '../navigation.dart';
 import '../providers/users_providers.dart';
 
 class UserSearchScreen extends ConsumerStatefulWidget {
@@ -154,7 +153,7 @@ class _Results extends ConsumerWidget {
                 ? u.displayUsername
                 : u.displayName;
             return InkWell(
-              onTap: () => context.push('/users/${u.username}'),
+              onTap: () => pushUserProfile(context, u.username),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: KamosSpacing.lg,

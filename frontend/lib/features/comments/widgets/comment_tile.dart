@@ -8,14 +8,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../../app/theme.dart';
 import '../../../core/models/comment.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../profile/providers/profile_providers.dart';
+import '../../users/navigation.dart';
 
 class CommentTile extends ConsumerWidget {
   const CommentTile({super.key, required this.comment, required this.onDelete});
@@ -53,7 +52,7 @@ class CommentTile extends ConsumerWidget {
           author != null
               ? GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => context.push('/users/${author.username}'),
+                  onTap: () => pushUserProfile(context, author.username),
                   child: KamosAvatar(
                     initial: displayName,
                     size: 32,
@@ -80,7 +79,7 @@ class CommentTile extends ConsumerWidget {
                           ? GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () =>
-                                  context.push('/users/${author.username}'),
+                                  pushUserProfile(context, author.username),
                               child: Text(
                                 displayName,
                                 style: TextStyle(

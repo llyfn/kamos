@@ -19,6 +19,7 @@ import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../comments/widgets/comments_section.dart';
+import '../../users/navigation.dart';
 import '../providers/checkin_providers.dart';
 
 class CheckInDetailScreen extends ConsumerWidget {
@@ -56,8 +57,9 @@ class CheckInDetailScreen extends ConsumerWidget {
                         children: [
                           GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => context.push(
-                              '/users/${checkin.user.username}',
+                            onTap: () => pushUserProfile(
+                              context,
+                              checkin.user.username,
                             ),
                             child: KamosAvatar(
                               initial: checkin.user.displayUsername,
@@ -72,8 +74,9 @@ class CheckInDetailScreen extends ConsumerWidget {
                               children: [
                                 GestureDetector(
                                   behavior: HitTestBehavior.opaque,
-                                  onTap: () => context.push(
-                                    '/users/${checkin.user.username}',
+                                  onTap: () => pushUserProfile(
+                                    context,
+                                    checkin.user.username,
                                   ),
                                   child: Text(
                                     checkin.user.displayUsername,

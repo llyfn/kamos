@@ -18,6 +18,7 @@ import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/kanpai_button.dart';
 import '../../../shared/widgets/stars_display.dart';
+import '../../users/navigation.dart';
 
 class CheckInCard extends StatelessWidget {
   const CheckInCard({super.key, required this.item, required this.onToast});
@@ -58,7 +59,7 @@ class CheckInCard extends StatelessWidget {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () =>
-                      context.push('/users/${item.user.username}'),
+                      pushUserProfile(context, item.user.username),
                   child: KamosAvatar(
                     initial: item.user.displayUsername,
                     size: 36,
@@ -73,7 +74,7 @@ class CheckInCard extends StatelessWidget {
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () =>
-                            context.push('/users/${item.user.username}'),
+                            pushUserProfile(context, item.user.username),
                         child: Text(
                           item.user.displayUsername,
                           style: TextStyle(
