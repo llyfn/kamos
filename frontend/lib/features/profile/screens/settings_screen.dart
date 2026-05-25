@@ -70,9 +70,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // Profile-dependent slices (account, privacy, language tile, danger zone)
     // collapse to a single status widget when `meProvider` is loading/erroring.
     final accountPrivacy = async.when(
-      loading: () => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48),
-        child: Center(child: LoadingView(label: l.loadingLabel)),
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: LogoLoader(),
       ),
       error: (e, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
