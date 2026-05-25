@@ -12,7 +12,9 @@
 // /me/edit edit profile
 // /me/settings settings
 // /inbox follow request inbox
+// /users/search search for users by username/display name
 // /users/:username other user
+// /users/:username/lists other user's public collections
 // /check-ins/:id check-in detail (— comments)
 // /beverages/:id beverage detail
 // /breweries/:id brewery detail
@@ -49,6 +51,8 @@ import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/search/screens/search_screen.dart';
 import '../features/social/screens/inbox_screen.dart';
+import '../features/users/screens/other_user_collections_screen.dart';
+import '../features/users/screens/user_search_screen.dart';
 import '../shared/widgets/kamos_tab_bar.dart';
 
 /// Wraps [child] in [NoTransitionPage]. Used by every [GoRoute.pageBuilder]
@@ -146,6 +150,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/inbox',
         pageBuilder: (_, state) => _noTransition(state, const InboxScreen()),
+      ),
+      GoRoute(
+        path: '/users/search',
+        pageBuilder: (_, state) =>
+            _noTransition(state, const UserSearchScreen()),
+      ),
+      // Must precede `/users/:username` so go_router matches the literal
+      // `search` segment before the path-parameter branch.
+      GoRoute(
+        path: '/users/:username/lists',
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          OtherUserCollectionsScreen(
+            username: state.pathParameters['username']!,
+          ),
+        ),
       ),
       GoRoute(
         path: '/users/:username',
