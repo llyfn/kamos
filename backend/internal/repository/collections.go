@@ -147,6 +147,58 @@ func (r *CollectionRepo) Rename(ctx context.Context, userID, id, name string) (*
 	return r.Update(ctx, userID, id, UpdateCollectionParams{Name: &name})
 }
 
+// ListByUser pages a single owner's collections, visibility-gated by
+// the viewer's relationship to the owner.
+//
+//   - When `viewerID == ownerID` (viewer authed as the owner) the caller
+//     sees every live collection regardless of visibility.
+//   - Otherwise only `visibility = 'public'` rows are returned.
+//
+// The owner row is NOT joined — callers already resolved the username →
+// id before invoking this; the page shape mirrors GET /v1/collections so
+// the Flutter side can reuse Collection.fromJson without a
+// CollectionWithOwner adapter. Cursor on (created_at, id) DESC.
+func (r *CollectionRepo) ListByUser(
+	ctx context.Context,
+	ownerID string,
+	viewerID string,
+	cursorTs *time.Time,
+	cursorID *string,
+	limit int,
+) ([]domain.Collection, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	const q = `
+SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,
+       c.entry_count
+FROM collections c
+WHERE c.user_id = $1
+  AND c.deleted_at IS NULL
+  AND ($2::boolean OR c.visibility = 'public')
+  AND ($3::timestamptz IS NULL OR (c.created_at, c.id) < ($3::timestamptz, $4::uuid))
+ORDER BY c.created_at DESC, c.id DESC
+LIMIT $5;`
+	isOwner := viewerID != "" && viewerID == ownerID
+	rows, err := r.db.Query(ctx, q, ownerID, isOwner, cursorTs, cursorID, limit+1)
+	if err != nil {
+		return nil, fmt.Errorf("CollectionRepo.ListByUser: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Collection, 0, limit+1)
+	for rows.Next() {
+		var c domain.Collection
+		if err := rows.Scan(
+			&c.ID, &c.OwnerID, &c.Name, &c.Visibility,
+			&c.CreatedAt, &c.UpdatedAt, &c.EntryCount,
+		); err != nil {
+			return nil, fmt.Errorf("CollectionRepo.ListByUser scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // ListPublic pages through the discovery feed of public collections,
 // joining the owner row for attribution. Cursor on (created_at, id),
 // most-recent-first. Soft-deleted owners are filtered out — the owner

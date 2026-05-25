@@ -215,6 +215,47 @@ func (h *Handler) GetUserCheckins(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetUserCollections — GET /v1/users/{username}/collections.
+//
+// OptionalAuth. Returns the page of collections belonging to the named
+// user, visibility-gated by the viewer:
+//   - viewer == owner: every live collection (public + private).
+//   - otherwise: only `visibility = 'public'` rows.
+//
+// 404 USER_NOT_FOUND when the username does not resolve to a live user.
+// Cursor on (created_at, id) DESC, default page 20 / max 50. The
+// response shape matches GET /v1/collections (PageOfCollection).
+func (h *Handler) GetUserCollections(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+	owner, err := h.Repos.Users.FindByUsername(r.Context(), username)
+	if err != nil {
+		h.writeErr(w, "GetUserCollections find", err)
+		return
+	}
+	viewerID := ""
+	if v := middleware.UserFromContext(r.Context()); v != nil {
+		viewerID = v.ID
+	}
+	limit := parseLimit(r, 20, 50)
+	c, err := parseCursor(r)
+	if err != nil {
+		h.writeErr(w, "GetUserCollections cursor", err)
+		return
+	}
+	rows, err := h.Repos.Collections.ListByUser(r.Context(),
+		owner.ID, viewerID, optTimestamp(c), optString(c.ID), limit)
+	if err != nil {
+		h.writeErr(w, "GetUserCollections", err)
+		return
+	}
+	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(row domain.Collection) cursor.Cursor {
+		return cursor.Cursor{CreatedAt: row.CreatedAt, ID: row.ID}
+	})
+	httperr.WriteJSON(w, http.StatusOK, cursor.Page[domain.Collection]{
+		Items: items, NextCursor: next, HasMore: hasMore,
+	})
+}
+
 // GetUserFollowers — GET /v1/users/{username}/followers.
 //
 // Status: scaffold-for-Phase6 (future profile screen iteration: followers

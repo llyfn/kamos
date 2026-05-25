@@ -209,6 +209,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(middleware.CacheControl("private, must-revalidate")).
 				Get("/users/{username}", h.GetUser)
 			r.Get("/users/{username}/check-ins", h.GetUserCheckins)
+			r.Get("/users/{username}/collections", h.GetUserCollections)
 			r.Get("/users/{username}/followers", h.GetUserFollowers)
 			r.Get("/users/{username}/following", h.GetUserFollowing)
 			r.Get("/check-ins/{id}", h.GetCheckin)
