@@ -4,14 +4,15 @@
 // /auth unauthenticated landing
 // /auth/verify-pending post-signup "check your email" landing
 // / feed (shell root)
-// /search discover
+// /discover discovery (formerly /search; legacy /search redirects here)
+// /notifications in-app notifications surface (SPEC §5.4)
+// /inbox legacy follow-request inbox; redirects to /notifications
 // /check-in modal (needs a Beverage extra)
 // /collections lists root
 // /collections/:id detail
 // /me self profile
 // /me/edit edit profile
 // /me/settings settings
-// /inbox follow request inbox
 // /users/search search for users by username/display name
 // /users/:username other user
 // /users/:username/lists other user's public collections
@@ -45,12 +46,12 @@ import '../features/check_in/screens/check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
+import '../features/notifications/screens/notifications_screen.dart';
 import '../features/producers/screens/producer_detail_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/search/screens/search_screen.dart';
-import '../features/social/screens/inbox_screen.dart';
 import '../features/users/screens/other_user_collections_screen.dart';
 import '../features/users/screens/user_search_screen.dart';
 import '../shared/widgets/kamos_tab_bar.dart';
@@ -103,7 +104,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (_, state) => _noTransition(state, const FeedScreen()),
           ),
           GoRoute(
-            path: '/search',
+            path: '/discover',
             pageBuilder: (_, state) =>
                 _noTransition(state, const SearchScreen()),
           ),
@@ -111,6 +112,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/collections',
             pageBuilder: (_, state) =>
                 _noTransition(state, const CollectionsListScreen()),
+          ),
+          GoRoute(
+            path: '/notifications',
+            pageBuilder: (_, state) =>
+                _noTransition(state, const NotificationsScreen()),
           ),
           GoRoute(
             path: '/me',
@@ -147,10 +153,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) =>
             _noTransition(state, const SettingsScreen()),
       ),
-      GoRoute(
-        path: '/inbox',
-        pageBuilder: (_, state) => _noTransition(state, const InboxScreen()),
-      ),
+      // Legacy redirects (kept so old deep links and notification payloads
+      // continue to resolve cleanly).
+      GoRoute(path: '/inbox', redirect: (_, _) => '/notifications'),
+      GoRoute(path: '/search', redirect: (_, _) => '/discover'),
       // Static-segment routes (`/users/search`, `/users/:username/lists`)
       // must precede `/users/:username` so go_router doesn't bind those
       // segments to the path parameter.
