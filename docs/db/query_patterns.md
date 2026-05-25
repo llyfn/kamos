@@ -695,6 +695,33 @@ WHERE recipient_user_id = $1
 
 ---
 
+## 17. Comments — soft-deleted-author PII stub (SEC-001)
+
+The flat comments list (`GET /v1/check-ins/{id}/comments`), single-comment lookup (`Get`, used by the delete-authz path), and admin moderation queue (`GET /v1/admin/comments`) all `LEFT JOIN users` to hydrate the author chip on each row. Two failure modes leave the comment row present but require the author projection to render as a localized "Deleted user" stub:
+
+- **Hard-delete** — migration 013 set `comments.user_id ON DELETE SET NULL`, so the FK target is gone and the LEFT JOIN has no match. `u.id IS NULL` is the cue.
+- **Soft-delete** — `users.deleted_at IS NOT NULL` while `comments.user_id` still references the row. The JOIN still matches; the Go layer must check `u.deleted_at` and drop the actor projection itself.
+
+The JOIN must NOT add `AND u.deleted_at IS NULL` — that would inner-join-filter the comment out instead of stubbing the author, breaking the "comment row preserved on author soft-delete" invariant. Mirror of the notifications §16a pattern.
+
+```sql
+-- List (public surface) — drop the actor entirely on soft-delete.
+SELECT
+  c.id, c.check_in_id, c.body, c.created_at,
+  u.id, u.username, u.display_username, u.display_name, u.avatar_url,
+  u.deleted_at
+FROM comments c
+LEFT JOIN users u ON u.id = c.user_id
+WHERE c.check_in_id = $1 AND c.deleted_at IS NULL
+  AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2, $3))
+ORDER BY c.created_at DESC, c.id DESC
+LIMIT $4;
+```
+
+Admin variant keeps `u.id` (moderators need to navigate to the user account from the row) but the Go layer blanks `username` / `display_username` / `display_name` / `avatar_url` when `u.deleted_at IS NOT NULL`. Same SELECT shape; the projection collapse happens in Go, not SQL.
+
+---
+
 ## 15. Cache coherence (Stage 4)
 
 KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass through three coherence tiers:

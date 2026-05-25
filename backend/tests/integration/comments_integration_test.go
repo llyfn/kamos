@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -467,5 +468,115 @@ VALUES ($1, $2, 'accepted', NOW());`,
 	}
 	if page.Items[0].CommentCount != 2 {
 		t.Errorf("comment_count: %d (want 2)", page.Items[0].CommentCount)
+	}
+}
+
+// TestComments_SoftDeletedAuthorPII — SEC-001. When the comment author is
+// soft-deleted (users.deleted_at IS NOT NULL), the comment row must still
+// surface but the author's username / display_name / avatar MUST NOT
+// appear in the wire response. Mirrors the notifications SoftDeletedActor
+// test shape.
+func TestComments_SoftDeletedAuthorPII(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "PII Sake")
+	authorTok, _ := mustRegister(t, srv, "pii_author", "piauth@example.com", "password-123")
+	commenterTok, idCommenter := mustRegister(t, srv, "pii_commenter", "picom@example.com", "password-123")
+	ckID := createCheckin(t, srv, authorTok, bevID)
+
+	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/comments", commenterTok,
+		map[string]any{"body": "from a soon-to-be-deleted user"})
+	if code != http.StatusCreated {
+		t.Fatalf("create comment: %d body=%s", code, raw)
+	}
+
+	// Soft-delete the commenter — paired columns per users_release_implies_delete CHECK.
+	p := getPool(t)
+	if _, err := p.Exec(context.Background(),
+		`UPDATE users SET deleted_at = NOW(), username_release_at = NOW() + INTERVAL '30 days' WHERE id = $1;`,
+		idCommenter); err != nil {
+		t.Fatalf("soft-delete commenter: %v", err)
+	}
+
+	code, raw = doReq(t, srv, http.MethodGet, "/v1/check-ins/"+ckID+"/comments", authorTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("list: %d body=%s", code, raw)
+	}
+	if bytes.Contains(raw, []byte("pii_commenter")) {
+		t.Errorf("soft-deleted author's username leaked in list response: %s", raw)
+	}
+	var page struct {
+		Items []struct {
+			ID   string         `json:"id"`
+			Body string         `json:"body"`
+			User map[string]any `json:"user"`
+		} `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 1 {
+		t.Fatalf("expected 1 comment, got %d", len(page.Items))
+	}
+	if page.Items[0].User != nil {
+		t.Errorf("user field must be null for soft-deleted author, got %+v", page.Items[0].User)
+	}
+}
+
+// TestAdminComments_SoftDeletedAuthorPII — SEC-001 admin path. Moderator
+// queue must keep the user-id linkage (so admins can navigate to the
+// account) but blank the display fields.
+func TestAdminComments_SoftDeletedAuthorPII(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	bevID := seedBeverage(t, "Admin PII Sake")
+	authorTok, _ := mustRegister(t, srv, "apii_author", "apiauth@example.com", "password-123")
+	commenterTok, idCommenter := mustRegister(t, srv, "apii_commenter", "apicom@example.com", "password-123")
+	adminTok, adminID := mustRegister(t, srv, "apii_admin", "apiadm@example.com", "password-123")
+	promoteToAdmin(t, adminID)
+	ckID := createCheckin(t, srv, authorTok, bevID)
+	doReq(t, srv, http.MethodPost, "/v1/check-ins/"+ckID+"/comments", commenterTok,
+		map[string]any{"body": "from a soon-to-be-deleted commenter"})
+
+	p := getPool(t)
+	if _, err := p.Exec(context.Background(),
+		`UPDATE users SET deleted_at = NOW(), username_release_at = NOW() + INTERVAL '30 days' WHERE id = $1;`,
+		idCommenter); err != nil {
+		t.Fatalf("soft-delete: %v", err)
+	}
+
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/admin/comments", adminTok, nil)
+	if code != http.StatusOK {
+		t.Fatalf("admin list: %d body=%s", code, raw)
+	}
+	if bytes.Contains(raw, []byte("apii_commenter")) {
+		t.Errorf("admin list leaked soft-deleted commenter's username: %s", raw)
+	}
+	// Author of the check-in is still active — that username MAY appear
+	// elsewhere in the payload (e.g. if it were embedded). We're only
+	// asserting the commenter PII does not appear.
+	var page struct {
+		Items []struct {
+			ID   string `json:"id"`
+			User struct {
+				ID              string `json:"id"`
+				Username        string `json:"username"`
+				DisplayName     string `json:"display_name"`
+				DisplayUsername string `json:"display_username"`
+			} `json:"user"`
+		} `json:"items"`
+	}
+	_ = json.Unmarshal(raw, &page)
+	if len(page.Items) != 1 {
+		t.Fatalf("admin items: %d (want 1)", len(page.Items))
+	}
+	if page.Items[0].User.ID != idCommenter {
+		t.Errorf("admin user.id should still link to the soft-deleted account; got %q want %q",
+			page.Items[0].User.ID, idCommenter)
+	}
+	if page.Items[0].User.Username != "" || page.Items[0].User.DisplayName != "" || page.Items[0].User.DisplayUsername != "" {
+		t.Errorf("admin display fields must be blanked, got user=%+v", page.Items[0].User)
 	}
 }
