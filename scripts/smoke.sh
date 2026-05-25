@@ -165,13 +165,12 @@ code=$(req POST "/v1/users/$BOB/follow" "$CAROL_TOK")
 [[ "$code" == "200" || "$code" == "201" ]] && green "follow request POST → $code" || red "follow $code: $(cat /tmp/p6_body.json)"
 FOLLOW_STATUS=$(jq -r '.status // empty' /tmp/p6_body.json)
 note "follow status: $FOLLOW_STATUS"
-# If pending, bob needs to approve. Listed at /v1/follow-requests.
+# If pending, bob needs to approve. The follow_request surfaces in the notifications inbox.
+# (GET /v1/follow-requests was retired in Phase 4 — the notifications inbox subsumes the listing.)
 if [[ "$FOLLOW_STATUS" == "pending" ]]; then
-  code=$(req GET "/v1/follow-requests" "$BOB_TOK")
-  REQ_ID=$(jq -r '.items[0].user_id // .items[0].id // empty' /tmp/p6_body.json)
-  # Inspect actual shape.
-  note "bob's follow-requests payload: $(cat /tmp/p6_body.json | head -c 400)"
-  REQ_ID=$(jq -r '.items[0].user_id' /tmp/p6_body.json)
+  code=$(req GET "/v1/notifications" "$BOB_TOK")
+  note "bob's notifications payload: $(cat /tmp/p6_body.json | head -c 400)"
+  REQ_ID=$(jq -r '[.items[] | select(.type == "follow_request") | .actor.id] | first // empty' /tmp/p6_body.json)
   if [[ -n "$REQ_ID" && "$REQ_ID" != "null" ]]; then
     code=$(req POST "/v1/follow-requests/$REQ_ID/approve" "$BOB_TOK")
     [[ "$code" == "200" || "$code" == "204" ]] && green "bob approved follow request → $code" || red "approve $code: $(cat /tmp/p6_body.json)"
