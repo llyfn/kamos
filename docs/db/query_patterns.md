@@ -564,6 +564,8 @@ For everything else — edit profile, change email, change password, account del
 
 **Endpoints**: `GET /v1/notifications`, `GET /v1/notifications/unread-count`, `POST /v1/notifications/{id}/read`, `POST /v1/notifications/read-all`. Emit paths live alongside the source mutations (toast, comment, follow) and run in the same `pgx.Tx`.
 
+**FK delete semantics (after migration 020).** `recipient_user_id`, `check_in_id`, and `comment_id` are `ON DELETE CASCADE`: a hard-delete of any of them wipes the corresponding notifications. The `check_in_id` / `comment_id` CASCADE is mandatory because `notifications_refs_match_type` forbids NULL on those columns for `type='toast'` and `type='comment'` rows; SET NULL would have raised `23514` on every hard-delete. Soft-deletes do not fire CASCADE, so SPEC §5.4's "soft-deleting the referenced check-in or comment preserves the notification" still holds — the row stays and only loses its tap target. `actor_user_id` remains `ON DELETE SET NULL` so the row survives an actor hard-purge and the UI can render the localized "Deleted user" placeholder.
+
 ### 16a. List inbox (cursor-paginated)
 
 ```sql

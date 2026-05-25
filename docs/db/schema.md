@@ -209,11 +209,16 @@ Triggers were rejected: review surface gets harder, the `follows`-side `INSERT` 
 
 **Self-action filter.** SPEC §5.4: "Self-actions never produce a notification." Service layer filters before insert. The DB still carries `notifications_no_self` as a belt-and-suspenders CHECK so a bug that bypasses the service filter is rejected at write time.
 
-**Soft-delete propagation.**
+**Soft-delete vs hard-delete propagation.**
 
-- `recipient_user_id` is `ON DELETE CASCADE`: when a user is hard-purged (post 30-day username hold), their inbox vanishes with them. Recipient soft-delete does NOT wipe the inbox — the rows stay until hard purge.
-- `actor_user_id` is `ON DELETE SET NULL`: a deleted (soft- or hard-) actor leaves the row in place; the UI renders the localized "Deleted user" placeholder per SPEC §5.4.
-- `check_in_id` and `comment_id` are `ON DELETE SET NULL`: a deleted source preserves the notification; the row no longer has a tap target but the user still sees the event happened.
+| FK | ON DELETE | Hard-delete behavior | Soft-delete behavior |
+|---|---|---|---|
+| `recipient_user_id` | CASCADE | Inbox vanishes with the user (post 30-day username hold). | Row stays until hard purge; recipient just doesn't fetch their inbox while soft-deleted. |
+| `actor_user_id` | SET NULL | Row survives; `actor_user_id` becomes NULL; UI renders localized "Deleted user" placeholder per SPEC §5.4. | Row stays; the LEFT JOIN on `users` returns `deleted_at IS NOT NULL` and the Go layer emits the same "Deleted user" stub. |
+| `check_in_id` | CASCADE *(020, was SET NULL in 019)* | Row is deleted with the source check-in. The orphan event isn't worth showing if the tap target is gone. | Row stays; SPEC §5.4's "soft-deleting the referenced check-in preserves the notification" still holds because soft-delete does not fire CASCADE. The Flutter card stops resolving to the now-hidden check-in but the event is still listed. |
+| `comment_id` | CASCADE *(020, was SET NULL in 019)* | Row is deleted with the source comment. | Row stays; same rationale as `check_in_id`. |
+
+`check_in_id` and `comment_id` were CASCADE'd in 020 because the original 019 SET NULL contradicted the `notifications_refs_match_type` CHECK (the CHECK forbids NULL on those columns for `type='toast'` and `type='comment'` rows; SET NULL would have aborted any parent hard-DELETE with `23514`). Same shape as the migration-013 incident on `comments.user_id`. `actor_user_id` stays SET NULL because the CHECK explicitly allows it to be NULL — that's how "Deleted user" rendering works.
 
 **Dedupe matrix.**
 
@@ -262,7 +267,7 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `collections` | User-owned lists. | `deleted_at` | Name 1..50 chars, unique per user (case-insensitive) among live rows. |
 | `collection_entries` | Beverage × collection. | — | Note ≤200. Composite PK. |
 | `beverage_addition_requests` | SPEC §2.4 user feedback. | — | Status enum. |
-| `notifications` | In-app inbox (SPEC §5.4). | — (recipient hard-delete CASCADEs the row; soft-delete of actor/check-in/comment SET NULLs the FK and keeps the row visible). | `type` ∈ {`toast`,`comment`,`follow`,`follow_request`,`follow_approved`}. Per-type CHECK on which references must be populated. `actor_user_id <> recipient_user_id`. Partial unique indexes dedupe `toast` per (recipient, actor, check_in) and `follow` / `follow_approved` per (recipient, actor). `comment` and `follow_request` deliberately have no DB dedupe — see "Notifications" section. |
+| `notifications` | In-app inbox (SPEC §5.4). | — Hard-delete of recipient, referenced check-in, or referenced comment CASCADEs the notification (020 fix). Hard-delete of actor SET NULLs `actor_user_id` so "Deleted user" can render. Soft-delete of any of these does not fire CASCADE, so the inbox row stays. | `type` ∈ {`toast`,`comment`,`follow`,`follow_request`,`follow_approved`}. Per-type CHECK on which references must be populated. `actor_user_id <> recipient_user_id`. Partial unique indexes dedupe `toast` per (recipient, actor, check_in) and `follow` / `follow_approved` per (recipient, actor). `comment` and `follow_request` deliberately have no DB dedupe — see "Notifications" section. |
 
 ---
 
