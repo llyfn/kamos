@@ -19,7 +19,7 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^3.3.1
   # Secure JWT storage (SPEC §6.9 — never SharedPreferences for the token).
-  flutter_secure_storage: ^10.2.0
+  flutter_secure_storage: ^10.3.0
   freezed_annotation: ^3.1.0
   go_router: ^17.2.3
   # Google sign-in (gated behind --dart-define=KAMOS_GOOGLE_SIGN_IN_ENABLED=true;
