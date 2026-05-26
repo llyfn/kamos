@@ -42,7 +42,7 @@ Discover is the renamed Search tab (same screen content; route + label change on
 - Tap a beverage → detail page → back nav
 - "Check-in" → 0.5-step rating input, 500-char review counter, 4-photo grid with add/remove, price + currency + per-serving/bottle, purchase chips
 - Toast reaction toggles the kanpai mark (`1 → 1.15 → 1` over 240 ms)
-- Bell icon in the feed opens the follow-request inbox with Approve / Decline
+- Notifications tab unread dot lights up when any row is unread; the unified inbox renders inline Approve / Decline on `follow_request` rows
 - Profile → Edit profile / Settings (privacy toggle, delete-account confirmation sheet)
 - Beverage detail → producer link → producer page lists all beverages from that producer
 - Lists tab → Collection detail → rename / delete
@@ -59,4 +59,4 @@ Discover is the renamed Search tab (same screen content; route + label change on
 - Username: `Yamamoto` (display, case preserved) and `@yamamoto` (handle, stored lowercase) — see `data.jsx::ME`.
 - i18n fallback: `t(node, locale)` falls back `ko→en`, `ja→en`. Demo strings include cases where `ko` is omitted to verify the fallback.
 - Default collections (`Inventory`, `Wishlist`) carry `isDefault: true` for explanatory copy but are otherwise identical to user-created ones.
-- Privacy: profile pill renders when `user.privacy === 'private'`; inbox badge counts pending requests; private check-ins gated to approved followers is documented (rendering layer only; gate enforced server-side).
+- Privacy: profile pill renders when `user.privacy === 'private'`; the Notifications tab shows an unread dot when any row is unread (pending follow_requests included); private check-ins gated to approved followers is documented (rendering layer only; gate enforced server-side).

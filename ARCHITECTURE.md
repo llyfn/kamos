@@ -53,7 +53,7 @@ flowchart TD
   CACHE -. NOTIFY .- PGX
 ```
 
-**Handler layer (`internal/handlers/`)** — HTTP decode/validate/encode only. Split into small per-aggregate files: `auth_credentials.go`, `auth_tokens.go`, `auth_account.go`, `admin_beverage_requests.go`, `admin_users.go`, `admin_comments.go`, `admin_checkins.go`, `admin_moderation_log.go`, and the per-resource bundles (`beverages.go`, `checkins.go`, `collections.go`, `comments.go`, `feed.go`, `search.go`, `social.go`, `users.go`, `venues.go`, `uploads.go`, `taxonomy.go`). The `Handler` struct is now a thin coordinator — services own the work.
+**Handler layer (`internal/handlers/`)** — HTTP decode/validate/encode only. Split into small per-aggregate files: `auth_credentials.go`, `auth_tokens.go`, `auth_account.go`, `admin_beverage_requests.go`, `admin_users.go`, `admin_comments.go`, `admin_checkins.go`, `admin_moderation_log.go`, and the per-resource bundles (`beverages.go`, `checkins.go`, `collections.go`, `comments.go`, `feed.go`, `notifications.go`, `search.go`, `social.go`, `users.go`, `venues.go`, `uploads.go`, `taxonomy.go`). The `Handler` struct is now a thin coordinator — services own the work.
 
 **Service layer (`internal/service/`)** — `auth_service.go`, `checkin_service.go`, `comment_service.go`, `admin_service.go`, `social_service.go`. Each owns one aggregate's orchestration: multi-repo transactions, cache invalidation, and cross-replica `NOTIFY` emission. Services take small repository interfaces, never the god-bundle — the dependency direction stops at the service boundary, so tests can substitute repo fakes without rebuilding the world.
 
@@ -77,7 +77,7 @@ flowchart TD
   DIO --> HTTP{{HTTPS}}
 ```
 
-**Feature folders (`lib/features/<feature>/`)** — Each aggregate (`feed`, `check_in`, `collections`, `comments`, `profile`, `social`, `users`, `beverages`, `producers`, `venues`, `auth`, `search`, `beverage_requests`) owns its screens, providers, and repositories. No cross-feature reach-throughs; shared widgets live in `lib/shared/widgets/`.
+**Feature folders (`lib/features/<feature>/`)** — Each aggregate (`feed`, `check_in`, `collections`, `comments`, `notifications`, `profile`, `social`, `users`, `beverages`, `producers`, `venues`, `auth`, `search`, `beverage_requests`) owns its screens, providers, and repositories. No cross-feature reach-throughs; shared widgets live in `lib/shared/widgets/`.
 
 **Typed API facade (`lib/core/api/kamos_api.dart`)** — Single source of truth for every `/v1/...` path the app speaks. `ApiPaths` holds the constants; per-tag sub-facades (`facade.auth`, `facade.feed`, `facade.checkins`, etc.) own the typed methods. A backend rename is a one-line change here. Hand-written rather than codegen — `openapi_generator` on pub.dev pins an `analyzer` range that conflicts with the project's `build_runner`. The hand-written facade tracks `openapi.yaml` 1:1 and is small enough (~80 methods) to maintain.
 

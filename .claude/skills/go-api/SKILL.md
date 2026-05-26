@@ -210,8 +210,11 @@ GET    /users/me                        authenticated user
 PATCH  /users/me                        update display name, bio, avatar, locale, privacy
 DELETE /users/me                        soft-delete account
 
-GET    /users/me/follow-requests        inbox (SPEC §5.4)
-POST   /users/me/follow-requests/:id    approve | decline
+GET    /notifications                   inbox (cursor, SPEC §5.4)
+POST   /notifications/read               mark read (ids[] | all)
+GET    /notifications/unread-count       unread dot signal
+POST   /follow-requests/:id/approve      approve a follow request (called from notification row)
+POST   /follow-requests/:id/decline      decline a follow request
 
 GET    /users/me/collections            list own collections
 POST   /users/me/collections            create
