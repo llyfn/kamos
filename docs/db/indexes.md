@@ -60,7 +60,7 @@ CREATE INDEX idx_producers_prefecture_id
 | `idx_beverages_avg_rating_desc` (partial, rebuilt 014) | "Top-rated beverages in a category" sort. `WHERE deleted_at IS NULL AND check_in_count >= 3` — the existing `>= 3` filter is kept, and `deleted_at IS NULL` is added so soft-deleted catalog entries fall out of the top-rated list. | §7 |
 | `idx_beverages_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` — tiny. |
 
-Canonical definitions live in `migrations/014_catalog_soft_delete.sql`. After 014, the index DDL is:
+Canonical definitions live in `migrations/001_initial.sql`. The index DDL is:
 
 ```sql
 CREATE INDEX idx_beverages_producer

@@ -57,7 +57,7 @@ flowchart TD
 
 **Service layer (`internal/service/`)** — `auth_service.go`, `checkin_service.go`, `comment_service.go`, `admin_service.go`, `social_service.go`. Each owns one aggregate's orchestration: multi-repo transactions, cache invalidation, and cross-replica `NOTIFY` emission. Services take small repository interfaces, never the god-bundle — the dependency direction stops at the service boundary, so tests can substitute repo fakes without rebuilding the world.
 
-**Repository layer (`internal/repository/`)** — Pure SQL + scan. No business logic. Uses denormalized counters (`toast_count`, `comment_count`, `beverage_count`, `entry_count`) maintained by trigger functions in migration `011_counter_caches.sql`. Cursor pagination uses tuple keysets (e.g. `(created_at, id) < (?, ?)`) with `pgcrypto`-friendly UUID comparison rather than correlated subqueries.
+**Repository layer (`internal/repository/`)** — Pure SQL + scan. No business logic. Uses denormalized counters (`toast_count`, `comment_count`, `beverage_count`, `entry_count`) maintained by trigger functions in migration `001_initial.sql`. Cursor pagination uses tuple keysets (e.g. `(created_at, id) < (?, ?)`) with `pgcrypto`-friendly UUID comparison rather than correlated subqueries.
 
 **Cross-cutting** —
 - `internal/domain/` — typed request/response structs + `validate.SanitizeText` (rejects control chars + bidi-override; enforces UTF-8 length).

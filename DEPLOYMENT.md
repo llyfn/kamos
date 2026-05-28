@@ -111,16 +111,11 @@ For Android emulator, replace `localhost` with `10.0.2.2`. For iOS simulator, `l
 Migrations are plain SQL files in `migrations/`, applied in lexicographic order:
 
 ```
-001_initial.sql                              schema (13 tables, CHECKs, triggers, indexes)
-002_seed_taxonomy.sql                        SPEC §2.1 categories + §4.3 flavor tags
-003_refresh_tokens.sql                       Phase 2 — rotating refresh tokens + family revocation
-004_photo_uploads.sql                        Phase 3 — photo_uploads table (R2 presigned-URL flow)
-005_venues.sql                               Phase 4 — venues table + check_ins.venue_id FK
-006_venue_value_constraints.sql              Phase 4 cleanup — venue CHECKs + first-writer-wins upsert
-007_user_role_and_soft_delete_index.sql      Phase 5 — users.role enum + idx_users_deleted_at_recent
-008_collections_visibility_and_moderation_log.sql  Phase 6 — collection_visibility enum + moderation_log
-009_comments.sql                             Phase 6 — flat comments table + length/control-char CHECKs
+001_initial.sql                              full schema — all 23 tables, enums, CHECKs, triggers, indexes
+002_seed_taxonomy.sql                        SPEC §2.1 categories + §4.3 flavor tags + region/prefecture reference data
 ```
+
+The pre-1.0 development history (originally 20 per-phase migrations) was consolidated into the two baseline files above. New schema changes append as `003_*.sql` onward.
 
 Apply:
 
@@ -130,7 +125,7 @@ make db-migrate                                       # uses local PSQL_URL
 PSQL_URL='postgres://user:pass@host:5432/kamos?sslmode=require' make db-migrate
 ```
 
-Migrations are **append-only**. Never edit a deployed migration; add `003_*.sql`.
+Migrations are **append-only**. Never edit a deployed migration; add a new `NNN_*.sql`.
 
 `docker-compose.yml` mounts `migrations/` into the Postgres image's `docker-entrypoint-initdb.d`, so a brand-new compose stack auto-applies them on first start. `make db-migrate` is for upgrading an existing database.
 
