@@ -50,7 +50,7 @@ Mobile devs: `flutter run --dart-define=KAMOS_API_BASE_URL=https://kamos.fly.dev
 
 ## Repository layout
 
-The project uses a standard top-level layout. Production code lives here only — there is no `_workspace/` fallback anymore.
+The project uses a standard top-level layout. Production code lives here only.
 
 ```
 backend/                     # Go REST API + worker (chi + pgx/v5)
@@ -79,7 +79,7 @@ docs/                        # Long-form documentation
   db/                        #   schema.md, indexes.md, query_patterns.md
   history/                   #   00_brief.md + archived per-phase QA + review reports
   runbooks/                  #   deploy.md, secret-rotation.md, incident-response.md
-scripts/                     # Operational scripts (smoke.sh, e2e/, gen-tokens.sh)
+scripts/                     # Operational scripts (smoke.sh, migrate.sh, gen-tokens.sh)
 docker-compose.yml           # Postgres + API for local dev
 Makefile                     # One-line dev tasks
 ARCHITECTURE.md              # System overview + layer breakdowns
@@ -150,7 +150,7 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 
 **Out of scope for MVP** — push notifications, threaded comments, end-user web client, Apple Sign-In, beverage scanning, blocking, recommendations, export. If a request implies any of these, confirm scope before implementing.
 
-**Reopened for post-MVP (v1.1)** — venue/location (Foursquare, Phase 4), flat comments on check-ins (Phase 6), public collections (Phase 6), user-submitted beverage additions with admin moderation (Phase 5). All four shipped end-to-end by Phase 7. See `~/.claude/plans/mutable-juggling-cook.md` for the full roadmap.
+**Reopened for post-MVP (v1.1)** — venue/location (Foursquare, Phase 4), flat comments on check-ins (Phase 6), public collections (Phase 6), user-submitted beverage additions with admin moderation (Phase 5). All four shipped end-to-end by Phase 7 of the post-MVP roadmap.
 
 ## Communication
 

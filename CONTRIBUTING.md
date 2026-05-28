@@ -87,7 +87,7 @@ If any verification fails, the change is not done. Report what failed.
 3. **`sql-lint`** — `sqlfluff lint migrations/`.
 4. **`tokens-codegen`** — regenerate `admin/src/lib/tokens.ts` from `design/tokens.json` and fail on drift.
 5. **`admin-build`** — `npm ci` + `biome check src/` + `npm run build`.
-6. **`integration-test`** — Postgres 18 service + `make db-migrate` + `go test -tags=integration ./tests/integration/...` (the API runs in-process via `httptest`; seeds/truncates its own data). Runs on backend/migrations changes and on `main`.
+6. **`integration-test`** — Postgres 18 service + `make db-migrate` + `go test -tags=integration ./tests/integration/...` (the API runs in-process via `httptest`; seeds/truncates its own data). Runs on `migrations/` changes and on `main`.
 
 `paths-filter` calls the GitHub PR API on `pull_request` events, so the workflow grants `permissions: pull-requests: read` — without it, every PR fails the `changes` job.
 

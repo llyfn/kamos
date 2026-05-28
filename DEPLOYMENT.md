@@ -111,16 +111,11 @@ For Android emulator, replace `localhost` with `10.0.2.2`. For iOS simulator, `l
 Migrations are plain SQL files in `migrations/`, applied in lexicographic order:
 
 ```
-001_initial.sql                              schema (13 tables, CHECKs, triggers, indexes)
-002_seed_taxonomy.sql                        SPEC §2.1 categories + §4.3 flavor tags
-003_refresh_tokens.sql                       Phase 2 — rotating refresh tokens + family revocation
-004_photo_uploads.sql                        Phase 3 — photo_uploads table (R2 presigned-URL flow)
-005_venues.sql                               Phase 4 — venues table + check_ins.venue_id FK
-006_venue_value_constraints.sql              Phase 4 cleanup — venue CHECKs + first-writer-wins upsert
-007_user_role_and_soft_delete_index.sql      Phase 5 — users.role enum + idx_users_deleted_at_recent
-008_collections_visibility_and_moderation_log.sql  Phase 6 — collection_visibility enum + moderation_log
-009_comments.sql                             Phase 6 — flat comments table + length/control-char CHECKs
+001_initial.sql                              full schema — all 23 tables, enums, CHECKs, triggers, indexes
+002_seed_taxonomy.sql                        SPEC §2.1 categories + §4.3 flavor tags + region/prefecture reference data
 ```
+
+The pre-1.0 development history (originally 20 per-phase migrations) was consolidated into the two baseline files above. New schema changes append as `003_*.sql` onward.
 
 Apply:
 
@@ -130,7 +125,7 @@ make db-migrate                                       # uses local PSQL_URL
 PSQL_URL='postgres://user:pass@host:5432/kamos?sslmode=require' make db-migrate
 ```
 
-Migrations are **append-only**. Never edit a deployed migration; add `003_*.sql`.
+Migrations are **append-only**. Never edit a deployed migration; add a new `NNN_*.sql`.
 
 `docker-compose.yml` mounts `migrations/` into the Postgres image's `docker-entrypoint-initdb.d`, so a brand-new compose stack auto-applies them on first start. `make db-migrate` is for upgrading an existing database.
 
@@ -193,9 +188,6 @@ Phase 0–7 of the post-MVP roadmap shipped end-to-end. Every external-vendor in
 | OTel + Sentry (Go + Flutter) | 1 | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` + `SENTRY_DSN` | SDKs never initialize; no spans/events emitted. Cookbook §C4. |
 | Venue tag (Foursquare Places API) | 4 | `FOURSQUARE_API_KEY` | `GET /v1/venues/search` → `503 VENUE_SEARCH_DISABLED`. Check-in `venue.foursquare_id` upsert works without the key. Cookbook §C5. |
 | Admin web client hosting (Cloudflare Pages) | 5 | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (GitHub `production` env) | Admin client still compiles + runs locally; CI-gated `deploy-admin.yml` pushes `dist/` to the `kamos-admin` Pages project via Wrangler. Cookbook §C6. |
-
-The QA punch lists per phase live at `docs/history/qa/qa_report_phase{0..7}*.md` (per-layer + final). The historical MVP report is `docs/history/qa/qa_report_final.md`.
-
 ## 10. Verification — full integration smoke
 
 After `make up && make db-migrate`:

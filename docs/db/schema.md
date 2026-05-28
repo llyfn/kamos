@@ -1,6 +1,6 @@
 # KAMOS — Database Schema
 
-Source of truth for the PostgreSQL 15+ data model backing KAMOS. Every entity here traces to `SPEC.md` and the screen data shapes in `design/HANDOFF.md`.
+Source of truth for the PostgreSQL 18+ data model backing KAMOS. Every entity here traces to `SPEC.md` and the screen data shapes in `design/HANDOFF.md`. Parenthetical migration numbers (e.g. `014`, `017`) are historical: the pre-1.0 migrations were squashed into `001_initial.sql`.
 
 Migrations live in `migrations/`. **Append-only**: never edit a deployed migration; add a new one.
 

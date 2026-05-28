@@ -295,7 +295,7 @@ Beyond the social feed, users can discover beverages through:
 
 The following are explicitly out of MVP scope.
 
-Four items previously listed here were reopened for post-MVP (v1.1) on 2026-05-14 and are now on the roadmap (`~/.claude/plans/mutable-juggling-cook.md`):
+Four items previously listed here were reopened for post-MVP (v1.1) on 2026-05-14 and are now on the post-MVP roadmap:
 
 - **Venue / location on check-ins** — Phase 4. Foursquare Places API, not Google Places.
 - **Flat comments on check-ins** — Phase 6. Threaded comments remain out of scope.

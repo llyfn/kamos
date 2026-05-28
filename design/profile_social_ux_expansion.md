@@ -2,8 +2,6 @@
 
 Scope: visual decisions for the `feat/profile-social-ux-expansion` branch only. No new tokens. All references are to existing `KamosTokens`, `KamosSpacing`, `KamosCard`, `KamosChip`, `KamosPillButton`, `KamosAvatar`.
 
-Plan source: `~/.claude/plans/analyze-the-current-project-transient-wadler.md`.
-
 ---
 
 ## 1. Me page AppBar

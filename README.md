@@ -63,7 +63,6 @@ Operator runbook: [docs/runbooks/deploy.md](docs/runbooks/deploy.md). Full env-v
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Conventional Commits, verification matrix, coding conventions. |
 | [docs/db/](docs/db/) | Schema, indexes, query patterns. |
 | [docs/runbooks/](docs/runbooks/) | Staging deploy, secret rotation, incident response. |
-| [docs/history/](docs/history/) | Per-phase QA reports + code review artifacts (post-MVP). |
 | [`.claude/`](.claude/) | Claude Code agent harness — orchestrator skills + specialist agents. |
 
 ## Localization
@@ -84,13 +83,13 @@ frontend/       Flutter mobile app
 admin/          React admin web client
 migrations/     PostgreSQL migrations (append-only)
 design/         Design system: tokens, brand doc, UI kit, previews
-docs/           Long-form docs (db/, history/, runbooks/)
-scripts/        Operational scripts (smoke, e2e, token codegen)
+docs/           Long-form docs (db/, runbooks/)
+scripts/        Operational scripts (smoke, migrate, token codegen)
 ```
 
 ## License
 
-TBD. Internal until further notice.
+Licensed under the [GNU Affero General Public License v3.0](LICENSE). Copyright © 2026 The KAMOS Authors.
 
 ---
 
