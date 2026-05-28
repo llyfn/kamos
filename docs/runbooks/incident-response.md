@@ -4,7 +4,7 @@ What to do when an alert fires or an end-user reports something visibly broken. 
 
 ## On-call
 
-The active rotation is in Grafana OnCall, stack `kamos` (see `~/.claude/memory/reference_observability_vendors.md` for stack details). Schedule + escalation chain are owned there; mirror any changes back to that note.
+The active rotation is in Grafana OnCall, stack `kamos`. Schedule + escalation chain are owned there.
 
 ```sh
 # get the current on-call user via the Grafana MCP, or directly:

@@ -1,6 +1,6 @@
 -- 003_refresh_tokens.sql
 --
--- Phase 2 (~/.claude/plans/mutable-juggling-cook.md): rotating refresh tokens
+-- Phase 2 (post-MVP roadmap): rotating refresh tokens
 -- with re-use detection.
 --
 -- Design:

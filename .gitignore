@@ -28,6 +28,9 @@ local.env
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 
+### Internal build/process reports (kept local, not published) ###
+docs/history/
+
 ### Cloudflare Wrangler ###
 .wrangler/
 

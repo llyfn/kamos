@@ -1,7 +1,7 @@
 -- 001_initial.sql
 -- KAMOS — initial schema.
 -- One transaction. Append-only: future changes go in a new file.
--- Traces: SPEC.md §2-§8 + _workspace/00_brief.md §6.
+-- Traces: SPEC.md §2-§8.
 
 BEGIN;
 
