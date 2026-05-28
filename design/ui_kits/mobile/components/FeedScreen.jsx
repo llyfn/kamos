@@ -97,7 +97,7 @@ const FeedItem = ({ item, onToast, onOpenBeverage }) => {
   );
 };
 
-const FeedScreen = ({ data, onOpenBeverage, onOpenInbox, pendingRequests = 0 }) => {
+const FeedScreen = ({ data, onOpenBeverage, onCheckIn }) => {
   const { tt } = useLocale();
   // Toggle for demonstrating the empty state. Default to false.
   const [showEmpty] = React.useState(false);
@@ -111,10 +111,9 @@ const FeedScreen = ({ data, onOpenBeverage, onOpenInbox, pendingRequests = 0 }) 
           </div>
           <div style={{ fontSize: 12, color: 'var(--fg-3)', marginTop: 2 }}>{tt(UI.fromFollow)}</div>
         </div>
-        <button onClick={onOpenInbox} style={{ border: 'none', background: 'transparent', color: 'var(--fg-1)', padding: 4, cursor: 'pointer', position: 'relative' }}>
-          <Icon name="bell"/>
-          <Badge count={pendingRequests}/>
-        </button>
+        {/* Bell-with-badge removed per notifications_ux.md §1.4 — follow requests
+            now live as rows in the Notifications tab. Check-in is still
+            reachable from the beverage detail screen. */}
       </div>
 
       {showEmpty || !data || data.length === 0 ? (

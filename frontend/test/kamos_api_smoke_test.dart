@@ -63,6 +63,7 @@ void main() {
       expect(api.venues, isNotNull);
       expect(api.uploads, isNotNull);
       expect(api.beverageRequests, isNotNull);
+      expect(api.notifications, isNotNull);
     });
   });
 
@@ -181,6 +182,48 @@ void main() {
       final api = _newApi(adapter);
       await api.beverageRequests.submit({'payload': <String, dynamic>{}});
       expect(adapter.requests.single.path, '/v1/beverage-requests');
+    });
+
+    test('notifications.list → GET /v1/notifications?limit=20', () async {
+      final adapter = _RecordingAdapter();
+      final api = _newApi(adapter);
+      await api.notifications.list();
+      final r = adapter.requests.single;
+      expect(r.method, 'GET');
+      expect(r.path, '/v1/notifications');
+      expect(r.queryParameters['limit'], 20);
+    });
+
+    test('notifications.unreadCount → GET /v1/notifications/unread-count',
+        () async {
+      final adapter = _RecordingAdapter();
+      final api = _newApi(adapter);
+      await api.notifications.unreadCount();
+      final r = adapter.requests.single;
+      expect(r.method, 'GET');
+      expect(r.path, '/v1/notifications/unread-count');
+    });
+
+    test('notifications.markRead ids → POST /v1/notifications/read with ids',
+        () async {
+      final adapter = _RecordingAdapter();
+      final api = _newApi(adapter);
+      await api.notifications.markRead(ids: ['n1', 'n2']);
+      final r = adapter.requests.single;
+      expect(r.method, 'POST');
+      expect(r.path, '/v1/notifications/read');
+      expect(r.data, {'ids': ['n1', 'n2']});
+    });
+
+    test('notifications.markRead all → POST /v1/notifications/read with all',
+        () async {
+      final adapter = _RecordingAdapter();
+      final api = _newApi(adapter);
+      await api.notifications.markRead(all: true);
+      final r = adapter.requests.single;
+      expect(r.method, 'POST');
+      expect(r.path, '/v1/notifications/read');
+      expect(r.data, {'all': true});
     });
   });
 }

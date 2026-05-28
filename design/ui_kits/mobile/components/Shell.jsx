@@ -49,13 +49,16 @@ const TopBar = ({ title, onBack, right, transparent }) => (
   </div>
 );
 
-const TabBar = ({ tab, setTab }) => {
+// TabBar — 5 tabs, no center FAB (post-MVP nav rewrite per notifications_ux.md §1).
+// Order: Feed · Lists · Discover · Notifications · Me. The Notifications tab
+// shows an unread dot (color: --c-koh, NOT a count) when hasUnread is true.
+const TabBar = ({ tab, setTab, hasUnread = false }) => {
   const tabs = [
-    { id: 'feed',    label: 'Feed',    icon: 'home' },
-    { id: 'search',  label: 'Search',  icon: 'search' },
-    { id: 'checkin', label: 'Check in', icon: 'plus' },
-    { id: 'lists',   label: 'Lists',   icon: 'bookmark' },
-    { id: 'me',      label: 'Me',      icon: 'user' },
+    { id: 'feed',          label: 'Feed',          icon: 'home' },
+    { id: 'lists',         label: 'Lists',         icon: 'bookmark' },
+    { id: 'discover',      label: 'Discover',      icon: 'search' },
+    { id: 'notifications', label: 'Notifications', icon: 'bell' },
+    { id: 'me',            label: 'Me',            icon: 'user' },
   ];
   return (
     <div style={{
@@ -68,22 +71,26 @@ const TabBar = ({ tab, setTab }) => {
     }}>
       {tabs.map(t => {
         const active = tab === t.id;
-        const isCheckin = t.id === 'checkin';
+        const showDot = t.id === 'notifications' && hasUnread;
         return (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             background: 'transparent', border: 'none', cursor: 'pointer', padding: 4,
             color: active ? 'var(--c-ai)' : 'var(--fg-3)',
           }}>
-            {isCheckin ? (
-              <div style={{ width: 38, height: 38, borderRadius: 19, background: 'var(--c-ai)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-2)' }}>
-                <Icon name="plus" size={22} color="#fff" />
-              </div>
-            ) : (
+            <div style={{ position: 'relative', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name={t.icon} size={22} />
-            )}
-            {!isCheckin && <span style={{ fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-body)' }}>{t.label}</span>}
-            {isCheckin && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--fg-3)' }}>Check in</span>}
+              {showDot && (
+                <span style={{
+                  position: 'absolute', top: -2, right: -4,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: 'var(--c-koh)',
+                  border: '2px solid var(--bg-page)',
+                  transition: 'opacity var(--dur-base) var(--ease-out)',
+                }}/>
+              )}
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-body)' }}>{t.label}</span>
           </button>
         );
       })}

@@ -236,7 +236,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/collections',           builder: (_, __) => const CollectionListScreen()),
           GoRoute(path: '/collections/:id',       builder: (_, s) => CollectionDetailScreen(id: s.pathParameters['id']!)),
           GoRoute(path: '/settings',              builder: (_, __) => const SettingsScreen()),
-          GoRoute(path: '/follow-requests',       builder: (_, __) => const FollowRequestsScreen()),
+          GoRoute(path: '/notifications',         builder: (_, __) => const NotificationsScreen()),
+          // /inbox and /search redirect to /notifications and /discover respectively via GoRouter.redirect.
         ],
       ),
     ],

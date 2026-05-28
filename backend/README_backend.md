@@ -43,12 +43,13 @@ migrations/                 (mirror of ../db/migrations)
 | Beverages / producers | 5 |
 | Check-ins (CRUD + photo + toast) | 6 |
 | Feed | 1 |
-| Social (follow + inbox) | 5 |
+| Social (follow + approve/decline) | 4 |
+| Notifications (inbox + mark-read + unread-count) | 3 |
 | Collections + entries | 8 |
 | Search | 1 |
 | Taxonomy + feedback | 3 |
 | Venues (Phase 4) | 1 |
-| **Total** | **44** |
+| **Total** | **46** |
 
 Every list endpoint returns the canonical `{ items, next_cursor, has_more }` shape. Error responses are uniformly `{ "error": "...", "code": "..." }`.
 

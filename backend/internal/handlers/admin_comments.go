@@ -75,8 +75,7 @@ func (h *Handler) AdminModerateComment(w http.ResponseWriter, r *http.Request) {
 	if body.Notes != "" {
 		notesPtr = &body.Notes
 	}
-	// isAdmin=true so the repo writes the moderation_log row.
-	if err := h.Repos.Comments.SoftDelete(r.Context(), commentID, uid, true, notesPtr); err != nil {
+	if err := h.Services.Comment.ModerateForAdmin(r.Context(), commentID, uid, notesPtr); err != nil {
 		h.writeErr(w, "AdminModerateComment", err)
 		return
 	}

@@ -29,11 +29,12 @@ import (
 // Bundle is the aggregate of every service. Handlers hold *Bundle; main.go
 // constructs it once via New(...).
 type Bundle struct {
-	Auth    *AuthService
-	Checkin *CheckinService
-	Comment *CommentService
-	Social  *SocialService
-	Admin   *AdminService
+	Auth         *AuthService
+	Checkin      *CheckinService
+	Comment      *CommentService
+	Social       *SocialService
+	Admin        *AdminService
+	Notification *NotificationService
 }
 
 // Deps is the wiring shape main.go passes to New. Each field is a primitive
@@ -58,13 +59,15 @@ type Deps struct {
 // missing dependencies become disabled features (e.g. a nil Mailer means
 // AuthService.Register skips the verification mail).
 func New(d Deps) *Bundle {
-	return &Bundle{
-		Auth:    newAuthService(d),
-		Checkin: newCheckinService(d),
-		Comment: newCommentService(d),
-		Social:  newSocialService(d),
-		Admin:   newAdminService(d),
+	b := &Bundle{
+		Auth:         newAuthService(d),
+		Notification: newNotificationService(d),
+		Admin:        newAdminService(d),
 	}
+	b.Checkin = newCheckinService(d, b.Notification)
+	b.Comment = newCommentService(d, b.Notification)
+	b.Social = newSocialService(d, b.Notification)
+	return b
 }
 
 // CacheInvalidator is the slice of the cache bundle every write-path service

@@ -1,5 +1,8 @@
 // KAMOS — Search / Discover (SPEC §7).
 //
+// File path is search/search_screen.dart for legacy reasons; this screen
+// is the Discover tab (route /discover). The folder rename is out of scope.
+//
 // Full-text search across beverage + producer names. Category chips render
 // EXACT SPEC §2.1 strings per locale (`categoryLabel`).
 

@@ -24,13 +24,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabFeed => 'Feed';
 
   @override
-  String get tabSearch => 'Search';
-
-  @override
-  String get tabCheckIn => 'Check-in';
-
-  @override
   String get tabLists => 'Lists';
+
+  @override
+  String get tabDiscover => 'Discover';
+
+  @override
+  String get tabNotifications => 'Notifications';
 
   @override
   String get tabMe => 'Me';
@@ -42,7 +42,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedEmptyTitle => 'No check-ins yet';
 
   @override
-  String get feedEmptyBody => 'Follow some people, or tap + to log your first.';
+  String get feedEmptyBody =>
+      'Follow some people, or head to Discover to find your first.';
 
   @override
   String get feedMore => 'more';
@@ -552,20 +553,61 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get inboxTitle => 'Follow requests';
-
-  @override
   String get inboxApprove => 'Approve';
 
   @override
   String get inboxDecline => 'Decline';
 
   @override
-  String get inboxEmptyTitle => 'No pending requests';
+  String get notificationsTitle => 'Notifications';
 
   @override
-  String get inboxEmptyBody =>
-      'Follow requests appear here while your account is private.';
+  String get notificationsMarkAllRead => 'Mark all read';
+
+  @override
+  String get notificationsMarkAllError =>
+      'Couldn\'t mark notifications as read. Try again.';
+
+  @override
+  String get notificationsEnd => 'You\'re all caught up.';
+
+  @override
+  String get notificationsEmptyTitle => 'Nothing new';
+
+  @override
+  String get notificationsEmptyBody =>
+      'Toasts, comments, and follows from other people show up here.';
+
+  @override
+  String get notificationsDeletedActor => 'Deleted user';
+
+  @override
+  String get notificationsRequestStale => 'Request no longer pending.';
+
+  @override
+  String notificationsVerbToast(String actor) {
+    return '$actor toasted your check-in.';
+  }
+
+  @override
+  String notificationsVerbComment(String actor) {
+    return '$actor commented on your check-in.';
+  }
+
+  @override
+  String notificationsVerbFollow(String actor) {
+    return '$actor started following you.';
+  }
+
+  @override
+  String notificationsVerbFollowRequest(String actor) {
+    return '$actor requested to follow you.';
+  }
+
+  @override
+  String notificationsVerbFollowApproved(String actor) {
+    return '$actor approved your follow request.';
+  }
 
   @override
   String get beverageDetailAbv => 'ABV';

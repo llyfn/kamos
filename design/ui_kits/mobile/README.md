@@ -22,7 +22,10 @@ components/
   AuthScreen.jsx               Sign in · Create account · Forgot password · Verify email · Google OAuth
   EditProfileScreen.jsx        Display name + bio · avatar change · username read-only
   SettingsScreen.jsx           Email + password · privacy toggle · locale · soft-delete (30d hold)
-  InboxScreen.jsx              Follow request inbox · Approve / Decline
+  InboxScreen.jsx              [legacy] Follow request inbox — superseded by NotificationsScreen;
+                               kept for the /inbox → /notifications redirect milestone
+  NotificationsScreen.jsx      Unified notifications (SPEC §5.4) · 5 row types · unread tint ·
+                               Mark all read · inline Approve/Decline on follow_request
   ProducerScreen.jsx           Producer detail (SPEC §2.3, §7) · listing of all beverages
   CollectionPickerSheet.jsx    Multi-select sheet + inline new-collection
   CollectionDetailScreen.jsx   Collection contents · rename + delete with confirmation
@@ -30,14 +33,16 @@ components/
 
 ## Five-tab structure
 
-**Feed · Search · Check-in · Lists · Me** — matches the SPEC nouns. The center "Check-in" tab is a raised circular Ai-iro button; the others are hairline icons.
+**Feed · Lists · Discover · Notifications · Me** — post-MVP nav rewrite per `design/notifications_ux.md` §1. No center FAB; all five tabs use the same hairline-icon style. The Notifications tab shows an unread dot (color `--c-koh`, never a count) when any row is unread; clears on tab-focus + on "Mark all read".
+
+Discover is the renamed Search tab (same screen content; route + label change only).
 
 ## What works (interactive)
 - Tab switching, search filtering with locale-correct category chips
 - Tap a beverage → detail page → back nav
 - "Check-in" → 0.5-step rating input, 500-char review counter, 4-photo grid with add/remove, price + currency + per-serving/bottle, purchase chips
 - Toast reaction toggles the kanpai mark (`1 → 1.15 → 1` over 240 ms)
-- Bell icon in the feed opens the follow-request inbox with Approve / Decline
+- Notifications tab unread dot lights up when any row is unread; the unified inbox renders inline Approve / Decline on `follow_request` rows
 - Profile → Edit profile / Settings (privacy toggle, delete-account confirmation sheet)
 - Beverage detail → producer link → producer page lists all beverages from that producer
 - Lists tab → Collection detail → rename / delete
@@ -54,4 +59,4 @@ components/
 - Username: `Yamamoto` (display, case preserved) and `@yamamoto` (handle, stored lowercase) — see `data.jsx::ME`.
 - i18n fallback: `t(node, locale)` falls back `ko→en`, `ja→en`. Demo strings include cases where `ko` is omitted to verify the fallback.
 - Default collections (`Inventory`, `Wishlist`) carry `isDefault: true` for explanatory copy but are otherwise identical to user-created ones.
-- Privacy: profile pill renders when `user.privacy === 'private'`; inbox badge counts pending requests; private check-ins gated to approved followers is documented (rendering layer only; gate enforced server-side).
+- Privacy: profile pill renders when `user.privacy === 'private'`; the Notifications tab shows an unread dot when any row is unread (pending follow_requests included); private check-ins gated to approved followers is documented (rendering layer only; gate enforced server-side).

@@ -17,7 +17,7 @@ These are decided. Do not re-litigate them without an explicit user ask.
 - **Type:** Shippori Mincho for display (beverage names, producer names, hero numerics) · Noto Sans JP for body and UI (covers en/ja/ko with identical metrics) · JetBrains Mono for IDs, ratios, percentages.
 - **Iconography:** Phosphor regular @ 1.5 stroke, 20 px in UI / 24 px in tab bar — substitution flag pending Flutter set. KAMOS kanpai mark replaces any toast emoji.
 - **No emoji in UI.** Ever. Inline kanji glyphs in display type are encouraged.
-- **Five tabs:** Feed · Search · Check in · Lists · Me. The center "Check in" tab is a raised circular Ai-iro button; others are hairline icons.
+- **Five tabs:** Feed · Lists · Discover · Notifications · Me. All five use the same hairline-icon style; no center FAB. The Notifications tab shows an unread dot (`--c-koh`) when any row is unread.
 - **Voice:** calm, specific, bilingual-literate. Sentence case for buttons / headers / menu items. Title Case only for proper nouns (beverage names, producer names, places). Second-person ("you") for instructions and empty states; first-person ("My") for owned things; third-person neutral for system text. No exclamation marks except true milestones.
 - **Numbers:** rating shown as `4.0 / 5.0` (always one decimal); ABV `15.5%` (no space); polishing ratio in mono as `Seimai 60%`; currency localised (`¥1,200` / `₩9,800` / `$12`).
 - **Motion:** `--ease-out` for entrance, `--ease-in-out` between states, no bounces. Crossfade over slide. The only sanctioned "celebratory" motion is the toast tap (kanpai mark `1 → 1.15 → 1` over 240 ms).

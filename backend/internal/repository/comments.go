@@ -21,26 +21,26 @@ import (
 // CommentRepo wraps the SQL for comments.
 type CommentRepo struct{ db *pgxpool.Pool }
 
-// Create inserts a new comment and returns the enriched DTO. The author
-// row is joined so the caller doesn't need a second round trip to render
-// the new comment.
+// CreateTx inserts a new comment inside the caller's transaction so the
+// notification emit can participate in the same atomic write. Returns the
+// hydrated comment plus the owner of the parent check-in (so the service
+// can emit a notification to the right recipient without a follow-up
+// query).
 //
 // Returns ErrNotFound when checkInID doesn't exist (or is soft-deleted) —
 // the FK INSERT would otherwise return a generic SQLSTATE 23503 that gets
 // wrapped as 500 by the handler. The pre-check is one indexed PK lookup,
 // cheaper than the 23503 path.
-func (r *CommentRepo) Create(ctx context.Context, checkInID, userID, body string) (*domain.Comment, error) {
-	// Ensure the parent check-in is alive (the FK cascades on hard-delete,
-	// but flips most check-ins to soft-deleted via moderation).
-	var alive bool
-	if err := r.db.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM check_ins WHERE id = $1 AND deleted_at IS NULL);`,
+func (r *CommentRepo) CreateTx(ctx context.Context, tx pgx.Tx, checkInID, userID, body string) (*domain.Comment, string, error) {
+	var ownerID string
+	if err := tx.QueryRow(ctx,
+		`SELECT user_id FROM check_ins WHERE id = $1 AND deleted_at IS NULL;`,
 		checkInID,
-	).Scan(&alive); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create check parent: %w", err)
-	}
-	if !alive {
-		return nil, domain.ErrNotFound
+	).Scan(&ownerID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", domain.ErrNotFound
+		}
+		return nil, "", fmt.Errorf("CommentRepo.CreateTx parent: %w", err)
 	}
 
 	const ins = `
@@ -51,22 +51,19 @@ RETURNING id, check_in_id, user_id, body, created_at;`
 		id, checkInIDOut, userIDOut, bodyOut string
 		createdAt                            time.Time
 	)
-	if err := r.db.QueryRow(ctx, ins, checkInID, userID, body).Scan(
+	if err := tx.QueryRow(ctx, ins, checkInID, userID, body).Scan(
 		&id, &checkInIDOut, &userIDOut, &bodyOut, &createdAt,
 	); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create insert: %w", err)
+		return nil, "", fmt.Errorf("CommentRepo.CreateTx insert: %w", err)
 	}
 
-	// Hydrate the author row for the response. INSERT cannot succeed with
-	// a NULL user_id (the writer is always the authed caller), so the
-	// JOIN partner here is always present — no LEFT JOIN needed.
 	var u domain.CheckinUser
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 SELECT id, username, display_username, display_name, avatar_url
 FROM users WHERE id = $1;`,
 		userIDOut,
 	).Scan(&u.ID, &u.Username, &u.DisplayUsername, &u.DisplayName, &u.AvatarURL); err != nil {
-		return nil, fmt.Errorf("CommentRepo.Create hydrate user: %w", err)
+		return nil, "", fmt.Errorf("CommentRepo.CreateTx hydrate user: %w", err)
 	}
 
 	return &domain.Comment{
@@ -75,7 +72,7 @@ FROM users WHERE id = $1;`,
 		User:      &u,
 		Body:      bodyOut,
 		CreatedAt: createdAt,
-	}, nil
+	}, ownerID, nil
 }
 
 // List returns the comments on a check-in, most-recent-first. Soft-deleted
@@ -84,6 +81,19 @@ FROM users WHERE id = $1;`,
 //
 // Cursor: (created_at, id). The repository fetches limit+1 and the handler
 // computes has_more via cursor.SliceAndCursor.
+//
+// SEC-001: actor visibility has two failure modes, both of which leave
+// the comment row present and surface a "Deleted user" stub:
+//
+//   - Hard-delete (migration 013 set comments.user_id ON DELETE SET NULL):
+//     the LEFT JOIN has no match and `u.id` is NULL.
+//   - Soft-delete (users.deleted_at IS NOT NULL): the JOIN still matches a
+//     live row, so the Go layer treats it as equivalent to the hard-delete
+//     case and returns a nil User from hydrateCommentUser.
+//
+// The JOIN intentionally does NOT add `AND u.deleted_at IS NULL` — that
+// would inner-join-filter the comment out instead of stubbing the author,
+// breaking the "comment row preserved" invariant.
 func (r *CommentRepo) List(
 	ctx context.Context,
 	checkInID string,
@@ -94,14 +104,10 @@ func (r *CommentRepo) List(
 	if limit <= 0 {
 		limit = 20
 	}
-	// LEFT JOIN — migration 013 (M-12.2) sets comments.user_id ON DELETE
-	// SET NULL so the join may have no match when the author was
-	// hard-purged. hydrateCommentUser materializes the row only when the
-	// joined columns are non-null.
 	const q = `
 SELECT
  c.id, c.check_in_id, c.body, c.created_at,
- u.id, u.username, u.display_username, u.display_name, u.avatar_url
+ u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.deleted_at
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.check_in_id = $1
@@ -120,14 +126,19 @@ LIMIT $4;`
 		var (
 			uID, uUsername, uDisplayUsername, uDisplayName *string
 			uAvatarURL                                     *string
+			uDeletedAt                                     *time.Time
 		)
 		if err := rows.Scan(
 			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt,
-			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL,
+			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL, &uDeletedAt,
 		); err != nil {
 			return nil, fmt.Errorf("CommentRepo.List scan: %w", err)
 		}
-		row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
+		if uDeletedAt != nil {
+			row.User = nil
+		} else {
+			row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
+		}
 		out = append(out, row)
 	}
 	return out, rows.Err()
@@ -164,11 +175,16 @@ func stringOrZero(s *string) string {
 // (own-comment vs admin). The user join is LEFT — an orphaned comment
 // (author hard-purged) still returns; callers treat User == nil as
 // "owner check cannot pass" so only moderator+ may delete it.
+//
+// SEC-001: same soft-vs-hard-delete handling as List. When the author's
+// users.deleted_at IS NOT NULL we stub User=nil instead of leaking
+// PII; the moderator-or-admin fallback in CommentService.Delete still
+// works because the soft-deleted author also can't be the caller.
 func (r *CommentRepo) Get(ctx context.Context, id string) (*domain.Comment, error) {
 	const q = `
 SELECT
  c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
- u.id, u.username, u.display_username, u.display_name, u.avatar_url
+ u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.deleted_at
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
 WHERE c.id = $1;`
@@ -177,10 +193,11 @@ WHERE c.id = $1;`
 	var (
 		uID, uUsername, uDisplayUsername, uDisplayName *string
 		uAvatarURL                                     *string
+		uDeletedAt                                     *time.Time
 	)
 	if err := r.db.QueryRow(ctx, q, id).Scan(
 		&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &deletedAt,
-		&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL,
+		&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL, &uDeletedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -192,7 +209,11 @@ WHERE c.id = $1;`
 		return nil, domain.ErrNotFound
 	}
 	row.DeletedAt = deletedAt
-	row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
+	if uDeletedAt != nil {
+		row.User = nil
+	} else {
+		row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
+	}
 	return &row, nil
 }
 
@@ -265,6 +286,14 @@ type AdminCommentRow struct {
 
 // ListForAdmin returns the admin view of comments with optional moderation
 // metadata joined in. Cursor on (created_at, id).
+//
+// SEC-001: when the author is soft-deleted we keep the user id linkage —
+// moderators need to be able to navigate to the user account from a
+// flagged comment, and the admin console is already an authenticated
+// privileged surface. The display fields (username, display_name,
+// avatar) are blanked so the moderator UI consistently shows the
+// "Deleted user" label and a soft-deleted account's chosen handle does
+// not leak through the moderation queue.
 func (r *CommentRepo) ListForAdmin(
 	ctx context.Context,
 	onlyDeleted bool,
@@ -280,7 +309,7 @@ func (r *CommentRepo) ListForAdmin(
 	const q = `
 SELECT
  c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
- u.id, u.username, u.display_username, u.display_name, u.avatar_url,
+ u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.deleted_at,
  ml.notes, ml.moderator_id, ml.created_at AS moderated_at
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
@@ -306,15 +335,21 @@ LIMIT $4;`
 		var (
 			uID, uUsername, uDisplayUsername, uDisplayName *string
 			uAvatarURL                                     *string
+			uDeletedAt                                     *time.Time
 		)
 		if err := rows.Scan(
 			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &row.DeletedAt,
-			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL,
+			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL, &uDeletedAt,
 			&row.ModerationNotes, &row.ModeratedBy, &row.ModeratedAt,
 		); err != nil {
 			return nil, fmt.Errorf("CommentRepo.ListForAdmin scan: %w", err)
 		}
-		row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
+		if uDeletedAt != nil && uID != nil {
+			// Keep id for moderator navigation; blank display fields.
+			row.User = &domain.CheckinUser{ID: *uID}
+		} else {
+			row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
+		}
 		out = append(out, row)
 	}
 	return out, rows.Err()

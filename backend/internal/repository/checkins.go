@@ -388,53 +388,61 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 	return errors.New("AddPhoto: insert returned no rows but row passes all gates")
 }
 
-// ToggleToast inserts-or-deletes the row, returning the fresh state.
-func (r *CheckinRepo) ToggleToast(ctx context.Context, userID, checkinID string) (domain.ToastState, error) {
-	// First, ensure visibility per private-account rules.
-	if err := r.checkVisibility(ctx, userID, checkinID); err != nil {
-		return domain.ToastState{}, err
+// ToggleToastTx runs the toggle inside the caller's transaction so the
+// notification emit on the "added" branch can land atomically with the
+// toasts row INSERT. The visibility gate runs on the pool (cheap, indexed,
+// no need to hold the tx) before the tx begins side effects.
+//
+// Returns:
+//   - state: the fresh toast count + you_toasted (post-toggle).
+//   - added: true when the call INSERTed a row (false on un-toast).
+//   - ownerID: the check-in author's user id (for the notification emit).
+//     Always set when the toggle succeeded; "" only on internal-error paths.
+func (r *CheckinRepo) ToggleToastTx(ctx context.Context, tx pgx.Tx, userID, checkinID string) (state domain.ToastState, added bool, ownerID string, err error) {
+	if err = r.checkVisibility(ctx, userID, checkinID); err != nil {
+		return domain.ToastState{}, false, "", err
 	}
 
-	// Toggle: delete if exists, otherwise insert. We do this in a single tx.
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return domain.ToastState{}, fmt.Errorf("ToggleToast: begin: %w", err)
+	if err = tx.QueryRow(ctx,
+		`SELECT user_id FROM check_ins WHERE id = $1 AND deleted_at IS NULL;`,
+		checkinID,
+	).Scan(&ownerID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ToastState{}, false, "", domain.ErrNotFound
+		}
+		return domain.ToastState{}, false, "", fmt.Errorf("ToggleToastTx owner: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
 
 	var existed bool
-	if err := tx.QueryRow(ctx,
+	if err = tx.QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM toasts WHERE user_id = $1 AND check_in_id = $2);`,
 		userID, checkinID).Scan(&existed); err != nil {
-		return domain.ToastState{}, fmt.Errorf("ToggleToast exists: %w", err)
+		return domain.ToastState{}, false, "", fmt.Errorf("ToggleToastTx exists: %w", err)
 	}
 	if existed {
-		if _, err := tx.Exec(ctx,
+		if _, err = tx.Exec(ctx,
 			`DELETE FROM toasts WHERE user_id = $1 AND check_in_id = $2;`, userID, checkinID); err != nil {
-			return domain.ToastState{}, fmt.Errorf("ToggleToast delete: %w", err)
+			return domain.ToastState{}, false, "", fmt.Errorf("ToggleToastTx delete: %w", err)
 		}
 	} else {
-		if _, err := tx.Exec(ctx,
+		if _, err = tx.Exec(ctx,
 			`INSERT INTO toasts (user_id, check_in_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;`,
 			userID, checkinID); err != nil {
-			return domain.ToastState{}, fmt.Errorf("ToggleToast insert: %w", err)
+			return domain.ToastState{}, false, "", fmt.Errorf("ToggleToastTx insert: %w", err)
 		}
+		added = true
 	}
 
-	var s domain.ToastState
 	var cnt int64
-	if err := tx.QueryRow(ctx, `
+	if err = tx.QueryRow(ctx, `
 SELECT
   (SELECT COUNT(*) FROM toasts WHERE check_in_id = $2),
   EXISTS (SELECT 1 FROM toasts WHERE check_in_id = $2 AND user_id = $1);`,
-		userID, checkinID).Scan(&cnt, &s.YouToasted); err != nil {
-		return domain.ToastState{}, fmt.Errorf("ToggleToast count: %w", err)
+		userID, checkinID).Scan(&cnt, &state.YouToasted); err != nil {
+		return domain.ToastState{}, false, "", fmt.Errorf("ToggleToastTx count: %w", err)
 	}
-	s.Toasts = int(cnt)
-	if err := tx.Commit(ctx); err != nil {
-		return domain.ToastState{}, fmt.Errorf("ToggleToast commit: %w", err)
-	}
-	return s, nil
+	state.Toasts = int(cnt)
+	return state, added, ownerID, nil
 }
 
 // checkVisibility implements the privacy gate from query_patterns.md §4.

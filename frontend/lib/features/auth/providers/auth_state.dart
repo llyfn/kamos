@@ -14,8 +14,8 @@ import '../../../core/api/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../collections/providers/collection_providers.dart';
 import '../../feed/providers/feed_providers.dart';
+import '../../notifications/providers/notification_providers.dart';
 import '../../profile/providers/profile_providers.dart';
-import '../../social/providers/social_providers.dart';
 import '../repository/auth_repository.dart';
 
 class AuthState {
@@ -54,8 +54,17 @@ class AuthStateNotifier extends Notifier<AuthState> {
   }
 
   /// Called by the repository after a successful login/register. The tokens
-  /// are already written to secure storage; we only flip the flag here.
+  /// are already written to secure storage; we flip the flag and invalidate
+  /// the long-lived notification providers so any caller that reads
+  /// `notificationListProvider` or `unreadCountProvider` before the next
+  /// build sees a fresh fetch under the new identity rather than a value
+  /// left in memory from the previous session. Symmetric with the logout
+  /// and `onUnauthorized` invalidation lists; other per-viewer providers
+  /// (`meProvider`, `feedProvider`, `collectionsProvider`) rebuild
+  /// naturally from the router redirect when the auth flag flips.
   void signIn() {
+    ref.invalidate(notificationListProvider);
+    ref.invalidate(unreadCountProvider);
     state = const AuthState(isAuthenticated: true, isLoading: false);
   }
 
@@ -72,11 +81,12 @@ class AuthStateNotifier extends Notifier<AuthState> {
   ///
   /// Every long-lived (non-`autoDispose`) viewer-scoped provider is
   /// invalidated alongside `dioProvider`: `meProvider`, `feedProvider`,
-  /// `collectionsProvider`, `followRequestsProvider`. The `family`-keyed
-  /// providers (userCheckinsProvider, publicProfileProvider, …) are
-  /// `autoDispose` and drop their cache on navigation. Repository providers
-  /// `watch` `dioProvider`, so invalidating Dio cascade-rebuilds them with
-  /// a fresh `MemCacheStore`, ensuring the next user can't read responses
+  /// `collectionsProvider`, `notificationListProvider`,
+  /// `unreadCountProvider`. The `family`-keyed providers
+  /// (userCheckinsProvider, publicProfileProvider, …) are `autoDispose`
+  /// and drop their cache on navigation. Repository providers `watch`
+  /// `dioProvider`, so invalidating Dio cascade-rebuilds them with a
+  /// fresh `MemCacheStore`, ensuring the next user can't read responses
   /// cached for the previous one.
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
@@ -87,7 +97,8 @@ class AuthStateNotifier extends Notifier<AuthState> {
     ref.invalidate(meProvider);
     ref.invalidate(feedProvider);
     ref.invalidate(collectionsProvider);
-    ref.invalidate(followRequestsProvider);
+    ref.invalidate(notificationListProvider);
+    ref.invalidate(unreadCountProvider);
     state = const AuthState(isAuthenticated: false, isLoading: false);
   }
 
@@ -102,7 +113,8 @@ class AuthStateNotifier extends Notifier<AuthState> {
       ref.invalidate(meProvider);
       ref.invalidate(feedProvider);
       ref.invalidate(collectionsProvider);
-      ref.invalidate(followRequestsProvider);
+      ref.invalidate(notificationListProvider);
+      ref.invalidate(unreadCountProvider);
       state = const AuthState(isAuthenticated: false, isLoading: false);
     }
   }

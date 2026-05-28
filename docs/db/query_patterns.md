@@ -560,6 +560,182 @@ For everything else — edit profile, change email, change password, account del
 
 ---
 
+## 16. Notifications (SPEC §5.4)
+
+**Endpoints**: `GET /v1/notifications`, `GET /v1/notifications/unread-count`, `POST /v1/notifications/{id}/read`, `POST /v1/notifications/read-all`. Emit paths live alongside the source mutations (toast, comment, follow) and run in the same `pgx.Tx`.
+
+**FK delete semantics (after migration 020).** `recipient_user_id`, `check_in_id`, and `comment_id` are `ON DELETE CASCADE`: a hard-delete of any of them wipes the corresponding notifications. The `check_in_id` / `comment_id` CASCADE is mandatory because `notifications_refs_match_type` forbids NULL on those columns for `type='toast'` and `type='comment'` rows; SET NULL would have raised `23514` on every hard-delete. Soft-deletes do not fire CASCADE, so SPEC §5.4's "soft-deleting the referenced check-in or comment preserves the notification" still holds — the row stays and only loses its tap target. `actor_user_id` remains `ON DELETE SET NULL` so the row survives an actor hard-purge and the UI can render the localized "Deleted user" placeholder.
+
+### 16a. List inbox (cursor-paginated)
+
+```sql
+SELECT
+  n.id,
+  n.type,
+  n.actor_user_id,
+  u.username           AS actor_username,
+  u.display_username   AS actor_display_username,
+  u.display_name       AS actor_display_name,
+  u.avatar_url         AS actor_avatar_url,
+  u.deleted_at         AS actor_deleted_at,
+  n.check_in_id,
+  n.comment_id,
+  n.read_at,
+  n.created_at
+FROM notifications n
+LEFT JOIN users u ON u.id = n.actor_user_id  -- actor may be NULL (SET NULL on hard-delete)
+WHERE n.recipient_user_id = $1
+  AND ($2::timestamptz IS NULL OR (n.created_at, n.id) < ($2, $3))
+ORDER BY n.created_at DESC, n.id DESC
+LIMIT 21;                                     -- 20 + 1 to compute has_more
+```
+
+Index used: `idx_notifications_recipient_created`. LEFT JOIN on `users` because the actor FK is `ON DELETE SET NULL` AND the actor may also be soft-deleted (`u.deleted_at IS NOT NULL`) — in either case the Go layer emits a localized "Deleted user" stub. Do NOT add `AND u.deleted_at IS NULL` to the JOIN — that would inner-join-filter the row out instead of stubbing the actor.
+
+Cursor encoding mirrors the feed: `(created_at, id)` HMAC-signed base64 (`CURSOR_SECRET`).
+
+### 16b. Unread count
+
+```sql
+SELECT COUNT(*) FROM notifications
+WHERE recipient_user_id = $1 AND read_at IS NULL;
+```
+
+Index used: `idx_notifications_recipient_unread` (Index Only Scan).
+
+### 16c. Mark a single row read (idempotent)
+
+```sql
+UPDATE notifications
+SET read_at = NOW()
+WHERE id = $1
+  AND recipient_user_id = $2  -- IDOR guard
+  AND read_at IS NULL
+RETURNING id;
+```
+
+Empty result = already read (or wrong recipient). Handler returns 204 in both cases for idempotence.
+
+### 16d. Mark all read
+
+```sql
+UPDATE notifications
+SET read_at = NOW()
+WHERE recipient_user_id = $1 AND read_at IS NULL;
+```
+
+Returns affected row count for telemetry; response is 204.
+
+### 16e. Emit — toast (idempotent re-toggle)
+
+Runs in the same `pgx.Tx` as the `INSERT INTO toasts`. Skipped entirely when `actor_user_id = check_in.user_id` (self-toast). The DB CHECK `notifications_no_self` is the backstop.
+
+```sql
+INSERT INTO notifications (recipient_user_id, type, actor_user_id, check_in_id)
+VALUES ($1, 'toast', $2, $3)
+ON CONFLICT (recipient_user_id, actor_user_id, check_in_id)
+  WHERE type = 'toast'
+DO NOTHING;
+```
+
+Index used: `idx_notifications_toast_unique` for the conflict resolution.
+
+### 16f. Emit — comment (no dedupe)
+
+```sql
+INSERT INTO notifications (recipient_user_id, type, actor_user_id, check_in_id, comment_id)
+VALUES ($1, 'comment', $2, $3, $4);
+```
+
+Every comment gets its own row.
+
+### 16g. Emit — follow / follow_request
+
+Public target → `'follow'` row. Private target → `'follow_request'` row. Both run in the same `pgx.Tx` as the `INSERT INTO follows`.
+
+```sql
+-- Public:
+INSERT INTO notifications (recipient_user_id, type, actor_user_id)
+VALUES ($1, 'follow', $2)
+ON CONFLICT (recipient_user_id, actor_user_id) WHERE type = 'follow'
+DO NOTHING;
+
+-- Private:
+INSERT INTO notifications (recipient_user_id, type, actor_user_id)
+VALUES ($1, 'follow_request', $2);
+```
+
+`follow` dedupe via `idx_notifications_follow_unique`. `follow_request` is intentionally non-deduped at the DB — see emit 16i for the matching DELETE.
+
+### 16h. Emit — follow_approved
+
+Runs in the same `pgx.Tx` as the `UPDATE follows SET status='accepted'`. The approver's `follow_request` notification is deleted (see 16i) so it stops showing in their inbox once the request is resolved. The requester receives a new `follow_approved` row in their own inbox.
+
+```sql
+INSERT INTO notifications (recipient_user_id, type, actor_user_id)
+VALUES ($1, 'follow_approved', $2)
+ON CONFLICT (recipient_user_id, actor_user_id) WHERE type = 'follow_approved'
+DO NOTHING;
+```
+
+`$1` is the requester (originally the `follower_id` on the `follows` row), `$2` is the approver (the original `followed_id`). Dedupe via `idx_notifications_follow_approved_unique`.
+
+### 16i. Cleanup — delete follow_request on terminal transition
+
+Runs in the same `pgx.Tx` as approve, decline, and cancel. Without this DELETE, a re-request after a decline would leave two `follow_request` rows in the recipient's inbox.
+
+```sql
+DELETE FROM notifications
+WHERE recipient_user_id = $1
+  AND actor_user_id = $2
+  AND type = 'follow_request';
+```
+
+`$1` = the approver/decliner (who saw the request), `$2` = the original requester. Idempotent — no row to delete is fine.
+
+---
+
+## 17. Comments — soft-deleted-author PII stub (SEC-001)
+
+The flat comments list (`GET /v1/check-ins/{id}/comments`), single-comment lookup (`Get`, used by the delete-authz path), and admin moderation queue (`GET /v1/admin/comments`) all `LEFT JOIN users` to hydrate the author chip on each row. Two failure modes leave the comment row present but require the author projection to render as a localized "Deleted user" stub:
+
+- **Hard-delete** — migration 013 set `comments.user_id ON DELETE SET NULL`, so the FK target is gone and the LEFT JOIN has no match. `u.id IS NULL` is the cue.
+- **Soft-delete** — `users.deleted_at IS NOT NULL` while `comments.user_id` still references the row. The JOIN still matches; the Go layer must check `u.deleted_at` and drop the actor projection itself.
+
+The JOIN must NOT add `AND u.deleted_at IS NULL` — that would inner-join-filter the comment out instead of stubbing the author, breaking the "comment row preserved on author soft-delete" invariant. Mirror of the notifications §16a pattern.
+
+```sql
+-- List (public surface) — drop the actor entirely on soft-delete.
+SELECT
+  c.id, c.check_in_id, c.body, c.created_at,
+  u.id, u.username, u.display_username, u.display_name, u.avatar_url,
+  u.deleted_at
+FROM comments c
+LEFT JOIN users u ON u.id = c.user_id
+WHERE c.check_in_id = $1 AND c.deleted_at IS NULL
+  AND ($2::timestamptz IS NULL OR (c.created_at, c.id) < ($2, $3))
+ORDER BY c.created_at DESC, c.id DESC
+LIMIT $4;
+```
+
+Admin variant keeps `u.id` (moderators need to navigate to the user account from the row) but the Go layer blanks `username` / `display_username` / `display_name` / `avatar_url` when `u.deleted_at IS NOT NULL`. Same SELECT shape; the projection collapse happens in Go, not SQL.
+
+---
+
+## 18. Notifications retention sweep (PERF-002)
+
+A daily background job hard-deletes read notifications older than 180 days. Unread rows are preserved indefinitely — they are the recipient's pending TODOs and the partial unread-index keeps them cheap to scan regardless of age. Run from `cmd/worker` alongside the other maintenance jobs; the scheduler tick is wrapped in `pg_try_advisory_lock` so a multi-replica misconfiguration still fires the body exactly once.
+
+```sql
+DELETE FROM notifications
+WHERE created_at < NOW() - INTERVAL '180 days'
+  AND read_at IS NOT NULL;
+```
+
+180 days mirrors the SPEC §5.4 retention paragraph and the inbox window used by comparable platforms. The boundary uses strict `<` so an exactly-180-day-old row survives one more tick — gives the job an idempotent re-run window without surprising the user.
+
+---
+
 ## 15. Cache coherence (Stage 4)
 
 KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass through three coherence tiers:

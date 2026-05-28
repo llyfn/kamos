@@ -280,9 +280,25 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// Social.
 			r.Post("/users/{username}/follow", h.Follow)
 			r.Delete("/users/{username}/follow", h.Unfollow)
-			r.Get("/follow-requests", h.FollowRequests)
+			// GET /v1/follow-requests was retired in Phase 4 — the
+			// notifications inbox subsumed the list. Inline Approve /
+			// Decline actions still post against the rows below.
 			r.Post("/follow-requests/{id}/approve", h.ApproveFollowRequest)
 			r.Post("/follow-requests/{id}/decline", h.DeclineFollowRequest)
+
+			// Notifications inbox (SPEC §5.4). Read paths only; emits
+			// happen inside the source-event transactions (toast / comment
+			// / follow). mark-read carries its own per-user limit on top of
+			// the global authed 60/120 so a scroll-driven batch of
+			// "viewed-row -> mark read" requests doesn't burn the headroom.
+			r.Get("/notifications", h.ListNotifications)
+			r.Get("/notifications/unread-count", h.UnreadNotificationCount)
+			if rateLimited {
+				r.With(middleware.RateLimitByUser(log, 1, 60)).
+					Post("/notifications/read", h.MarkNotificationsRead)
+			} else {
+				r.Post("/notifications/read", h.MarkNotificationsRead)
+			}
 
 			// Collections.
 			r.Get("/collections", h.ListCollections)

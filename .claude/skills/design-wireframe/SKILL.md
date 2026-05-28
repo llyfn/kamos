@@ -23,7 +23,7 @@ Do not introduce Markdown-only wireframes / spec / token files. Wireframes are r
 
 ## Non-negotiables (do not re-litigate)
 
-- **Five tabs:** Feed · Search · Check in · Lists · Me. Center "Check in" tab is a raised Ai-iro circular button.
+- **Five tabs:** Feed · Lists · Discover · Notifications · Me. All five use the same hairline-icon style; no center FAB. The Notifications tab carries an unread dot (`--c-koh`) when any row is unread.
 - **Palette:** Japanese blues — Mizu, Sora, Hanada, Ai (primary), Kon, Rurikon. Backgrounds Shironeri (page) / Kinari (warm card) — never pure white pages. Single warm accent **Koh** (terracotta), reserved for toast / kanpai moments only.
 - **Type:** Shippori Mincho (display) · Noto Sans JP (body, covers en/ja/ko) · JetBrains Mono (IDs, ratios). Never go below 14 px.
 - **No emoji in UI.** The toast control uses the KAMOS kanpai mark (`assets/logo_white.png` active, `assets/logo_mark.png` inactive).

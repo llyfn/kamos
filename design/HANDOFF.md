@@ -12,14 +12,20 @@ Single bridging document for `db-architect`, `backend-engineer`, and `flutter-en
 
 The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This document does not define it — it lists the data shapes each screen needs so the contract can be written from SPEC.md plus this index.
 
+## Feature add-on specs
+
+- **Notifications + nav rewrite (SPEC §5.4)** — `design/notifications_ux.md`. Defines the unified Notifications screen (5 row types, unread tint, Mark all read, inline Approve/Decline on `follow_request` rows), the bottom-nav rewrite (Feed · Lists · Discover · Notifications · Me, no center FAB), the Koh-dot unread indicator on the Notifications tab, mark-on-scroll behavior, soft-deleted actor rendering, and the EN ARB key list. Flutter engineer must read this end-to-end before touching `frontend/lib/features/notifications/` or `frontend/lib/app/router.dart`. Supersedes the `InboxScreen.jsx` flow.
+- **Profile / social UX expansion** — `design/profile_social_ux_expansion.md`.
+
 ## Screen → file map
 
 | User-facing surface | JSX file |
 |---|---|
 | Auth: sign in, create account, forgot password, verify email, Google OAuth | `components/AuthScreen.jsx` |
 | Feed (followed users' check-ins, cursor-paginated, page size 20) | `components/FeedScreen.jsx` |
-| Follow-request inbox (private accounts only) | `components/InboxScreen.jsx` |
-| Search / discover (full-text + category filter chips) | `components/SearchScreen.jsx` |
+| Notifications (all 5 types, replaces old Inbox) | `components/NotificationsScreen.jsx` |
+| [legacy] Follow-request inbox | `components/InboxScreen.jsx` — superseded by NotificationsScreen; kept for `/inbox` → `/notifications` redirect milestone |
+| Discover (formerly Search; full-text + category filter chips) | `components/SearchScreen.jsx` |
 | Beverage detail (catalog, avg rating, flavor aggregate, recent check-ins) | `components/BeverageScreen.jsx` |
 | Producer detail (i18n name, region, founded, website, beverage list) | `components/ProducerScreen.jsx` |
 | Check-in (rating, review, tags, photos, price, purchase type) | `components/CheckInScreen.jsx` |
@@ -44,14 +50,14 @@ The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This d
 - **Feed** — `GET /feed?cursor=&limit=20`. Reverse-chronological. Response `{ items: [feedItem], next_cursor: string|null, has_more: bool }`. Each `feedItem` includes `{ id, user: {handle, display_name, avatar}, beverage: {id, name, kanji, producer, region}, rating?, review?, tags, toasts: count, you_toasted: bool, photo_count, created_at }`. Exclude the requester's own check-ins (SPEC §5.2).
 - **Toast** — `POST /checkins/:id/toast`, `DELETE /checkins/:id/toast`. Idempotent. One per user per check-in (SPEC §5.3). Returns the new `{ toasts, you_toasted }`.
 - **Follow** — `POST /follow/:user_id`, `DELETE /follow/:user_id`. For private targets, `POST` creates a request; for public targets it's instant.
-- **Follow requests (inbox)** — `GET /follow/requests?cursor=`, `POST /follow/requests/:id/approve`, `POST /follow/requests/:id/decline`. Required only when the requester's privacy is `'private'`. Each request: `{ id, user: {handle, display_name, avatar, bio}, created_at }`. The bell-badge count in `FeedScreen` derives from `GET /follow/requests?status=pending` count.
+- **Notifications inbox (subsumes follow requests)** — `GET /notifications?cursor=`, `POST /notifications/read` (body: `{ids: [uuid,...]}` XOR `{all: true}`), `GET /notifications/unread-count`. Each row: `{ id, type, actor: {handle, display_name, avatar} | null, check_in_id?, comment_id?, read_at: ISO|null, created_at }` where `type ∈ {toast, comment, follow, follow_request, follow_approved}`. The Notifications-tab unread dot derives from `GET /notifications/unread-count`. `follow_request` rows still trigger `POST /follow-requests/:id/approve` and `POST /follow-requests/:id/decline` via inline buttons (the standalone `GET /follow-requests` listing was retired — the notifications inbox replaced it).
 - **Collections** — `GET /collections`, `POST /collections`, `PATCH /collections/:id`, `DELETE /collections/:id`. `GET /collections/:id` returns the collection plus its beverages. `POST /collections/:id/items {beverage_id, note?}` adds; `DELETE /collections/:id/items/:beverage_id` removes. Default `Inventory` and `Wishlist` are seeded application-side on user creation (SPEC §6.8).
 - **Search** — `GET /search?q=&category=&cursor=`. Matches beverage and producer names across all locales (SPEC §7).
 
 ## UI behaviors implying specific API ergonomics
 
 - **Cursor pagination everywhere** (SPEC §6.6). Response shape is uniform: `{ items, next_cursor, has_more }`. Never offset. Feed page size = 20; other lists choose their own (document in `openapi.yaml`). The kit visualises this via `Primitives.jsx::PagingFooter` — Flutter should drive it from `has_more` + `next_cursor`.
-- **Follow-request inbox needs Approve / Decline endpoints**, not a generic mutation; the screen renders side-by-side buttons per row. The list endpoint should be paginated even though typical inboxes will be small.
+- **Follow-request rows on the notifications inbox need Approve / Decline endpoints**, not a generic mutation; each row renders side-by-side buttons. The notifications list endpoint is paginated even though typical inboxes will be small.
 - **Toast is a toggle**, one row per user × check-in. The Feed renders optimistically (count is updated client-side before the server confirms). Endpoint should be idempotent: hitting `POST` twice should not double the count.
 - **Collection picker multi-selects** the beverage's membership across all collections at once. A single `PUT /beverages/:id/collections {ids: [...]}` (set semantics) is more ergonomic than N add/remove calls. The picker also creates a new collection inline; the new ID needs to be returned synchronously so the picker can include it in the saved set.
 - **Rating is optional.** A `null` rating must round-trip without coercing to `0` or `0.0`. DB column allows `NULL`; API emits `null`; Flutter model uses `double?`.

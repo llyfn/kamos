@@ -130,23 +130,23 @@ abstract class AppLocalizations {
   /// **'Feed'**
   String get tabFeed;
 
-  /// No description provided for @tabSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search'**
-  String get tabSearch;
-
-  /// No description provided for @tabCheckIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Check-in'**
-  String get tabCheckIn;
-
   /// No description provided for @tabLists.
   ///
   /// In en, this message translates to:
   /// **'Lists'**
   String get tabLists;
+
+  /// No description provided for @tabDiscover.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover'**
+  String get tabDiscover;
+
+  /// No description provided for @tabNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get tabNotifications;
 
   /// No description provided for @tabMe.
   ///
@@ -169,7 +169,7 @@ abstract class AppLocalizations {
   /// No description provided for @feedEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Follow some people, or tap + to log your first.'**
+  /// **'Follow some people, or head to Discover to find your first.'**
   String get feedEmptyBody;
 
   /// No description provided for @feedMore.
@@ -1096,12 +1096,6 @@ abstract class AppLocalizations {
   /// **'{count} comments'**
   String feedCardCommentsCountLabel(int count);
 
-  /// No description provided for @inboxTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Follow requests'**
-  String get inboxTitle;
-
   /// No description provided for @inboxApprove.
   ///
   /// In en, this message translates to:
@@ -1114,17 +1108,83 @@ abstract class AppLocalizations {
   /// **'Decline'**
   String get inboxDecline;
 
-  /// No description provided for @inboxEmptyTitle.
+  /// No description provided for @notificationsTitle.
   ///
   /// In en, this message translates to:
-  /// **'No pending requests'**
-  String get inboxEmptyTitle;
+  /// **'Notifications'**
+  String get notificationsTitle;
 
-  /// No description provided for @inboxEmptyBody.
+  /// No description provided for @notificationsMarkAllRead.
   ///
   /// In en, this message translates to:
-  /// **'Follow requests appear here while your account is private.'**
-  String get inboxEmptyBody;
+  /// **'Mark all read'**
+  String get notificationsMarkAllRead;
+
+  /// No description provided for @notificationsMarkAllError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t mark notifications as read. Try again.'**
+  String get notificationsMarkAllError;
+
+  /// No description provided for @notificationsEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re all caught up.'**
+  String get notificationsEnd;
+
+  /// No description provided for @notificationsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing new'**
+  String get notificationsEmptyTitle;
+
+  /// No description provided for @notificationsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Toasts, comments, and follows from other people show up here.'**
+  String get notificationsEmptyBody;
+
+  /// No description provided for @notificationsDeletedActor.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted user'**
+  String get notificationsDeletedActor;
+
+  /// No description provided for @notificationsRequestStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Request no longer pending.'**
+  String get notificationsRequestStale;
+
+  /// No description provided for @notificationsVerbToast.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} toasted your check-in.'**
+  String notificationsVerbToast(String actor);
+
+  /// No description provided for @notificationsVerbComment.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} commented on your check-in.'**
+  String notificationsVerbComment(String actor);
+
+  /// No description provided for @notificationsVerbFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} started following you.'**
+  String notificationsVerbFollow(String actor);
+
+  /// No description provided for @notificationsVerbFollowRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} requested to follow you.'**
+  String notificationsVerbFollowRequest(String actor);
+
+  /// No description provided for @notificationsVerbFollowApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} approved your follow request.'**
+  String notificationsVerbFollowApproved(String actor);
 
   /// No description provided for @beverageDetailAbv.
   ///

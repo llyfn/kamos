@@ -102,11 +102,18 @@ class ApiPaths {
 
   // social
   static String userFollow(String username) => '/v1/users/$username/follow';
-  static const followRequests = '/v1/follow-requests';
+  // Note: GET /v1/follow-requests is removed by the backend alongside the
+  // standalone Inbox screen (ARCH-005). The approve / decline endpoints
+  // stay — _FollowRequestActions in the notification row still calls them.
   static String followRequestApprove(String userId) =>
       '/v1/follow-requests/$userId/approve';
   static String followRequestDecline(String userId) =>
       '/v1/follow-requests/$userId/decline';
+
+  // notifications
+  static const notifications = '/v1/notifications';
+  static const notificationsRead = '/v1/notifications/read';
+  static const notificationsUnreadCount = '/v1/notifications/unread-count';
 
   // search + taxonomy
   static const search = '/v1/search';
@@ -136,7 +143,8 @@ class KamosApi {
       taxonomy = KamosTaxonomyApi(_dio),
       venues = KamosVenuesApi(_dio),
       uploads = KamosUploadsApi(_dio),
-      beverageRequests = KamosBeverageRequestsApi(_dio);
+      beverageRequests = KamosBeverageRequestsApi(_dio),
+      notifications = KamosNotificationsApi(_dio);
 
   // ignore: unused_field — held for symmetry; sub-APIs capture it directly.
   final Dio _dio;
@@ -155,6 +163,7 @@ class KamosApi {
   final KamosVenuesApi venues;
   final KamosUploadsApi uploads;
   final KamosBeverageRequestsApi beverageRequests;
+  final KamosNotificationsApi notifications;
 }
 
 // ---------------------------------------------------------------------------
@@ -590,20 +599,6 @@ class KamosSocialApi {
     await _dio.delete<dynamic>(ApiPaths.userFollow(username));
   }
 
-  Future<Map<String, dynamic>> followRequests({
-    String? cursor,
-    int limit = 20,
-  }) async {
-    final res = await _dio.get<dynamic>(
-      ApiPaths.followRequests,
-      queryParameters: {
-        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-        'limit': limit,
-      },
-    );
-    return _asMap(res.data);
-  }
-
   Future<void> approveFollowRequest(String userId) async {
     await _dio.post<dynamic>(ApiPaths.followRequestApprove(userId));
   }
@@ -711,6 +706,53 @@ class KamosBeverageRequestsApi {
 
   Future<void> submit(Map<String, dynamic> payload) async {
     await _dio.post<dynamic>(ApiPaths.beverageRequests, data: payload);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// notifications (SPEC §5.4 — in-app inbox + mark read + unread count)
+
+class KamosNotificationsApi {
+  KamosNotificationsApi(this._dio);
+  final Dio _dio;
+
+  /// Cursor pagination, page size 20 (SPEC §5.4). Returns the
+  /// `PageOfNotification` envelope `{ items, next_cursor, has_more }`.
+  Future<Map<String, dynamic>> list({
+    String? cursor,
+    int limit = 20,
+  }) async {
+    final res = await _dio.get<dynamic>(
+      ApiPaths.notifications,
+      queryParameters: {
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        'limit': limit,
+      },
+    );
+    return _asMap(res.data);
+  }
+
+  /// `POST /v1/notifications/read`. Exactly one of [ids] or [all] must be
+  /// supplied — the server returns 422 if neither or both are sent. The
+  /// response carries the rowcount of actually-transitioned rows so the
+  /// caller can decide whether to invalidate further state.
+  Future<Map<String, dynamic>> markRead({
+    List<String>? ids,
+    bool? all,
+  }) async {
+    final body = all == true
+        ? <String, dynamic>{'all': true}
+        : <String, dynamic>{'ids': ids ?? const <String>[]};
+    final res = await _dio.post<dynamic>(
+      ApiPaths.notificationsRead,
+      data: body,
+    );
+    return _asMap(res.data);
+  }
+
+  Future<Map<String, dynamic>> unreadCount() async {
+    final res = await _dio.get<dynamic>(ApiPaths.notificationsUnreadCount);
+    return _asMap(res.data);
   }
 }
 

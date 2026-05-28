@@ -24,13 +24,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tabFeed => 'フィード';
 
   @override
-  String get tabSearch => '探す';
-
-  @override
-  String get tabCheckIn => 'チェックイン';
-
-  @override
   String get tabLists => 'リスト';
+
+  @override
+  String get tabDiscover => '探す';
+
+  @override
+  String get tabNotifications => 'お知らせ';
 
   @override
   String get tabMe => 'マイページ';
@@ -42,7 +42,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get feedEmptyTitle => 'まだチェックインがありません';
 
   @override
-  String get feedEmptyBody => '誰かをフォローするか、＋から最初の一杯を記録しましょう。';
+  String get feedEmptyBody => '誰かをフォローするか、「探す」から最初の一杯を見つけましょう。';
 
   @override
   String get feedMore => 'もっと見る';
@@ -539,19 +539,59 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get inboxTitle => 'フォローリクエスト';
-
-  @override
   String get inboxApprove => '承認';
 
   @override
   String get inboxDecline => '辞退';
 
   @override
-  String get inboxEmptyTitle => '保留中のリクエストはありません';
+  String get notificationsTitle => 'お知らせ';
 
   @override
-  String get inboxEmptyBody => 'アカウントが非公開の間、リクエストはここに表示されます。';
+  String get notificationsMarkAllRead => 'すべて既読';
+
+  @override
+  String get notificationsMarkAllError => '既読にできませんでした。もう一度お試しください。';
+
+  @override
+  String get notificationsEnd => 'ここまでです。';
+
+  @override
+  String get notificationsEmptyTitle => '新着はありません';
+
+  @override
+  String get notificationsEmptyBody => '他のユーザーからの乾杯・コメント・フォローがここに表示されます。';
+
+  @override
+  String get notificationsDeletedActor => '削除されたユーザー';
+
+  @override
+  String get notificationsRequestStale => 'このリクエストは既に処理済みです。';
+
+  @override
+  String notificationsVerbToast(String actor) {
+    return '$actorがあなたのチェックインに乾杯しました。';
+  }
+
+  @override
+  String notificationsVerbComment(String actor) {
+    return '$actorがあなたのチェックインにコメントしました。';
+  }
+
+  @override
+  String notificationsVerbFollow(String actor) {
+    return '$actorがあなたをフォローしました。';
+  }
+
+  @override
+  String notificationsVerbFollowRequest(String actor) {
+    return '$actorからフォローリクエストが届きました。';
+  }
+
+  @override
+  String notificationsVerbFollowApproved(String actor) {
+    return '$actorがあなたのフォローリクエストを承認しました。';
+  }
 
   @override
   String get beverageDetailAbv => '度数';

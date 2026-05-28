@@ -225,10 +225,17 @@ class PagingFooter extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.hasMore,
+    this.endLabel,
   });
 
   final bool isLoading;
   final bool hasMore;
+
+  /// Optional override for the "End of list" caption. Defaults to
+  /// [AppLocalizations.actionEndOfList] when null. The notifications screen
+  /// passes [AppLocalizations.notificationsEnd] ("You're all caught up.")
+  /// per design/notifications_ux.md §1.1.
+  final String? endLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +247,7 @@ class PagingFooter extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Center(
           child: Text(
-            '— ${l.actionEndOfList} —',
+            '— ${endLabel ?? l.actionEndOfList} —',
             style: TextStyle(
               fontFamily: 'NotoSansJP',
               fontSize: 11,

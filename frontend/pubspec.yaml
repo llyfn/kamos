@@ -31,6 +31,9 @@ dependencies:
   phosphor_flutter: ^2.1.0
   # Crash & error reporting (no-op when KAMOS_SENTRY_DSN is empty).
   sentry_flutter: ^9.20.0
+  # Mark-on-scroll in the notifications screen (SPEC §5.4): debounced
+  # 50%-visible-for-500ms threshold per design/notifications_ux.md §3.1.
+  visibility_detector: ^0.4.0+2
 
 dev_dependencies:
   build_runner: ^2.15.0

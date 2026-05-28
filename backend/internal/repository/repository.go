@@ -33,6 +33,7 @@ type Repos struct {
 	Admin         *AdminRepo
 	ModerationLog *ModerationLogRepo
 	Geo           *GeoRepo
+	Notifications *NotificationRepo
 }
 
 // New wires the bundle.
@@ -55,6 +56,7 @@ func New(db *pgxpool.Pool) *Repos {
 		Admin:         &AdminRepo{db: db},
 		ModerationLog: &ModerationLogRepo{db: db},
 		Geo:           &GeoRepo{db: db},
+		Notifications: &NotificationRepo{db: db},
 	}
 }
 

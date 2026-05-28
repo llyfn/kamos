@@ -78,7 +78,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "CreateComment validate", err)
 		return
 	}
-	out, err := h.Repos.Comments.Create(r.Context(), checkInID, uid, req.Body)
+	out, err := h.Services.Comment.Create(r.Context(), checkInID, uid, req.Body)
 	if err != nil {
 		h.writeErr(w, "CreateComment", err)
 		return
@@ -89,7 +89,8 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 // DeleteComment — DELETE /v1/comments/{id}.
 //
 // Allow if viewer owns the comment OR holds moderator+ role. Admin paths
-// additionally write a moderation_log row.
+// additionally write a moderation_log row. All policy lives in
+// CommentService.Delete — the handler is decode → call → respond.
 func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -97,47 +98,23 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 	}
 	commentID := chi.URLParam(r, "id")
 
-	c, err := h.Repos.Comments.Get(r.Context(), commentID)
-	if err != nil {
-		h.writeErr(w, "DeleteComment lookup", err)
-		return
-	}
-
-	// Stage 7 (M-12.2): User may be nil for orphaned comments (author
-	// hard-purged by the username-hold sweep). No owner means moderator+
-	// is the only path that can authorize the delete.
-	isOwner := c.User != nil && c.User.ID == uid
-	isAdminPath := false
-	if !isOwner {
-		// Check role. NOT a hot path — we only run this branch when the
-		// caller is trying to delete someone else's comment.
-		role, err := h.Repos.Users.GetUserRole(r.Context(), uid)
-		if err != nil {
-			h.writeErr(w, "DeleteComment role", err)
-			return
-		}
-		if role != domain.RoleAdmin && role != domain.RoleModerator {
-			httperr.WriteError(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
-			return
-		}
-		isAdminPath = true
-	}
-
 	// Optional body for the moderation path: notes are recorded in
-	// moderation_log. Owners can also send a body; we ignore it.
+	// moderation_log. The service ignores notes from owner callers.
 	var body struct {
 		Notes string `json:"notes,omitempty"`
 	}
 	_ = decodeJSON(r, &body)
 	var notesPtr *string
-	if isAdminPath && body.Notes != "" {
+	if body.Notes != "" {
 		n := body.Notes
 		notesPtr = &n
 	}
 
-	if err := h.Repos.Comments.SoftDelete(r.Context(), commentID, uid, isAdminPath, notesPtr); err != nil {
-		// Soft-deletes might race with a second admin click — treat ErrNotFound
-		// as success (idempotent), matching the toast / collection patterns.
+	isAdminPath, err := h.Services.Comment.Delete(r.Context(), commentID, uid, notesPtr)
+	if err != nil {
+		// Soft-deletes might race with a second admin click — treat
+		// ErrNotFound as 404 (idempotent), matching the toast / collection
+		// patterns.
 		if errors.Is(err, domain.ErrNotFound) {
 			httperr.WriteError(w, http.StatusNotFound, "NOT_FOUND", "not found")
 			return

@@ -28,12 +28,15 @@ const t = (node, locale) => {
 // is canonical); this is enough to render en/ja/ko samples in the demo.
 // ---------------------------------------------------------------------------
 const UI = {
-  // tabs
-  feed:     { en: 'Feed',     ja: 'フィード', ko: '피드' },
-  search:   { en: 'Search',   ja: '探す',     ko: '검색' },
-  checkin:  { en: 'Check in', ja: 'チェックイン', ko: '체크인' },
-  lists:    { en: 'Lists',    ja: 'リスト',   ko: '리스트' },
-  me:       { en: 'Me',       ja: 'マイページ', ko: '마이' },
+  // tabs (post-MVP nav rewrite per notifications_ux.md §1)
+  feed:           { en: 'Feed',          ja: 'フィード',           ko: '피드' },
+  lists:          { en: 'Lists',         ja: 'リスト',             ko: '리스트' },
+  discover:       { en: 'Discover',      ja: '探す',               ko: '둘러보기' },
+  notifications:  { en: 'Notifications', ja: '通知',               ko: '알림' },
+  me:             { en: 'Me',            ja: 'マイページ',         ko: '마이' },
+  // legacy tab labels (retained until Flutter removes Search/Check-in tab refs)
+  search:         { en: 'Search',        ja: '探す',               ko: '검색' },
+  checkin:        { en: 'Check in',      ja: 'チェックイン',       ko: '체크인' },
 
   // headers
   following:    { en: 'Following', ja: 'フォロー中', ko: '팔로잉' },
@@ -83,6 +86,35 @@ const UI = {
   errorRetry:    { en: 'Could not load. Tap to retry.',
                    ja: '読み込めませんでした。タップしてやり直し。',
                    ko: '불러올 수 없습니다. 탭하여 다시 시도하세요.' },
+
+  // notifications (SPEC §5.4 — full strings live in design/notifications_ux.md §4)
+  notificationsTitle:         { en: 'Notifications',                                  ja: '通知',                                                   ko: '알림' },
+  notificationsMarkAllRead:   { en: 'Mark all read',                                  ja: 'すべて既読',                                             ko: '모두 읽음' },
+  notificationsMarkAllError:  { en: 'Could not mark all read. Try again.',
+                                ja: 'すべて既読にできませんでした。もう一度お試しください。',
+                                ko: '모두 읽음으로 표시하지 못했습니다. 다시 시도하세요.' },
+  notificationsEnd:           { en: 'End of notifications',                           ja: '通知は以上です',                                         ko: '알림이 모두 표시되었습니다' },
+  notificationsEmptyTitle:    { en: 'Nothing new',                                    ja: '新しい通知はありません',                                 ko: '새 알림이 없습니다' },
+  notificationsEmptyBody:     { en: 'Toasts, comments, and follows from other people show up here.',
+                                ja: '他のユーザーからの乾杯・コメント・フォローはここに表示されます。',
+                                ko: '다른 사용자의 토스트, 댓글, 팔로우가 여기에 표시됩니다.' },
+  notificationsDeletedActor:  { en: 'Deleted user',                                   ja: '削除されたユーザー',                                     ko: '삭제된 사용자' },
+  // verb templates (use {actor} placeholder — actor name is rendered bold inline by the row)
+  notifVerbToast:            { en: '{actor} toasted your check-in.',
+                               ja: '{actor}があなたのチェックインに乾杯しました。',
+                               ko: '{actor}님이 회원님의 체크인에 토스트했습니다.' },
+  notifVerbComment:          { en: '{actor} commented on your check-in.',
+                               ja: '{actor}があなたのチェックインにコメントしました。',
+                               ko: '{actor}님이 회원님의 체크인에 댓글을 남겼습니다.' },
+  notifVerbFollow:           { en: '{actor} started following you.',
+                               ja: '{actor}があなたをフォローしました。',
+                               ko: '{actor}님이 회원님을 팔로우하기 시작했습니다.' },
+  notifVerbFollowRequest:    { en: '{actor} requested to follow you.',
+                               ja: '{actor}からフォローリクエストが届きました。',
+                               ko: '{actor}님이 팔로우를 요청했습니다.' },
+  notifVerbFollowApproved:   { en: '{actor} approved your follow request.',
+                               ja: '{actor}があなたのフォローリクエストを承認しました。',
+                               ko: '{actor}님이 회원님의 팔로우 요청을 수락했습니다.' },
 };
 
 // ---------------------------------------------------------------------------
@@ -328,8 +360,44 @@ const FOLLOW_REQUESTS = [
 // ---------------------------------------------------------------------------
 const RECENT_SEARCHES = ['Dassai', 'Niigata', 'Junmai Ginjo', 'Kuro Kirishima'];
 
+// ---------------------------------------------------------------------------
+// Notifications (SPEC §5.4) — five row types, cursor-paginated newest first.
+//   type ∈ 'toast' | 'comment' | 'follow' | 'follow_request' | 'follow_approved'
+//   read = boolean (mirrors read_at IS NOT NULL on the server)
+//   actor = null marks a soft-deleted actor → row shows "Deleted user" placeholder
+//   preview = optional one-line snippet (review excerpt for toast/comment; bio for follow_request)
+// ---------------------------------------------------------------------------
+const NOTIFICATIONS = [
+  { id: 'n1', type: 'toast',           read: false,
+    actor: { user: 'aiko',    displayName: 'Aiko',      avatar: 'A', tone: 'kinari' },
+    preview: 'Bright pear, soft rice. Finish lingers, faintly mineral.',
+    when: '2h' },
+  { id: 'n2', type: 'follow_request',  read: false,
+    actor: { user: 'sora_t',  displayName: 'Sora T.',   avatar: 'S', tone: 'kinari' },
+    preview: 'Junmai, Niigata.',
+    when: '3h' },
+  { id: 'n3', type: 'comment',         read: false,
+    actor: { user: 'minjun',  displayName: 'Minjun',    avatar: 'M', tone: 'mizu' },
+    preview: '여름 저녁에 얼음 잔뜩 넣어서. 단맛이 너무 무겁지 않아 좋았어요.',
+    when: '6h' },
+  { id: 'n4', type: 'follow_approved', read: true,
+    actor: { user: 'tetsu',   displayName: 'Tetsu',     avatar: 'T', tone: 'kon' },
+    when: '1d' },
+  { id: 'n5', type: 'follow',          read: true,
+    actor: { user: 'kentaro', displayName: 'Kentaro N.', avatar: 'K', tone: 'kinari' },
+    when: '2d' },
+  { id: 'n6', type: 'toast',           read: true,
+    actor: null,
+    preview: '燗で。45度くらいがちょうどいい。米の旨味がじわっと。',
+    when: '3d' },
+  { id: 'n7', type: 'comment',         read: true,
+    actor: { user: 'aiko',    displayName: 'Aiko',      avatar: 'A', tone: 'kinari' },
+    preview: 'Roasted sweet potato. Hot water, 6:4.',
+    when: '5d' },
+];
+
 Object.assign(window, {
   CATEGORY_LABELS, t, UI,
   CATALOG, PRODUCERS, FEED, COLLECTIONS, ME, MY_RECENT,
-  FOLLOW_REQUESTS, RECENT_SEARCHES,
+  FOLLOW_REQUESTS, RECENT_SEARCHES, NOTIFICATIONS,
 });

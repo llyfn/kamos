@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_toast.dart';
 import '../features/auth/providers/auth_state.dart';
+import '../features/notifications/providers/notification_providers.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -28,10 +29,75 @@ class KamosApp extends ConsumerWidget {
       scaffoldMessengerKey: kamosMessengerKey,
       routerConfig: router,
       builder: (context, child) {
-        return _ApiToastListener(child: child ?? const SizedBox.shrink());
+        return _ApiToastListener(
+          child: ResumeRefresher(child: child ?? const SizedBox.shrink()),
+        );
       },
     );
   }
+}
+
+/// Refreshes the unread notifications count when the app returns to the
+/// foreground. KAMOS doesn't poll — the bottom-tab dot is otherwise updated
+/// on tab-focus into Notifications and on mark-read mutations. This adds the
+/// third refresh hook called out in design/notifications_ux.md §3.5 ("fetched
+/// on app-start and on every tab-focus") so a user who backgrounded the app
+/// for hours sees an accurate dot on resume without having to navigate.
+///
+/// PERF-004: a 30-second debounce skips refreshes on rapid suspend/resume
+/// cycles (notification-center pull-down, control-center toggle, screen-lock
+/// flicker). The first resume after sign-in always refreshes; subsequent
+/// resumes within the window are dropped.
+///
+/// Public-by-name for `@visibleForTesting` access — the only intended
+/// in-app construction site is the [KamosApp.builder] above.
+@visibleForTesting
+class ResumeRefresher extends ConsumerStatefulWidget {
+  const ResumeRefresher({super.key, required this.child});
+  final Widget child;
+
+  @override
+  ConsumerState<ResumeRefresher> createState() => _ResumeRefresherState();
+}
+
+/// Cooldown between consecutive unread-count refreshes triggered by app
+/// resume. Anything shorter than this is treated as the same foregrounding
+/// event (PERF-004).
+@visibleForTesting
+const Duration kResumeRefreshDebounce = Duration(seconds: 30);
+
+class _ResumeRefresherState extends ConsumerState<ResumeRefresher>
+    with WidgetsBindingObserver {
+  DateTime? _lastRefresh;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final auth = ref.read(authStateProvider);
+    if (!auth.isAuthenticated) return;
+    final now = DateTime.now();
+    final last = _lastRefresh;
+    if (last != null && now.difference(last) < kResumeRefreshDebounce) {
+      return;
+    }
+    _lastRefresh = now;
+    ref.read(unreadCountProvider.notifier).refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Listens for transport-level toasts emitted by `AuthInterceptor` and shows
@@ -52,6 +118,10 @@ class _ApiToastListener extends ConsumerWidget {
       final message = switch (next) {
         ApiToastKind.unauthorized => l.errorUnauthorized,
         ApiToastKind.network => l.errorNetwork,
+        ApiToastKind.notificationsMarkAllFailed =>
+          l.notificationsMarkAllError,
+        ApiToastKind.notificationsRequestStale =>
+          l.notificationsRequestStale,
       };
       messenger
         ..hideCurrentSnackBar()
