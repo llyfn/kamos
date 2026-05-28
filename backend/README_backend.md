@@ -18,20 +18,20 @@ Go 1.26 REST API for KAMOS. PostgreSQL 18+ backend, JWT auth, Google OAuth, curs
 ```
 cmd/server/main.go          process entrypoint, graceful shutdown
 internal/
-  apierror/                 sentinel errors + canonical response shape
+  httperr/                  domain error → HTTP mapping (error types live in domain/)
   auth/                     JWT signer + Google ID-token verifier + bcrypt
   config/                   env loading
   cursor/                   keyset cursor encode/decode + Page[T]
   domain/                   request/response types + Validate() methods
   handlers/                 HTTP handlers, one file per domain
-  jobs/                     in-process background scheduler + 3 maintenance jobs
+  jobs/                     scheduler + 5 maintenance jobs (run by cmd/worker)
   middleware/               request id, recover, access log, JWT auth, rate-limit, OTel trace
   observability/            OTel traces+metrics + Sentry init (feature-flag gated)
   repository/               pgx-backed data access
   server/                   chi router wiring
 openapi.yaml                OpenAPI 3.1 contract
 .env.example
-migrations/                 (mirror of ../db/migrations)
+(migrations live at repo root: 001_initial.sql + 002_seed_taxonomy.sql)
 ```
 
 ## Endpoint surface (counts)
@@ -69,8 +69,8 @@ Or use a host install of Postgres 18 — that is what `local.env.example` assume
 
 ```bash
 export DATABASE_URL=postgres://kamos:kamos@localhost:5432/kamos?sslmode=disable
-psql "$DATABASE_URL" -f ../db/migrations/001_initial.sql
-psql "$DATABASE_URL" -f ../db/migrations/002_seed_taxonomy.sql
+psql "$DATABASE_URL" -f ../migrations/001_initial.sql
+psql "$DATABASE_URL" -f ../migrations/002_seed_taxonomy.sql
 ```
 
 Verify:
@@ -239,5 +239,5 @@ Each job runs **once on startup** ("cold start") so a fresh deploy doesn't wait 
 
 ## Open items
 
-- `// TODO`: SMTP wiring for verification email — currently the link is logged.
+- Verification + change-email mail ships via Resend (`internal/email/`); empty `RESEND_API_KEY`/`EMAIL_FROM` falls back to logging the link at INFO.
 - `// CONFIGURE`: `GOOGLE_CLIENT_ID` must be set before Google sign-in works. The verifier rejects with a clear error if unset.

@@ -188,9 +188,6 @@ Phase 0–7 of the post-MVP roadmap shipped end-to-end. Every external-vendor in
 | OTel + Sentry (Go + Flutter) | 1 | `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` + `SENTRY_DSN` | SDKs never initialize; no spans/events emitted. Cookbook §C4. |
 | Venue tag (Foursquare Places API) | 4 | `FOURSQUARE_API_KEY` | `GET /v1/venues/search` → `503 VENUE_SEARCH_DISABLED`. Check-in `venue.foursquare_id` upsert works without the key. Cookbook §C5. |
 | Admin web client hosting (Cloudflare Pages) | 5 | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (GitHub `production` env) | Admin client still compiles + runs locally; CI-gated `deploy-admin.yml` pushes `dist/` to the `kamos-admin` Pages project via Wrangler. Cookbook §C6. |
-
-The QA punch lists per phase live at `docs/history/qa/qa_report_phase{0..7}*.md` (per-layer + final). The historical MVP report is `docs/history/qa/qa_report_final.md`.
-
 ## 10. Verification — full integration smoke
 
 After `make up && make db-migrate`:

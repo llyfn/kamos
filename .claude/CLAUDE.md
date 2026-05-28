@@ -79,7 +79,7 @@ docs/                        # Long-form documentation
   db/                        #   schema.md, indexes.md, query_patterns.md
   history/                   #   00_brief.md + archived per-phase QA + review reports
   runbooks/                  #   deploy.md, secret-rotation.md, incident-response.md
-scripts/                     # Operational scripts (smoke.sh, e2e/, gen-tokens.sh)
+scripts/                     # Operational scripts (smoke.sh, migrate.sh, gen-tokens.sh)
 docker-compose.yml           # Postgres + API for local dev
 Makefile                     # One-line dev tasks
 ARCHITECTURE.md              # System overview + layer breakdowns

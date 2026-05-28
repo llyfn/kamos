@@ -131,7 +131,7 @@ Three vendors, all opt-in by env. Empty value = SDK never initializes, no degrad
 
 - **Sentry** — `kamos-api` project (Go) + `kamos-app` project (Flutter). Backend forwards panics + tagged release per `APP_VERSION`. Flutter forwards uncaught Dart errors; breadcrumb redactor strips auth tokens and PII (Stage 0).
 - **OTel** — traces + metrics over OTLP/HTTP from both the API and the worker. Exporter endpoint + headers come from `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS`. Prometheus `/metrics` is always-on locally.
-- **Grafana Cloud** — stack `kamos` (ap-northeast-0) hosts dashboards + alerts. Dashboard panels for cache hit rate / request latency are pinned at `docs/history/qa/qa_phase7_grafana_panel.json`.
+- **Grafana Cloud** — stack `kamos` (ap-northeast-0) hosts dashboards + alerts. Dashboard panels for cache hit rate / request latency are defined in the Grafana stack.
 
 Cross-process correlation uses the standard W3C trace headers.
 
@@ -144,4 +144,3 @@ Cross-process correlation uses the standard W3C trace headers.
 - Contribution mechanics: `CONTRIBUTING.md`
 - Runbooks: `docs/runbooks/`
 - Schema, indexes, query patterns: `docs/db/`
-- Per-phase QA + review history: `docs/history/`

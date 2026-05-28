@@ -4,7 +4,6 @@ Single bridging document for `db-architect`, `backend-engineer`, and `flutter-en
 
 ## Canonical sources
 - **SPEC of record** — `SPEC.md` (product spec)
-- **Brief** — `docs/history/00_brief.md` (sections 4, 6, 8 are load-bearing)
 - **Design tokens** — `design/colors_and_type.css` (single source of truth for hex / sp / dp / ms / radii / shadows / motion)
 - **Brand + voice + visual rules** — `design/README.md`
 - **Screens (runnable)** — `design/ui_kits/mobile/index.html` + `components/*.jsx`

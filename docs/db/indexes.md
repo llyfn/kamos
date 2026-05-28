@@ -1,6 +1,6 @@
 # KAMOS — Index Strategy
 
-This document explains every index in `migrations/001_initial.sql` and `migrations/002_seed_taxonomy.sql`, why it exists, which query pattern it serves, and which SPEC clause it supports. New indexes go in a **new** migration — never edit a deployed file.
+This document explains every index in `migrations/001_initial.sql` and `migrations/002_seed_taxonomy.sql`, why it exists, which query pattern it serves, and which SPEC clause it supports. New indexes go in a **new** migration — never edit a deployed file. Parenthetical migration numbers below (e.g. `014`, `017`) are historical: the pre-1.0 migrations were squashed into `001_initial.sql`.
 
 ## Principles
 
@@ -25,7 +25,7 @@ This document explains every index in `migrations/001_initial.sql` and `migratio
 
 | Index | Purpose |
 |---|---|
-| `idx_email_verifications_token` (unique) | Token redemption is a point lookup on the random token. |
+| `idx_email_verifications_token_hash` (unique) | Token redemption is a point lookup on the hashed token. |
 | `idx_email_verifications_user` | Resending verification: list a user's verification rows by `user_id`. |
 
 ### beverage_categories

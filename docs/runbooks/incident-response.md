@@ -44,7 +44,7 @@ These are the ones that have a low blast radius and a high probability of helpin
 
 ## Postmortem template
 
-File at `docs/history/incidents/YYYYMMDD-<slug>.md` within 48 hours.
+File at `docs/incidents/YYYYMMDD-<slug>.md` within 48 hours.
 
 ```md
 # Incident YYYY-MM-DD — <one-line summary>

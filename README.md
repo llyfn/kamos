@@ -84,7 +84,7 @@ admin/          React admin web client
 migrations/     PostgreSQL migrations (append-only)
 design/         Design system: tokens, brand doc, UI kit, previews
 docs/           Long-form docs (db/, runbooks/)
-scripts/        Operational scripts (smoke, e2e, token codegen)
+scripts/        Operational scripts (smoke, migrate, token codegen)
 ```
 
 ## License

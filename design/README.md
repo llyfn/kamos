@@ -12,7 +12,7 @@ KAMOS is to Japanese craft spirits what Untappd is to beer: a place to log what 
 | Source | Path | Notes |
 |---|---|---|
 | Logo | `assets/logo.png` (recolored from original brief artwork) | Two ceramic cups in a *kanpai* / cheers gesture |
-| Spec & overview | This repo — `README.md`, `SPEC.md` | Product spec only; **no UI codebase exists yet**, so this design system is greenfield, anchored to the spec |
+| Spec & overview | This repo — `README.md`, `SPEC.md` | The Flutter app (`frontend/`) and admin SPA (`admin/`) are built; this design system remains the source of truth for tokens, voice, and visual rules |
 
 > Reader does not need access to the source repo; the spec content used here is summarised in this README.
 
