@@ -62,7 +62,7 @@ Every list endpoint:
 
 ```bash
 # Go: response shape
-grep -rn "next_cursor\|NextCursor" backend/internal/handler/
+grep -rn "next_cursor\|NextCursor" backend/internal/handlers/
 # Should appear for: /feed, /beverages, /producers (list), /checkins/by-user, etc.
 
 # OpenAPI
@@ -157,7 +157,7 @@ For each finding, name the agent who owns the fix:
 - Wireframe/spec ambiguity → `designer`
 - Two layers disagree on the contract and the spec is silent → flag to orchestrator; do not pick a side
 
-When SendMessage-ing fixes, include the file path, line number, and exact change. Do not say "fix the rating field" — say `backend/internal/handler/checkins.go:142: change rating type from int to float64 to match SPEC §4.2`.
+When SendMessage-ing fixes, include the file path, line number, and exact change. Do not say "fix the rating field" — say `backend/internal/handlers/checkins.go:142: change rating type from int to float64 to match SPEC §4.2`.
 
 ## Re-verification
 

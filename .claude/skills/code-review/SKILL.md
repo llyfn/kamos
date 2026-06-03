@@ -210,4 +210,4 @@ findings findings findings findings
 1. perf-reviewer fails partway through a large codebase
 2. Leader detects via `TaskGet` (others completed, perf in-progress past timeout)
 3. SendMessage perf-reviewer for status; no response in 2 rounds
-4. Leader writes report with 3 complete domains and a perf section saying "Performance review incomplete for `internal/handler/feed.go` and downstream — re-run scoped review"
+4. Leader writes report with 3 complete domains and a perf section saying "Performance review incomplete for `internal/handlers/feed.go` and downstream — re-run scoped review"

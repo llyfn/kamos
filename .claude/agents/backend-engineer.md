@@ -23,7 +23,7 @@ Follow the `go-api` skill for project structure, handler/repository patterns, au
 - Go source under `cmd/server`, `cmd/worker`, and `internal/`
 - `openapi.yaml` (OpenAPI 3.1) — the canonical API contract
 - `.env.example`
-- `README.md` — local dev setup and run instructions
+- `README_backend.md` — local dev setup and run instructions
 
 ## Communication protocol
 

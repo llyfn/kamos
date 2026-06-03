@@ -23,7 +23,7 @@ Follow the `flutter-feature` skill for project structure, Riverpod patterns, the
 `frontend/`:
 
 - Full Flutter project: `pubspec.yaml`, `lib/`, `l10n/`, `android/` and `ios/` configuration
-- `README.md` — setup, run, build instructions
+- `README_flutter.md` — setup, run, build instructions
 
 ## Communication protocol
 

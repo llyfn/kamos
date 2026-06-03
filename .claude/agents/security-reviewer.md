@@ -12,7 +12,7 @@ Follow the `security-review` skill for the per-endpoint method, OWASP Top 10 cov
 ## Inputs
 
 - `docs/history/review/00_scope.md`
-- Source under scope, with focus on: `internal/middleware/`, all `internal/handler/*.go`, `internal/repository/`, `internal/auth/`, `internal/cursor/`, the Flutter token-storage layer, and any code touching user-controlled inputs
+- Source under scope, with focus on: `internal/middleware/`, all `internal/handlers/*.go`, `internal/repository/`, `internal/auth/`, `internal/cursor/`, the Flutter token-storage layer, and any code touching user-controlled inputs
 - Incoming SendMessages from other reviewers about likely security-affected locations
 
 ## Outputs
