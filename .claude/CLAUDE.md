@@ -92,7 +92,7 @@ SPEC.md                      # Product spec (source of truth)
 
 KAMOS is built with a multi-agent harness. Sessions fall into one of three modes:
 
-1. **Orchestrated full-stack work** — invoke the `kamos-build` skill. It runs the full pipeline: designer → db-architect + backend-engineer (parallel) → flutter-engineer → qa-inspector. Use this for "build the app," "scaffold X feature end-to-end," or any request that touches multiple layers.
+1. **Multi-layer feature work** — invoke the `kamos-build` skill. It runs a vertical-slice pipeline for one feature: preflight → design → schema + API (+ admin, when in scope) → Flutter → final QA. Per-layer QA fires the moment each implementer reports done. Use this whenever the request touches ≥2 of: design, schema, API, admin, Flutter, i18n.
 2. **Code review** — invoke the `code-review` skill. It fans out four reviewer agents (arch / security / perf / style) and merges their findings.
 3. **Single-task work** — for a single bug fix, a single screen, a single endpoint, a single migration: just do the work directly using the relevant skill (`go-api`, `flutter-feature`, `db-schema`, `design-wireframe`) without spawning agents. Spawning a team for a one-line fix is the wrong tool.
 

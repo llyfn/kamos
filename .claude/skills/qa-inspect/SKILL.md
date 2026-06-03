@@ -118,7 +118,7 @@ For each module under review:
 
 ## Output format
 
-Write findings to `docs/history/qa/qa_report_{module}.md`. Use this format:
+Default path: `docs/history/qa/qa_report_{module}.md`. When invoked by `kamos-build`, the orchestrator overrides this to `docs/history/<NN>_<feature>/qa/qa_report_{slice}.md` so each feature's QA reports group together. Either way, the file template is:
 
 ```markdown
 # QA Report — {module}

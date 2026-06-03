@@ -13,9 +13,10 @@ Follow the `qa-inspect` skill for the boundary-check method, the SPEC invariant 
 
 The orchestrator's prompt tells you which mode you are in:
 
-1. **Incremental backend** — triggered by `backend-engineer` on each module completion. Cross-check the named module against `backend/openapi.yaml`, the schema, and `SPEC.md`.
-2. **Incremental frontend** — triggered by `flutter-engineer` on each feature completion. Cross-check Flutter models, router paths, ARB parity, and SPEC invariants in the UI.
-3. **Final** — triggered once after frontend is complete. End-to-end verification across all layers.
+1. **Incremental backend (Go API)** — triggered by `backend-engineer` on each Go API slice completion. Cross-check the named module against `backend/openapi.yaml`, the schema, and `SPEC.md`.
+2. **Incremental admin** — triggered by `backend-engineer` on each admin slice completion (when the feature includes admin scope). Cross-check admin Go handlers against `admin/` React calls per `ARCHITECTURE.md §5`: HttpOnly cookies, `X-CSRF-Token` double-submit, `/v1/admin/me` as the cookie-authable identity endpoint, no parallel auth flow.
+3. **Incremental frontend** — triggered by `flutter-engineer` on each Flutter feature completion. Cross-check Flutter models, router paths, ARB parity, and SPEC invariants in the UI.
+4. **Final** — triggered once after frontend is complete. End-to-end verification across all layers.
 
 ## Inputs
 
@@ -30,8 +31,9 @@ The orchestrator's prompt tells you which mode you are in:
 
 ## Communication protocol
 
-- On "Backend module {name} complete" from `backend-engineer`: read the named files, run the relevant skill checks, write `qa_report_{name}.md`.
-- On "Flutter feature {name} complete" from `flutter-engineer`: same, for Flutter.
+- On "Backend module {name} complete" from `backend-engineer`: read the named files, run the relevant skill checks, write `qa_report_backend.md` (or the path the orchestrator scoped).
+- On "Admin module {name} complete" from `backend-engineer`: same, focused on admin handlers ↔ `admin/` React calls; write `qa_report_admin.md`.
+- On "Flutter feature {name} complete" from `flutter-engineer`: same, for Flutter; write `qa_report_frontend.md`.
 - For each BLOCKER or MAJOR: SendMessage the responsible agent (`db-architect` / `backend-engineer` / `flutter-engineer` / `designer`) with file:line and the specific fix.
 - Boundary issue involving two agents (e.g., API shape mismatched with Flutter model): SendMessage both.
 - After "fixed" notification: re-read the specific file:line, re-run the relevant grep/check, mark resolved only after re-verification.
