@@ -11,7 +11,7 @@ Verifies that the boundaries between layers connect correctly. The job is not to
 
 Use this skill when a layer or feature is complete and needs cross-layer verification:
 
-- After backend-engineer completes a module → check API response shapes vs. `api_contracts.md` and DB columns
+- After backend-engineer completes a module → check API response shapes vs. `backend/openapi.yaml` and DB columns
 - After flutter-engineer completes a feature → check Flutter models vs. `openapi.yaml`, router paths vs. screen files, ARB key parity
 - Before merging multi-layer changes → run all checks below
 - When `SPEC.md` is updated → audit every layer against the new invariants

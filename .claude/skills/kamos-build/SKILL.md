@@ -13,7 +13,7 @@ Coordinates the five KAMOS agents through a phased pipeline (single-agent → fa
 
 | Agent | Subagent type | Role | Skill | Output |
 |---|---|---|---|---|
-| designer | `designer` | Wireframes, design tokens, API contracts | `design-wireframe` | `design/` |
+| designer | `designer` | Wireframes (JSX), design tokens (CSS), screen ↔ data handoff | `design-wireframe` | `design/` (incl. `HANDOFF.md`) |
 | db-architect | `db-architect` | PostgreSQL schema + migrations | `db-schema` | `migrations/` + `docs/db/` |
 | backend-engineer | `backend-engineer` | Go REST API + OpenAPI spec | `go-api` | `backend/` |
 | flutter-engineer | `flutter-engineer` | Flutter mobile app | `flutter-feature` | `frontend/` |
@@ -22,7 +22,7 @@ Coordinates the five KAMOS agents through a phased pipeline (single-agent → fa
 ## Pipeline overview
 
 ```
-Phase 1 ── designer ─────────────────────────────────────► api_contracts.md, screen_specs.md
+Phase 1 ── designer ─────────────────────────────────────► design/{README.md, colors_and_type.css, ui_kits/mobile/, HANDOFF.md}
 Phase 2 ── db-architect ─────────────────────────────────► migrations/, query_patterns.md
         ── backend-engineer (waits for db) ──────────────► openapi.yaml, Go source
         ── qa-inspector (incremental per module) ────────► qa_report_{module}.md
@@ -49,7 +49,7 @@ Agent(
   name: "designer",
   subagent_type: "designer",
   model: "opus",
-  prompt: "Read docs/history/00_brief.md, SPEC.md, and README.md. Use the design-wireframe skill to produce all four design deliverables in design/: wireframes.md, design_tokens.md, screen_specs.md, api_contracts.md. Honor the SPEC invariants: category terminology per §2.1, rating in 0.5 steps per §4.2, cursor pagination per §5.2, default collections (Inventory, Wishlist) per §6.1. On completion: TaskUpdate to completed."
+  prompt: "Read docs/history/00_brief.md, SPEC.md, and README.md. Use the design-wireframe skill to maintain and extend the design system under design/: brand + foundations in README.md, tokens in colors_and_type.css, primitive previews under preview/, and the runnable mobile UI kit under ui_kits/mobile/. Update design/HANDOFF.md with the screen ↔ data-shape index that db-architect and backend-engineer consume. Honor the SPEC invariants: category terminology per §2.1, rating in 0.5 steps per §4.2, cursor pagination per §5.2, default collections (Inventory, Wishlist) per §6.1. Do not create wireframes.md / design_tokens.md / screen_specs.md / api_contracts.md — the skill forbids them. On completion: TaskUpdate to completed."
 )
 ```
 
@@ -65,19 +65,19 @@ TeamCreate(
       name: "db-architect",
       subagent_type: "db-architect",
       model: "opus",
-      prompt: "Read design/api_contracts.md and SPEC.md. Use the db-schema skill to design the full PostgreSQL schema, write migrations to migrations/, and write schema/index/query-pattern docs to docs/db/. Required invariants: rating NUMERIC(3,1) with CHECK 0.5..5.0; deleted_at TIMESTAMPTZ on users, check_ins, collections; default Inventory + Wishlist on user creation (handle in service layer or via trigger — document the choice). When migrations/ and docs/db/query_patterns.md are ready: SendMessage to backend-engineer 'DB ready'."
+      prompt: "Read design/HANDOFF.md and SPEC.md. Use the db-schema skill to design the full PostgreSQL schema, write migrations to migrations/, and write schema/index/query-pattern docs to docs/db/. Required invariants: rating NUMERIC(3,1) with CHECK 0.5..5.0; deleted_at TIMESTAMPTZ on users, check_ins, collections; default Inventory + Wishlist on user creation (handle in service layer or via trigger — document the choice). When migrations/ and docs/db/query_patterns.md are ready: SendMessage to backend-engineer 'DB ready'."
     },
     {
       name: "backend-engineer",
       subagent_type: "backend-engineer",
       model: "opus",
-      prompt: "Read design/api_contracts.md and SPEC.md. Use the go-api skill to implement Go API endpoints in backend/. Wait for SendMessage 'DB ready' from db-architect before implementing repository layer. Required invariants: cursor pagination on all list endpoints (next_cursor + has_more); JWT middleware applied to all non-public routes; rating field as numeric with one decimal. After each module is feature-complete (auth, beverages, checkins, feed, social, collection): SendMessage to qa-inspector 'Backend module {name} complete' with paths to changed files."
+      prompt: "Read design/HANDOFF.md and SPEC.md. Use the go-api skill to implement Go API endpoints in backend/ and own backend/openapi.yaml as the canonical API contract. Wait for SendMessage 'DB ready' from db-architect before implementing repository layer. Required invariants: cursor pagination on all list endpoints (next_cursor + has_more); JWT middleware applied to all non-public routes; rating field as numeric with one decimal. After each module is feature-complete (auth, beverages, checkins, feed, social, collection): SendMessage to qa-inspector 'Backend module {name} complete' with paths to changed files. On openapi.yaml completion: SendMessage flutter-engineer 'OpenAPI ready at backend/openapi.yaml'."
     },
     {
       name: "qa-inspector",
       subagent_type: "qa-inspector",
       model: "opus",
-      prompt: "Use the qa-inspect skill. Monitor for SendMessage 'Backend module {name} complete' from backend-engineer. For each notification: read the named files, cross-check Go handler response shapes against api_contracts.md, verify DB column names match Go struct json tags, check index coverage for the module's query patterns, run the SPEC invariant grep checks. Write qa_report_{module}.md to docs/history/qa/. SendMessage BLOCKER and MAJOR issues to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix. After re-verification of fixes, mark issues resolved."
+      prompt: "Use the qa-inspect skill. Monitor for SendMessage 'Backend module {name} complete' from backend-engineer. For each notification: read the named files, cross-check Go handler response shapes against backend/openapi.yaml and design/HANDOFF.md, verify DB column names match Go struct json tags, check index coverage for the module's query patterns, run the SPEC invariant grep checks. Write qa_report_{module}.md to docs/history/qa/. SendMessage BLOCKER and MAJOR issues to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix. After re-verification of fixes, mark issues resolved."
     }
   ]
 )
@@ -114,7 +114,7 @@ TeamCreate(
       name: "flutter-engineer",
       subagent_type: "flutter-engineer",
       model: "opus",
-      prompt: "Read design/screen_specs.md, design/design_tokens.md, backend/openapi.yaml, and SPEC.md. Use the flutter-feature skill to implement the Flutter app in frontend/. Implement in this order: 1) app scaffold + router + theme, 2) auth, 3) beverage browse + detail, 4) check-in flow, 5) feed, 6) profile + follow, 7) collection. Required invariants: JWT in flutter_secure_storage (NEVER SharedPreferences); category strings exactly as SPEC §2.1; 0.5-step rating widget; cursor pagination consuming next_cursor; all three ARB files updated together. After each feature group: SendMessage to qa-inspector 'Flutter feature {name} complete' with paths."
+      prompt: "Read design/README.md, design/colors_and_type.css, design/ui_kits/mobile/, design/HANDOFF.md, backend/openapi.yaml, and SPEC.md. Use the flutter-feature skill to implement the Flutter app in frontend/. Implement in this order: 1) app scaffold + router + theme, 2) auth, 3) beverage browse + detail, 4) check-in flow, 5) feed, 6) profile + follow, 7) collection, 8) notifications. Required invariants: JWT in flutter_secure_storage (NEVER SharedPreferences); category strings exactly as SPEC §2.1; 0.5-step rating widget; cursor pagination consuming next_cursor; all three ARB files updated together. After each feature group: SendMessage to qa-inspector 'Flutter feature {name} complete' with paths."
     },
     {
       name: "qa-inspector",
@@ -182,7 +182,7 @@ Agents write production code to `backend/`, `frontend/`, `migrations/`, `design/
 
 | Situation | Action |
 |---|---|
-| Designer's `api_contracts.md` is incomplete | Continue; qa-inspector flags missing endpoints in module reports |
+| Designer's `HANDOFF.md` is incomplete | Continue; qa-inspector flags missing endpoints in module reports |
 | `db-architect` and `backend-engineer` disagree on schema | db-architect's migrations are authoritative; backend-engineer adapts |
 | Flutter blocked by missing API | flutter-engineer stubs with mock data and a `// STUB:` comment; resumes when OpenAPI updates |
 | QA reports BLOCKER | Halt the dependent task; SendMessage responsible agent; if no fix in 2 rounds, halt the phase and escalate to user |
