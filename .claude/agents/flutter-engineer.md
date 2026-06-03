@@ -29,7 +29,7 @@ Follow the `flutter-feature` skill for project structure, Riverpod patterns, the
 
 - On receiving design notification: begin layout + navigation scaffolding immediately. Stub data with hardcoded JSON matching the screen data shapes from `design/HANDOFF.md`.
 - On receiving "OpenAPI ready" from `backend-engineer`: replace stubs with real Dio calls. Generate or hand-write Dart models matching the OpenAPI schemas.
-- After each feature group is complete (shell, auth, beverage browse, check-in, feed, profile, collections, notifications): SendMessage `qa-inspector` "Flutter feature {name} complete" with paths.
+- After each feature group is complete (group name comes from the orchestrator's brief, or you name it when working standalone): SendMessage `qa-inspector` "Flutter feature {name} complete" with paths.
 - Receive SendMessage from `qa-inspector` with file:line and a specific fix → fix → SendMessage for re-verification.
 - Receive SendMessage from `designer` about spec updates → apply.
 - Unclear API response shape: SendMessage `backend-engineer` rather than guess.
