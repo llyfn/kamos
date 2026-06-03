@@ -135,8 +135,8 @@ Write to `docs/history/review/style_findings.md` with `[STYLE-NNN]` numbering. F
 
 (If pattern across files:)
 Affected locations:
-- backend/internal/handler/auth.go:42
-- backend/internal/handler/users.go:108
+- backend/internal/handlers/auth.go:42
+- backend/internal/handlers/users.go:108
 - ...
 ```
 

@@ -37,7 +37,7 @@ grep -rn "ListView(" frontend/lib/ | grep -v "ListView\.builder\|ListView\.separ
 grep -rn "Image\.network(" frontend/lib/
 
 # Synchronous file/HTTP in handlers (Go)
-grep -rn "http\.Get\|os\.ReadFile\|ioutil\.ReadFile" backend/internal/handler/
+grep -rn "http\.Get\|os\.ReadFile\|ioutil\.ReadFile" backend/internal/handlers/
 ```
 
 ## N+1 detection — common Go pattern

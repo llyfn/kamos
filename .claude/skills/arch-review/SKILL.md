@@ -9,7 +9,7 @@ Evaluates structural integrity. Catches problems that aren't bugs, security issu
 
 ## Method
 
-1. Start at the entry point (`cmd/api/main.go`, `lib/main.dart`) and trace outward.
+1. Start at the entry point (`cmd/server/main.go`, `cmd/worker/main.go`, `lib/main.dart`) and trace outward.
 2. Build a mental dependency graph. Flag anything that points the wrong way (a repository importing a handler type, a feature importing another feature directly).
 3. For each module, ask: what does this know about? What should it not know about?
 4. Identify the seams — where would you split this if one part needed to scale independently?

@@ -11,7 +11,7 @@ Verifies that the boundaries between layers connect correctly. The job is not to
 
 Use this skill when a layer or feature is complete and needs cross-layer verification:
 
-- After backend-engineer completes a module → check API response shapes vs. `api_contracts.md` and DB columns
+- After backend-engineer completes a module → check API response shapes vs. `backend/openapi.yaml` and DB columns
 - After flutter-engineer completes a feature → check Flutter models vs. `openapi.yaml`, router paths vs. screen files, ARB key parity
 - Before merging multi-layer changes → run all checks below
 - When `SPEC.md` is updated → audit every layer against the new invariants
@@ -62,7 +62,7 @@ Every list endpoint:
 
 ```bash
 # Go: response shape
-grep -rn "next_cursor\|NextCursor" backend/internal/handler/
+grep -rn "next_cursor\|NextCursor" backend/internal/handlers/
 # Should appear for: /feed, /beverages, /producers (list), /checkins/by-user, etc.
 
 # OpenAPI
@@ -118,7 +118,7 @@ For each module under review:
 
 ## Output format
 
-Write findings to `docs/history/qa/qa_report_{module}.md`. Use this format:
+Default path: `docs/history/qa/qa_report_{module}.md`. When invoked by `kamos-build`, the orchestrator overrides this to `docs/history/<NN>_<feature>/qa/qa_report_{slice}.md` so each feature's QA reports group together. Either way, the file template is:
 
 ```markdown
 # QA Report — {module}
@@ -157,7 +157,7 @@ For each finding, name the agent who owns the fix:
 - Wireframe/spec ambiguity → `designer`
 - Two layers disagree on the contract and the spec is silent → flag to orchestrator; do not pick a side
 
-When SendMessage-ing fixes, include the file path, line number, and exact change. Do not say "fix the rating field" — say `backend/internal/handler/checkins.go:142: change rating type from int to float64 to match SPEC §4.2`.
+When SendMessage-ing fixes, include the file path, line number, and exact change. Do not say "fix the rating field" — say `backend/internal/handlers/checkins.go:142: change rating type from int to float64 to match SPEC §4.2`.
 
 ## Re-verification
 

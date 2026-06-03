@@ -11,16 +11,21 @@ Implements the KAMOS Go REST API: HTTP handlers, middleware stack, auth (JWT + G
 
 ```
 backend/
-├── cmd/api/main.go         — bootstrap, config load, router wiring
+├── cmd/server/main.go      — HTTP listener bootstrap, config load, router wiring
+├── cmd/worker/main.go      — background-job scheduler (single replica)
 ├── internal/
 │   ├── config/             — Config struct, env loading
-│   ├── handler/            — HTTP handlers (one file per domain)
-│   ├── middleware/         — auth, cors, logger, ratelimit
-│   ├── model/              — domain structs
+│   ├── handlers/           — HTTP handlers (one file per aggregate)
+│   ├── middleware/         — auth, cors, logger, ratelimit, etag, otel, admin cookie + CSRF
+│   ├── domain/             — request/response types + validate.SanitizeText
 │   ├── repository/         — pgx-based DB access
-│   ├── service/            — business logic (when needed)
-│   └── apierror/           — sentinel errors + JSON response helpers
-├── pkg/jwt/                — token sign/verify helpers
+│   ├── service/            — orchestration, transactions, cache invalidation
+│   ├── auth/               — JWT + Google + soft-deleted-user cache
+│   ├── cache/              — Backend interface (InProcess + Redis + notify)
+│   ├── cursor/             — HMAC-signed cursor envelopes
+│   ├── httperr/            — domain error → HTTP mapping
+│   ├── jobs/               — scheduler + jobs (pg_try_advisory_lock-wrapped)
+│   └── observability/      — Sentry + OTel + Prometheus wiring
 ├── openapi.yaml
 ├── .env.example
 └── README_backend.md
@@ -58,7 +63,7 @@ These come from `SPEC.md` and must be enforced in handlers / validators, not def
 ## Handler pattern
 
 ```go
-// internal/handler/checkins.go
+// internal/handlers/checkins.go
 func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
     user := middleware.UserFromContext(r.Context())
     if user == nil { respondError(w, http.StatusUnauthorized, "unauthorized"); return }

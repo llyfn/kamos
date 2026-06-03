@@ -24,7 +24,7 @@ Write migrations to `migrations/` at the repo root and design docs to `docs/db/`
 
 ## Workflow
 
-1. Read `design/api_contracts.md` and `SPEC.md`. Every response field must trace to a column.
+1. Read `design/HANDOFF.md` and `SPEC.md`. Every screen data shape listed in the handoff must trace to a column.
 2. Apply the entity rules below.
 3. Write migrations in numerical order, each in a single transaction.
 4. Document indexes per query pattern.
