@@ -90,6 +90,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInCta => '체크인';
 
   @override
+  String get checkInEdit => '체크인 수정';
+
+  @override
+  String get checkInDelete => '체크인 삭제';
+
+  @override
+  String get checkInDeleteConfirm => '이 체크인을 삭제할까요?';
+
+  @override
+  String get checkInEditDiscardConfirm => '변경 사항을 취소할까요?';
+
+  @override
   String get checkInReviewLabel => '리뷰';
 
   @override
@@ -252,7 +264,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authPasswordTooShort => '너무 짧습니다';
 
   @override
-  String get authTagline => '니혼슈, 쇼츄, 리큐어를 기록하는 앱.';
+  String get authTagline => '장인의 술을 탐험하고, 기억에 새기다.';
 
   @override
   String get verifyPendingTitle => '이메일을 확인하세요';
@@ -497,10 +509,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get commentsSubmit => '게시';
 
   @override
+  String get commentEdit => '수정';
+
+  @override
   String get commentsDelete => '삭제';
 
   @override
   String get commentsDeleteConfirm => '이 댓글을 삭제하시겠어요?';
+
+  @override
+  String get editedMarker => '수정됨';
 
   @override
   String commentsCharCount(int count, int max) {
@@ -651,6 +669,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get actionDelete => '삭제';
+
+  @override
+  String get actionDiscard => '취소하기';
 
   @override
   String get actionPost => '게시';

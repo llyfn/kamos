@@ -16,8 +16,9 @@ import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../users/navigation.dart';
+import '../providers/comment_providers.dart';
 
-class CommentTile extends ConsumerWidget {
+class CommentTile extends ConsumerStatefulWidget {
   const CommentTile({super.key, required this.comment, required this.onDelete});
 
   final Comment comment;
@@ -26,7 +27,64 @@ class CommentTile extends ConsumerWidget {
   final Future<void> Function(String commentId) onDelete;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CommentTile> createState() => _CommentTileState();
+}
+
+class _CommentTileState extends ConsumerState<CommentTile> {
+  bool _editing = false;
+  bool _saving = false;
+  late final TextEditingController _editController;
+
+  @override
+  void initState() {
+    super.initState();
+    _editController = TextEditingController(text: widget.comment.body);
+  }
+
+  @override
+  void dispose() {
+    _editController.dispose();
+    super.dispose();
+  }
+
+  void _enterEdit() {
+    setState(() {
+      _editController.text = widget.comment.body;
+      _editing = true;
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() => _editing = false);
+  }
+
+  Future<void> _saveEdit() async {
+    if (_saving) return;
+    final newBody = _editController.text.trim();
+    if (newBody.isEmpty || newBody.length > 500) return;
+    if (newBody == widget.comment.body) {
+      setState(() => _editing = false);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(commentsProvider(widget.comment.checkInId).notifier)
+          .edit(commentId: widget.comment.id, body: newBody);
+      if (!mounted) return;
+      setState(() {
+        _editing = false;
+        _saving = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final comment = widget.comment;
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final me = ref.watch(meProvider).asData?.value;
@@ -104,11 +162,46 @@ class CommentTile extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         if (when != null)
-                          Text(
-                            elapsedShort(when, l),
-                            style: TextStyle(fontSize: 11, color: t.fg3),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                elapsedShort(when, l),
+                                style: TextStyle(fontSize: 11, color: t.fg3),
+                              ),
+                              if (comment.editedAt != null) ...[
+                                const SizedBox(width: 4),
+                                Text(
+                                  l.editedMarker,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                    color: t.fg3,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        if (isOwn)
+                        if (isOwn && !_editing)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Tooltip(
+                              message: l.commentEdit,
+                              child: InkWell(
+                                onTap: _enterEdit,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Icon(
+                                    Icons.edit_outlined,
+                                    size: 14,
+                                    color: t.fg3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (isOwn && !_editing)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Tooltip(
@@ -132,10 +225,38 @@ class CommentTile extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  comment.body,
-                  style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
-                ),
+                if (_editing) ...[
+                  TextField(
+                    controller: _editController,
+                    maxLength: 500,
+                    autofocus: true,
+                    maxLines: null,
+                    style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _saving ? null : _cancelEdit,
+                        child: Text(l.actionCancel),
+                      ),
+                      const SizedBox(width: 4),
+                      FilledButton(
+                        onPressed: _saving ? null : _saveEdit,
+                        child: Text(l.actionSave),
+                      ),
+                    ],
+                  ),
+                ] else
+                  Text(
+                    comment.body,
+                    style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
+                  ),
               ],
             ),
           ),
@@ -165,7 +286,7 @@ class CommentTile extends ConsumerWidget {
       ),
     );
     if (confirm == true) {
-      await onDelete(comment.id);
+      await widget.onDelete(widget.comment.id);
     }
   }
 }

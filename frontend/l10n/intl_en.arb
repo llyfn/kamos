@@ -35,6 +35,10 @@
 
   "checkInTitle": "Check-in",
   "checkInCta": "Check-in",
+  "checkInEdit": "Edit check-in",
+  "checkInDelete": "Delete check-in",
+  "checkInDeleteConfirm": "Delete this check-in?",
+  "checkInEditDiscardConfirm": "Discard your changes?",
   "checkInReviewLabel": "Review",
   "checkInReviewPlaceholder": "Pear, soft rice, a clean finish…",
   "checkInReviewTooLong": "Review is too long",
@@ -196,8 +200,10 @@
   "commentsEmpty": "No comments yet",
   "commentsComposerHint": "Add a comment…",
   "commentsSubmit": "Post",
+  "commentEdit": "Edit",
   "commentsDelete": "Delete",
   "commentsDeleteConfirm": "Delete this comment?",
+  "editedMarker": "edited",
   "commentsCharCount": "{count} / {max}",
   "@commentsCharCount": {
     "placeholders": {
@@ -260,6 +266,7 @@
   "actionSave": "Save",
   "actionCancel": "Cancel",
   "actionDelete": "Delete",
+  "actionDiscard": "Discard",
   "actionPost": "Post",
   "actionRetry": "Retry",
   "actionLoadingMore": "Loading more",

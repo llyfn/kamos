@@ -91,6 +91,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInCta => 'Check-in';
 
   @override
+  String get checkInEdit => 'Edit check-in';
+
+  @override
+  String get checkInDelete => 'Delete check-in';
+
+  @override
+  String get checkInDeleteConfirm => 'Delete this check-in?';
+
+  @override
+  String get checkInEditDiscardConfirm => 'Discard your changes?';
+
+  @override
   String get checkInReviewLabel => 'Review';
 
   @override
@@ -257,7 +269,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authPasswordTooShort => 'Too short';
 
   @override
-  String get authTagline => 'Discover and log Nihonshu, Shochu, and Liqueur.';
+  String get authTagline => 'Explore the craft, keep the memories.';
 
   @override
   String get verifyPendingTitle => 'Check your email';
@@ -511,10 +523,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commentsSubmit => 'Post';
 
   @override
+  String get commentEdit => 'Edit';
+
+  @override
   String get commentsDelete => 'Delete';
 
   @override
   String get commentsDeleteConfirm => 'Delete this comment?';
+
+  @override
+  String get editedMarker => 'edited';
 
   @override
   String commentsCharCount(int count, int max) {
@@ -668,6 +686,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get actionDelete => 'Delete';
+
+  @override
+  String get actionDiscard => 'Discard';
 
   @override
   String get actionPost => 'Post';

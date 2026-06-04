@@ -445,6 +445,24 @@ class KamosCheckinsApi {
     return _asMap(res.data);
   }
 
+  /// Slice 01 / SPEC §4.4. Author-only PATCH. `beverage_id` is immutable —
+  /// callers must not include it. `null`-valued fields are stripped so the
+  /// body is "present field" → "intended update"; absent → unchanged.
+  Future<Map<String, dynamic>> update(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _dio.patch<dynamic>(
+      ApiPaths.checkin(id),
+      data: _compact({...body}),
+    );
+    return _asMap(res.data);
+  }
+
+  Future<void> deleteOne(String id) async {
+    await _dio.delete<dynamic>(ApiPaths.checkin(id));
+  }
+
   Future<Map<String, dynamic>> attachPhoto({
     required String checkInId,
     required String uploadId,
@@ -488,6 +506,19 @@ class KamosCommentsApi {
   }) async {
     final res = await _dio.post<dynamic>(
       ApiPaths.checkinComments(checkInId),
+      data: {'body': body},
+    );
+    return _asMap(res.data);
+  }
+
+  /// Slice 01 / SPEC §5.4. Author-only PATCH; the body is the only mutable
+  /// field. Same sanitization rules as create.
+  Future<Map<String, dynamic>> update({
+    required String commentId,
+    required String body,
+  }) async {
+    final res = await _dio.patch<dynamic>(
+      ApiPaths.comment(commentId),
       data: {'body': body},
     );
     return _asMap(res.data);

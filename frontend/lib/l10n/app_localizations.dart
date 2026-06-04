@@ -250,6 +250,30 @@ abstract class AppLocalizations {
   /// **'Check-in'**
   String get checkInCta;
 
+  /// No description provided for @checkInEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit check-in'**
+  String get checkInEdit;
+
+  /// No description provided for @checkInDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete check-in'**
+  String get checkInDelete;
+
+  /// No description provided for @checkInDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this check-in?'**
+  String get checkInDeleteConfirm;
+
+  /// No description provided for @checkInEditDiscardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard your changes?'**
+  String get checkInEditDiscardConfirm;
+
   /// No description provided for @checkInReviewLabel.
   ///
   /// In en, this message translates to:
@@ -565,7 +589,7 @@ abstract class AppLocalizations {
   /// No description provided for @authTagline.
   ///
   /// In en, this message translates to:
-  /// **'Discover and log Nihonshu, Shochu, and Liqueur.'**
+  /// **'Explore the craft, keep the memories.'**
   String get authTagline;
 
   /// No description provided for @verifyPendingTitle.
@@ -1024,6 +1048,12 @@ abstract class AppLocalizations {
   /// **'Post'**
   String get commentsSubmit;
 
+  /// No description provided for @commentEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commentEdit;
+
   /// No description provided for @commentsDelete.
   ///
   /// In en, this message translates to:
@@ -1035,6 +1065,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete this comment?'**
   String get commentsDeleteConfirm;
+
+  /// No description provided for @editedMarker.
+  ///
+  /// In en, this message translates to:
+  /// **'edited'**
+  String get editedMarker;
 
   /// No description provided for @commentsCharCount.
   ///
@@ -1305,6 +1341,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get actionDelete;
+
+  /// No description provided for @actionDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get actionDiscard;
 
   /// No description provided for @actionPost.
   ///

@@ -90,6 +90,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInCta => 'チェックイン';
 
   @override
+  String get checkInEdit => 'チェックインを編集';
+
+  @override
+  String get checkInDelete => 'チェックインを削除';
+
+  @override
+  String get checkInDeleteConfirm => 'このチェックインを削除しますか？';
+
+  @override
+  String get checkInEditDiscardConfirm => '編集内容を破棄しますか？';
+
+  @override
   String get checkInReviewLabel => 'レビュー';
 
   @override
@@ -252,7 +264,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authPasswordTooShort => '短すぎます';
 
   @override
-  String get authTagline => '日本酒、焼酎、リキュールを記録するアプリ。';
+  String get authTagline => '醸しの世界を巡り、記憶に残す。';
 
   @override
   String get verifyPendingTitle => 'メールをご確認ください';
@@ -498,10 +510,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get commentsSubmit => '投稿';
 
   @override
+  String get commentEdit => '編集';
+
+  @override
   String get commentsDelete => '削除';
 
   @override
   String get commentsDeleteConfirm => 'このコメントを削除しますか？';
+
+  @override
+  String get editedMarker => '編集済み';
 
   @override
   String commentsCharCount(int count, int max) {
@@ -652,6 +670,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get actionDelete => '削除';
+
+  @override
+  String get actionDiscard => '破棄';
 
   @override
   String get actionPost => '投稿';

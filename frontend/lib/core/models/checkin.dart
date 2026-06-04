@@ -59,6 +59,10 @@ abstract class Checkin with _$Checkin {
     @Default(0) int commentCount,
     @Default('') String createdAt,
     @Default('') String updatedAt,
+    // Slice 01 / SPEC §4.4. Non-null once the author has touched any tracked
+    // field after creation. Rendering-only; surfaced as an "edited" marker
+    // beside the timestamp.
+    String? editedAt,
   }) = _Checkin;
 
   factory Checkin.fromJson(Map<String, dynamic> json) => Checkin(
@@ -89,6 +93,7 @@ abstract class Checkin with _$Checkin {
     commentCount: (json['comment_count'] as int?) ?? 0,
     createdAt: (json['created_at'] as String?) ?? '',
     updatedAt: (json['updated_at'] as String?) ?? '',
+    editedAt: json['edited_at'] as String?,
   );
 }
 
@@ -118,6 +123,7 @@ abstract class FeedItem with _$FeedItem {
     youToasted: (json['you_toasted'] as bool?) ?? false,
     commentCount: (json['comment_count'] as int?) ?? 0,
     createdAt: (json['created_at'] as String?) ?? '',
+    editedAt: json['edited_at'] as String?,
   );
   const FeedItem._();
   const factory FeedItem({
@@ -137,6 +143,9 @@ abstract class FeedItem with _$FeedItem {
     // servers (or omitted-key responses) remain wire-compatible.
     @Default(0) int commentCount,
     @Default('') String createdAt,
+    // Slice 01 / SPEC §4.4. Mirror of Checkin.editedAt; non-null when any
+    // tracked field has been touched after creation.
+    String? editedAt,
   }) = _FeedItem;
 
   /// Backwards-compatible accessor for callers that still read

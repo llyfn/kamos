@@ -38,6 +38,15 @@ class _ThrowingRepo implements CommentRepository {
 
   @override
   Future<void> deleteOwn(String commentId) async {}
+
+  @override
+  Future<Comment> edit({
+    required String commentId,
+    required String body,
+  }) async {
+    // ignore: only_throw_errors — test stub re-throws caller-supplied exception object verbatim.
+    throw toThrow;
+  }
 }
 
 Widget _wrap(ProviderContainer container, Widget child) =>

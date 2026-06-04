@@ -35,6 +35,10 @@
 
   "checkInTitle": "チェックイン",
   "checkInCta": "チェックイン",
+  "checkInEdit": "チェックインを編集",
+  "checkInDelete": "チェックインを削除",
+  "checkInDeleteConfirm": "このチェックインを削除しますか？",
+  "checkInEditDiscardConfirm": "編集内容を破棄しますか？",
   "checkInReviewLabel": "レビュー",
   "checkInReviewPlaceholder": "梨、柔らかな米、クリアな余韻…",
   "checkInReviewTooLong": "レビューが長すぎます",
@@ -196,8 +200,10 @@
   "commentsEmpty": "コメントはまだありません",
   "commentsComposerHint": "コメントを追加…",
   "commentsSubmit": "投稿",
+  "commentEdit": "編集",
   "commentsDelete": "削除",
   "commentsDeleteConfirm": "このコメントを削除しますか？",
+  "editedMarker": "編集済み",
   "commentsCharCount": "{count} / {max}",
   "@commentsCharCount": {
     "placeholders": {
@@ -260,6 +266,7 @@
   "actionSave": "保存",
   "actionCancel": "キャンセル",
   "actionDelete": "削除",
+  "actionDiscard": "破棄",
   "actionPost": "投稿",
   "actionRetry": "再試行",
   "actionLoadingMore": "読み込み中",

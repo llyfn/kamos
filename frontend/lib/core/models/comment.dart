@@ -30,6 +30,10 @@ abstract class Comment with _$Comment {
     required String body,
     @Default('') String createdAt,
     String? deletedAt,
+    // Slice 01 / SPEC §5.4. Non-null once the author has edited the body
+    // after creation. Rendering-only; surfaced as an "edited" marker
+    // beside the timestamp.
+    String? editedAt,
   }) = _Comment;
 
   factory Comment.fromJson(Map<String, dynamic> json) {
@@ -43,6 +47,7 @@ abstract class Comment with _$Comment {
       body: (json['body'] as String?) ?? '',
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
+      editedAt: json['edited_at'] as String?,
     );
   }
 }

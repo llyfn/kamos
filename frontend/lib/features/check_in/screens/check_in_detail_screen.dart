@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
+import '../../../core/models/checkin.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/async_widget.dart';
@@ -20,8 +21,11 @@ import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../comments/providers/comment_providers.dart';
 import '../../comments/widgets/comments_section.dart';
+import '../../feed/providers/feed_providers.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../../users/navigation.dart';
 import '../providers/checkin_providers.dart';
+import '../repository/checkin_repository.dart';
 
 class CheckInDetailScreen extends ConsumerWidget {
   const CheckInDetailScreen({super.key, required this.checkInId});
@@ -33,8 +37,16 @@ class CheckInDetailScreen extends ConsumerWidget {
     final t = context.tokens;
     final locale = Localizations.localeOf(context).languageCode;
     final async = ref.watch(checkInDetailProvider(checkInId));
+    final me = ref.watch(meProvider).asData?.value;
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        actions: [
+          if (async.asData != null &&
+              me != null &&
+              async.asData!.value.user.id == me.user.id)
+            _OwnDetailMenu(checkin: async.asData!.value),
+        ],
+      ),
       body: AsyncWidget(
         value: async,
         center: true,
@@ -99,9 +111,27 @@ class CheckInDetailScreen extends ConsumerWidget {
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  when != null ? elapsedShort(when, l) : '',
-                                  style: TextStyle(fontSize: 12, color: t.fg3),
+                                Row(
+                                  children: [
+                                    Text(
+                                      when != null ? elapsedShort(when, l) : '',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: t.fg3,
+                                      ),
+                                    ),
+                                    if (checkin.editedAt != null) ...[
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        l.editedMarker,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontStyle: FontStyle.italic,
+                                          color: t.fg3,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
@@ -233,5 +263,85 @@ class CheckInDetailScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Own-check-in overflow action menu mirrored from the feed card. Sits in
+/// the detail screen's AppBar and surfaces Edit + Delete affordances. Only
+/// rendered when the viewer is the author.
+class _OwnDetailMenu extends ConsumerWidget {
+  const _OwnDetailMenu({required this.checkin});
+  final Checkin checkin;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    final l = AppLocalizations.of(context);
+    return IconButton(
+      icon: Icon(Icons.more_horiz, size: 22, color: t.fg2),
+      onPressed: () => _showSheet(context, ref, l),
+    );
+  }
+
+  Future<void> _showSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l.checkInEdit),
+              onTap: () => Navigator.pop(sheetCtx, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(l.checkInDelete),
+              onTap: () => Navigator.pop(sheetCtx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'edit') {
+      if (!context.mounted) return;
+      await context.push('/check-ins/${checkin.id}/edit');
+    } else if (action == 'delete') {
+      if (!context.mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (dCtx) => AlertDialog(
+          title: Text(l.checkInDeleteConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dCtx, false),
+              child: Text(l.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dCtx, true),
+              child: Text(l.checkInDelete),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      try {
+        await ref.read(checkInRepositoryProvider).delete(checkin.id);
+        ref.invalidate(feedProvider);
+        ref.invalidate(userCheckinsProvider(checkin.user.username));
+        if (!context.mounted) return;
+        context.pop();
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.checkInPostFailed)));
+      }
+    }
   }
 }

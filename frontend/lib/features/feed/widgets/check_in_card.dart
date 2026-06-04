@@ -5,6 +5,7 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
@@ -18,19 +19,24 @@ import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/kanpai_button.dart';
 import '../../../shared/widgets/stars_display.dart';
+import '../../check_in/repository/checkin_repository.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../../users/navigation.dart';
+import '../providers/feed_providers.dart';
 
-class CheckInCard extends StatelessWidget {
+class CheckInCard extends ConsumerWidget {
   const CheckInCard({super.key, required this.item, required this.onToast});
 
   final FeedItem item;
   final VoidCallback onToast;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final locale = Localizations.localeOf(context).languageCode;
+    final me = ref.watch(meProvider).asData?.value;
+    final isOwn = me != null && me.user.id == item.user.id;
     final beverageName = resolveI18n(item.beverage.name, locale);
     final producerName = resolveI18n(item.beverage.producer.name, locale);
     // Migration 016: ProducerRef.region (free-text) was replaced by
@@ -72,9 +78,24 @@ class CheckInCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        when != null ? elapsedShort(when, l) : '',
-                        style: TextStyle(fontSize: 12, color: t.fg3),
+                      Row(
+                        children: [
+                          Text(
+                            when != null ? elapsedShort(when, l) : '',
+                            style: TextStyle(fontSize: 12, color: t.fg3),
+                          ),
+                          if (item.editedAt != null) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              l.editedMarker,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                                color: t.fg3,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
@@ -210,6 +231,10 @@ class CheckInCard extends StatelessWidget {
                   ),
                   onTap: () => context.push('/check-ins/${item.id}'),
                 ),
+                if (isOwn) ...[
+                  const Spacer(),
+                  _OwnCheckInMenu(item: item),
+                ],
               ],
             ),
           ],
@@ -308,6 +333,88 @@ class _PhotoTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Own-check-in overflow action menu. Renders a small `more_horiz` icon
+/// that opens a bottom sheet with Edit / Delete affordances. Only rendered
+/// when the viewer is the author (gated upstream by `meProvider`).
+class _OwnCheckInMenu extends ConsumerWidget {
+  const _OwnCheckInMenu({required this.item});
+  final FeedItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    final l = AppLocalizations.of(context);
+    return InkWell(
+      onTap: () => _showSheet(context, ref, l),
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Icon(Icons.more_horiz, size: 18, color: t.fg3),
+      ),
+    );
+  }
+
+  Future<void> _showSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l.checkInEdit),
+              onTap: () => Navigator.pop(sheetCtx, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(l.checkInDelete),
+              onTap: () => Navigator.pop(sheetCtx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'edit') {
+      if (!context.mounted) return;
+      await context.push('/check-ins/${item.id}/edit');
+    } else if (action == 'delete') {
+      if (!context.mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (dCtx) => AlertDialog(
+          title: Text(l.checkInDeleteConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dCtx, false),
+              child: Text(l.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dCtx, true),
+              child: Text(l.checkInDelete),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      try {
+        await ref.read(checkInRepositoryProvider).delete(item.id);
+        ref.invalidate(feedProvider);
+        ref.invalidate(userCheckinsProvider(item.user.username));
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.checkInPostFailed)));
+      }
+    }
   }
 }
 
