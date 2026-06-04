@@ -121,7 +121,7 @@ SELECT
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id AS producer_id, br.name_i18n AS producer_name_i18n,` + producerPrefectureSelectCols + `,
+  br.id AS producer_id, br.name_i18n AS producer_name_i18n, br.image_url AS producer_image_url,` + producerPrefectureSelectCols + `,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   ci.toast_count AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,

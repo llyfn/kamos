@@ -271,6 +271,6 @@ No index for `comment` or `follow_request` dedupe — both are intentionally non
 
 ## Future migrations to consider
 
-1. **`003_*.sql` — search FTS upgrade**: replace `'simple'` config with locale-specific configs once stemming requirements are finalized.
-2. **`004_*.sql` — toast count denorm**: if the feed's `LATERAL` count subquery becomes a hotspot (>5ms per row), denormalize `toast_count` onto `check_ins` and maintain via toast triggers.
-3. **`005_*.sql` — username release purge job**: a periodic job to hard-purge user rows whose `username_release_at < NOW() - interval '7 days'` (i.e. comfortably past their hold window) to keep the held-handle index small.
+1. **`004_*.sql` — search FTS upgrade**: replace `'simple'` config with locale-specific configs once stemming requirements are finalized.
+2. **`005_*.sql` — toast count denorm**: if the feed's `LATERAL` count subquery becomes a hotspot (>5ms per row), denormalize `toast_count` onto `check_ins` and maintain via toast triggers.
+3. **`006_*.sql` — username release purge job**: a periodic job to hard-purge user rows whose `username_release_at < NOW() - interval '7 days'` (i.e. comfortably past their hold window) to keep the held-handle index small.
