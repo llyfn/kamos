@@ -102,10 +102,6 @@ class BeverageListNotifier extends Notifier<BeverageListState> {
   }
 
   Future<void> refresh() async {
-    // Keep existing items + flip isLoading. The Discover screen uses
-    // `state.isLoading && state.items.isEmpty` as the cold-start signal —
-    // wiping items here would briefly trip that and flash the LogoLoader to
-    // a user who was just pulling to refresh or changing query filters.
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final page = await ref

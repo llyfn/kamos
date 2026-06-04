@@ -14,10 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Producer {
 
- String get id; I18nText get name; Prefecture? get prefecture; int? get foundedYear; String? get website; I18nText? get description;// Slice 02 (producer images): optional admin-uploaded image (logo /
-// brewery photo / label collage), resolved server-side from a
-// presigned R2 upload. Absent when the producer has no image.
-@JsonKey(name: 'image_url') String? get imageUrl;// Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
+ String get id; I18nText get name; Prefecture? get prefecture; int? get foundedYear; String? get website; I18nText? get description;@JsonKey(name: 'image_url') String? get imageUrl;// Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
 // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
 // /v1/search producer results — `null` then.
  int? get beverageCount; String get createdAt;
@@ -262,9 +259,6 @@ class _Producer implements Producer {
 @override final  int? foundedYear;
 @override final  String? website;
 @override final  I18nText? description;
-// Slice 02 (producer images): optional admin-uploaded image (logo /
-// brewery photo / label collage), resolved server-side from a
-// presigned R2 upload. Absent when the producer has no image.
 @override@JsonKey(name: 'image_url') final  String? imageUrl;
 // Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
 // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
@@ -373,10 +367,7 @@ $I18nTextCopyWith<$Res>? get description {
 /// @nodoc
 mixin _$ProducerRef {
 
- String get id; I18nText get name; Prefecture? get prefecture;// Slice 02 (producer images): mirrors Producer.imageUrl on the compact
-// embed so feed / check-in card / collection rows can render the
-// optional 16-dp producer thumbnail without a second fetch.
-@JsonKey(name: 'image_url') String? get imageUrl;
+ String get id; I18nText get name; Prefecture? get prefecture;@JsonKey(name: 'image_url') String? get imageUrl;
 /// Create a copy of ProducerRef
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -598,9 +589,6 @@ class _ProducerRef implements ProducerRef {
 @override final  String id;
 @override final  I18nText name;
 @override final  Prefecture? prefecture;
-// Slice 02 (producer images): mirrors Producer.imageUrl on the compact
-// embed so feed / check-in card / collection rows can render the
-// optional 16-dp producer thumbnail without a second fetch.
 @override@JsonKey(name: 'image_url') final  String? imageUrl;
 
 /// Create a copy of ProducerRef

@@ -589,7 +589,7 @@ abstract class AppLocalizations {
   /// No description provided for @authTagline.
   ///
   /// In en, this message translates to:
-  /// **'Explore the craft, keep the memories.'**
+  /// **'Explore the craft, share the memories.'**
   String get authTagline;
 
   /// No description provided for @verifyPendingTitle.

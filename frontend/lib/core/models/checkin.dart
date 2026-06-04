@@ -59,9 +59,6 @@ abstract class Checkin with _$Checkin {
     @Default(0) int commentCount,
     @Default('') String createdAt,
     @Default('') String updatedAt,
-    // Slice 01 / SPEC §4.4. Non-null once the author has touched any tracked
-    // field after creation. Rendering-only; surfaced as an "edited" marker
-    // beside the timestamp.
     String? editedAt,
   }) = _Checkin;
 
@@ -143,8 +140,6 @@ abstract class FeedItem with _$FeedItem {
     // servers (or omitted-key responses) remain wire-compatible.
     @Default(0) int commentCount,
     @Default('') String createdAt,
-    // Slice 01 / SPEC §4.4. Mirror of Checkin.editedAt; non-null when any
-    // tracked field has been touched after creation.
     String? editedAt,
   }) = _FeedItem;
 

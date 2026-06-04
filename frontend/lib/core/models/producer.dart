@@ -25,9 +25,6 @@ abstract class Producer with _$Producer {
     int? foundedYear,
     String? website,
     I18nText? description,
-    // Slice 02 (producer images): optional admin-uploaded image (logo /
-    // brewery photo / label collage), resolved server-side from a
-    // presigned R2 upload. Absent when the producer has no image.
     @JsonKey(name: 'image_url') String? imageUrl,
     // Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
     // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
@@ -61,9 +58,6 @@ abstract class ProducerRef with _$ProducerRef {
     required String id,
     required I18nText name,
     Prefecture? prefecture,
-    // Slice 02 (producer images): mirrors Producer.imageUrl on the compact
-    // embed so feed / check-in card / collection rows can render the
-    // optional 16-dp producer thumbnail without a second fetch.
     @JsonKey(name: 'image_url') String? imageUrl,
   }) = _ProducerRef;
 

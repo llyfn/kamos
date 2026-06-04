@@ -61,11 +61,9 @@ const (
 // directly to R2 with the supplied Content-Type, then calls
 // POST /v1/check-ins/{id}/photos with the returned upload_id.
 //
-// `purpose` is "check_in" by default (back-compat with the pre-Phase-2
-// shape that did not send the field). `purpose=producer` is admin-only
-// and is gated under POST /v1/admin/uploads/photo-presign in the
-// router; this public route rejects it with 403 to keep the mobile
-// surface from minting producer blobs.
+// `purpose` defaults to "check_in"; `purpose=producer` is admin-only and
+// rejected with 403 on this public route — admins use the dedicated
+// /v1/admin/uploads/photo-presign route instead.
 //
 // When the server is running without R2 configured (R2_BUCKET unset), this
 // endpoint returns 503 STORAGE_DISABLED — a deliberate, machine-readable
@@ -74,21 +72,14 @@ func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 	h.photoPresign(w, r, "" /* purpose: take from body, default check_in */)
 }
 
-// AdminPhotoPresign — POST /v1/admin/uploads/photo-presign.
-//
-// Admin-mounted variant: forces purpose=producer regardless of the body
-// so a misconfigured admin client can't accidentally mint a check-in
-// blob. The route lives under /v1/admin/, which means the cookie-based
-// admin auth + CSRF middleware applies; only callers with the
-// `RoleAdmin` JWT can hit it.
+// AdminPhotoPresign — POST /v1/admin/uploads/photo-presign. Forces
+// purpose=producer so a misconfigured admin client can't mint a check-in
+// blob. Cookie + CSRF admin auth applies via the route mount.
 func (h *Handler) AdminPhotoPresign(w http.ResponseWriter, r *http.Request) {
 	h.photoPresign(w, r, photoPurposeProducer)
 }
 
-// photoPresign is the shared body for the two presign endpoints.
-// `forcedPurpose` is set by the admin route to override the body; the
-// public route passes "" to honor the body's `purpose` (with check_in
-// as the default).
+// `forcedPurpose != ""` overrides the body's purpose (admin route).
 func (h *Handler) photoPresign(w http.ResponseWriter, r *http.Request, forcedPurpose string) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -138,10 +129,6 @@ func (h *Handler) photoPresign(w http.ResponseWriter, r *http.Request, forcedPur
 	case photoPurposeCheckIn:
 		keyPrefix = "checkins"
 	case photoPurposeProducer:
-		// Producers are not user-uploadable in MVP. The dedicated
-		// admin route (forcedPurpose=producer) is the only way to
-		// reach this branch — a non-admin caller hitting the public
-		// route with purpose=producer is rejected.
 		if forcedPurpose != photoPurposeProducer {
 			httperr.WriteError(w, http.StatusForbidden, "ADMIN_ONLY",
 				"purpose=producer requires the admin presign route")

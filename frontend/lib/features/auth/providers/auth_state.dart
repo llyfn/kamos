@@ -27,11 +27,9 @@ class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
 
-  /// True once between a refresh-fail event and the first user acknowledgment
-  /// on the unauthorized fallback screen. The fallback widget reads this to
-  /// decide whether to render the calm "logo + retry" surface instead of the
-  /// sign-in form. Reset by `acknowledgeExpired()` (Retry tap) or by a
-  /// successful sign-in.
+  /// True between a refresh-fail event and the next `acknowledgeExpired()`
+  /// or successful sign-in. AuthScreen reads it to swap the sign-in form
+  /// for the calm fallback surface.
   final bool wasExpired;
 
   static const initial = AuthState(isAuthenticated: false, isLoading: true);

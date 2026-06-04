@@ -125,7 +125,7 @@ Admin-uploaded optional image on the `producers` row. Mobile renders it where it
 
 ### Placement
 
-- **`ProducerDetailScreen` (Flutter):** new hero block at the top, 16:9 aspect ratio, full-width minus the safe-area inset, rounded corners (`--radius-md`), `cached_network_image`. When `image_url == null`, render a calm kinari-tile (`--c-kinari`) at the same dimensions — keeps the header rhythm without drawing attention to absence.
+- **`ProducerDetailScreen` (Flutter):** 140-dp circular avatar centered above the name block, with a 1-dp `--c-border-1` outline (`cached_network_image` clipped through `ClipOval`). When `image_url == null`, the same-dimension circle is filled with `--c-kinari` — keeps the header rhythm without drawing attention to absence.
 - **`CheckInCard` (Flutter):** small 16-dp circular avatar (`cached_network_image` with `CircleAvatar` fallback) immediately to the left of the producer name in the beverage info row, **only when `producer.image_url != null`**. When null, do not insert anything (no empty gap, no placeholder). The producer name + region row already reads cleanly without it.
 - **`CatalogProducerForm.tsx` (admin):** image input slot beneath the prefecture row. Order: name (en/ja/ko) → prefecture → image → founded → website → description. Editing shows the current image as a preview tile with a "Clear" button below; creating shows an empty dotted-border drop target.
 

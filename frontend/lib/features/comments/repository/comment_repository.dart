@@ -70,8 +70,6 @@ class CommentRepository {
     }
   }
 
-  /// Slice 01 / SPEC §5.4 — author-only PATCH of the comment body. Mirrors
-  /// the create-side sanitization (1..500 chars, no C0 control characters).
   /// 404 from the server is normalized to [CommentDeletedException].
   Future<Comment> edit({
     required String commentId,

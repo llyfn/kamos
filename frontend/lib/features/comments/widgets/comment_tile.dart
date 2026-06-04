@@ -1,12 +1,4 @@
 // KAMOS — Single comment row.
-//
-// Renders avatar + username + body + relative timestamp. When the viewer is
-// the author, a small `more_horiz` icon sits to the right of the body and
-// opens a bottom sheet with Edit and Delete actions — mirroring the own-
-// check-in overflow pattern in `CheckInCard`. Edit swaps the body Text into
-// an inline TextField with Save / Cancel; Delete confirms then calls the
-// `onDelete` callback. Soft-deleted-author rows (`comment.user == null`)
-// have no isOwn predicate so the menu is hidden.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -239,10 +231,8 @@ class _CommentTileState extends ConsumerState<CommentTile> {
               ],
             ),
           ),
-          // Right meta column: timestamp on top, ellipsis stacked below.
-          // Lives outside the body Expanded so the body Column doesn't grow
-          // taller when the ellipsis appears — the right column simply
-          // hangs to the right of the body without pushing it down.
+          // Right meta column lives outside the body Expanded so the
+          // ellipsis can't grow the body Column's height.
           if (when != null || (isOwn && !_editing)) ...[
             const SizedBox(width: 6),
             Column(

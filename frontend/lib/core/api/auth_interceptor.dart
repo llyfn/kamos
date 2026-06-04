@@ -135,12 +135,9 @@ class AuthInterceptor extends Interceptor {
           err = retryErr;
         }
       } else {
-        // Refresh exchange failed. Tokens are already cleared by
-        // `_tryRefresh`. Notify the host so it can flip auth state to the
-        // `wasExpired` surface (a calm full-screen fallback in AuthScreen
-        // replaces the regular sign-in form). The toast is intentionally
-        // suppressed — the fallback page is the authoritative user-facing
-        // signal so we don't double-surface the same message.
+        // Tokens already cleared in `_tryRefresh`; the host flips auth
+        // state and AuthScreen renders the `wasExpired` fallback. No
+        // toast — the fallback is the user-facing signal.
         onAuthExpired();
       }
     } else if (status == 0 &&

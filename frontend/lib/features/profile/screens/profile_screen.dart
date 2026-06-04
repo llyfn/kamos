@@ -57,16 +57,10 @@ class MeProfileScreen extends ConsumerWidget {
         center: true,
         onRetry: () => ref.invalidate(meProvider),
         data: (me) => RefreshIndicator(
-          onRefresh: () async {
-            // Profile chrome (avatar / name / stats) lives on meProvider; the
-            // recent-check-ins strip lives on userCheckinsProvider(handle).
-            // Refresh both in parallel so the spinner stays up until the
-            // slower of the two completes.
-            await Future.wait<void>([
-              ref.refresh(meProvider.future),
-              ref.refresh(userCheckinsProvider(me.user.username).future),
-            ]);
-          },
+          onRefresh: () => Future.wait<void>([
+            ref.refresh(meProvider.future),
+            ref.refresh(userCheckinsProvider(me.user.username).future),
+          ]),
           child: _ProfileBody(user: me.user, stats: me.stats, isMe: true),
         ),
       ),
@@ -103,15 +97,10 @@ class OtherProfileScreen extends ConsumerWidget {
         center: true,
         onRetry: () => ref.invalidate(publicProfileProvider(username)),
         data: (p) => RefreshIndicator(
-          onRefresh: () async {
-            // Profile chrome + follow-state come from publicProfileProvider;
-            // the recent-check-ins strip is its own provider keyed on the
-            // handle. Both must reload for the spinner to honestly say "new".
-            await Future.wait<void>([
-              ref.refresh(publicProfileProvider(username).future),
-              ref.refresh(userCheckinsProvider(username).future),
-            ]);
-          },
+          onRefresh: () => Future.wait<void>([
+            ref.refresh(publicProfileProvider(username).future),
+            ref.refresh(userCheckinsProvider(username).future),
+          ]),
           child: _ProfileBody(
             user: p.user,
             stats: p.stats,
@@ -146,10 +135,8 @@ class _ProfileBody extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     return SingleChildScrollView(
-      // Always-scrollable physics so the surrounding RefreshIndicator can fire
-      // even when the rendered profile is shorter than the viewport. 16-dp
-      // horizontal padding mirrors the feed's ListView padding so the
-      // Recent-check-ins cards line up to the same width on both surfaces.
+      // AlwaysScrollableScrollPhysics so the surrounding RefreshIndicator
+      // fires even when the profile is shorter than the viewport.
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -294,8 +281,6 @@ class _RecentCheckins extends ConsumerWidget {
     final l = AppLocalizations.of(context);
     final async = ref.watch(userCheckinsProvider(username));
     return async.when(
-      // Same rationale as AsyncWidget — keep the previous list rendered while
-      // pull-to-refresh re-fetches so the strip doesn't flash to a spinner.
       skipLoadingOnReload: true,
       skipLoadingOnRefresh: true,
       data: (items) {

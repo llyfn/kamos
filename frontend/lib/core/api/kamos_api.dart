@@ -445,13 +445,9 @@ class KamosCheckinsApi {
     return _asMap(res.data);
   }
 
-  /// Slice 01 / SPEC §4.4. Author-only PATCH. `beverage_id` is immutable —
-  /// callers must not include it. The body is forwarded verbatim — the
-  /// caller is responsible for the tri-state distinction "absent =
-  /// unchanged" vs. "present null = clear" (see SPEC §4.4 + the backend
-  /// PATCH handler's `optionalField` parsing). Repositories MUST NOT
-  /// route through `_compact` here, otherwise an explicit clear of
-  /// `rating` / `review` / `price` collapses to a no-op.
+  /// Body forwarded verbatim — caller owns the tri-state contract
+  /// (absent vs. explicit null) on rating / review / price (SPEC §4.4).
+  /// Do NOT route through `_compact`: it would collapse explicit nulls.
   Future<Map<String, dynamic>> update(
     String id,
     Map<String, dynamic> body,
@@ -515,8 +511,6 @@ class KamosCommentsApi {
     return _asMap(res.data);
   }
 
-  /// Slice 01 / SPEC §5.4. Author-only PATCH; the body is the only mutable
-  /// field. Same sanitization rules as create.
   Future<Map<String, dynamic>> update({
     required String commentId,
     required String body,

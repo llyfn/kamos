@@ -50,11 +50,6 @@ class FeedNotifier extends Notifier<FeedState> {
   }
 
   Future<void> refresh({bool forceRefresh = false}) async {
-    // Keep existing items + flip the isLoading flag while we re-fetch. The
-    // FeedScreen treats `isLoading && items.isEmpty` as the cold-start
-    // signal — wiping items here would briefly trip that condition and
-    // show the LogoLoader to a user who was just pulling to refresh. The
-    // data swap happens atomically at the end, once the new page arrives.
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final page = await ref

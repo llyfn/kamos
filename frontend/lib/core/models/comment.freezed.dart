@@ -14,10 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Comment {
 
- String get id; String get checkInId; CheckinUser? get user; String get body; String get createdAt; String? get deletedAt;// Slice 01 / SPEC §5.4. Non-null once the author has edited the body
-// after creation. Rendering-only; surfaced as an "edited" marker
-// beside the timestamp.
- String? get editedAt;
+ String get id; String get checkInId; CheckinUser? get user; String get body; String get createdAt; String? get deletedAt; String? get editedAt;
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -236,9 +233,6 @@ class _Comment implements Comment {
 @override final  String body;
 @override@JsonKey() final  String createdAt;
 @override final  String? deletedAt;
-// Slice 01 / SPEC §5.4. Non-null once the author has edited the body
-// after creation. Rendering-only; surfaced as an "edited" marker
-// beside the timestamp.
 @override final  String? editedAt;
 
 /// Create a copy of Comment

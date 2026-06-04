@@ -460,11 +460,8 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-/// Calm post-expiry surface. Replaces the sign-in form whenever the auth
-/// interceptor's refresh exchange failed mid-session. Surfaces a large logo,
-/// a single localized line ("Please sign in again."), and a Retry button —
-/// no HTTP status, no exception text, no form. Retry clears `wasExpired` and
-/// the regular sign-in form returns on the next build.
+/// Shown when `AuthState.wasExpired` is true (refresh exchange failed).
+/// Retry clears the flag so the regular sign-in form returns.
 class _UnauthorizedFallback extends StatelessWidget {
   const _UnauthorizedFallback({required this.onRetry});
 

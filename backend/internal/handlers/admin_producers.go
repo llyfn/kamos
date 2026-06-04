@@ -236,9 +236,6 @@ func (h *Handler) AdminRestoreProducer(w http.ResponseWriter, r *http.Request) {
 // _log coupling is an admin concept, not a domain concept of producers.
 
 func (h *Handler) createProducerTx(ctx context.Context, adminID string, body AdminProducerCreate, prefectureID *string) (*repository.AdminProducerRow, error) {
-	// Resolve the optional image_upload_id → public R2 URL + the
-	// upload row we'll mark attached after the tx commits. Mirrors the
-	// check-in photo attach gate in UploadCheckinPhoto.
 	imageURL, uploadID, err := h.resolveProducerImageUpload(ctx, adminID, body.ImageUploadID)
 	if err != nil {
 		return nil, err
@@ -269,10 +266,9 @@ func (h *Handler) createProducerTx(ctx context.Context, adminID string, body Adm
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	// Flip the upload row to 'attached' so orphan-cleanup leaves the
-	// blob alone. Same belt-and-suspenders as UploadCheckinPhoto: the
-	// producer row is already committed, so a MarkAttached failure is
-	// logged and swallowed rather than rolling back the producer.
+	// MarkAttached after commit — orphan-cleanup belt-and-suspenders. A
+	// failure here is logged, not rolled back, so we don't lose the
+	// already-committed producer row over an attach-flag write.
 	if uploadID != "" {
 		if err := h.Repos.PhotoUploads.MarkAttached(ctx, uploadID, out.ID); err != nil {
 			h.Log.Warn("createProducerTx mark upload attached",
@@ -283,11 +279,7 @@ func (h *Handler) createProducerTx(ctx context.Context, adminID string, body Adm
 }
 
 func (h *Handler) updateProducerTx(ctx context.Context, adminID, id string, body AdminProducerUpdate, prefectureID *string) (*repository.AdminProducerRow, error) {
-	// Resolve the image inputs into the tri-state ImageURL pointer the
-	// repo Update expects:
-	//   * clear_image=true              → ptr to ""    (UPDATE image_url = NULL)
-	//   * image_upload_id set + valid    → ptr to URL   (UPDATE image_url = URL)
-	//   * both omitted / nil             → nil          (leave column unchanged)
+	// Tri-state imageURLPtr: &""  → NULL the column, &URL → set, nil → leave.
 	var imageURLPtr *string
 	var uploadID string
 	switch {
@@ -338,21 +330,10 @@ func (h *Handler) updateProducerTx(ctx context.Context, adminID, id string, body
 }
 
 // resolveProducerImageUpload turns an optional photo_uploads.id into the
-// public R2 URL the repository will persist on producers.image_url.
-// Returns:
-//
-//   - (nil, "", nil)          when uploadID is nil or empty (no image).
-//   - (ptr to URL, uid, nil)  on success; the caller marks `uid` attached
-//     after its tx commits.
-//   - (nil, "", err)          on validation or DB errors. Specific errors:
-//     ErrNotFound (unknown upload or cross-admin access),
-//     ErrUploadNotCompleted (upload already attached/orphaned).
-//
-// Mirrors the check-in attach gate in UploadCheckinPhoto + the bulk
-// resolver in resolveAddPhotos. We do NOT enforce purpose='producer'
-// here because the column is for orphan-cleanup categorization only —
-// the auth layer (admin-only presign route) is what prevents a user from
-// sending a check-in upload id for a producer.
+// public R2 URL the repository persists on producers.image_url. Errors:
+// ErrNotFound (unknown upload or cross-admin reuse), ErrUploadNotCompleted
+// (upload already attached or orphaned). Purpose='producer' is enforced
+// at the admin-only presign route, not here.
 func (h *Handler) resolveProducerImageUpload(ctx context.Context, adminID string, uploadID *string) (*string, string, error) {
 	if uploadID == nil || *uploadID == "" {
 		return nil, "", nil
@@ -361,8 +342,6 @@ func (h *Handler) resolveProducerImageUpload(ctx context.Context, adminID string
 	if err != nil {
 		return nil, "", err
 	}
-	// Ownership: the admin who is writing the producer must be the one
-	// who minted the presign.
 	if upload.UserID != adminID {
 		return nil, "", domain.ErrNotFound
 	}

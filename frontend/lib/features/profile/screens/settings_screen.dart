@@ -93,9 +93,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       data: (_) => const _DangerZoneSection(),
     );
 
-    // Edit profile sits at the very top of the Settings screen — the dedicated
-    // "Edit profile" pill that used to live on the Me page was removed in favor
-    // of the avatar tap-target + this single anchor.
     final editProfileTile = ListTile(
       leading: const Icon(Icons.person_outline),
       title: Text(l.profileEdit),

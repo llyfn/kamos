@@ -1,18 +1,4 @@
-// KAMOS — Edit check-in screen (Slice 01 / SPEC §4.4).
-//
-// Mirrors `CheckInScreen` for visual continuity but pre-fills the form from
-// the live row fetched via `checkInDetailProvider(id)`. The beverage is
-// rendered read-only (SPEC §4.4: beverage_id is immutable). Photo edits
-// produce two diffs the PATCH body carries:
-//
-//   * `add_photos`: upload_id values returned from the presign + R2 PUT
-//     flow on `CheckInRepository.uploadPhotoOnly` (the attach happens
-//     server-side inside the PATCH transaction).
-//   * `remove_photos`: `PhotoRef.url` values for photos the user removed
-//     from the original set.
-//
-// The 4-photo cap is enforced client-side (current − removed + added ≤ 4);
-// the server is the backstop and returns 422 PHOTO_CAP_EXCEEDED.
+// KAMOS — Edit check-in screen (SPEC §4.4).
 
 import 'dart:io';
 
@@ -40,18 +26,9 @@ import '../../profile/providers/profile_providers.dart';
 import '../providers/checkin_providers.dart';
 import '../repository/checkin_repository.dart';
 
-/// Builds the PATCH /v1/check-ins/{id} body with the tri-state contract
-/// SPEC §4.4 demands on `rating` / `review` / `price`:
-///
-///   * key absent     → backend leaves the column unchanged
-///   * key present null → backend clears the column
-///   * key present non-null → backend sets the column
-///
-/// We diff each tracked field against [original] so a user who clears a
-/// previously-set rating, review, or price sends an explicit `null`, and a
-/// user who never touched the field sends nothing at all. Hoisted to
-/// top-level (rather than buried in `_save`) so unit tests can exercise the
-/// table without spinning up a widget.
+/// Diffs each tracked field against [original] and emits the tri-state
+/// wire shape from SPEC §4.4 (absent = no change, explicit null = clear,
+/// value = set).
 @visibleForTesting
 Map<String, dynamic> buildEditCheckInBody({
   required Checkin original,
@@ -67,22 +44,17 @@ Map<String, dynamic> buildEditCheckInBody({
 }) {
   final body = <String, dynamic>{};
 
-  // rating: tri-state. Send the key only when the value differs from the
-  // original; emit explicit `null` for "had a rating → now cleared".
   if (rating != original.rating) {
     body['rating'] = rating;
   }
 
-  // review: tri-state with empty-string normalised to `null` so the clear
-  // intent is preserved across the wire. The composer's allowEmpty=true
-  // would otherwise leave a blank review on the row.
-  final originalReview = original.review;
+  // Empty string normalised to null so the clear intent reaches the server
+  // (allowEmpty=true on SanitizeText would otherwise persist "").
   final newReview = review.isEmpty ? null : review;
-  if (newReview != originalReview) {
+  if (newReview != original.review) {
     body['review'] = newReview;
   }
 
-  // tags: full replacement semantics. Always present when the set differs.
   final origTags = original.tags.map((t) => t.slug).toSet();
   final newTags = tags.toSet();
   if (origTags.length != newTags.length || !origTags.containsAll(newTags)) {

@@ -146,7 +146,7 @@ Tags are locale-aware (displayed in the user's locale). A check-in can have any 
 
 ### 4.4 Check-in Actions
 
-- Edit a check-in: all fields editable except the beverage after submission.
+- Edit a check-in: all fields editable except the beverage after submission. The UI renders a small italic "edited" marker next to the timestamp whenever `edited_at IS NOT NULL`.
 - Delete a check-in: soft-delete; removed from feed and counts, but not permanently erased.
 - A user can check-in the same beverage multiple times (like Untappd).
 
@@ -298,7 +298,7 @@ The following are explicitly out of MVP scope.
 Four items previously listed here were reopened for post-MVP (v1.1) on 2026-05-14 and are now on the post-MVP roadmap:
 
 - **Venue / location on check-ins** — Phase 4. Foursquare Places API, not Google Places.
-- **Flat comments on check-ins** — Phase 6. Threaded comments remain out of scope.
+- **Flat comments on check-ins** — Phase 6. Author-editable post-MVP (PATCH /v1/comments/{id}); UI shows the same "edited" marker as check-ins. Threaded comments remain out of scope.
 - **Public collections** — Phase 6.
 - **User-submitted beverage additions** — Phase 5. Admin moderation workflow.
 

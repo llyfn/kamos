@@ -236,9 +236,6 @@ class CheckInCard extends ConsumerWidget {
   }
 }
 
-/// Relative timestamp + optional "edited" marker. Pulled out so both the
-/// feed-card top-right slot and the recent-variant top-left slot share one
-/// implementation.
 class _TimestampRow extends StatelessWidget {
   const _TimestampRow({
     required this.label,
@@ -274,9 +271,6 @@ class _TimestampRow extends StatelessWidget {
   }
 }
 
-/// Stars + monospace numeric pair. Used in two slots: the recent-variant
-/// header (small 11-px stars) and the feed-variant beverage info row
-/// (default 13-px stars).
 class _StarRatingChip extends StatelessWidget {
   const _StarRatingChip({
     required this.value,
@@ -308,10 +302,6 @@ class _StarRatingChip extends StatelessWidget {
   }
 }
 
-/// Slice 02 (producer images): small 16-dp circular thumbnail rendered to
-/// the left of the producer name when `ProducerRef.imageUrl != null`. Sized
-/// memCacheWidth keeps the bitmap cheap; errors degrade silently to a
-/// transparent box so the producer · region row never breaks layout.
 class _ProducerThumb extends StatelessWidget {
   const _ProducerThumb({required this.url});
 
@@ -425,9 +415,6 @@ class _PhotoTile extends StatelessWidget {
   }
 }
 
-/// Own-check-in overflow action menu. Renders a small `more_horiz` icon
-/// that opens a bottom sheet with Edit / Delete affordances. Only rendered
-/// when the viewer is the author (gated upstream by `meProvider`).
 class _OwnCheckInMenu extends ConsumerWidget {
   const _OwnCheckInMenu({required this.item});
   final FeedItem item;

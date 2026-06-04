@@ -281,10 +281,7 @@ mixin _$Checkin {
 // servers (or omitted-key responses) remain wire-compatible. Mirrors
 // the same field on FeedItem so the detail screen can render the
 // comment badge without a separate `GET /comments` round trip.
- int get commentCount; String get createdAt; String get updatedAt;// Slice 01 / SPEC §4.4. Non-null once the author has touched any tracked
-// field after creation. Rendering-only; surfaced as an "edited" marker
-// beside the timestamp.
- String? get editedAt;
+ int get commentCount; String get createdAt; String get updatedAt; String? get editedAt;
 /// Create a copy of Checkin
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -567,9 +564,6 @@ class _Checkin implements Checkin {
 @override@JsonKey() final  int commentCount;
 @override@JsonKey() final  String createdAt;
 @override@JsonKey() final  String updatedAt;
-// Slice 01 / SPEC §4.4. Non-null once the author has touched any tracked
-// field after creation. Rendering-only; surfaced as an "edited" marker
-// beside the timestamp.
 @override final  String? editedAt;
 
 /// Create a copy of Checkin
@@ -693,9 +687,7 @@ mixin _$FeedItem {
 // The card uses photos.length for the count (no separate field).
  List<PhotoRef> get photos; VenueRef? get venue; int get toasts; bool get youToasted;// Server-aggregated comment count. Defaults to 0 so older
 // servers (or omitted-key responses) remain wire-compatible.
- int get commentCount; String get createdAt;// Slice 01 / SPEC §4.4. Mirror of Checkin.editedAt; non-null when any
-// tracked field has been touched after creation.
- String? get editedAt;
+ int get commentCount; String get createdAt; String? get editedAt;
 /// Create a copy of FeedItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -962,8 +954,6 @@ class _FeedItem extends FeedItem {
 // servers (or omitted-key responses) remain wire-compatible.
 @override@JsonKey() final  int commentCount;
 @override@JsonKey() final  String createdAt;
-// Slice 01 / SPEC §4.4. Mirror of Checkin.editedAt; non-null when any
-// tracked field has been touched after creation.
 @override final  String? editedAt;
 
 /// Create a copy of FeedItem

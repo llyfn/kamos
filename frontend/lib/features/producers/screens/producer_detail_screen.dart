@@ -107,10 +107,6 @@ class ProducerDetailScreen extends ConsumerWidget {
                           style: const TextStyle(fontSize: 14, height: 1.6),
                         ),
                       ),
-                    // Website link suppressed by design — see PR feedback on
-                    // 2026-06-04. The producer model still carries the field;
-                    // we'll surface it from a future home (settings link?
-                    // admin link?). Until then, do not render it here.
                     Text(
                       l.producerBeverages,
                       style: TextStyle(
@@ -205,12 +201,6 @@ class ProducerDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Slice 02 hero: circular producer logo, centered above the name block.
-/// The image carries a brand logo (square-ish source); a 140-dp avatar
-/// keeps it prominent without dominating the screen. A 1-dp `--c-border-1`
-/// outline seats it on the warm header surface. When [imageUrl] is null
-/// the same-dimension circle is filled with the kinari token so the
-/// header rhythm holds without drawing attention to the absence.
 class _ProducerHeroImage extends StatelessWidget {
   const _ProducerHeroImage({required this.imageUrl, required this.missingLabel});
 

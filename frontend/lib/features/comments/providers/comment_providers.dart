@@ -60,9 +60,6 @@ class CommentsNotifier extends AsyncNotifier<CommentsState> {
   }
 
   Future<void> refresh() async {
-    // Don't reset to AsyncValue.loading() — that wipes the previous list and
-    // forces the consumer's loading branch. Keeping state as-is during the
-    // guard lets the tile list stay painted until the new page lands.
     state = await AsyncValue.guard(() async {
       final page = await ref.read(commentRepositoryProvider).list(checkInId);
       return CommentsState(

@@ -90,15 +90,9 @@ class CheckInRepository {
     return Checkin.fromJson(data);
   }
 
-  /// Slice 01 / SPEC §4.4 — author-only PATCH of a live check-in.
-  ///
-  /// The caller owns the wire body so it can express the tri-state contract
-  /// the backend exposes on `rating` / `review` / `price`:
-  ///
-  ///   * key absent     → leave the column unchanged
-  ///   * key present, value `null` → clear the column (rating / review /
-  ///     price → NULL)
-  ///   * key present, non-null     → set the column to that value
+  /// SPEC §4.4 — caller-built body so the tri-state contract on
+  /// rating / review / price is preserved: absent = no change,
+  /// explicit null = clear, value = set.
   ///
   /// `beverage_id` is immutable per SPEC §4.4 and MUST NOT be in [body].
   /// `add_photos` and `remove_photos` are normal optional keys (omit the
