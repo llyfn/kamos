@@ -25,10 +25,23 @@ import '../../users/navigation.dart';
 import '../providers/feed_providers.dart';
 
 class CheckInCard extends ConsumerWidget {
-  const CheckInCard({super.key, required this.item, required this.onToast});
+  const CheckInCard({
+    super.key,
+    required this.item,
+    required this.onToast,
+    this.recent = false,
+  });
 
   final FeedItem item;
   final VoidCallback onToast;
+
+  /// Layout variant. `false` (default) is the feed card: createdAt anchored
+  /// top-right, rating rendered in the beverage info row. `true` is the
+  /// "recent check-in" tile used on the profile screen: createdAt + username
+  /// stacked top-left inside the header column, with the rating (small
+  /// stars + numeric value) lifted up to the header's top-right. The two
+  /// shapes share everything below the header.
+  final bool recent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,13 +69,10 @@ class CheckInCard extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The avatar + username Text subtree taps through to the
-                // author's profile. HitTestBehavior.opaque ensures taps on
-                // the transparent gap between avatar and text are absorbed
-                // by this gesture instead of bubbling to the card-level
-                // open-detail tap. The timestamp sits in the same Column
-                // but outside the gesture (per designer spec §5) so the
-                // elapsed-time region still opens the check-in detail.
+                // Avatar taps through to the author's profile.
+                // HitTestBehavior.opaque ensures taps on the transparent gap
+                // between avatar and text are absorbed by this gesture
+                // instead of bubbling to the card-level open-detail tap.
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () =>
@@ -78,25 +88,13 @@ class CheckInCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            when != null ? elapsedShort(when, l) : '',
-                            style: TextStyle(fontSize: 12, color: t.fg3),
-                          ),
-                          if (item.editedAt != null) ...[
-                            const SizedBox(width: 4),
-                            Text(
-                              l.editedMarker,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontStyle: FontStyle.italic,
-                                color: t.fg3,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                      if (recent && when != null)
+                        _TimestampRow(
+                          label: elapsedShort(when, l),
+                          edited: item.editedAt != null,
+                          editedLabel: l.editedMarker,
+                          tokens: t,
+                        ),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () =>
@@ -113,23 +111,23 @@ class CheckInCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                if (item.rating != null)
+                if (recent && item.rating != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        StarsDisplay(value: item.rating, size: 11),
-                        const SizedBox(width: 4),
-                        Text(
-                          l.ratingValue(item.rating!.toStringAsFixed(1)),
-                          style: const TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    child: _StarRatingChip(
+                      value: item.rating!,
+                      starSize: 11,
+                      label: l.ratingValue(item.rating!.toStringAsFixed(1)),
+                    ),
+                  ),
+                if (!recent && when != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: _TimestampRow(
+                      label: elapsedShort(when, l),
+                      edited: item.editedAt != null,
+                      editedLabel: l.editedMarker,
+                      tokens: t,
                     ),
                   ),
               ],
@@ -182,6 +180,16 @@ class CheckInCard extends ConsumerWidget {
                             ),
                           ],
                         ),
+                        if (!recent && item.rating != null) ...[
+                          const SizedBox(height: 6),
+                          _StarRatingChip(
+                            value: item.rating!,
+                            starSize: 13,
+                            label: l.ratingValue(
+                              item.rating!.toStringAsFixed(1),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -259,6 +267,78 @@ class CheckInCard extends ConsumerWidget {
   String _truncated(String text, int max, String moreLabel) {
     if (text.length <= max) return text;
     return '${text.substring(0, max)}… $moreLabel';
+  }
+}
+
+/// Relative timestamp + optional "edited" marker. Pulled out so both the
+/// feed-card top-right slot and the recent-variant top-left slot share one
+/// implementation.
+class _TimestampRow extends StatelessWidget {
+  const _TimestampRow({
+    required this.label,
+    required this.edited,
+    required this.editedLabel,
+    required this.tokens,
+  });
+
+  final String label;
+  final bool edited;
+  final String editedLabel;
+  final KamosTokens tokens;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, color: tokens.fg3)),
+        if (edited) ...[
+          const SizedBox(width: 4),
+          Text(
+            editedLabel,
+            style: TextStyle(
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+              color: tokens.fg3,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Stars + monospace numeric pair. Used in two slots: the recent-variant
+/// header (small 11-px stars) and the feed-variant beverage info row
+/// (default 13-px stars).
+class _StarRatingChip extends StatelessWidget {
+  const _StarRatingChip({
+    required this.value,
+    required this.starSize,
+    required this.label,
+  });
+
+  final double value;
+  final double starSize;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        StarsDisplay(value: value, size: starSize),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'JetBrainsMono',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
   }
 }
 

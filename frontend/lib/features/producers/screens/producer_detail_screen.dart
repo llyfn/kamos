@@ -216,61 +216,66 @@ class ProducerDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Slice 02 hero: 16:9 producer image, full-width minus the horizontal safe
-/// inset, rounded corners + a subtle 1-dp border to seat it on the surface.
-/// When [imageUrl] is null the same-dimension tile is filled with the kinari
-/// token so the header rhythm holds without drawing attention to the absence.
+/// Slice 02 hero: circular producer logo, centered above the name block.
+/// The image carries a brand logo (square-ish source); a 140-dp avatar
+/// keeps it prominent without dominating the screen. A 1-dp `--c-border-1`
+/// outline seats it on the warm header surface. When [imageUrl] is null
+/// the same-dimension circle is filled with the kinari token so the
+/// header rhythm holds without drawing attention to the absence.
 class _ProducerHeroImage extends StatelessWidget {
   const _ProducerHeroImage({required this.imageUrl, required this.missingLabel});
 
   final String? imageUrl;
   final String missingLabel;
 
+  static const double _diameter = 140;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final inset = MediaQuery.paddingOf(context).horizontal / 2;
-    final width = MediaQuery.sizeOf(context).width - (inset * 2);
-    final radius = BorderRadius.circular(12);
     final border = Border.all(color: t.border1, width: 1);
+    final cacheSide = (_diameter * dpr).round();
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(inset + 16, 16, inset + 16, 0),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: imageUrl == null
-            ? Semantics(
-                label: missingLabel,
-                image: true,
-                child: Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      child: Center(
+        child: SizedBox(
+          width: _diameter,
+          height: _diameter,
+          child: imageUrl == null
+              ? Semantics(
+                  label: missingLabel,
+                  image: true,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: t.kinari,
+                      shape: BoxShape.circle,
+                      border: border,
+                    ),
+                  ),
+                )
+              : Container(
                   decoration: BoxDecoration(
-                    color: t.kinari,
-                    borderRadius: radius,
+                    shape: BoxShape.circle,
                     border: border,
                   ),
-                ),
-              )
-            : ClipRRect(
-                borderRadius: radius,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: radius,
-                    border: border,
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl!,
-                    fit: BoxFit.cover,
-                    memCacheWidth: (width * dpr).round(),
-                    placeholder: (_, _) => Container(color: t.kinari),
-                    errorWidget: (_, _, _) => Semantics(
-                      label: missingLabel,
-                      image: true,
-                      child: Container(color: t.kinari),
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: cacheSide,
+                      memCacheHeight: cacheSide,
+                      placeholder: (_, _) => Container(color: t.kinari),
+                      errorWidget: (_, _, _) => Semantics(
+                        label: missingLabel,
+                        image: true,
+                        child: Container(color: t.kinari),
+                      ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }

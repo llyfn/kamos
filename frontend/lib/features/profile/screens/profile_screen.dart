@@ -312,6 +312,7 @@ class _RecentCheckins extends ConsumerWidget {
             for (final c in items)
               CheckInCard(
                 item: _checkinToFeedItem(c),
+                recent: true,
                 onToast: () {
                   // Toast toggling lives on the dedicated feed/detail
                   // surfaces; recent-check-ins on the profile is a

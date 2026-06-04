@@ -1,10 +1,12 @@
 // KAMOS — Single comment row.
 //
-// Renders avatar + username + body + relative timestamp. The trailing delete
-// affordance is rendered only when the comment author's id matches the
-// signed-in user's id (read from `meProvider`). If `meProvider` is not in the
-// data state yet, the delete icon is hidden — when the user signs back in or
-// the profile loads, the rebuild adds the icon.
+// Renders avatar + username + body + relative timestamp. When the viewer is
+// the author, a small `more_horiz` icon sits to the right of the body and
+// opens a bottom sheet with Edit and Delete actions — mirroring the own-
+// check-in overflow pattern in `CheckInCard`. Edit swaps the body Text into
+// an inline TextField with Save / Cancel; Delete confirms then calls the
+// `onDelete` callback. Soft-deleted-author rows (`comment.user == null`)
+// have no isOwn predicate so the menu is hidden.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,6 +84,36 @@ class _CommentTileState extends ConsumerState<CommentTile> {
     }
   }
 
+  Future<void> _openOwnerMenu() async {
+    final l = AppLocalizations.of(context);
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l.commentEdit),
+              onTap: () => Navigator.pop(sheetCtx, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(l.commentsDelete),
+              onTap: () => Navigator.pop(sheetCtx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'edit') {
+      _enterEdit();
+    } else if (action == 'delete') {
+      await _confirmAndDelete(context, l);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final comment = widget.comment;
@@ -129,12 +161,11 @@ class _CommentTileState extends ConsumerState<CommentTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Username Text also taps through to the author's
+                    // profile. Orphan comments render the placeholder
+                    // label without a gesture.
                     Expanded(
-                      // Username Text also taps through to the author's
-                      // profile. Orphan comments render the placeholder
-                      // label without a gesture.
                       child: author != null
                           ? GestureDetector(
                               behavior: HitTestBehavior.opaque,
@@ -158,70 +189,24 @@ class _CommentTileState extends ConsumerState<CommentTile> {
                               ),
                             ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (when != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                elapsedShort(when, l),
-                                style: TextStyle(fontSize: 11, color: t.fg3),
-                              ),
-                              if (comment.editedAt != null) ...[
-                                const SizedBox(width: 4),
-                                Text(
-                                  l.editedMarker,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontStyle: FontStyle.italic,
-                                    color: t.fg3,
-                                  ),
-                                ),
-                              ],
-                            ],
+                    if (when != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        elapsedShort(when, l),
+                        style: TextStyle(fontSize: 11, color: t.fg3),
+                      ),
+                      if (comment.editedAt != null) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          l.editedMarker,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            color: t.fg3,
                           ),
-                        if (isOwn && !_editing)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Tooltip(
-                              message: l.commentEdit,
-                              child: InkWell(
-                                onTap: _enterEdit,
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(2),
-                                  child: Icon(
-                                    Icons.edit_outlined,
-                                    size: 14,
-                                    color: t.fg3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (isOwn && !_editing)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Tooltip(
-                              message: l.commentsDelete,
-                              child: InkWell(
-                                onTap: () => _confirmAndDelete(context, l),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(2),
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    size: 14,
-                                    color: t.fg3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -260,6 +245,18 @@ class _CommentTileState extends ConsumerState<CommentTile> {
               ],
             ),
           ),
+          if (isOwn && !_editing)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, top: 2),
+              child: InkWell(
+                onTap: _openOwnerMenu,
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(Icons.more_horiz, size: 18, color: t.fg3),
+                ),
+              ),
+            ),
         ],
       ),
     );
