@@ -113,3 +113,27 @@ Brief: `docs/history/01_post_create_editability/00_brief.md`. SPEC anchors: §4.
 ### Out of scope (this slice)
 
 Edit history audit log, time-limited edit windows, admin-side comment redaction, beverage re-pointing on a check-in, push notifications for edits.
+
+## Producer images (02)
+
+Admin-uploaded optional image on the `producers` row. Mobile renders it where it adds value; never displays a placeholder when the field is null.
+
+### Data shapes
+
+- `Producer` and `ProducerRef` both expose `image_url: string | null`. The compact embed (`ProducerRef`) is included so the feed renders the optional thumbnail without an extra fetch.
+- Wire path: admin uploads via the existing R2 presign flow with a new `purpose: "producer"` parameter; the returned `upload_id` is sent on `POST /v1/admin/producers` or `PATCH /v1/admin/producers/{id}` and the backend resolves it to a public R2 URL stored as `producers.image_url`.
+
+### Placement
+
+- **`ProducerDetailScreen` (Flutter):** new hero block at the top, 16:9 aspect ratio, full-width minus the safe-area inset, rounded corners (`--radius-md`), `cached_network_image`. When `image_url == null`, render a calm kinari-tile (`--c-kinari`) at the same dimensions — keeps the header rhythm without drawing attention to absence.
+- **`CheckInCard` (Flutter):** small 16-dp circular avatar (`cached_network_image` with `CircleAvatar` fallback) immediately to the left of the producer name in the beverage info row, **only when `producer.image_url != null`**. When null, do not insert anything (no empty gap, no placeholder). The producer name + region row already reads cleanly without it.
+- **`CatalogProducerForm.tsx` (admin):** image input slot beneath the prefecture row. Order: name (en/ja/ko) → prefecture → image → founded → website → description. Editing shows the current image as a preview tile with a "Clear" button below; creating shows an empty dotted-border drop target.
+
+### Iconography + color
+
+- Image-missing alt text uses `producerImageMissing` (en: "No producer image", ja: 「醸造所の画像なし」, ko: "양조장 이미지 없음"). Semantic only — never visible UI copy.
+- Image hero on detail screen does NOT carry a Koh-accent overlay (per `design/README.md` Koh is reserved for toast/kanpai). A subtle `--c-border-1` 1-dp outline on the hero is enough to seat it in the surface.
+
+### Out of scope (this slice)
+
+User-submitted producer images, multi-image galleries, in-app cropping/resizing, admin moderation queue beyond the existing producer publish flow.
