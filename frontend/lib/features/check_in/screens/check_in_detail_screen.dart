@@ -332,6 +332,11 @@ class _OwnDetailMenu extends ConsumerWidget {
       if (confirm != true) return;
       try {
         await ref.read(checkInRepositoryProvider).delete(checkin.id);
+        // Invalidate every cached surface that hydrates this row, including
+        // the per-row detail provider — otherwise navigating back into the
+        // detail screen via a stale push (or a feed card rendered from a
+        // cached page) re-shows the soft-deleted body.
+        ref.invalidate(checkInDetailProvider(checkin.id));
         ref.invalidate(feedProvider);
         ref.invalidate(userCheckinsProvider(checkin.user.username));
         if (!context.mounted) return;

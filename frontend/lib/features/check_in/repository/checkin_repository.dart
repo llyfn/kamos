@@ -90,32 +90,30 @@ class CheckInRepository {
     return Checkin.fromJson(data);
   }
 
-  /// Slice 01 / SPEC §4.4 — author-only PATCH of a live check-in. Only the
-  /// non-null fields are forwarded to the server; `beverage_id` is immutable
-  /// per spec and is never sent. `addPhotos` carries upload_id values from
-  /// the presign flow; `removePhotos` carries existing `PhotoRef.url` values
-  /// to detach. The 4-photo cap is enforced server-side as a backstop —
-  /// callers should also gate the UI.
+  /// Slice 01 / SPEC §4.4 — author-only PATCH of a live check-in.
+  ///
+  /// The caller owns the wire body so it can express the tri-state contract
+  /// the backend exposes on `rating` / `review` / `price`:
+  ///
+  ///   * key absent     → leave the column unchanged
+  ///   * key present, value `null` → clear the column (rating / review /
+  ///     price → NULL)
+  ///   * key present, non-null     → set the column to that value
+  ///
+  /// `beverage_id` is immutable per SPEC §4.4 and MUST NOT be in [body].
+  /// `add_photos` and `remove_photos` are normal optional keys (omit the
+  /// key when the diff is empty).
+  ///
+  /// The facade does not strip nulls on this path, so explicit `null`
+  /// values reach the server intact.
   Future<Checkin> edit({
     required String id,
-    double? rating,
-    String? review,
-    List<String>? tags,
-    List<String>? addPhotos,
-    List<String>? removePhotos,
-    Price? price,
-    String? purchaseType,
+    required Map<String, dynamic> body,
   }) async {
-    final body = <String, dynamic>{
-      'rating': ?rating,
-      'review': ?review,
-      'tags': ?tags,
-      if (addPhotos != null && addPhotos.isNotEmpty) 'add_photos': addPhotos,
-      if (removePhotos != null && removePhotos.isNotEmpty)
-        'remove_photos': removePhotos,
-      if (price != null) 'price': price.toJson(),
-      'purchase_type': ?purchaseType,
-    };
+    assert(
+      !body.containsKey('beverage_id'),
+      'beverage_id is immutable on a check-in (SPEC §4.4)',
+    );
     final data = await _api.checkins.update(id, body);
     return Checkin.fromJson(data);
   }

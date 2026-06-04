@@ -446,15 +446,19 @@ class KamosCheckinsApi {
   }
 
   /// Slice 01 / SPEC §4.4. Author-only PATCH. `beverage_id` is immutable —
-  /// callers must not include it. `null`-valued fields are stripped so the
-  /// body is "present field" → "intended update"; absent → unchanged.
+  /// callers must not include it. The body is forwarded verbatim — the
+  /// caller is responsible for the tri-state distinction "absent =
+  /// unchanged" vs. "present null = clear" (see SPEC §4.4 + the backend
+  /// PATCH handler's `optionalField` parsing). Repositories MUST NOT
+  /// route through `_compact` here, otherwise an explicit clear of
+  /// `rating` / `review` / `price` collapses to a no-op.
   Future<Map<String, dynamic>> update(
     String id,
     Map<String, dynamic> body,
   ) async {
     final res = await _dio.patch<dynamic>(
       ApiPaths.checkin(id),
-      data: _compact({...body}),
+      data: body,
     );
     return _asMap(res.data);
   }

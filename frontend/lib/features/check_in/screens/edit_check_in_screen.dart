@@ -40,6 +40,89 @@ import '../../profile/providers/profile_providers.dart';
 import '../providers/checkin_providers.dart';
 import '../repository/checkin_repository.dart';
 
+/// Builds the PATCH /v1/check-ins/{id} body with the tri-state contract
+/// SPEC §4.4 demands on `rating` / `review` / `price`:
+///
+///   * key absent     → backend leaves the column unchanged
+///   * key present null → backend clears the column
+///   * key present non-null → backend sets the column
+///
+/// We diff each tracked field against [original] so a user who clears a
+/// previously-set rating, review, or price sends an explicit `null`, and a
+/// user who never touched the field sends nothing at all. Hoisted to
+/// top-level (rather than buried in `_save`) so unit tests can exercise the
+/// table without spinning up a widget.
+@visibleForTesting
+Map<String, dynamic> buildEditCheckInBody({
+  required Checkin original,
+  required double? rating,
+  required String review,
+  required List<String> tags,
+  required List<String> addPhotos,
+  required List<String> removePhotos,
+  required String priceText,
+  required String currency,
+  required String priceMode,
+  required String? purchaseType,
+}) {
+  final body = <String, dynamic>{};
+
+  // rating: tri-state. Send the key only when the value differs from the
+  // original; emit explicit `null` for "had a rating → now cleared".
+  if (rating != original.rating) {
+    body['rating'] = rating;
+  }
+
+  // review: tri-state with empty-string normalised to `null` so the clear
+  // intent is preserved across the wire. The composer's allowEmpty=true
+  // would otherwise leave a blank review on the row.
+  final originalReview = original.review;
+  final newReview = review.isEmpty ? null : review;
+  if (newReview != originalReview) {
+    body['review'] = newReview;
+  }
+
+  // tags: full replacement semantics. Always present when the set differs.
+  final origTags = original.tags.map((t) => t.slug).toSet();
+  final newTags = tags.toSet();
+  if (origTags.length != newTags.length || !origTags.containsAll(newTags)) {
+    body['tags'] = tags;
+  }
+
+  if (addPhotos.isNotEmpty) {
+    body['add_photos'] = addPhotos;
+  }
+  if (removePhotos.isNotEmpty) {
+    body['remove_photos'] = removePhotos;
+  }
+
+  // price: tri-state. Compose the new Price up front so we can compare.
+  final amount = double.tryParse(priceText);
+  final hasPrice = amount != null && amount > 0;
+  final newPrice = hasPrice
+      ? Price(amount: amount, currency: currency, mode: priceMode)
+      : null;
+  final originalPrice = original.price;
+  final priceChanged =
+      (newPrice == null) != (originalPrice == null) ||
+      (newPrice != null &&
+          originalPrice != null &&
+          (newPrice.amount != originalPrice.amount ||
+              newPrice.currency != originalPrice.currency ||
+              newPrice.mode != originalPrice.mode));
+  if (priceChanged) {
+    body['price'] = newPrice?.toJson();
+  }
+
+  // purchase_type: nullable enum. The PATCH schema treats absent =
+  // unchanged. Emit only when changed; emit `null` to clear.
+  if (purchaseType != original.purchaseType) {
+    body['purchase_type'] = purchaseType;
+  }
+
+  return body;
+}
+
 class EditCheckInScreen extends ConsumerWidget {
   const EditCheckInScreen({super.key, required this.checkInId});
 
@@ -254,23 +337,21 @@ class _EditCheckInFormState extends ConsumerState<_EditCheckInForm> {
       }
     }
 
-    final amount = double.tryParse(_price.text);
-    final hasPrice = amount != null && amount > 0;
-    final price = hasPrice
-        ? Price(amount: amount, currency: _currency, mode: _priceMode)
-        : null;
+    final body = buildEditCheckInBody(
+      original: widget.original,
+      rating: _rating,
+      review: _review.text,
+      tags: _tags.toList(),
+      addPhotos: addIds,
+      removePhotos: _removedUrls.toList(),
+      priceText: _price.text,
+      currency: _currency,
+      priceMode: _priceMode,
+      purchaseType: _purchase,
+    );
 
     try {
-      final updated = await repo.edit(
-        id: widget.original.id,
-        rating: _rating,
-        review: _review.text,
-        tags: _tags.toList(),
-        addPhotos: addIds.isEmpty ? null : addIds,
-        removePhotos: _removedUrls.isEmpty ? null : _removedUrls.toList(),
-        price: price,
-        purchaseType: _purchase,
-      );
+      final updated = await repo.edit(id: widget.original.id, body: body);
       if (!mounted) return;
       // Invalidate every surface that renders this row so the edit shows
       // up immediately on return.
