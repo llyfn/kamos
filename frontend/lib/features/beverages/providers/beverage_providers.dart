@@ -70,13 +70,14 @@ class BeverageListState {
     String? category,
     String? query,
     bool clearCategory = false,
+    bool clearError = false,
   }) => BeverageListState(
     items: items ?? this.items,
     nextCursor: nextCursor ?? this.nextCursor,
     hasMore: hasMore ?? this.hasMore,
     isLoading: isLoading ?? this.isLoading,
     isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-    error: error ?? this.error,
+    error: clearError ? null : (error ?? this.error),
     category: clearCategory ? null : (category ?? this.category),
     query: query ?? this.query,
   );
@@ -101,13 +102,11 @@ class BeverageListNotifier extends Notifier<BeverageListState> {
   }
 
   Future<void> refresh() async {
-    state = state.copyWith(
-      isLoading: true,
-      items: const [],
-      nextCursor: null,
-      hasMore: true,
-      error: null,
-    );
+    // Keep existing items + flip isLoading. The Discover screen uses
+    // `state.isLoading && state.items.isEmpty` as the cold-start signal —
+    // wiping items here would briefly trip that and flash the LogoLoader to
+    // a user who was just pulling to refresh or changing query filters.
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final page = await ref
           .read(beverageRepositoryProvider)

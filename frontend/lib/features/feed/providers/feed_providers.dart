@@ -50,7 +50,12 @@ class FeedNotifier extends Notifier<FeedState> {
   }
 
   Future<void> refresh({bool forceRefresh = false}) async {
-    state = const FeedState(isLoading: true);
+    // Keep existing items + flip the isLoading flag while we re-fetch. The
+    // FeedScreen treats `isLoading && items.isEmpty` as the cold-start
+    // signal — wiping items here would briefly trip that condition and
+    // show the LogoLoader to a user who was just pulling to refresh. The
+    // data swap happens atomically at the end, once the new page arrives.
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final page = await ref
           .read(feedRepositoryProvider)
@@ -61,9 +66,9 @@ class FeedNotifier extends Notifier<FeedState> {
         hasMore: page.hasMore,
       );
     } on DioException catch (e) {
-      state = FeedState(error: _msg(e));
+      state = state.copyWith(isLoading: false, error: _msg(e));
     } catch (e) {
-      state = FeedState(error: e.toString());
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 

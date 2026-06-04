@@ -62,7 +62,11 @@ class NotificationListNotifier extends AsyncNotifier<NotificationListState> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
+    // Don't reset state to `AsyncValue.loading()` here — that would wipe the
+    // previous list, and the consumer's `.when(skipLoadingOnRefresh: true)`
+    // can only keep the data branch painted while a previous value exists.
+    // Awaiting the guard while leaving state as-is means the UI keeps the
+    // current rows until the new page lands; the swap is atomic.
     state = await AsyncValue.guard(() async {
       final page = await ref.read(notificationRepositoryProvider).list();
       return NotificationListState(

@@ -147,9 +147,11 @@ class _ProfileBody extends StatelessWidget {
     final t = context.tokens;
     return SingleChildScrollView(
       // Always-scrollable physics so the surrounding RefreshIndicator can fire
-      // even when the rendered profile is shorter than the viewport.
+      // even when the rendered profile is shorter than the viewport. 16-dp
+      // horizontal padding mirrors the feed's ListView padding so the
+      // Recent-check-ins cards line up to the same width on both surfaces.
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
