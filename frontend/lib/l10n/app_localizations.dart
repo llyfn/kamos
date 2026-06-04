@@ -1324,6 +1324,12 @@ abstract class AppLocalizations {
   /// **'No beverages yet'**
   String get producerNoBeverages;
 
+  /// No description provided for @producerImageMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No producer image'**
+  String get producerImageMissing;
+
   /// No description provided for @actionSave.
   ///
   /// In en, this message translates to:

@@ -162,12 +162,25 @@ class CheckInCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          [
-                            producerName,
-                            if (region.isNotEmpty) region,
-                          ].join(' · '),
-                          style: TextStyle(fontSize: 12, color: t.fg2),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (item.beverage.producer.imageUrl != null) ...[
+                              _ProducerThumb(
+                                url: item.beverage.producer.imageUrl!,
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Expanded(
+                              child: Text(
+                                [
+                                  producerName,
+                                  if (region.isNotEmpty) region,
+                                ].join(' · '),
+                                style: TextStyle(fontSize: 12, color: t.fg2),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -246,6 +259,36 @@ class CheckInCard extends ConsumerWidget {
   String _truncated(String text, int max, String moreLabel) {
     if (text.length <= max) return text;
     return '${text.substring(0, max)}… $moreLabel';
+  }
+}
+
+/// Slice 02 (producer images): small 16-dp circular thumbnail rendered to
+/// the left of the producer name when `ProducerRef.imageUrl != null`. Sized
+/// memCacheWidth keeps the bitmap cheap; errors degrade silently to a
+/// transparent box so the producer · region row never breaks layout.
+class _ProducerThumb extends StatelessWidget {
+  const _ProducerThumb({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    const size = 16.0;
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          memCacheWidth: (size * dpr).round(),
+          memCacheHeight: (size * dpr).round(),
+          placeholder: (_, _) => const SizedBox.shrink(),
+          errorWidget: (_, _, _) => const SizedBox.shrink(),
+        ),
+      ),
+    );
   }
 }
 

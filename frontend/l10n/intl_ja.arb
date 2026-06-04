@@ -262,6 +262,7 @@
   "producerFounded": "創業",
   "producerBeverages": "銘柄",
   "producerNoBeverages": "まだ銘柄がありません",
+  "producerImageMissing": "醸造所の画像なし",
 
   "actionSave": "保存",
   "actionCancel": "キャンセル",

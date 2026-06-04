@@ -262,6 +262,7 @@
   "producerFounded": "창업",
   "producerBeverages": "제품",
   "producerNoBeverages": "아직 등록된 제품이 없습니다",
+  "producerImageMissing": "양조장 이미지 없음",
 
   "actionSave": "저장",
   "actionCancel": "취소",

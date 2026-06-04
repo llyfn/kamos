@@ -14,7 +14,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Producer {
 
- String get id; I18nText get name; Prefecture? get prefecture; int? get foundedYear; String? get website; I18nText? get description;// Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
+ String get id; I18nText get name; Prefecture? get prefecture; int? get foundedYear; String? get website; I18nText? get description;// Slice 02 (producer images): optional admin-uploaded image (logo /
+// brewery photo / label collage), resolved server-side from a
+// presigned R2 upload. Absent when the producer has no image.
+@JsonKey(name: 'image_url') String? get imageUrl;// Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
 // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
 // /v1/search producer results — `null` then.
  int? get beverageCount; String get createdAt;
@@ -28,16 +31,16 @@ $ProducerCopyWith<Producer> get copyWith => _$ProducerCopyWithImpl<Producer>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Producer&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.foundedYear, foundedYear) || other.foundedYear == foundedYear)&&(identical(other.website, website) || other.website == website)&&(identical(other.description, description) || other.description == description)&&(identical(other.beverageCount, beverageCount) || other.beverageCount == beverageCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Producer&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.foundedYear, foundedYear) || other.foundedYear == foundedYear)&&(identical(other.website, website) || other.website == website)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.beverageCount, beverageCount) || other.beverageCount == beverageCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,prefecture,foundedYear,website,description,beverageCount,createdAt);
+int get hashCode => Object.hash(runtimeType,id,name,prefecture,foundedYear,website,description,imageUrl,beverageCount,createdAt);
 
 @override
 String toString() {
-  return 'Producer(id: $id, name: $name, prefecture: $prefecture, foundedYear: $foundedYear, website: $website, description: $description, beverageCount: $beverageCount, createdAt: $createdAt)';
+  return 'Producer(id: $id, name: $name, prefecture: $prefecture, foundedYear: $foundedYear, website: $website, description: $description, imageUrl: $imageUrl, beverageCount: $beverageCount, createdAt: $createdAt)';
 }
 
 
@@ -48,7 +51,7 @@ abstract mixin class $ProducerCopyWith<$Res>  {
   factory $ProducerCopyWith(Producer value, $Res Function(Producer) _then) = _$ProducerCopyWithImpl;
 @useResult
 $Res call({
- String id, I18nText name, Prefecture? prefecture, int? foundedYear, String? website, I18nText? description, int? beverageCount, String createdAt
+ String id, I18nText name, Prefecture? prefecture, int? foundedYear, String? website, I18nText? description,@JsonKey(name: 'image_url') String? imageUrl, int? beverageCount, String createdAt
 });
 
 
@@ -65,7 +68,7 @@ class _$ProducerCopyWithImpl<$Res>
 
 /// Create a copy of Producer
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,Object? foundedYear = freezed,Object? website = freezed,Object? description = freezed,Object? beverageCount = freezed,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,Object? foundedYear = freezed,Object? website = freezed,Object? description = freezed,Object? imageUrl = freezed,Object? beverageCount = freezed,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -73,7 +76,8 @@ as I18nText,prefecture: freezed == prefecture ? _self.prefecture : prefecture //
 as Prefecture?,foundedYear: freezed == foundedYear ? _self.foundedYear : foundedYear // ignore: cast_nullable_to_non_nullable
 as int?,website: freezed == website ? _self.website : website // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as I18nText?,beverageCount: freezed == beverageCount ? _self.beverageCount : beverageCount // ignore: cast_nullable_to_non_nullable
+as I18nText?,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,beverageCount: freezed == beverageCount ? _self.beverageCount : beverageCount // ignore: cast_nullable_to_non_nullable
 as int?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -193,10 +197,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture,  int? foundedYear,  String? website,  I18nText? description,  int? beverageCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture,  int? foundedYear,  String? website,  I18nText? description, @JsonKey(name: 'image_url')  String? imageUrl,  int? beverageCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Producer() when $default != null:
-return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.website,_that.description,_that.beverageCount,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.website,_that.description,_that.imageUrl,_that.beverageCount,_that.createdAt);case _:
   return orElse();
 
 }
@@ -214,10 +218,10 @@ return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.web
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture,  int? foundedYear,  String? website,  I18nText? description,  int? beverageCount,  String createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture,  int? foundedYear,  String? website,  I18nText? description, @JsonKey(name: 'image_url')  String? imageUrl,  int? beverageCount,  String createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _Producer():
-return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.website,_that.description,_that.beverageCount,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.website,_that.description,_that.imageUrl,_that.beverageCount,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -234,10 +238,10 @@ return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.web
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Prefecture? prefecture,  int? foundedYear,  String? website,  I18nText? description,  int? beverageCount,  String createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Prefecture? prefecture,  int? foundedYear,  String? website,  I18nText? description, @JsonKey(name: 'image_url')  String? imageUrl,  int? beverageCount,  String createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Producer() when $default != null:
-return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.website,_that.description,_that.beverageCount,_that.createdAt);case _:
+return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.website,_that.description,_that.imageUrl,_that.beverageCount,_that.createdAt);case _:
   return null;
 
 }
@@ -249,7 +253,7 @@ return $default(_that.id,_that.name,_that.prefecture,_that.foundedYear,_that.web
 
 
 class _Producer implements Producer {
-  const _Producer({required this.id, required this.name, this.prefecture, this.foundedYear, this.website, this.description, this.beverageCount, this.createdAt = ''});
+  const _Producer({required this.id, required this.name, this.prefecture, this.foundedYear, this.website, this.description, @JsonKey(name: 'image_url') this.imageUrl, this.beverageCount, this.createdAt = ''});
   
 
 @override final  String id;
@@ -258,6 +262,10 @@ class _Producer implements Producer {
 @override final  int? foundedYear;
 @override final  String? website;
 @override final  I18nText? description;
+// Slice 02 (producer images): optional admin-uploaded image (logo /
+// brewery photo / label collage), resolved server-side from a
+// presigned R2 upload. Absent when the producer has no image.
+@override@JsonKey(name: 'image_url') final  String? imageUrl;
 // Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
 // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
 // /v1/search producer results — `null` then.
@@ -274,16 +282,16 @@ _$ProducerCopyWith<_Producer> get copyWith => __$ProducerCopyWithImpl<_Producer>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Producer&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.foundedYear, foundedYear) || other.foundedYear == foundedYear)&&(identical(other.website, website) || other.website == website)&&(identical(other.description, description) || other.description == description)&&(identical(other.beverageCount, beverageCount) || other.beverageCount == beverageCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Producer&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.foundedYear, foundedYear) || other.foundedYear == foundedYear)&&(identical(other.website, website) || other.website == website)&&(identical(other.description, description) || other.description == description)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl)&&(identical(other.beverageCount, beverageCount) || other.beverageCount == beverageCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,prefecture,foundedYear,website,description,beverageCount,createdAt);
+int get hashCode => Object.hash(runtimeType,id,name,prefecture,foundedYear,website,description,imageUrl,beverageCount,createdAt);
 
 @override
 String toString() {
-  return 'Producer(id: $id, name: $name, prefecture: $prefecture, foundedYear: $foundedYear, website: $website, description: $description, beverageCount: $beverageCount, createdAt: $createdAt)';
+  return 'Producer(id: $id, name: $name, prefecture: $prefecture, foundedYear: $foundedYear, website: $website, description: $description, imageUrl: $imageUrl, beverageCount: $beverageCount, createdAt: $createdAt)';
 }
 
 
@@ -294,7 +302,7 @@ abstract mixin class _$ProducerCopyWith<$Res> implements $ProducerCopyWith<$Res>
   factory _$ProducerCopyWith(_Producer value, $Res Function(_Producer) _then) = __$ProducerCopyWithImpl;
 @override @useResult
 $Res call({
- String id, I18nText name, Prefecture? prefecture, int? foundedYear, String? website, I18nText? description, int? beverageCount, String createdAt
+ String id, I18nText name, Prefecture? prefecture, int? foundedYear, String? website, I18nText? description,@JsonKey(name: 'image_url') String? imageUrl, int? beverageCount, String createdAt
 });
 
 
@@ -311,7 +319,7 @@ class __$ProducerCopyWithImpl<$Res>
 
 /// Create a copy of Producer
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,Object? foundedYear = freezed,Object? website = freezed,Object? description = freezed,Object? beverageCount = freezed,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,Object? foundedYear = freezed,Object? website = freezed,Object? description = freezed,Object? imageUrl = freezed,Object? beverageCount = freezed,Object? createdAt = null,}) {
   return _then(_Producer(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -319,7 +327,8 @@ as I18nText,prefecture: freezed == prefecture ? _self.prefecture : prefecture //
 as Prefecture?,foundedYear: freezed == foundedYear ? _self.foundedYear : foundedYear // ignore: cast_nullable_to_non_nullable
 as int?,website: freezed == website ? _self.website : website // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as I18nText?,beverageCount: freezed == beverageCount ? _self.beverageCount : beverageCount // ignore: cast_nullable_to_non_nullable
+as I18nText?,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,beverageCount: freezed == beverageCount ? _self.beverageCount : beverageCount // ignore: cast_nullable_to_non_nullable
 as int?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -364,7 +373,10 @@ $I18nTextCopyWith<$Res>? get description {
 /// @nodoc
 mixin _$ProducerRef {
 
- String get id; I18nText get name; Prefecture? get prefecture;
+ String get id; I18nText get name; Prefecture? get prefecture;// Slice 02 (producer images): mirrors Producer.imageUrl on the compact
+// embed so feed / check-in card / collection rows can render the
+// optional 16-dp producer thumbnail without a second fetch.
+@JsonKey(name: 'image_url') String? get imageUrl;
 /// Create a copy of ProducerRef
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -375,16 +387,16 @@ $ProducerRefCopyWith<ProducerRef> get copyWith => _$ProducerRefCopyWithImpl<Prod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProducerRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProducerRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,prefecture);
+int get hashCode => Object.hash(runtimeType,id,name,prefecture,imageUrl);
 
 @override
 String toString() {
-  return 'ProducerRef(id: $id, name: $name, prefecture: $prefecture)';
+  return 'ProducerRef(id: $id, name: $name, prefecture: $prefecture, imageUrl: $imageUrl)';
 }
 
 
@@ -395,7 +407,7 @@ abstract mixin class $ProducerRefCopyWith<$Res>  {
   factory $ProducerRefCopyWith(ProducerRef value, $Res Function(ProducerRef) _then) = _$ProducerRefCopyWithImpl;
 @useResult
 $Res call({
- String id, I18nText name, Prefecture? prefecture
+ String id, I18nText name, Prefecture? prefecture,@JsonKey(name: 'image_url') String? imageUrl
 });
 
 
@@ -412,12 +424,13 @@ class _$ProducerRefCopyWithImpl<$Res>
 
 /// Create a copy of ProducerRef
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,Object? imageUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as I18nText,prefecture: freezed == prefecture ? _self.prefecture : prefecture // ignore: cast_nullable_to_non_nullable
-as Prefecture?,
+as Prefecture?,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of ProducerRef
@@ -523,10 +536,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture, @JsonKey(name: 'image_url')  String? imageUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProducerRef() when $default != null:
-return $default(_that.id,_that.name,_that.prefecture);case _:
+return $default(_that.id,_that.name,_that.prefecture,_that.imageUrl);case _:
   return orElse();
 
 }
@@ -544,10 +557,10 @@ return $default(_that.id,_that.name,_that.prefecture);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Prefecture? prefecture, @JsonKey(name: 'image_url')  String? imageUrl)  $default,) {final _that = this;
 switch (_that) {
 case _ProducerRef():
-return $default(_that.id,_that.name,_that.prefecture);case _:
+return $default(_that.id,_that.name,_that.prefecture,_that.imageUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -564,10 +577,10 @@ return $default(_that.id,_that.name,_that.prefecture);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Prefecture? prefecture)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Prefecture? prefecture, @JsonKey(name: 'image_url')  String? imageUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _ProducerRef() when $default != null:
-return $default(_that.id,_that.name,_that.prefecture);case _:
+return $default(_that.id,_that.name,_that.prefecture,_that.imageUrl);case _:
   return null;
 
 }
@@ -579,12 +592,16 @@ return $default(_that.id,_that.name,_that.prefecture);case _:
 
 
 class _ProducerRef implements ProducerRef {
-  const _ProducerRef({required this.id, required this.name, this.prefecture});
+  const _ProducerRef({required this.id, required this.name, this.prefecture, @JsonKey(name: 'image_url') this.imageUrl});
   
 
 @override final  String id;
 @override final  I18nText name;
 @override final  Prefecture? prefecture;
+// Slice 02 (producer images): mirrors Producer.imageUrl on the compact
+// embed so feed / check-in card / collection rows can render the
+// optional 16-dp producer thumbnail without a second fetch.
+@override@JsonKey(name: 'image_url') final  String? imageUrl;
 
 /// Create a copy of ProducerRef
 /// with the given fields replaced by the non-null parameter values.
@@ -596,16 +613,16 @@ _$ProducerRefCopyWith<_ProducerRef> get copyWith => __$ProducerRefCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProducerRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProducerRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,prefecture);
+int get hashCode => Object.hash(runtimeType,id,name,prefecture,imageUrl);
 
 @override
 String toString() {
-  return 'ProducerRef(id: $id, name: $name, prefecture: $prefecture)';
+  return 'ProducerRef(id: $id, name: $name, prefecture: $prefecture, imageUrl: $imageUrl)';
 }
 
 
@@ -616,7 +633,7 @@ abstract mixin class _$ProducerRefCopyWith<$Res> implements $ProducerRefCopyWith
   factory _$ProducerRefCopyWith(_ProducerRef value, $Res Function(_ProducerRef) _then) = __$ProducerRefCopyWithImpl;
 @override @useResult
 $Res call({
- String id, I18nText name, Prefecture? prefecture
+ String id, I18nText name, Prefecture? prefecture,@JsonKey(name: 'image_url') String? imageUrl
 });
 
 
@@ -633,12 +650,13 @@ class __$ProducerRefCopyWithImpl<$Res>
 
 /// Create a copy of ProducerRef
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? prefecture = freezed,Object? imageUrl = freezed,}) {
   return _then(_ProducerRef(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as I18nText,prefecture: freezed == prefecture ? _self.prefecture : prefecture // ignore: cast_nullable_to_non_nullable
-as Prefecture?,
+as Prefecture?,imageUrl: freezed == imageUrl ? _self.imageUrl : imageUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

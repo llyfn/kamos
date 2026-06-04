@@ -663,6 +663,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get producerNoBeverages => 'まだ銘柄がありません';
 
   @override
+  String get producerImageMissing => '醸造所の画像なし';
+
+  @override
   String get actionSave => '保存';
 
   @override

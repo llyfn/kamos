@@ -1,6 +1,7 @@
 // KAMOS — Producer detail screen. i18n name + region + founded + website +
 // list of beverages.
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,6 +45,10 @@ class ProducerDetailScreen extends ConsumerWidget {
           return ListView(
             padding: EdgeInsets.zero,
             children: [
+              _ProducerHeroImage(
+                imageUrl: producer.imageUrl,
+                missingLabel: l.producerImageMissing,
+              ),
               Container(
                 color: t.bgWarm,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -206,6 +211,66 @@ class ProducerDetailScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Slice 02 hero: 16:9 producer image, full-width minus the horizontal safe
+/// inset, rounded corners + a subtle 1-dp border to seat it on the surface.
+/// When [imageUrl] is null the same-dimension tile is filled with the kinari
+/// token so the header rhythm holds without drawing attention to the absence.
+class _ProducerHeroImage extends StatelessWidget {
+  const _ProducerHeroImage({required this.imageUrl, required this.missingLabel});
+
+  final String? imageUrl;
+  final String missingLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final inset = MediaQuery.paddingOf(context).horizontal / 2;
+    final width = MediaQuery.sizeOf(context).width - (inset * 2);
+    final radius = BorderRadius.circular(12);
+    final border = Border.all(color: t.border1, width: 1);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset + 16, 16, inset + 16, 0),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: imageUrl == null
+            ? Semantics(
+                label: missingLabel,
+                image: true,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: t.kinari,
+                    borderRadius: radius,
+                    border: border,
+                  ),
+                ),
+              )
+            : ClipRRect(
+                borderRadius: radius,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    border: border,
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    memCacheWidth: (width * dpr).round(),
+                    placeholder: (_, _) => Container(color: t.kinari),
+                    errorWidget: (_, _, _) => Semantics(
+                      label: missingLabel,
+                      image: true,
+                      child: Container(color: t.kinari),
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }

@@ -679,6 +679,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get producerNoBeverages => 'No beverages yet';
 
   @override
+  String get producerImageMissing => 'No producer image';
+
+  @override
   String get actionSave => 'Save';
 
   @override

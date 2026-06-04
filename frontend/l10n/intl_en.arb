@@ -262,6 +262,7 @@
   "producerFounded": "Founded",
   "producerBeverages": "Beverages",
   "producerNoBeverages": "No beverages yet",
+  "producerImageMissing": "No producer image",
 
   "actionSave": "Save",
   "actionCancel": "Cancel",

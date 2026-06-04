@@ -662,6 +662,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get producerNoBeverages => '아직 등록된 제품이 없습니다';
 
   @override
+  String get producerImageMissing => '양조장 이미지 없음';
+
+  @override
   String get actionSave => '저장';
 
   @override
