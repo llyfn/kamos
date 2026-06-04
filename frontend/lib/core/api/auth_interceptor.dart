@@ -136,8 +136,11 @@ class AuthInterceptor extends Interceptor {
         }
       } else {
         // Refresh exchange failed. Tokens are already cleared by
-        // `_tryRefresh`. Surface the toast and notify the host.
-        onApiToast(ApiToastKind.unauthorized);
+        // `_tryRefresh`. Notify the host so it can flip auth state to the
+        // `wasExpired` surface (a calm full-screen fallback in AuthScreen
+        // replaces the regular sign-in form). The toast is intentionally
+        // suppressed — the fallback page is the authoritative user-facing
+        // signal so we don't double-surface the same message.
         onAuthExpired();
       }
     } else if (status == 0 &&

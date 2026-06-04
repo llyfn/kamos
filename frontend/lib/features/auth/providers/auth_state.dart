@@ -19,15 +19,31 @@ import '../../profile/providers/profile_providers.dart';
 import '../repository/auth_repository.dart';
 
 class AuthState {
-  const AuthState({required this.isAuthenticated, this.isLoading = false});
+  const AuthState({
+    required this.isAuthenticated,
+    this.isLoading = false,
+    this.wasExpired = false,
+  });
   final bool isAuthenticated;
   final bool isLoading;
 
+  /// True once between a refresh-fail event and the first user acknowledgment
+  /// on the unauthorized fallback screen. The fallback widget reads this to
+  /// decide whether to render the calm "logo + retry" surface instead of the
+  /// sign-in form. Reset by `acknowledgeExpired()` (Retry tap) or by a
+  /// successful sign-in.
+  final bool wasExpired;
+
   static const initial = AuthState(isAuthenticated: false, isLoading: true);
 
-  AuthState copyWith({bool? isAuthenticated, bool? isLoading}) => AuthState(
+  AuthState copyWith({
+    bool? isAuthenticated,
+    bool? isLoading,
+    bool? wasExpired,
+  }) => AuthState(
     isAuthenticated: isAuthenticated ?? this.isAuthenticated,
     isLoading: isLoading ?? this.isLoading,
+    wasExpired: wasExpired ?? this.wasExpired,
   );
 }
 
@@ -65,7 +81,19 @@ class AuthStateNotifier extends Notifier<AuthState> {
   void signIn() {
     ref.invalidate(notificationListProvider);
     ref.invalidate(unreadCountProvider);
-    state = const AuthState(isAuthenticated: true, isLoading: false);
+    state = const AuthState(
+      isAuthenticated: true,
+      isLoading: false,
+      wasExpired: false,
+    );
+  }
+
+  /// Cleared by the unauthorized fallback's Retry tap so the AuthScreen
+  /// switches back to the regular sign-in form on next build.
+  void acknowledgeExpired() {
+    if (state.wasExpired) {
+      state = state.copyWith(wasExpired: false);
+    }
   }
 
   /// Full sign-out. Best-effort calls `POST /v1/auth/logout` so the server can
@@ -115,7 +143,11 @@ class AuthStateNotifier extends Notifier<AuthState> {
       ref.invalidate(collectionsProvider);
       ref.invalidate(notificationListProvider);
       ref.invalidate(unreadCountProvider);
-      state = const AuthState(isAuthenticated: false, isLoading: false);
+      state = const AuthState(
+        isAuthenticated: false,
+        isLoading: false,
+        wasExpired: true,
+      );
     }
   }
 }
