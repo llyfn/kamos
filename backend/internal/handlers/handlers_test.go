@@ -127,6 +127,8 @@ func TestAuthedRoutesRequireBearer(t *testing.T) {
 		{http.MethodPatch, "/v1/collections/c-1/entries/b-1"},
 		{http.MethodDelete, "/v1/collections/c-1/entries/b-1"},
 		{http.MethodPost, "/v1/beverage-requests"},
+		// slice 01 — PATCH /v1/comments/{id} is the comment edit endpoint.
+		{http.MethodPatch, "/v1/comments/c-1"},
 		{http.MethodPost, "/v1/auth/resend-verification"},
 		{http.MethodPost, "/v1/auth/password-change"},
 		{http.MethodPost, "/v1/auth/email-change"},
@@ -311,6 +313,38 @@ func TestUpdateCheckinBeverageImmutable(t *testing.T) {
 	srv.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status: %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+// PATCH /v1/comments/{id} without auth returns 401 — verifies the route
+// is mounted on the authed surface (slice 01).
+func TestUpdateCommentRequiresAuth(t *testing.T) {
+	srv, _ := newTestServer(t)
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPatch, "/v1/comments/c-1",
+		bytes.NewReader([]byte(`{"body":"hi"}`)))
+	srv.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status: %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+// PATCH /v1/comments/{id} with an empty body fails validation before any
+// DB call (mirrors the create-comment validation).
+func TestUpdateCommentValidation(t *testing.T) {
+	srv, signer := newTestServer(t)
+	tok, _ := signer.Sign("u-1", "yamamoto")
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPatch, "/v1/comments/c-1",
+		bytes.NewReader([]byte(`{"body":""}`)))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	srv.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status: %d body=%s", rr.Code, rr.Body.String())
+	}
+	body := decodeErrBody(t, rr.Body)
+	if body.Code != "VALIDATION" {
+		t.Errorf("code: %q", body.Code)
 	}
 }
 

@@ -749,9 +749,16 @@ paths:
       tags: [checkins]
       operationId: updateCheckin
       description: |
-        Status: scaffold-for-Phase5 (admin edit surface). Endpoint is
-        intentionally pre-wired; no Flutter caller in MVP.
-      x-internal: true
+        Post-creation editability (slice 01 / SPEC §4.4). Author-only edit
+        of a live check-in. `beverage_id` is immutable — sending it returns
+        422. `add_photos` carries `photo_uploads.id` values returned from
+        `/v1/uploads/photo-presign`; `remove_photos` carries existing
+        `PhotoRef.url` values to detach. The SPEC §4.2 four-photo cap is
+        enforced on the resulting set (current − removed + added) — the
+        5th attach returns 422 `PHOTO_CAP_EXCEEDED`. Tags use full
+        replacement semantics: present (even empty) replaces; absent leaves
+        alone. The `edited_at` field on the response is touched only when
+        at least one tracked field actually changes.
       requestBody:
         required: true
         content:
@@ -768,9 +775,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "422":
           description: |
-            422 Unprocessable Entity. Returned on any validation failure AND
-            specifically when the client attempts to change `beverage_id`
-            (SPEC §4.4).
+            422 Unprocessable Entity. Returned on any validation failure,
+            on `PHOTO_CAP_EXCEEDED` (resulting set > 4), AND specifically
+            when the client attempts to change `beverage_id` (SPEC §4.4).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -848,6 +855,31 @@ paths:
         name: id
         required: true
         schema: { type: string, format: uuid }
+    patch:
+      tags: [check-ins]
+      operationId: updateComment
+      description: |
+        Post-creation editability (slice 01 / SPEC §5.4). Author-only edit
+        of the comment body. Same sanitization rules as create — 1..500
+        chars, control characters and bidi-override codepoints rejected.
+        `edited_at` is touched only when the new body differs from the
+        existing column (no-op PATCH leaves the row unchanged). A non-
+        author or a soft-deleted comment returns 404 — we don't leak
+        comment existence to non-authors.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCommentRequest" }
+      responses:
+        "200":
+          description: updated comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
     delete:
       tags: [check-ins]
       operationId: deleteComment
@@ -2747,6 +2779,15 @@ components:
         comment_count: { type: integer, default: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        edited_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Slice 01 / SPEC §4.4. Non-null when the author has touched any
+            tracked field (rating / review / tags / price / purchase_type /
+            photos) after creation. Rendering-only; never sorted or
+            filtered server-side. Omitted (or null) for never-edited rows.
 
     CheckinSummary:
       type: object
@@ -2799,6 +2840,16 @@ components:
         `beverage_id` is intentionally NOT in this schema — SPEC §4.4 forbids
         changing the beverage on an existing check-in. If present in the body,
         the server returns 422.
+
+        Slice 01 / SPEC §4.4: `add_photos` and `remove_photos` are the
+        post-creation photo-edit affordances. `add_photos` carries
+        `photo_uploads.id` values returned from
+        `/v1/uploads/photo-presign`; the server resolves each to the
+        matching public URL and flips the row to `attached` in the same
+        transaction. `remove_photos` carries existing `PhotoRef.url`
+        values to detach. The SPEC §4.2 4-photo cap is enforced on the
+        resulting set (`current − removed + added ≤ 4`); a violation
+        returns 422 `PHOTO_CAP_EXCEEDED`.
       properties:
         rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0 }
         review: { type: string, maxLength: 500, nullable: true }
@@ -2807,6 +2858,24 @@ components:
           items: { type: string }
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
+        add_photos:
+          type: array
+          maxItems: 4
+          items: { type: string, format: uuid }
+          description: photo_uploads ids to attach (≤4 per request).
+        remove_photos:
+          type: array
+          items: { type: string, format: uri }
+          description: existing PhotoRef URLs to detach.
+
+    UpdateCommentRequest:
+      type: object
+      required: [body]
+      description: |
+        Slice 01 / SPEC §5.4. Author-only comment edit. Body is the only
+        mutable field — same constraints as the create body.
+      properties:
+        body: { type: string, minLength: 1, maxLength: 500 }
 
     ToastState:
       type: object
@@ -2917,6 +2986,13 @@ components:
           nullable: true
           description: Absent when the check-in has no venue attached.
         created_at: { type: string, format: date-time }
+        edited_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Slice 01 / SPEC §4.4. Mirror of Checkin.edited_at; non-null
+            when any tracked field has been touched after creation.
 
     Comment:
       type: object
@@ -2930,6 +3006,14 @@ components:
         user: { $ref: "#/components/schemas/CheckinUser" }
         body: { type: string, minLength: 1, maxLength: 500 }
         created_at: { type: string, format: date-time }
+        edited_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Slice 01 / SPEC §5.4. Non-null when the author has edited the
+            body after creation. Rendering-only; never sorted or filtered
+            server-side.
         deleted_at:
           type: string
           format: date-time

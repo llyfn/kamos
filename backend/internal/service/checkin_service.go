@@ -36,6 +36,7 @@ type CheckinRepo interface {
 	Update(ctx context.Context, p repository.UpdateCheckinParams) error
 	SoftDelete(ctx context.Context, id, userID string) error
 	AddPhoto(ctx context.Context, checkinID, userID, photoURL string) (domain.PhotoRef, error)
+	CountPhotos(ctx context.Context, checkinID string) (int, error)
 	// ToggleToastTx runs the full toggle in the supplied tx and reports
 	// the new state plus the check-in owner (for the notification emit on
 	// the "added" branch). owner == "" when the row was just removed —
@@ -119,18 +120,49 @@ func (s *CheckinService) Create(ctx context.Context, userID string, req domain.C
 	return out, nil
 }
 
+// CheckinUpdateInput is the post-validation projection the handler passes
+// to Update. The handler has already resolved photo upload IDs into the
+// matching (public_url, upload_id) pairs via its PhotoUploadRepo + Storage
+// references; the service just enforces the SPEC §4.2 4-photo cap and
+// delegates the multi-row write to the repo.
+type CheckinUpdateInput struct {
+	Req               domain.UpdateCheckinRequest
+	AddPhotoURLs      []string
+	AddPhotoUploadIDs []string
+	RemovePhotoURLs   []string
+}
+
 // Update owns the check-in update + cache-bust dance.
-func (s *CheckinService) Update(ctx context.Context, userID, id string, req domain.UpdateCheckinRequest) (*domain.Checkin, error) {
+func (s *CheckinService) Update(ctx context.Context, userID, id string, in CheckinUpdateInput) (*domain.Checkin, error) {
+	// SPEC §4.2 four-photo cap on the resulting set. We compute the
+	// floor BEFORE the repo write so the canonical 422
+	// PHOTO_CAP_EXCEEDED surfaces instead of the DB CHECK constraint
+	// raising a generic 500.
+	if len(in.AddPhotoURLs) > 0 || len(in.RemovePhotoURLs) > 0 {
+		current, err := s.checkins.CountPhotos(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("CheckinService.Update count: %w", err)
+		}
+		if current-len(in.RemovePhotoURLs)+len(in.AddPhotoURLs) > 4 {
+			return nil, domain.ErrPhotoCapExceeded
+		}
+	}
+
+	req := in.Req
 	up := repository.UpdateCheckinParams{
-		ID:           id,
-		UserID:       userID,
-		Rating:       req.Rating,
-		ClearRating:  req.ClearRating,
-		Review:       req.Review,
-		ClearReview:  req.ClearReview,
-		ClearPrice:   req.ClearPrice,
-		PurchaseType: req.PurchaseType,
-		Tags:         req.Tags,
+		ID:                id,
+		UserID:            userID,
+		Rating:            req.Rating,
+		ClearRating:       req.ClearRating,
+		Review:            req.Review,
+		ClearReview:       req.ClearReview,
+		ClearPrice:        req.ClearPrice,
+		PurchaseType:      req.PurchaseType,
+		Tags:              req.Tags,
+		AddPhotoURLs:      in.AddPhotoURLs,
+		AddPhotoUploadIDs: in.AddPhotoUploadIDs,
+		RemovePhotoURLs:   in.RemovePhotoURLs,
+		TouchEdited:       updateTouchedAnyField(req, in),
 	}
 	if req.Price != nil {
 		amt := req.Price.Amount
@@ -149,6 +181,29 @@ func (s *CheckinService) Update(ctx context.Context, userID, id string, req doma
 	}
 	s.caches.InvalidateBeverageDetail(ctx, out.Beverage.ID)
 	return out, nil
+}
+
+// updateTouchedAnyField returns true when the PATCH carries at least one
+// tracked-field change. A no-op PATCH (all fields absent) leaves edited_at
+// alone so the "edited" marker doesn't flicker on a save with no diff.
+//
+// We deliberately treat "field present but unchanged" (e.g. rating set to
+// its existing value) as a touch — the wire shape can't distinguish
+// present-and-unchanged from present-and-changed without an extra DB
+// round-trip, and the SPEC §4.4 contract says "any tracked-field change"
+// rather than "any tracked-field write". Mirrors the §7 query-pattern note.
+func updateTouchedAnyField(req domain.UpdateCheckinRequest, in CheckinUpdateInput) bool {
+	switch {
+	case req.Rating != nil, req.ClearRating,
+		req.Review != nil, req.ClearReview,
+		req.Price != nil, req.ClearPrice,
+		req.PurchaseType != nil,
+		req.Tags != nil,
+		len(in.AddPhotoURLs) > 0,
+		len(in.RemovePhotoURLs) > 0:
+		return true
+	}
+	return false
 }
 
 // Delete owns the check-in soft-delete + cache-bust dance.

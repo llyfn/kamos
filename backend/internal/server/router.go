@@ -324,6 +324,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			} else {
 				r.Post("/check-ins/{id}/comments", h.CreateComment)
 			}
+			r.Patch("/comments/{id}", h.UpdateComment)
 			r.Delete("/comments/{id}", h.DeleteComment)
 		})
 

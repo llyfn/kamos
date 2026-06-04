@@ -13,6 +13,7 @@ import (
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/service"
 )
 
 // CreateCheckin — POST /v1/check-ins.
@@ -174,8 +175,26 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "UpdateCheckin validate", err)
 		return
 	}
+	// Resolve add_photos (upload_ids) → (public_url, upload_id) pairs.
+	// Same orphan-tracking rules as POST /v1/check-ins/{id}/photos: the
+	// caller must own the upload, and it must not already be attached or
+	// orphaned. We do this in the handler so the service stays free of
+	// blob-storage wiring.
+	addURLs, addIDs, herr := h.resolveAddPhotos(r, uid, req.AddPhotos)
+	if herr != nil {
+		h.writeErr(w, "UpdateCheckin add_photos", herr)
+		return
+	}
+	removeURLs := append([]string(nil), req.RemovePhotos...)
+
 	if h.Services != nil && h.Services.Checkin != nil {
-		out, err := h.Services.Checkin.Update(r.Context(), uid, id, req)
+		in := service.CheckinUpdateInput{
+			Req:               req,
+			AddPhotoURLs:      addURLs,
+			AddPhotoUploadIDs: addIDs,
+			RemovePhotoURLs:   removeURLs,
+		}
+		out, err := h.Services.Checkin.Update(r.Context(), uid, id, in)
 		if err != nil {
 			h.writeErr(w, "UpdateCheckin", err)
 			return
@@ -183,17 +202,34 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteJSON(w, http.StatusOK, out)
 		return
 	}
-	// Legacy fallback (tests that don't construct services).
+	// Legacy fallback (tests that don't construct services). Mirrors the
+	// service path closely enough to keep round-tripping working for the
+	// handler-only test suites.
+	if len(addURLs) > 0 || len(removeURLs) > 0 {
+		current, err := h.Repos.Checkins.CountPhotos(r.Context(), id)
+		if err != nil {
+			h.writeErr(w, "UpdateCheckin count photos", err)
+			return
+		}
+		if current-len(removeURLs)+len(addURLs) > 4 {
+			h.writeErr(w, "UpdateCheckin photo cap", domain.ErrPhotoCapExceeded)
+			return
+		}
+	}
 	up := repository.UpdateCheckinParams{
-		ID:           id,
-		UserID:       uid,
-		Rating:       req.Rating,
-		ClearRating:  req.ClearRating,
-		Review:       req.Review,
-		ClearReview:  req.ClearReview,
-		ClearPrice:   req.ClearPrice,
-		PurchaseType: req.PurchaseType,
-		Tags:         req.Tags,
+		ID:                id,
+		UserID:            uid,
+		Rating:            req.Rating,
+		ClearRating:       req.ClearRating,
+		Review:            req.Review,
+		ClearReview:       req.ClearReview,
+		ClearPrice:        req.ClearPrice,
+		PurchaseType:      req.PurchaseType,
+		Tags:              req.Tags,
+		AddPhotoURLs:      addURLs,
+		AddPhotoUploadIDs: addIDs,
+		RemovePhotoURLs:   removeURLs,
+		TouchEdited:       legacyTouchedAnyField(req, addURLs, removeURLs),
 	}
 	if req.Price != nil {
 		amt := req.Price.Amount
@@ -216,6 +252,55 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
+// resolveAddPhotos validates each photo_uploads id from the PATCH body and
+// returns parallel slices of (public_url, upload_id). The errors mirror
+// the canonical photo-attach gate from UploadCheckinPhoto so PATCH and
+// POST /photos converge on the same client-visible failure modes.
+func (h *Handler) resolveAddPhotos(r *http.Request, uid string, ids []string) ([]string, []string, error) {
+	if len(ids) == 0 {
+		return nil, nil, nil
+	}
+	urls := make([]string, 0, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			return nil, nil, domain.ErrBadRequest
+		}
+		upload, err := h.Repos.PhotoUploads.FindByID(r.Context(), id)
+		if err != nil {
+			return nil, nil, err
+		}
+		if upload.UserID != uid {
+			// Same response as the create-photo path — never let one
+			// user attach another user's blob.
+			return nil, nil, domain.ErrNotFound
+		}
+		if upload.Status == "attached" || upload.Status == "orphaned" {
+			return nil, nil, domain.ErrUploadNotCompleted
+		}
+		urls = append(urls, h.Storage.PublicURL(upload.BlobKey))
+		out = append(out, upload.ID)
+	}
+	return urls, out, nil
+}
+
+// legacyTouchedAnyField mirrors service.updateTouchedAnyField for the
+// no-service fallback path. Kept inline so the legacy branch stays the
+// same shape it always had — a handful of tests still exercise it.
+func legacyTouchedAnyField(req domain.UpdateCheckinRequest, addURLs, removeURLs []string) bool {
+	switch {
+	case req.Rating != nil, req.ClearRating,
+		req.Review != nil, req.ClearReview,
+		req.Price != nil, req.ClearPrice,
+		req.PurchaseType != nil,
+		req.Tags != nil,
+		len(addURLs) > 0,
+		len(removeURLs) > 0:
+		return true
+	}
+	return false
+}
+
 // updateCheckinPatch is the single-decode wire shape for UpdateCheckin.
 // json.RawMessage on the three null-detectable fields lets the handler
 // distinguish "field absent" from "field present and null" without a
@@ -231,6 +316,11 @@ type updateCheckinPatch struct {
 	Tags         *[]string       `json:"tags,omitempty"`
 	Price        json.RawMessage `json:"price,omitempty"`
 	PurchaseType *string         `json:"purchase_type,omitempty"`
+	// AddPhotos / RemovePhotos are the post-creation-editability
+	// extension (slice 01). add_photos carries photo_uploads ids;
+	// remove_photos carries existing PhotoRef URLs.
+	AddPhotos    []string `json:"add_photos,omitempty"`
+	RemovePhotos []string `json:"remove_photos,omitempty"`
 }
 
 // toRequest projects the patch onto domain.UpdateCheckinRequest, including
@@ -240,6 +330,8 @@ func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
 		BeverageID:   p.BeverageID,
 		Tags:         p.Tags,
 		PurchaseType: p.PurchaseType,
+		AddPhotos:    p.AddPhotos,
+		RemovePhotos: p.RemovePhotos,
 	}
 	// rating: null → clear; value → set; absent → no change.
 	if len(p.Rating) > 0 {

@@ -33,6 +33,7 @@ type CommentRepo interface {
 	List(ctx context.Context, checkInID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Comment, error)
 	ListForAdmin(ctx context.Context, onlyDeleted bool, cursorTs *time.Time, cursorID *string, limit int) ([]repository.AdminCommentRow, error)
 	SoftDelete(ctx context.Context, commentID, moderatorID string, isAdmin bool, notes *string) error
+	Update(ctx context.Context, commentID, userID, body string) (*domain.Comment, error)
 }
 
 // CommentCheckinRepo is the slice the comment service needs from the
@@ -133,6 +134,14 @@ func (s *CommentService) Delete(ctx context.Context, commentID, viewerID string,
 		return isAdminPath, err
 	}
 	return isAdminPath, nil
+}
+
+// Update applies an author-only edit. The author-only enforcement runs at
+// the SQL layer (`user_id = $3`); a mismatched author hits an empty
+// RETURNING and surfaces as ErrNotFound, which the handler maps to 404 to
+// avoid leaking comment existence to non-authors.
+func (s *CommentService) Update(ctx context.Context, commentID, userID, body string) (*domain.Comment, error) {
+	return s.comments.Update(ctx, commentID, userID, body)
 }
 
 // ModerateForAdmin is the admin-only delete path (notes always recorded).

@@ -46,13 +46,14 @@ func (r *CommentRepo) CreateTx(ctx context.Context, tx pgx.Tx, checkInID, userID
 	const ins = `
 INSERT INTO comments (check_in_id, user_id, body)
 VALUES ($1, $2, $3)
-RETURNING id, check_in_id, user_id, body, created_at;`
+RETURNING id, check_in_id, user_id, body, created_at, edited_at;`
 	var (
 		id, checkInIDOut, userIDOut, bodyOut string
 		createdAt                            time.Time
+		editedAt                             *time.Time
 	)
 	if err := tx.QueryRow(ctx, ins, checkInID, userID, body).Scan(
-		&id, &checkInIDOut, &userIDOut, &bodyOut, &createdAt,
+		&id, &checkInIDOut, &userIDOut, &bodyOut, &createdAt, &editedAt,
 	); err != nil {
 		return nil, "", fmt.Errorf("CommentRepo.CreateTx insert: %w", err)
 	}
@@ -72,6 +73,7 @@ FROM users WHERE id = $1;`,
 		User:      &u,
 		Body:      bodyOut,
 		CreatedAt: createdAt,
+		EditedAt:  editedAt,
 	}, ownerID, nil
 }
 
@@ -106,7 +108,7 @@ func (r *CommentRepo) List(
 	}
 	const q = `
 SELECT
- c.id, c.check_in_id, c.body, c.created_at,
+ c.id, c.check_in_id, c.body, c.created_at, c.edited_at,
  u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.deleted_at
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
@@ -129,7 +131,7 @@ LIMIT $4;`
 			uDeletedAt                                     *time.Time
 		)
 		if err := rows.Scan(
-			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt,
+			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &row.EditedAt,
 			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL, &uDeletedAt,
 		); err != nil {
 			return nil, fmt.Errorf("CommentRepo.List scan: %w", err)
@@ -183,7 +185,7 @@ func stringOrZero(s *string) string {
 func (r *CommentRepo) Get(ctx context.Context, id string) (*domain.Comment, error) {
 	const q = `
 SELECT
- c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
+ c.id, c.check_in_id, c.body, c.created_at, c.edited_at, c.deleted_at,
  u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.deleted_at
 FROM comments c
 LEFT JOIN users u ON u.id = c.user_id
@@ -196,7 +198,7 @@ WHERE c.id = $1;`
 		uDeletedAt                                     *time.Time
 	)
 	if err := r.db.QueryRow(ctx, q, id).Scan(
-		&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &deletedAt,
+		&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &row.EditedAt, &deletedAt,
 		&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL, &uDeletedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -215,6 +217,48 @@ WHERE c.id = $1;`
 		row.User = hydrateCommentUser(uID, uUsername, uDisplayUsername, uDisplayName, uAvatarURL)
 	}
 	return &row, nil
+}
+
+// Update applies an author-only edit to the comment body. Follows the
+// edited_at touch pattern from docs/db/query_patterns.md §19: the timestamp
+// flips only when the new body differs from the existing column. A non-
+// matching `user_id` (or a soft-deleted row) returns ErrNotFound — the
+// handler maps this to 404 to avoid leaking comment existence to non-authors.
+func (r *CommentRepo) Update(ctx context.Context, commentID, userID, body string) (*domain.Comment, error) {
+	const q = `
+UPDATE comments SET
+  body      = $2,
+  edited_at = CASE WHEN body IS DISTINCT FROM $2 THEN NOW() ELSE edited_at END
+WHERE id = $1
+  AND user_id = $3
+  AND deleted_at IS NULL
+RETURNING id, check_in_id, user_id, body, created_at, edited_at;`
+	var (
+		out       domain.Comment
+		userIDOut string
+	)
+	if err := r.db.QueryRow(ctx, q, commentID, body, userID).Scan(
+		&out.ID, &out.CheckInID, &userIDOut, &out.Body, &out.CreatedAt, &out.EditedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("CommentRepo.Update: %w", err)
+	}
+	// Hydrate the author projection so the response mirrors the create shape.
+	var u domain.CheckinUser
+	var uDeletedAt *time.Time
+	if err := r.db.QueryRow(ctx, `
+SELECT id, username, display_username, display_name, avatar_url, deleted_at
+FROM users WHERE id = $1;`,
+		userIDOut,
+	).Scan(&u.ID, &u.Username, &u.DisplayUsername, &u.DisplayName, &u.AvatarURL, &uDeletedAt); err != nil {
+		return nil, fmt.Errorf("CommentRepo.Update hydrate user: %w", err)
+	}
+	if uDeletedAt == nil {
+		out.User = &u
+	}
+	return &out, nil
 }
 
 // SoftDelete marks the comment deleted_at = NOW().
@@ -308,7 +352,7 @@ func (r *CommentRepo) ListForAdmin(
 	// Most comments have zero such rows — LEFT JOIN keeps them in.
 	const q = `
 SELECT
- c.id, c.check_in_id, c.body, c.created_at, c.deleted_at,
+ c.id, c.check_in_id, c.body, c.created_at, c.edited_at, c.deleted_at,
  u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.deleted_at,
  ml.notes, ml.moderator_id, ml.created_at AS moderated_at
 FROM comments c
@@ -338,7 +382,7 @@ LIMIT $4;`
 			uDeletedAt                                     *time.Time
 		)
 		if err := rows.Scan(
-			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &row.DeletedAt,
+			&row.ID, &row.CheckInID, &row.Body, &row.CreatedAt, &row.EditedAt, &row.DeletedAt,
 			&uID, &uUsername, &uDisplayUsername, &uDisplayName, &uAvatarURL, &uDeletedAt,
 			&row.ModerationNotes, &row.ModeratedBy, &row.ModeratedAt,
 		); err != nil {
