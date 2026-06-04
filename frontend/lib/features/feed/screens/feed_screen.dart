@@ -79,6 +79,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           onNotification: _onScrollEnd,
           child: ListView(
             controller: _scroll,
+            // RefreshIndicator needs an overscroll-capable child even when
+            // the loaded items fit inside the viewport — without this, the
+            // pull gesture is swallowed by the default platform physics and
+            // the indicator never fires.
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
             // The header bell that pushed /inbox was removed alongside the

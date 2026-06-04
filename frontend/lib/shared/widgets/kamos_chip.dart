@@ -51,11 +51,19 @@ class KamosChip extends StatelessWidget {
         }
     }
 
+    // Tag chips read as inline metadata next to body copy, so a tighter
+    // padding + smaller type reads better than the filter-chip default.
+    final isTag = kind == KamosChipKind.tag;
+    final padding = isTag
+        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3)
+        : const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+    final fontSize = isTag ? 11.0 : 13.0;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: padding,
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(999),
@@ -65,7 +73,7 @@ class KamosChip extends StatelessWidget {
           label,
           style: TextStyle(
             fontFamily: 'NotoSansJP',
-            fontSize: 13,
+            fontSize: fontSize,
             color: fg,
             fontWeight: FontWeight.w500,
           ),

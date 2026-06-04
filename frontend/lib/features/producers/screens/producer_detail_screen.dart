@@ -107,21 +107,10 @@ class ProducerDetailScreen extends ConsumerWidget {
                           style: const TextStyle(fontSize: 14, height: 1.6),
                         ),
                       ),
-                    if ((producer.website ?? '').isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Text(
-                          producer.website!.replaceFirst(
-                            RegExp(r'^https?://'),
-                            '',
-                          ),
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            color: t.fgLink,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
+                    // Website link suppressed by design — see PR feedback on
+                    // 2026-06-04. The producer model still carries the field;
+                    // we'll surface it from a future home (settings link?
+                    // admin link?). Until then, do not render it here.
                     Text(
                       l.producerBeverages,
                       style: TextStyle(

@@ -45,10 +45,10 @@ class MeProfileScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bookmark_outline, size: 24),
-            tooltip: l.tabLists,
+            icon: const Icon(Icons.settings_outlined, size: 24),
+            tooltip: l.profileSettings,
             color: t.fg1,
-            onPressed: () => context.push('/collections'),
+            onPressed: () => context.push('/me/settings'),
           ),
         ],
       ),
@@ -155,11 +155,21 @@ class _ProfileBody extends StatelessWidget {
         children: [
           const SizedBox(height: 24),
           Center(
-            child: KamosAvatar(
-              initial: user.displayUsername,
-              size: 84,
-              imageUrl: user.avatarUrl,
-            ),
+            child: isMe
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => context.push('/me/edit'),
+                    child: KamosAvatar(
+                      initial: user.displayUsername,
+                      size: 84,
+                      imageUrl: user.avatarUrl,
+                    ),
+                  )
+                : KamosAvatar(
+                    initial: user.displayUsername,
+                    size: 84,
+                    imageUrl: user.avatarUrl,
+                  ),
           ),
           const SizedBox(height: 8),
           Center(
@@ -234,22 +244,8 @@ class _ProfileBody extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          if (isMe)
-            Row(
-              children: [
-                KamosPillButton.primary(
-                  label: l.profileEdit,
-                  onPressed: () => context.push('/me/edit'),
-                ),
-                const SizedBox(width: 8),
-                KamosPillButton.secondary(
-                  label: l.profileSettings,
-                  onPressed: () => context.push('/me/settings'),
-                ),
-              ],
-            )
-          else
+          if (!isMe) ...[
+            const SizedBox(height: 18),
             Row(
               children: [
                 _FollowButton(
@@ -258,6 +254,7 @@ class _ProfileBody extends StatelessWidget {
                 ),
               ],
             ),
+          ],
           const SizedBox(height: 18),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
