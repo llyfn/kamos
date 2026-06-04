@@ -253,7 +253,7 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `users` | Accounts. | `deleted_at` + `username_release_at` | Lowercase username regex, en/ja/ko locale, public/private privacy, at least one auth method present. |
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
-| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL` (005): admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. |
+| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL` (003 post-MVP squash): admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. |
 | `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. |
 | `regions` | Japan's 8 traditional regions (seed). | — | `name_i18n` requires en+ja+ko. 8 seeded rows (016). |
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
@@ -293,9 +293,9 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `check_ins.purchase_type` enum | §4.1 |
 | `check_ins.price_*` coherence | §4.1 |
 | `check_ins.deleted_at` | §4.4, §6.4 |
-| `check_ins.edited_at` (003) | §4.4 |
-| `comments.edited_at` (004) | §5.4 |
-| `producers.image_url` (005) | §2.3 (producer detail), §3 (R2 image pattern) |
+| `check_ins.edited_at` (003 post-MVP squash) | §4.4 |
+| `comments.edited_at` (003 post-MVP squash) | §5.4 |
+| `producers.image_url` (003 post-MVP squash) | §2.3 (producer detail), §3 (R2 image pattern) |
 | `follows.status IN ('pending','accepted')` | §5.1 |
 | `follows.follower_id <> followed_id` | §5.1 |
 | `toasts` composite PK | §5.3 |

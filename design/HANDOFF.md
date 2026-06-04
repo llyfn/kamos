@@ -84,9 +84,9 @@ In Flutter, mirror these in `theme/tokens.dart` so widgets read them by name. Do
 3. **Koh accent retention** — currently used only for toast / kanpai; cuttable for single-hue brand.
 4. **Half-star glyph** — `⯨` (U+2BE8) renders inconsistently; Flutter must substitute.
 
-## Post-creation editability (01)
+## Post-creation editability
 
-Brief: `docs/history/01_post_create_editability/00_brief.md`. SPEC anchors: §4.2, §4.4, §5.4, §6.6. No new JSX screens; no token / `colors_and_type.css` edits.
+Shipped: PATCH /v1/check-ins/{id} (caller-owned tri-state body), new PATCH /v1/comments/{id} (author-only), `edited_at` columns on both rows. SPEC anchors: §4.2, §4.4, §5.4, §6.6. No new JSX screens; no token / `colors_and_type.css` edits.
 
 ### Screen ↔ data-shape mapping
 
@@ -110,11 +110,11 @@ Brief: `docs/history/01_post_create_editability/00_brief.md`. SPEC anchors: §4.
 - **No emoji.** Confirmed — `more_horiz` and `edit_outlined` are line-icon glyphs, not emoji.
 - **Type floor exception — flag.** README §Type states "Never go below 14px". The 11sp italic "edited" marker violates this floor. Brief is explicit that no new tokens are introduced. Two options for `flutter-engineer` to pick: **(a)** accept as a one-line documented exception scoped to this marker only (preferred — matches the visual weight of inline metadata on Untappd/Letterboxd and avoids token churn); **(b)** bump the marker to 12sp or the existing smallest body size. Flag this back to designer if (b) is preferred and a token is needed.
 
-### Out of scope (this slice)
+### Deferred
 
 Edit history audit log, time-limited edit windows, admin-side comment redaction, beverage re-pointing on a check-in, push notifications for edits.
 
-## Producer images (02)
+## Producer images
 
 Admin-uploaded optional image on the `producers` row. Mobile renders it where it adds value; never displays a placeholder when the field is null.
 
@@ -134,6 +134,6 @@ Admin-uploaded optional image on the `producers` row. Mobile renders it where it
 - Image-missing alt text uses `producerImageMissing` (en: "No producer image", ja: 「醸造所の画像なし」, ko: "양조장 이미지 없음"). Semantic only — never visible UI copy.
 - Image hero on detail screen does NOT carry a Koh-accent overlay (per `design/README.md` Koh is reserved for toast/kanpai). A subtle `--c-border-1` 1-dp outline on the hero is enough to seat it in the surface.
 
-### Out of scope (this slice)
+### Deferred
 
 User-submitted producer images, multi-image galleries, in-app cropping/resizing, admin moderation queue beyond the existing producer publish flow.

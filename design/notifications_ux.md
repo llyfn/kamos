@@ -287,9 +287,11 @@ JA / KO translations are owned by `flutter-feature` (per the brief: "JA/KO trans
 
 ---
 
-## 6. Open decisions to flag
+## 6. Decision flags (historical)
 
-1. **Inbox screen removal timing.** This design keeps `InboxScreen.jsx` and `FOLLOW_REQUESTS` in the kit for one milestone so the demo of `/inbox` → `/notifications` route redirect is meaningful. Flag for `flutter-feature`: confirm timing of deletion; the design kit should drop both whenever Flutter does.
+The items below were open during the design phase. The notifications nav shipped end-to-end (the `/inbox` → `/notifications` redirect is live, the unread dot is fetch-on-focus), so most of these are now closed. Kept for design-decision provenance only.
+
+1. **Inbox screen removal timing.** ~~Open.~~ Shipped: the kit's `InboxScreen.jsx` and `FOLLOW_REQUESTS` survived one cycle alongside the new Notifications tab; both have since been removed.
 2. **Live-update channel for the unread dot.** This milestone is fetch-on-focus only. Realtime push (web socket / SSE / push notifications) is deferred to v1.1 per SPEC §9. If product wants polling on the Notifications tab while open, that's a behavior change — flag back; do not implement silently.
 3. **Mark-on-scroll thresholds.** 50% visibility × 500ms is a recommendation matching common patterns (Instagram, X). If user-testing shows fast scrollers feel "behind" (lots of unread persisting after a scroll-through), shorten to 30% × 300ms — but do this as a unified update across mark-on-scroll behaviors app-wide, not just here.
 4. **`elapsedShort()` for timestamps.** Reusing the existing helper from `shared/utils/elapsed_time.dart` (referenced in `profile_social_ux_expansion.md` §4). If the helper renders differently for `>1y` timestamps, that's fine — notifications older than a year are an edge case.

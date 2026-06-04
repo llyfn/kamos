@@ -295,10 +295,10 @@ Beyond the social feed, users can discover beverages through:
 
 The following are explicitly out of MVP scope.
 
-Four items previously listed here were reopened for post-MVP (v1.1) on 2026-05-14 and are now on the post-MVP roadmap:
+Four items originally listed here were reopened for post-MVP (v1.1) on 2026-05-14 and shipped end-to-end by Phase 7:
 
 - **Venue / location on check-ins** — Phase 4. Foursquare Places API, not Google Places.
-- **Flat comments on check-ins** — Phase 6. Author-editable post-MVP (PATCH /v1/comments/{id}); UI shows the same "edited" marker as check-ins. Threaded comments remain out of scope.
+- **Flat comments on check-ins** — Phase 6. Author-editable (PATCH /v1/comments/{id}); UI shows an "edited" marker. Threaded comments remain out of scope.
 - **Public collections** — Phase 6.
 - **User-submitted beverage additions** — Phase 5. Admin moderation workflow.
 
