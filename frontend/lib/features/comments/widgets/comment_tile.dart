@@ -71,6 +71,7 @@ class CommentTile extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       // Username Text also taps through to the author's
@@ -99,11 +100,35 @@ class CommentTile extends ConsumerWidget {
                               ),
                             ),
                     ),
-                    if (when != null)
-                      Text(
-                        elapsedShort(when, l),
-                        style: TextStyle(fontSize: 11, color: t.fg3),
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (when != null)
+                          Text(
+                            elapsedShort(when, l),
+                            style: TextStyle(fontSize: 11, color: t.fg3),
+                          ),
+                        if (isOwn)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Tooltip(
+                              message: l.commentsDelete,
+                              child: InkWell(
+                                onTap: () => _confirmAndDelete(context, l),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    size: 14,
+                                    color: t.fg3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -114,12 +139,6 @@ class CommentTile extends ConsumerWidget {
               ],
             ),
           ),
-          if (isOwn)
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18),
-              tooltip: l.commentsDelete,
-              onPressed: () => _confirmAndDelete(context, l),
-            ),
         ],
       ),
     );

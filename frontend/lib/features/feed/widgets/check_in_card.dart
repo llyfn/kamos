@@ -48,6 +48,7 @@ class CheckInCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // The avatar + username Text subtree taps through to the
                 // author's profile. HitTestBehavior.opaque ensures taps on
@@ -71,6 +72,10 @@ class CheckInCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        when != null ? elapsedShort(when, l) : '',
+                        style: TextStyle(fontSize: 12, color: t.fg3),
+                      ),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () =>
@@ -84,14 +89,28 @@ class CheckInCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Text(
-                        when != null ? elapsedShort(when, l) : '',
-                        style: TextStyle(fontSize: 12, color: t.fg3),
-                      ),
                     ],
                   ),
                 ),
-                Icon(Icons.more_horiz, color: t.fg3, size: 18),
+                if (item.rating != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        StarsDisplay(value: item.rating, size: 11),
+                        const SizedBox(width: 4),
+                        Text(
+                          l.ratingValue(item.rating!.toStringAsFixed(1)),
+                          style: const TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: KamosSpacing.md),
@@ -129,23 +148,6 @@ class CheckInCard extends StatelessWidget {
                           ].join(' · '),
                           style: TextStyle(fontSize: 12, color: t.fg2),
                         ),
-                        if (item.rating != null) ...[
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              StarsDisplay(value: item.rating, size: 13),
-                              const SizedBox(width: 6),
-                              Text(
-                                l.ratingValue(item.rating!.toStringAsFixed(1)),
-                                style: const TextStyle(
-                                  fontFamily: 'JetBrainsMono',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
