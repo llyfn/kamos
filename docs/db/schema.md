@@ -259,7 +259,8 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
 | `flavor_tags` | Admin taxonomy (SPEC §4.3). | — | 5 fixed dimensions. |
 | `beverage_flavor_tags` | Aggregate tags per beverage. | — | Composite PK. |
-| `check_ins` | User logs. | `deleted_at` | Rating 0.5..5.0 in 0.5 steps, review ≤500, price coherence. Beverage immutable post-create (SPEC §4.4) — enforced at app layer. |
+| `check_ins` | User logs. | `deleted_at` | Rating 0.5..5.0 in 0.5 steps, review ≤500, price coherence. Beverage immutable post-create (SPEC §4.4) — enforced at app layer. `edited_at TIMESTAMPTZ NULL` (003): rendering-only marker; set by the backend in the same TX as any tracked-field change. No CHECK, no index. |
+| `comments` | Flat comments on check-ins (post-MVP v1.1). | `deleted_at` | Body 1..500 chars, control-char backstop CHECK. `user_id` is `ON DELETE SET NULL` so author hard-purge doesn't orphan the body. `edited_at TIMESTAMPTZ NULL` (004): rendering-only marker; set by the backend in the same TX as any body change. No CHECK, no index. |
 | `check_in_photos` | ≤4 photos per check-in. | — | `sort_order ∈ {0..3}` + UNIQUE. |
 | `check_in_flavor_tags` | Tags per check-in. | — | Composite PK. |
 | `follows` | Social graph. | — | Composite PK, status enum, `pending ⇔ accepted_at IS NULL`. |
@@ -292,6 +293,8 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `check_ins.purchase_type` enum | §4.1 |
 | `check_ins.price_*` coherence | §4.1 |
 | `check_ins.deleted_at` | §4.4, §6.4 |
+| `check_ins.edited_at` (003) | §4.4 |
+| `comments.edited_at` (004) | §5.4 |
 | `follows.status IN ('pending','accepted')` | §5.1 |
 | `follows.follower_id <> followed_id` | §5.1 |
 | `toasts` composite PK | §5.3 |

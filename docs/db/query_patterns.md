@@ -341,26 +341,51 @@ After commit, the `trg_check_ins_agg_iud` trigger has already updated `beverages
 
 ## 7. Edit a check-in
 
-**Endpoint**: `PATCH /checkins/:id`.
+**Endpoint**: `PATCH /v1/check-ins/{id}`.
 **SPEC**: §4.4 — all fields editable EXCEPT `beverage_id`.
 
 Go validates that the patch does not include `beverage_id`. The DB does not enforce it (no DB-level guarantee that `beverage_id` is immutable; we rely on application discipline).
 
+All field updates and the `edited_at` touch run in a single `pgx.Tx`. The scalar update is one statement; photo add/remove and tag replacement are batched separately on the same TX. The `edited_at` touch is folded into the scalar update so a row that only changes photos OR tags still records its edit in one statement (see "edited_at touch pattern" at the end of this section).
+
 ```sql
+-- 7a. Scalar field update + edited_at touch (one statement).
+-- Set $9 = TRUE iff this PATCH carries at least one changed tracked field
+-- (rating / review_text / price_* / purchase_type / a non-empty
+-- add_photos / a non-empty remove_photos / a tags-field-present). Go owns
+-- the "was anything actually changed?" decision; the SQL just records it.
 UPDATE check_ins SET
   rating          = COALESCE($2, rating),
-  review_text     = $3,           -- nullable, allow explicit clear
+  review_text     = $3,                                   -- nullable; allow explicit clear
   price_amount    = $4,
   price_currency  = $5,
   price_unit      = $6,
-  purchase_type   = $7
+  purchase_type   = $7,
+  edited_at       = CASE WHEN $9 THEN NOW() ELSE edited_at END
 WHERE id = $1
   AND user_id = $8
   AND deleted_at IS NULL
-RETURNING id, updated_at;
+RETURNING id, updated_at, edited_at;
 ```
 
-Photo & tag edits are separate batched statements (delete + re-insert pattern; trivial at the ≤4 / ≤many sizes involved).
+Photo & tag edits are separate batched statements (delete + re-insert pattern; trivial at the ≤4 / ≤many sizes involved). The SPEC §4.1 four-photo cap is enforced in Go pre-write against `count(current) − len(remove_photos) + len(add_photos) ≤ 4`; the DB-level `UNIQUE (check_in_id, sort_order)` + `sort_order BETWEEN 0 AND 3` is the backstop.
+
+### edited_at touch pattern (003)
+
+Both `check_ins` (003) and `comments` (004) carry a nullable `edited_at TIMESTAMPTZ`. Rule: **set `edited_at = NOW()` in the same transaction as any tracked-field change; leave it untouched otherwise.**
+
+Two implementation shapes; pick per endpoint:
+
+1. **Inline-CASE (preferred when the same UPDATE carries the field changes).** Embed `edited_at = CASE WHEN <changed> THEN NOW() ELSE edited_at END` in the scalar UPDATE. One round-trip, atomic with the field write. Used by §7 above (check-in edit) and §19 (comment edit).
+2. **Companion UPDATE inside the TX (when the change is only in a child table — e.g. PATCH that only adds/removes photos or tags on a check-in).** After the photo / tag mutation runs, issue:
+
+   ```sql
+   UPDATE check_ins SET edited_at = NOW() WHERE id = $1;
+   ```
+
+   Same `pgx.Tx`. The author-ownership check is already covered by the photo / tag handler's own preflight; this UPDATE has no `user_id` predicate because adding it would re-run the soft-delete / owner gate the handler already passed.
+
+Either shape, the invariants are the same: `edited_at` is rendering-only, never sorted or filtered server-side, never used in WHERE / ORDER BY, no index. A no-op PATCH (every field unchanged) must NOT touch `edited_at` — Go decides "anything actually changed?" before issuing the write.
 
 ---
 
@@ -760,3 +785,28 @@ KAMOS runs N stateless API replicas behind a load balancer. Hot reads pass throu
 - A disconnected invalidator logs `cache_invalidator_disconnected` and reconnects with backoff. While disconnected, peer replicas drift up to the L1 TTL ceiling on the relevant key (`5m` beverage, `10m` producer, `1h` taxonomy).
 - Schema additions that introduce new prefixes do NOT crash the invalidator — `Caches.InvalidatePrefix` no-ops on unknown payloads.
 - The pgx connection is hijacked out of the pool (`Conn.Hijack()`) so the listener cannot be silently recycled mid-flight. Closed explicitly during shutdown.
+
+---
+
+## 19. Edit a comment
+
+**Endpoint**: `PATCH /v1/comments/{id}`.
+**SPEC**: §5.4 (flat comments, post-MVP v1.1) — author-editable; body is the only mutable field.
+
+Go runs the SPEC §6.7 sanitization (`domain.SanitizeText("body", body, false, 500)`) before issuing the write. The author-only gate is enforced by the `user_id = $3` predicate (a non-author hits an empty `RETURNING` and the handler responds 403/404 per the API style). Soft-deleted comments are excluded by `deleted_at IS NULL`.
+
+Same `edited_at` discipline as §7: the timestamp is touched only when the body actually changes. The CASE expression compares `body` against the existing column so a PATCH with the same body string round-trips as a true no-op.
+
+```sql
+UPDATE comments SET
+  body      = $2,
+  edited_at = CASE WHEN body IS DISTINCT FROM $2 THEN NOW() ELSE edited_at END
+WHERE id = $1
+  AND user_id = $3
+  AND deleted_at IS NULL
+RETURNING id, check_in_id, user_id, body, created_at, edited_at;
+```
+
+`IS DISTINCT FROM` handles the NULL case correctly (though `body` is NOT NULL by schema, the operator is the safe idiom). The CHECK constraints on `comments.body` (`char_length BETWEEN 1 AND 500`, control-char rejection) run on every UPDATE so a bypassed sanitizer is still rejected at the DB.
+
+No index on `edited_at` — rendering-only, never sorted or filtered server-side. The cross-table emit path (notifications for `type='comment'`) is NOT re-fired on edit; the original notification stays in the recipient's inbox unchanged.
