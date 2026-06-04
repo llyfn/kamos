@@ -30,6 +30,7 @@ import '../../../core/api/api_toast.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../../social/repository/social_repository.dart';
 import '../models/notification.dart';
 import '../providers/notification_providers.dart';
@@ -301,6 +302,11 @@ class _FollowRequestActionsState
           .read(notificationListProvider.notifier)
           .markRead([n.id]);
       ref.read(notificationListProvider.notifier).removeLocal(n.id);
+      if (approve) {
+        // Viewer's own follower count just went up — refresh so the Me page
+        // reflects it on next view (matches the unfollow-button pattern).
+        ref.invalidate(meProvider);
+      }
     } on DioException catch (e) {
       // SEC-004: a 404 means the underlying follow-request is gone
       // (already resolved on another device, or the actor cancelled).
