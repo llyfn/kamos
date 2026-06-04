@@ -26,6 +26,9 @@ type Comment struct {
 	User      *CheckinUser `json:"user"`
 	Body      string       `json:"body"`
 	CreatedAt time.Time    `json:"created_at"`
+	// EditedAt is non-nil when the author has edited the body after creation
+	// (SPEC §5.4 / migration 004). Rendering-only.
+	EditedAt *time.Time `json:"edited_at,omitempty"`
 	// DeletedAt is exposed for completeness; List queries filter
 	// soft-deleted rows server-side so clients never see one here.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
@@ -34,6 +37,30 @@ type Comment struct {
 // CreateCommentRequest is the body for POST /v1/check-ins/{id}/comments.
 type CreateCommentRequest struct {
 	Body string `json:"body"`
+}
+
+// UpdateCommentRequest is the body for PATCH /v1/comments/{id}. Body is the
+// only mutable field per SPEC §5.4.
+type UpdateCommentRequest struct {
+	Body string `json:"body"`
+}
+
+// Validate mirrors CreateCommentRequest.Validate so an edit cannot bypass
+// the same sanitization a create runs through.
+func (r *UpdateCommentRequest) Validate() error {
+	r.Body = strings.TrimSpace(r.Body)
+	if r.Body == "" {
+		return wrapValidation("body must be 1-500 characters")
+	}
+	clean, err := SanitizeText("body", r.Body, true, 500)
+	if err != nil {
+		return err
+	}
+	if len([]rune(clean)) < 1 {
+		return wrapValidation("body must be 1-500 characters")
+	}
+	r.Body = clean
+	return nil
 }
 
 // Validate enforces SPEC §6.7's "≤ 500 chars" cap plus a control-character

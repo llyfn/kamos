@@ -66,6 +66,8 @@ class AsyncWidget<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value.when(
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
       loading: loading ??
           () => center ? const LogoLoader() : const LoadingView(),
       error: (e, s) {

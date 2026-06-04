@@ -90,7 +90,11 @@ class CollectionDetailScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(collectionDetailProvider(collectionId)),
         data: (record) {
           final (collection, entries) = record;
-          return ListView(
+          return RefreshIndicator(
+            onRefresh: () =>
+                ref.refresh(collectionDetailProvider(collectionId).future),
+            child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             children: [
               Row(
@@ -203,6 +207,7 @@ class CollectionDetailScreen extends ConsumerWidget {
                   );
                 }),
             ],
+          ),
           );
         },
       ),

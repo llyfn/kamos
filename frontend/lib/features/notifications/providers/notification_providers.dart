@@ -62,7 +62,6 @@ class NotificationListNotifier extends AsyncNotifier<NotificationListState> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final page = await ref.read(notificationRepositoryProvider).list();
       return NotificationListState(

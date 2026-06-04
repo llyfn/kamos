@@ -1,6 +1,7 @@
 // KAMOS — Producer detail screen. i18n name + region + founded + website +
 // list of beverages.
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,6 +45,10 @@ class ProducerDetailScreen extends ConsumerWidget {
           return ListView(
             padding: EdgeInsets.zero,
             children: [
+              _ProducerHeroImage(
+                imageUrl: producer.imageUrl,
+                missingLabel: l.producerImageMissing,
+              ),
               Container(
                 color: t.bgWarm,
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -100,21 +105,6 @@ class ProducerDetailScreen extends ConsumerWidget {
                         child: Text(
                           resolveI18n(producer.description!, locale),
                           style: const TextStyle(fontSize: 14, height: 1.6),
-                        ),
-                      ),
-                    if ((producer.website ?? '').isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Text(
-                          producer.website!.replaceFirst(
-                            RegExp(r'^https?://'),
-                            '',
-                          ),
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            color: t.fgLink,
-                            fontSize: 13,
-                          ),
                         ),
                       ),
                     Text(
@@ -206,6 +196,65 @@ class ProducerDetailScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ProducerHeroImage extends StatelessWidget {
+  const _ProducerHeroImage({required this.imageUrl, required this.missingLabel});
+
+  final String? imageUrl;
+  final String missingLabel;
+
+  static const double _diameter = 140;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final border = Border.all(color: t.border1, width: 1);
+    final cacheSide = (_diameter * dpr).round();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      child: Center(
+        child: SizedBox(
+          width: _diameter,
+          height: _diameter,
+          child: imageUrl == null
+              ? Semantics(
+                  label: missingLabel,
+                  image: true,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: t.kinari,
+                      shape: BoxShape.circle,
+                      border: border,
+                    ),
+                  ),
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: border,
+                  ),
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: cacheSide,
+                      memCacheHeight: cacheSide,
+                      placeholder: (_, _) => Container(color: t.kinari),
+                      errorWidget: (_, _, _) => Semantics(
+                        label: missingLabel,
+                        image: true,
+                        child: Container(color: t.kinari),
+                      ),
+                    ),
+                  ),
+                ),
+        ),
       ),
     );
   }

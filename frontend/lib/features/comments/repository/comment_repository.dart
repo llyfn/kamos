@@ -70,6 +70,43 @@ class CommentRepository {
     }
   }
 
+  /// 404 from the server is normalized to [CommentDeletedException].
+  Future<Comment> edit({
+    required String commentId,
+    required String body,
+  }) async {
+    if (body.length > 500) {
+      throw const CommentTooLongException();
+    }
+    if (_controlCharRegex.hasMatch(body)) {
+      throw const CommentInvalidBodyException();
+    }
+    try {
+      final data = await _api.comments.update(
+        commentId: commentId,
+        body: body,
+      );
+      return Comment.fromJson(data);
+    } on DioException catch (e) {
+      final status = e.response?.statusCode ?? 0;
+      String code = '';
+      final responseBody = e.response?.data;
+      if (responseBody is Map<String, dynamic>) {
+        code = (responseBody['code'] as String?) ?? '';
+      }
+      if (code.isEmpty && e.error is ApiException) {
+        code = (e.error as ApiException).code;
+      }
+      if (status == 403) {
+        throw const CommentForbiddenException();
+      }
+      if (status == 404 || code == 'COMMENT_DELETED') {
+        throw const CommentDeletedException();
+      }
+      rethrow;
+    }
+  }
+
   Future<void> deleteOwn(String commentId) async {
     try {
       await _api.comments.deleteOne(commentId);

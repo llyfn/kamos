@@ -79,6 +79,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           onNotification: _onScrollEnd,
           child: ListView(
             controller: _scroll,
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
             // The header bell that pushed /inbox was removed alongside the

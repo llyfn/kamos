@@ -236,6 +236,11 @@ func (h *Handler) AdminRestoreProducer(w http.ResponseWriter, r *http.Request) {
 // _log coupling is an admin concept, not a domain concept of producers.
 
 func (h *Handler) createProducerTx(ctx context.Context, adminID string, body AdminProducerCreate, prefectureID *string) (*repository.AdminProducerRow, error) {
+	imageURL, uploadID, err := h.resolveProducerImageUpload(ctx, adminID, body.ImageUploadID)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -248,6 +253,7 @@ func (h *Handler) createProducerTx(ctx context.Context, adminID string, body Adm
 		FoundedYear:  body.FoundedYear,
 		Website:      body.Website,
 		Description:  body.DescriptionI18n,
+		ImageURL:     imageURL,
 	})
 	if err != nil {
 		return nil, err
@@ -260,10 +266,35 @@ func (h *Handler) createProducerTx(ctx context.Context, adminID string, body Adm
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+	// MarkAttached after commit — orphan-cleanup belt-and-suspenders. A
+	// failure here is logged, not rolled back, so we don't lose the
+	// already-committed producer row over an attach-flag write.
+	if uploadID != "" {
+		if err := h.Repos.PhotoUploads.MarkAttached(ctx, uploadID, out.ID); err != nil {
+			h.Log.Warn("createProducerTx mark upload attached",
+				"err", err, "upload_id", uploadID, "producer_id", out.ID)
+		}
+	}
 	return out, nil
 }
 
 func (h *Handler) updateProducerTx(ctx context.Context, adminID, id string, body AdminProducerUpdate, prefectureID *string) (*repository.AdminProducerRow, error) {
+	// Tri-state imageURLPtr: &""  → NULL the column, &URL → set, nil → leave.
+	var imageURLPtr *string
+	var uploadID string
+	switch {
+	case body.ClearImage:
+		empty := ""
+		imageURLPtr = &empty
+	case body.ImageUploadID != nil && *body.ImageUploadID != "":
+		resolved, uid, err := h.resolveProducerImageUpload(ctx, adminID, body.ImageUploadID)
+		if err != nil {
+			return nil, err
+		}
+		imageURLPtr = resolved
+		uploadID = uid
+	}
+
 	tx, err := h.Repos.DB.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -276,6 +307,7 @@ func (h *Handler) updateProducerTx(ctx context.Context, adminID, id string, body
 		FoundedYear:  body.FoundedYear,
 		Website:      body.Website,
 		Description:  body.DescriptionI18n,
+		ImageURL:     imageURLPtr,
 	})
 	if err != nil {
 		return nil, err
@@ -288,7 +320,36 @@ func (h *Handler) updateProducerTx(ctx context.Context, adminID, id string, body
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+	if uploadID != "" {
+		if err := h.Repos.PhotoUploads.MarkAttached(ctx, uploadID, id); err != nil {
+			h.Log.Warn("updateProducerTx mark upload attached",
+				"err", err, "upload_id", uploadID, "producer_id", id)
+		}
+	}
 	return out, nil
+}
+
+// resolveProducerImageUpload turns an optional photo_uploads.id into the
+// public R2 URL the repository persists on producers.image_url. Errors:
+// ErrNotFound (unknown upload or cross-admin reuse), ErrUploadNotCompleted
+// (upload already attached or orphaned). Purpose='producer' is enforced
+// at the admin-only presign route, not here.
+func (h *Handler) resolveProducerImageUpload(ctx context.Context, adminID string, uploadID *string) (*string, string, error) {
+	if uploadID == nil || *uploadID == "" {
+		return nil, "", nil
+	}
+	upload, err := h.Repos.PhotoUploads.FindByID(ctx, *uploadID)
+	if err != nil {
+		return nil, "", err
+	}
+	if upload.UserID != adminID {
+		return nil, "", domain.ErrNotFound
+	}
+	if upload.Status == "attached" || upload.Status == "orphaned" {
+		return nil, "", domain.ErrUploadNotCompleted
+	}
+	url := h.Storage.PublicURL(upload.BlobKey)
+	return &url, upload.ID, nil
 }
 
 // ---- prefecture slug resolution ----

@@ -39,7 +39,14 @@ class BeverageDetailScreen extends ConsumerWidget {
         value: asyncDetail,
         center: true,
         onRetry: () => ref.invalidate(beverageDetailProvider(beverageId)),
-        data: (detail) => _Body(detail: detail),
+        data: (detail) => RefreshIndicator(
+          // The detail provider returns the catalog row, aggregated flavor,
+          // and the recent check-ins strip in a single payload — refreshing
+          // it covers everything the screen renders.
+          onRefresh: () =>
+              ref.refresh(beverageDetailProvider(beverageId).future),
+          child: _Body(detail: detail),
+        ),
       ),
     );
   }
@@ -71,6 +78,9 @@ class _Body extends ConsumerWidget {
         : resolveI18n(b.subcategory!, locale);
 
     return SingleChildScrollView(
+      // Always-scrollable physics so the surrounding RefreshIndicator can fire
+      // even when the rendered detail is shorter than the viewport.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -337,39 +347,49 @@ class _RecentCheckinRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () =>
-                          pushUserProfile(context, summary.user.username),
-                      child: Text(
-                        summary.user.displayUsername,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            pushUserProfile(context, summary.user.username),
+                        child: Text(
+                          summary.user.displayUsername,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
-                    if (summary.rating != null)
+                    if (when != null)
+                      Text(
+                        elapsedShort(when, l),
+                        style: TextStyle(
+                          fontFamily: 'NotoSansJP',
+                          fontSize: 11,
+                          color: t.fg3,
+                        ),
+                      ),
+                  ],
+                ),
+                if (summary.rating != null) ...[
+                  const SizedBox(height: KamosSpacing.xs),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      StarsDisplay(value: summary.rating, size: 11),
+                      const SizedBox(width: 4),
                       Text(
                         l.ratingValue(summary.rating!.toStringAsFixed(1)),
                         style: const TextStyle(
                           fontFamily: 'JetBrainsMono',
                           fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ),
-                if (when != null) ...[
-                  const SizedBox(height: KamosSpacing.xs),
-                  Text(
-                    elapsedShort(when, l),
-                    style: TextStyle(
-                      fontFamily: 'NotoSansJP',
-                      fontSize: 11,
-                      color: t.fg3,
-                    ),
+                    ],
                   ),
                 ],
                 if ((summary.review ?? '').isNotEmpty) ...[
@@ -386,21 +406,6 @@ class _RecentCheckinRow extends StatelessWidget {
                 if (summary.photos.isNotEmpty) ...[
                   const SizedBox(height: KamosSpacing.sm),
                   _PhotoStrip(photos: summary.photos),
-                ],
-                if (summary.tags.isNotEmpty) ...[
-                  const SizedBox(height: KamosSpacing.sm),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      ...summary.tags.map(
-                        (tag) => KamosChip(
-                          label: resolveI18n(tag.name, locale),
-                          kind: KamosChipKind.tag,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ],
             ),

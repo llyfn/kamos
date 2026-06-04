@@ -220,7 +220,7 @@ func (r *CollectionRepo) Entries(ctx context.Context, userID, collectionID strin
 SELECT ce.beverage_id, ce.note, ce.added_at,
        b.name_i18n, b.category_slug, b.label_image_url,
        cat.name_i18n,
-       br.id, br.name_i18n,` + producerPrefectureSelectCols + `
+       br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `
 FROM collection_entries ce
 JOIN collections c ON c.id = ce.collection_id AND c.user_id = $1 AND c.deleted_at IS NULL
 JOIN beverages b ON b.id = ce.beverage_id
@@ -239,18 +239,19 @@ LIMIT $5;`
 	for rows.Next() {
 		var e domain.CollectionEntry
 		var (
-			bevID    string
-			bevName  []byte
-			bevSlug  string
-			bevLabel *string
-			catName  []byte
-			brwID    string
-			brwName  []byte
-			brwPref  prefectureScan
+			bevID       string
+			bevName     []byte
+			bevSlug     string
+			bevLabel    *string
+			catName     []byte
+			brwID       string
+			brwName     []byte
+			brwImageURL *string
+			brwPref     prefectureScan
 		)
 		prefArgs := brwPref.scanArgs()
-		scanArgs := make([]any, 0, 9+len(prefArgs))
-		scanArgs = append(scanArgs, &bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName)
+		scanArgs := make([]any, 0, 10+len(prefArgs))
+		scanArgs = append(scanArgs, &bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName, &brwImageURL)
 		scanArgs = append(scanArgs, prefArgs...)
 		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, fmt.Errorf("CollectionRepo.Entries scan: %w", err)
@@ -261,7 +262,7 @@ LIMIT $5;`
 		e.Beverage = domain.BeverageRef{
 			ID:            bevID,
 			Name:          bn,
-			Producer:      domain.ProducerRef{ID: brwID, Name: brn, Prefecture: brwPref.toPrefecture()},
+			Producer:      domain.ProducerRef{ID: brwID, Name: brn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 			LabelImageURL: bevLabel,
 		}

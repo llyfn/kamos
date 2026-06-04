@@ -7,14 +7,19 @@ import "time"
 // ---------------------------------------------------------------------------
 
 type Producer struct {
-	ID            string      `json:"id"`
-	Name          I18nText    `json:"name"`
-	Prefecture    *Prefecture `json:"prefecture,omitempty"`
-	FoundedYear   *int        `json:"founded_year,omitempty"`
-	Website       *string     `json:"website,omitempty"`
-	Description   *I18nText   `json:"description,omitempty"`
-	CreatedAt     time.Time   `json:"created_at"`
-	BeverageCount *int        `json:"beverage_count,omitempty"`
+	ID          string      `json:"id"`
+	Name        I18nText    `json:"name"`
+	Prefecture  *Prefecture `json:"prefecture,omitempty"`
+	FoundedYear *int        `json:"founded_year,omitempty"`
+	Website     *string     `json:"website,omitempty"`
+	Description *I18nText   `json:"description,omitempty"`
+	// ImageURL is the optional admin-uploaded image (logo / brewery photo /
+	// label collage). Resolved server-side from a `photo_uploads` row with
+	// `purpose='producer'` and persisted as a public R2 URL on
+	// producers.image_url. Absent-when-unknown (Go omitempty).
+	ImageURL      *string   `json:"image_url,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	BeverageCount *int      `json:"beverage_count,omitempty"`
 }
 
 type CategoryLabel struct {
@@ -74,4 +79,8 @@ type ProducerRef struct {
 	ID         string      `json:"id"`
 	Name       I18nText    `json:"name"`
 	Prefecture *Prefecture `json:"prefecture,omitempty"`
+	// ImageURL mirrors Producer.ImageURL on the compact embed so the
+	// check-in card / feed item can render the optional 16-dp producer
+	// thumbnail without a second fetch. Absent-when-unknown.
+	ImageURL *string `json:"image_url,omitempty"`
 }

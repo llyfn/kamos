@@ -1,10 +1,4 @@
 // KAMOS — Single comment row.
-//
-// Renders avatar + username + body + relative timestamp. The trailing delete
-// affordance is rendered only when the comment author's id matches the
-// signed-in user's id (read from `meProvider`). If `meProvider` is not in the
-// data state yet, the delete icon is hidden — when the user signs back in or
-// the profile loads, the rebuild adds the icon.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,8 +10,9 @@ import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../users/navigation.dart';
+import '../providers/comment_providers.dart';
 
-class CommentTile extends ConsumerWidget {
+class CommentTile extends ConsumerStatefulWidget {
   const CommentTile({super.key, required this.comment, required this.onDelete});
 
   final Comment comment;
@@ -26,7 +21,94 @@ class CommentTile extends ConsumerWidget {
   final Future<void> Function(String commentId) onDelete;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CommentTile> createState() => _CommentTileState();
+}
+
+class _CommentTileState extends ConsumerState<CommentTile> {
+  bool _editing = false;
+  bool _saving = false;
+  late final TextEditingController _editController;
+
+  @override
+  void initState() {
+    super.initState();
+    _editController = TextEditingController(text: widget.comment.body);
+  }
+
+  @override
+  void dispose() {
+    _editController.dispose();
+    super.dispose();
+  }
+
+  void _enterEdit() {
+    setState(() {
+      _editController.text = widget.comment.body;
+      _editing = true;
+    });
+  }
+
+  void _cancelEdit() {
+    setState(() => _editing = false);
+  }
+
+  Future<void> _saveEdit() async {
+    if (_saving) return;
+    final newBody = _editController.text.trim();
+    if (newBody.isEmpty || newBody.length > 500) return;
+    if (newBody == widget.comment.body) {
+      setState(() => _editing = false);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(commentsProvider(widget.comment.checkInId).notifier)
+          .edit(commentId: widget.comment.id, body: newBody);
+      if (!mounted) return;
+      setState(() {
+        _editing = false;
+        _saving = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _openOwnerMenu() async {
+    final l = AppLocalizations.of(context);
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l.commentEdit),
+              onTap: () => Navigator.pop(sheetCtx, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(l.commentsDelete),
+              onTap: () => Navigator.pop(sheetCtx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'edit') {
+      _enterEdit();
+    } else if (action == 'delete') {
+      await _confirmAndDelete(context, l);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final comment = widget.comment;
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final me = ref.watch(meProvider).asData?.value;
@@ -70,56 +152,126 @@ class CommentTile extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      // Username Text also taps through to the author's
-                      // profile. Orphan comments render the placeholder
-                      // label without a gesture.
-                      child: author != null
-                          ? GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () =>
-                                  pushUserProfile(context, author.username),
-                              child: Text(
-                                displayName,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: t.fg1,
-                                ),
-                              ),
-                            )
-                          : Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: t.fg1,
-                              ),
-                            ),
+                // Username Text also taps through to the author's profile.
+                // Orphan comments render the placeholder label without a
+                // gesture.
+                author != null
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            pushUserProfile(context, author.username),
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: t.fg1,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        displayName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: t.fg1,
+                        ),
+                      ),
+                const SizedBox(height: 2),
+                if (_editing) ...[
+                  TextField(
+                    controller: _editController,
+                    maxLength: 500,
+                    autofocus: true,
+                    maxLines: null,
+                    style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      counterText: '',
                     ),
-                    if (when != null)
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _saving ? null : _cancelEdit,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 28),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: Text(l.actionCancel),
+                      ),
+                      const SizedBox(width: 4),
+                      FilledButton(
+                        onPressed: _saving ? null : _saveEdit,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 28),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: Text(l.actionSave),
+                      ),
+                    ],
+                  ),
+                ] else
+                  Text(
+                    comment.body,
+                    style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
+                  ),
+              ],
+            ),
+          ),
+          // Right meta column lives outside the body Expanded so the
+          // ellipsis can't grow the body Column's height.
+          if (when != null || (isOwn && !_editing)) ...[
+            const SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (when != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
                         elapsedShort(when, l),
                         style: TextStyle(fontSize: 11, color: t.fg3),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  comment.body,
-                  style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
-                ),
+                      if (comment.editedAt != null) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          l.editedMarker,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            color: t.fg3,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                if (isOwn && !_editing)
+                  InkWell(
+                    onTap: _openOwnerMenu,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(Icons.more_horiz, size: 14, color: t.fg3),
+                    ),
+                  ),
               ],
             ),
-          ),
-          if (isOwn)
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18),
-              tooltip: l.commentsDelete,
-              onPressed: () => _confirmAndDelete(context, l),
-            ),
+          ],
         ],
       ),
     );
@@ -146,7 +298,7 @@ class CommentTile extends ConsumerWidget {
       ),
     );
     if (confirm == true) {
-      await onDelete(comment.id);
+      await widget.onDelete(widget.comment.id);
     }
   }
 }

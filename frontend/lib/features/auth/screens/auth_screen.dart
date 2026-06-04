@@ -16,6 +16,7 @@ import '../../../app/theme.dart';
 import '../../../core/auth/google_signin_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/auth_controller.dart';
+import '../providers/auth_state.dart';
 
 enum _Mode { signIn, signUp, forgot }
 
@@ -43,6 +44,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(authControllerProvider);
+    final wasExpired = ref.watch(
+      authStateProvider.select((s) => s.wasExpired),
+    );
+
+    if (wasExpired) {
+      return Scaffold(
+        body: SafeArea(
+          child: _UnauthorizedFallback(
+            onRetry: () =>
+                ref.read(authStateProvider.notifier).acknowledgeExpired(),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -440,6 +455,70 @@ class _FieldLabel extends StatelessWidget {
           letterSpacing: 1.3,
           color: t.fg3,
         ),
+      ),
+    );
+  }
+}
+
+/// Shown when `AuthState.wasExpired` is true (refresh exchange failed).
+/// Retry clears the flag so the regular sign-in form returns.
+class _UnauthorizedFallback extends StatelessWidget {
+  const _UnauthorizedFallback({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: KamosSpacing.xl),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/images/logo_mark.png',
+            width: 120,
+            height: 120,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(height: KamosSpacing.xl),
+          Text(
+            l.appName,
+            style: TextStyle(
+              fontFamily: 'ShipporiMincho',
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: t.kon,
+            ),
+          ),
+          const SizedBox(height: KamosSpacing.md),
+          Text(
+            l.errorUnauthorized,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'NotoSansJP',
+              fontSize: 15,
+              height: 1.55,
+              color: t.fg2,
+            ),
+          ),
+          const SizedBox(height: KamosSpacing.xxl),
+          SizedBox(
+            width: 200,
+            child: FilledButton(
+              onPressed: onRetry,
+              style: FilledButton.styleFrom(
+                backgroundColor: t.ai,
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(l.actionRetry),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -90,6 +90,33 @@ class CheckInRepository {
     return Checkin.fromJson(data);
   }
 
+  /// SPEC §4.4 — caller-built body so the tri-state contract on
+  /// rating / review / price is preserved: absent = no change,
+  /// explicit null = clear, value = set.
+  ///
+  /// `beverage_id` is immutable per SPEC §4.4 and MUST NOT be in [body].
+  /// `add_photos` and `remove_photos` are normal optional keys (omit the
+  /// key when the diff is empty).
+  ///
+  /// The facade does not strip nulls on this path, so explicit `null`
+  /// values reach the server intact.
+  Future<Checkin> edit({
+    required String id,
+    required Map<String, dynamic> body,
+  }) async {
+    assert(
+      !body.containsKey('beverage_id'),
+      'beverage_id is immutable on a check-in (SPEC §4.4)',
+    );
+    final data = await _api.checkins.update(id, body);
+    return Checkin.fromJson(data);
+  }
+
+  /// Author-only soft-delete. Used by the own-check-in overflow menu.
+  Future<void> delete(String id) async {
+    await _api.checkins.deleteOne(id);
+  }
+
   /// Latest check-ins authored by [username]. Wraps the cursor-paginated
   /// `GET /v1/users/{username}/check-ins`; callers that need pagination
   /// can extend this to forward `cursor`, but the profile recent-list
@@ -110,6 +137,102 @@ class CheckInRepository {
     return raw
         .map((e) => FlavorTag.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Two-step pre-attach upload: presign → PUT. Returns the resulting
+  /// `upload_id` so the caller can splice it into a PATCH `add_photos`
+  /// payload. Used by `EditCheckInScreen` where the attach happens inside
+  /// the PATCH transaction (server-side) rather than as a follow-up POST.
+  ///
+  /// Throws the same exceptions as [uploadPhotoAndAttach]'s presign + put
+  /// stages.
+  Future<String> uploadPhotoOnly({
+    required File file,
+    required void Function(double pct) onProgress,
+  }) async {
+    final contentType = _contentTypeForPath(file.path);
+    if (!_allowedContentTypes.contains(contentType)) {
+      throw PhotoUploadException(
+        'Unsupported content type: $contentType',
+        stage: 'presign',
+      );
+    }
+    final byteSize = await file.length();
+
+    // Step 1: presign.
+    final Map<String, dynamic> presign;
+    try {
+      presign = await _api.uploads.presignPhotoUpload(
+        contentType: contentType,
+        byteSize: byteSize,
+      );
+    } on DioException catch (e) {
+      final status = e.response?.statusCode ?? 0;
+      final body = e.response?.data;
+      if (status == 503 && body is Map<String, dynamic>) {
+        final code =
+            (body['code'] as String?) ??
+            (e.error is ApiException ? (e.error as ApiException).code : '');
+        if (code == 'STORAGE_DISABLED') {
+          throw const StorageDisabledException();
+        }
+      }
+      if (e.error is ApiException) {
+        final api = e.error as ApiException;
+        if (api.statusCode == 503 && api.code == 'STORAGE_DISABLED') {
+          throw const StorageDisabledException();
+        }
+      }
+      throw PhotoUploadException(
+        e.message ?? 'presign failed',
+        stage: 'presign',
+      );
+    }
+
+    final uploadId = presign['upload_id'] as String?;
+    final uploadUrl = presign['upload_url'] as String?;
+    final headersAny = presign['headers'];
+    if (uploadId == null ||
+        uploadId.isEmpty ||
+        uploadUrl == null ||
+        uploadUrl.isEmpty) {
+      throw const PhotoUploadException(
+        'presign response missing upload_id or upload_url',
+        stage: 'presign',
+      );
+    }
+    final headers = <String, dynamic>{};
+    if (headersAny is Map) {
+      headers.addAll(headersAny.map((k, v) => MapEntry(k.toString(), v)));
+    }
+    headers.putIfAbsent('Content-Type', () => contentType);
+
+    // Step 2: PUT bytes through the raw Dio.
+    try {
+      await _rawDio.put<dynamic>(
+        uploadUrl,
+        data: file.openRead(),
+        options: Options(
+          headers: {
+            ...headers,
+            Headers.contentLengthHeader: byteSize,
+          },
+          contentType: contentType,
+          validateStatus: (s) => s != null && s >= 200 && s < 300,
+        ),
+        onSendProgress: (sent, total) {
+          if (total <= 0) return;
+          final pct = sent / total;
+          onProgress(pct.clamp(0.0, 1.0));
+        },
+      );
+    } on DioException catch (e) {
+      throw PhotoUploadException(
+        e.message ?? 'upload PUT failed',
+        stage: 'put',
+      );
+    }
+    return uploadId;
   }
 
   /// Three-step photo upload: presign → PUT → attach.

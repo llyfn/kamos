@@ -60,7 +60,6 @@ class CommentsNotifier extends AsyncNotifier<CommentsState> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final page = await ref.read(commentRepositoryProvider).list(checkInId);
       return CommentsState(
@@ -110,6 +109,25 @@ class CommentsNotifier extends AsyncNotifier<CommentsState> {
       current.copyWith(items: [created, ...current.items]),
     );
     return created;
+  }
+
+  /// Pessimistic body-only edit. Awaits the server's 200 with the updated
+  /// row, then replaces the local entry in place so the body + `editedAt`
+  /// stay in sync. On failure the state is unchanged and the exception is
+  /// rethrown so the UI can surface a toast.
+  Future<Comment> edit({
+    required String commentId,
+    required String body,
+  }) async {
+    final repo = ref.read(commentRepositoryProvider);
+    final current = state.asData?.value ?? const CommentsState();
+    final idx = current.items.indexWhere((c) => c.id == commentId);
+    final updated = await repo.edit(commentId: commentId, body: body);
+    if (idx == -1) return updated;
+    final next = [...current.items];
+    next[idx] = updated;
+    state = AsyncValue.data(current.copyWith(items: next));
+    return updated;
   }
 
   /// Optimistically removes the comment locally, then asks the server. On

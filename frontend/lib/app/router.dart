@@ -43,6 +43,7 @@ import '../features/beverage_requests/screens/submit_beverage_request_screen.dar
 import '../features/beverages/screens/beverage_detail_screen.dart';
 import '../features/check_in/screens/check_in_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
+import '../features/check_in/screens/edit_check_in_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
@@ -179,6 +180,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => _noTransition(
           state,
           OtherProfileScreen(username: state.pathParameters['username']!),
+        ),
+      ),
+      // The /edit suffix sits BEFORE /check-ins/:id so go_router matches the
+      // more-specific path first (path order is significant on overlapping
+      // patterns).
+      GoRoute(
+        path: '/check-ins/:id/edit',
+        pageBuilder: (_, state) => _noTransition(
+          state,
+          EditCheckInScreen(checkInId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(

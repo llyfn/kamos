@@ -93,10 +93,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       data: (_) => const _DangerZoneSection(),
     );
 
+    final editProfileTile = ListTile(
+      leading: const Icon(Icons.person_outline),
+      title: Text(l.profileEdit),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/me/edit'),
+    );
+
     return Scaffold(
       appBar: AppBar(title: Text(l.profileSettings)),
       body: ListView(
         children: [
+          editProfileTile,
           accountPrivacy,
           // "Preferences" header + "Suggest a beverage" tile are reachable
           // regardless of `meProvider` state — the suggest route does not

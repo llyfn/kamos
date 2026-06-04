@@ -83,3 +83,57 @@ In Flutter, mirror these in `theme/tokens.dart` so widgets read them by name. Do
 2. **Icon set** — Phosphor recommended (substitution; kit ships inline SVG fallbacks).
 3. **Koh accent retention** — currently used only for toast / kanpai; cuttable for single-hue brand.
 4. **Half-star glyph** — `⯨` (U+2BE8) renders inconsistently; Flutter must substitute.
+
+## Post-creation editability (01)
+
+Brief: `docs/history/01_post_create_editability/00_brief.md`. SPEC anchors: §4.2, §4.4, §5.4, §6.6. No new JSX screens; no token / `colors_and_type.css` edits.
+
+### Screen ↔ data-shape mapping
+
+- **EditCheckInScreen** — reuses the `CheckInScreen.jsx` form layout verbatim (0.5-step rating, ≤500-char review counter, 4-photo grid, price + currency + serving/bottle, purchase type). Pre-fills from `GET /v1/check-ins/{id}` (`checkInDetailProvider`). On save, calls `PATCH /v1/check-ins/{id}` with `{rating?, review?, tags?, price?, purchase_type?, add_photos?, remove_photos?}` and expects the existing `CheckinResponse` shape plus one new field: `edited_at: string | null` (ISO timestamp, nullable). `beverage_id` is immutable per SPEC §4.4 — the beverage row in the form renders read-only.
+- **Inline comment edit** — reuses `CommentTile`. Calls `PATCH /v1/comments/{id}` with `{body}`. Response mirrors the create response plus `edited_at: string | null`.
+- **FeedItem / CheckinResponse / Comment** all gain `edited_at: string | null`. No other shape changes; existing fields untouched.
+
+### Affordance placement
+
+- **Check-in card (bottom action row).** Append `Icons.more_horiz` (size 18, color `--c-fg-3`, 32-dp tap target) to the right of the comment badge — the rightmost item in the row. Renders only when viewer == author. Tap opens a bottom sheet (`--radius-xl` top corners, the existing sheet pattern) with two rows: `checkInEdit` and `checkInDelete`. Delete opens a confirm dialog using `checkInDeleteConfirm` + reused `actionCancel`.
+- **Check-in detail screen header.** Mirror the same overflow icon in the existing top-right header slot, same sheet.
+- **Comment tile right column.** Top-to-bottom: timestamp · `Icons.edit_outlined` (size 14, color `--c-fg-3`, 14-dp InkWell with 2-dp padding — matches existing trash) · trash. Pencil renders only when viewer == author. Tap swaps body Text → TextField with reused `actionSave` / `actionCancel` (no new keys for the inline-edit row).
+- **"Edited" marker.** Render `editedMarker` directly after the relative timestamp on (1) the check-in card header, (2) the check-in detail screen header, (3) the comment tile timestamp row, whenever `edited_at != null`. Style: 11sp, italic, `--c-fg-3`. Localized strings already enumerated in the brief's ARB table.
+
+### Validation against `design/README.md`
+
+- **Color (§Color).** Koh is reserved for toast / kanpai. Overflow + pencil + "edited" marker all use `--c-fg-3` — compliant.
+- **Iconography (§Iconography).** README sets 20px as the UI default and 24px for the tab bar. The 14-dp pencil follows the existing trash precedent (no new exception). The 18-dp overflow is slightly below the 20-px default to sit inside the existing action-row rhythm next to the kanpai mark and comment badge — within tolerance; no token change.
+- **Voice (§Content fundamentals).** `edited` / `編集済み` / `수정됨` are calm, sentence-case, neutral third-person — compliant.
+- **Casing.** Bottom-sheet labels `Edit check-in` / `Delete check-in` are sentence case — compliant.
+- **No emoji.** Confirmed — `more_horiz` and `edit_outlined` are line-icon glyphs, not emoji.
+- **Type floor exception — flag.** README §Type states "Never go below 14px". The 11sp italic "edited" marker violates this floor. Brief is explicit that no new tokens are introduced. Two options for `flutter-engineer` to pick: **(a)** accept as a one-line documented exception scoped to this marker only (preferred — matches the visual weight of inline metadata on Untappd/Letterboxd and avoids token churn); **(b)** bump the marker to 12sp or the existing smallest body size. Flag this back to designer if (b) is preferred and a token is needed.
+
+### Out of scope (this slice)
+
+Edit history audit log, time-limited edit windows, admin-side comment redaction, beverage re-pointing on a check-in, push notifications for edits.
+
+## Producer images (02)
+
+Admin-uploaded optional image on the `producers` row. Mobile renders it where it adds value; never displays a placeholder when the field is null.
+
+### Data shapes
+
+- `Producer` and `ProducerRef` both expose `image_url: string | null`. The compact embed (`ProducerRef`) is included so the feed renders the optional thumbnail without an extra fetch.
+- Wire path: admin uploads via the existing R2 presign flow with a new `purpose: "producer"` parameter; the returned `upload_id` is sent on `POST /v1/admin/producers` or `PATCH /v1/admin/producers/{id}` and the backend resolves it to a public R2 URL stored as `producers.image_url`.
+
+### Placement
+
+- **`ProducerDetailScreen` (Flutter):** 140-dp circular avatar centered above the name block, with a 1-dp `--c-border-1` outline (`cached_network_image` clipped through `ClipOval`). When `image_url == null`, the same-dimension circle is filled with `--c-kinari` — keeps the header rhythm without drawing attention to absence.
+- **`CheckInCard` (Flutter):** small 16-dp circular avatar (`cached_network_image` with `CircleAvatar` fallback) immediately to the left of the producer name in the beverage info row, **only when `producer.image_url != null`**. When null, do not insert anything (no empty gap, no placeholder). The producer name + region row already reads cleanly without it.
+- **`CatalogProducerForm.tsx` (admin):** image input slot beneath the prefecture row. Order: name (en/ja/ko) → prefecture → image → founded → website → description. Editing shows the current image as a preview tile with a "Clear" button below; creating shows an empty dotted-border drop target.
+
+### Iconography + color
+
+- Image-missing alt text uses `producerImageMissing` (en: "No producer image", ja: 「醸造所の画像なし」, ko: "양조장 이미지 없음"). Semantic only — never visible UI copy.
+- Image hero on detail screen does NOT carry a Koh-accent overlay (per `design/README.md` Koh is reserved for toast/kanpai). A subtle `--c-border-1` 1-dp outline on the hero is enough to seat it in the surface.
+
+### Out of scope (this slice)
+
+User-submitted producer images, multi-image galleries, in-app cropping/resizing, admin moderation queue beyond the existing producer publish flow.

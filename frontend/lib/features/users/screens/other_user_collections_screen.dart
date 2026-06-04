@@ -76,14 +76,23 @@ class _OtherUserCollectionsScreenState
         onRetry: () =>
             ref.invalidate(otherUserCollectionsProvider(widget.username)),
         data: (state) {
-          if (state.items.isEmpty) {
-            return EmptyView(
-              glyph: '集',
-              title: l.publicCollectionsEmpty,
-            );
-          }
-          return ListView.builder(
+          return RefreshIndicator(
+            onRefresh: () => ref.refresh(
+              otherUserCollectionsProvider(widget.username).future,
+            ),
+            child: state.items.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      EmptyView(
+                        glyph: '集',
+                        title: l.publicCollectionsEmpty,
+                      ),
+                    ],
+                  )
+                : ListView.builder(
             controller: _controller,
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(KamosSpacing.lg),
             itemCount: state.items.length + 1,
             itemBuilder: (context, i) {
@@ -147,6 +156,7 @@ class _OtherUserCollectionsScreenState
                 ),
               );
             },
+          ),
           );
         },
       ),

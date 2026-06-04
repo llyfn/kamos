@@ -117,11 +117,11 @@ SELECT
   ci.rating, ci.review_text,
   ci.price_amount, ci.price_currency, ci.price_unit,
   ci.purchase_type,
-  ci.created_at, ci.updated_at,
+  ci.created_at, ci.updated_at, ci.edited_at,
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id AS producer_id, br.name_i18n AS producer_name_i18n,` + producerPrefectureSelectCols + `,
+  br.id AS producer_id, br.name_i18n AS producer_name_i18n, br.image_url AS producer_image_url,` + producerPrefectureSelectCols + `,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   ci.toast_count AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,
@@ -230,6 +230,21 @@ type UpdateCheckinParams struct {
 	ClearPrice   bool
 	PurchaseType *string
 	Tags         *[]string // nil = no change; non-nil (even empty) = replace
+	// AddPhotoURLs are public URLs already resolved by the service layer
+	// (via PhotoUploadRepo.FindByID + Storage.PublicURL) that should be
+	// appended to the check-in. They land at the next free sort_order.
+	AddPhotoURLs []string
+	// AddPhotoUploadIDs are the matching photo_uploads.id values; the
+	// repository flips them to 'attached' inside the same TX.
+	AddPhotoUploadIDs []string
+	// RemovePhotoURLs are existing PhotoRef.URL values to detach. The
+	// repository scopes the DELETE to (check_in_id, photo_url IN (...)).
+	RemovePhotoURLs []string
+	// TouchEdited toggles the `edited_at = NOW()` write. The service
+	// layer owns the "did anything actually change?" decision — see
+	// docs/db/query_patterns.md §7. A no-op PATCH must leave edited_at
+	// untouched so the "edited" marker doesn't flicker on save.
+	TouchEdited bool
 }
 
 func (r *CheckinRepo) Update(ctx context.Context, p UpdateCheckinParams) error {
@@ -254,6 +269,9 @@ func (r *CheckinRepo) Update(ctx context.Context, p UpdateCheckinParams) error {
 		return domain.ErrForbidden
 	}
 
+	// Scalar update + edited_at touch in one statement. The inline-CASE
+	// pattern matches query_patterns.md §7: edited_at flips only when
+	// the service signaled at least one tracked-field change.
 	const q = `
 UPDATE check_ins SET
   rating         = CASE WHEN $2::boolean THEN NULL
@@ -271,7 +289,8 @@ UPDATE check_ins SET
   price_unit     = CASE WHEN $6::boolean THEN NULL
                         WHEN $9::text IS NULL THEN price_unit
                         ELSE $9::text END,
-  purchase_type  = COALESCE($10, purchase_type)
+  purchase_type  = COALESCE($10, purchase_type),
+  edited_at      = CASE WHEN $11::boolean THEN NOW() ELSE edited_at END
 WHERE id = $1 AND deleted_at IS NULL;`
 	if _, err := tx.Exec(ctx, q,
 		p.ID,
@@ -279,26 +298,100 @@ WHERE id = $1 AND deleted_at IS NULL;`
 		p.ClearReview, p.Review,
 		p.ClearPrice, p.PriceAmount, p.PriceCcy, p.PriceUnit,
 		p.PurchaseType,
+		p.TouchEdited,
 	); err != nil {
 		return fmt.Errorf("CheckinRepo.Update: %w", err)
 	}
 
-	if p.Tags != nil {
-		if _, err := tx.Exec(ctx, `DELETE FROM check_in_flavor_tags WHERE check_in_id = $1;`, p.ID); err != nil {
-			return fmt.Errorf("CheckinRepo.Update tags clear: %w", err)
-		}
-		if len(*p.Tags) > 0 {
-			const insTags = `
+	if err := r.applyTagReplacement(ctx, tx, p.ID, p.Tags); err != nil {
+		return err
+	}
+	if err := r.applyPhotoEdits(ctx, tx, p); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// applyTagReplacement implements the present-replaces / absent-leaves
+// semantics from query_patterns.md §7. Nil means "no change"; non-nil
+// (even empty) replaces the junction rows.
+func (r *CheckinRepo) applyTagReplacement(ctx context.Context, tx pgx.Tx, checkinID string, tags *[]string) error {
+	if tags == nil {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM check_in_flavor_tags WHERE check_in_id = $1;`, checkinID); err != nil {
+		return fmt.Errorf("CheckinRepo.Update tags clear: %w", err)
+	}
+	if len(*tags) == 0 {
+		return nil
+	}
+	const insTags = `
 INSERT INTO check_in_flavor_tags (check_in_id, flavor_tag_id)
 SELECT $1, ft.id FROM flavor_tags ft WHERE ft.slug = ANY($2)
 ON CONFLICT DO NOTHING;`
-			if _, err := tx.Exec(ctx, insTags, p.ID, *p.Tags); err != nil {
-				return fmt.Errorf("CheckinRepo.Update tags insert: %w", err)
-			}
+	if _, err := tx.Exec(ctx, insTags, checkinID, *tags); err != nil {
+		return fmt.Errorf("CheckinRepo.Update tags insert: %w", err)
+	}
+	return nil
+}
+
+// applyPhotoEdits removes detached URLs and appends the new ones. Remove
+// runs first so the next-sort_order math reflects the post-removal floor.
+// The photo_uploads rows are flipped to 'attached' in the same TX so the
+// orphan-cleanup job leaves them alone. The DB CHECK on sort_order is
+// the backstop — the service layer enforces the 4-photo cap pre-write
+// so callers see the canonical PHOTO_CAP_EXCEEDED 422.
+func (r *CheckinRepo) applyPhotoEdits(ctx context.Context, tx pgx.Tx, p UpdateCheckinParams) error {
+	if len(p.RemovePhotoURLs) > 0 {
+		if _, err := tx.Exec(ctx,
+			`DELETE FROM check_in_photos WHERE check_in_id = $1 AND photo_url = ANY($2);`,
+			p.ID, p.RemovePhotoURLs); err != nil {
+			return fmt.Errorf("CheckinRepo.Update photos remove: %w", err)
 		}
 	}
+	if len(p.AddPhotoURLs) == 0 {
+		return nil
+	}
+	var next int
+	if err := tx.QueryRow(ctx,
+		`SELECT COALESCE(MAX(sort_order), -1) + 1 FROM check_in_photos WHERE check_in_id = $1;`,
+		p.ID).Scan(&next); err != nil {
+		return fmt.Errorf("CheckinRepo.Update photos sort_order: %w", err)
+	}
+	sortOrders := make([]int32, len(p.AddPhotoURLs))
+	for i := range p.AddPhotoURLs {
+		// Cap is enforced upstream (≤ 4); int32 conversion of a value
+		// known to be in [0, 3] is safe. Explicit conversion silences
+		// the gosec G115 warning for this loop.
+		sortOrders[i] = int32(next + i) //nolint:gosec
+	}
+	const insPh = `
+INSERT INTO check_in_photos (check_in_id, photo_url, sort_order)
+SELECT $1, url, ord
+FROM unnest($2::text[], $3::int[]) AS u(url, ord);`
+	if _, err := tx.Exec(ctx, insPh, p.ID, p.AddPhotoURLs, sortOrders); err != nil {
+		return fmt.Errorf("CheckinRepo.Update photos add: %w", err)
+	}
+	const markAttached = `
+UPDATE photo_uploads
+SET status = 'attached', attached_at = NOW(), check_in_id = $1
+WHERE id = ANY($2) AND status IN ('pending', 'uploaded');`
+	if _, err := tx.Exec(ctx, markAttached, p.ID, p.AddPhotoUploadIDs); err != nil {
+		return fmt.Errorf("CheckinRepo.Update mark attached: %w", err)
+	}
+	return nil
+}
 
-	return tx.Commit(ctx)
+// CountPhotos returns the current count of photos attached to a check-in.
+// Used by the service layer's PATCH pre-check to enforce the SPEC §4.2
+// 4-photo cap on the resulting set (current - removed + added).
+func (r *CheckinRepo) CountPhotos(ctx context.Context, checkinID string) (int, error) {
+	const q = `SELECT COUNT(*) FROM check_in_photos WHERE check_in_id = $1;`
+	var n int
+	if err := r.db.QueryRow(ctx, q, checkinID).Scan(&n); err != nil {
+		return 0, fmt.Errorf("CheckinRepo.CountPhotos: %w", err)
+	}
+	return n, nil
 }
 
 // SoftDelete marks the row deleted; the trigger recomputes the beverage's
@@ -488,11 +581,11 @@ SELECT
   ci.rating, ci.review_text,
   ci.price_amount, ci.price_currency, ci.price_unit,
   ci.purchase_type,
-  ci.created_at, ci.updated_at,
+  ci.created_at, ci.updated_at, ci.edited_at,
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id, br.name_i18n,` + producerPrefectureSelectCols + `,
+  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `,
   v.id, v.name, v.locality, v.country,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
@@ -563,6 +656,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		brwName                  []byte
 		bevSlug                  string
 		bevLabel                 *string
+		brwImageURL              *string
 		brwPref                  prefectureScan
 		brwID, userIDVal, bevID  string
 		venueID, venueName       *string
@@ -573,17 +667,17 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		commentCnt               int64
 	)
 	prefArgs := brwPref.scanArgs()
-	scanArgs := make([]any, 0, 22+len(prefArgs)+7)
+	scanArgs := make([]any, 0, 24+len(prefArgs)+7)
 	scanArgs = append(scanArgs,
 		&c.ID, &userIDVal, &bevID,
 		&c.Rating, &c.Review,
 		&priceAmount, &priceCcy, &priceUnit,
 		&c.PurchaseType,
-		&c.CreatedAt, &c.UpdatedAt,
+		&c.CreatedAt, &c.UpdatedAt, &c.EditedAt,
 		&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
 		&bevName, &bevSlug, &bevLabel,
 		&catName,
-		&brwID, &brwName,
+		&brwID, &brwName, &brwImageURL,
 	)
 	scanArgs = append(scanArgs, prefArgs...)
 	scanArgs = append(scanArgs,
@@ -603,7 +697,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 	c.Beverage = domain.BeverageRef{
 		ID:            bevID,
 		Name:          bn,
-		Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
+		Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 		LabelImageURL: bevLabel,
 	}

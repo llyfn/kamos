@@ -30,6 +30,7 @@ abstract class Comment with _$Comment {
     required String body,
     @Default('') String createdAt,
     String? deletedAt,
+    String? editedAt,
   }) = _Comment;
 
   factory Comment.fromJson(Map<String, dynamic> json) {
@@ -43,6 +44,7 @@ abstract class Comment with _$Comment {
       body: (json['body'] as String?) ?? '',
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
+      editedAt: json['edited_at'] as String?,
     );
   }
 }

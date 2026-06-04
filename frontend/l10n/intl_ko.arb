@@ -35,6 +35,10 @@
 
   "checkInTitle": "체크인",
   "checkInCta": "체크인",
+  "checkInEdit": "체크인 수정",
+  "checkInDelete": "체크인 삭제",
+  "checkInDeleteConfirm": "이 체크인을 삭제할까요?",
+  "checkInEditDiscardConfirm": "변경 사항을 취소할까요?",
   "checkInReviewLabel": "리뷰",
   "checkInReviewPlaceholder": "배, 부드러운 쌀, 깔끔한 여운…",
   "checkInReviewTooLong": "리뷰가 너무 깁니다",
@@ -103,7 +107,7 @@
   "authPasswordLabel": "비밀번호",
   "authPasswordHelper": "8자 이상",
   "authPasswordTooShort": "너무 짧습니다",
-  "authTagline": "니혼슈, 쇼츄, 리큐어를 기록하는 앱.",
+  "authTagline": "한 모금의 발견.",
 
   "verifyPendingTitle": "이메일을 확인하세요",
   "verifyPendingBody": "{email} (으)로 인증 링크를 보냈습니다. 이 기기 또는 브라우저에서 링크를 열어 계정을 인증하세요.",
@@ -196,8 +200,10 @@
   "commentsEmpty": "아직 댓글이 없습니다",
   "commentsComposerHint": "댓글 추가…",
   "commentsSubmit": "게시",
+  "commentEdit": "수정",
   "commentsDelete": "삭제",
   "commentsDeleteConfirm": "이 댓글을 삭제하시겠어요?",
+  "editedMarker": "수정됨",
   "commentsCharCount": "{count} / {max}",
   "@commentsCharCount": {
     "placeholders": {
@@ -256,10 +262,12 @@
   "producerFounded": "창업",
   "producerBeverages": "제품",
   "producerNoBeverages": "아직 등록된 제품이 없습니다",
+  "producerImageMissing": "양조장 이미지 없음",
 
   "actionSave": "저장",
   "actionCancel": "취소",
   "actionDelete": "삭제",
+  "actionDiscard": "취소하기",
   "actionPost": "게시",
   "actionRetry": "다시 시도",
   "actionLoadingMore": "불러오는 중",

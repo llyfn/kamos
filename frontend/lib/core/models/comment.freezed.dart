@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Comment {
 
- String get id; String get checkInId; CheckinUser? get user; String get body; String get createdAt; String? get deletedAt;
+ String get id; String get checkInId; CheckinUser? get user; String get body; String get createdAt; String? get deletedAt; String? get editedAt;
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $CommentCopyWith<Comment> get copyWith => _$CommentCopyWithImpl<Comment>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Comment&&(identical(other.id, id) || other.id == id)&&(identical(other.checkInId, checkInId) || other.checkInId == checkInId)&&(identical(other.user, user) || other.user == user)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Comment&&(identical(other.id, id) || other.id == id)&&(identical(other.checkInId, checkInId) || other.checkInId == checkInId)&&(identical(other.user, user) || other.user == user)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,checkInId,user,body,createdAt,deletedAt);
+int get hashCode => Object.hash(runtimeType,id,checkInId,user,body,createdAt,deletedAt,editedAt);
 
 @override
 String toString() {
-  return 'Comment(id: $id, checkInId: $checkInId, user: $user, body: $body, createdAt: $createdAt, deletedAt: $deletedAt)';
+  return 'Comment(id: $id, checkInId: $checkInId, user: $user, body: $body, createdAt: $createdAt, deletedAt: $deletedAt, editedAt: $editedAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $CommentCopyWith<$Res>  {
   factory $CommentCopyWith(Comment value, $Res Function(Comment) _then) = _$CommentCopyWithImpl;
 @useResult
 $Res call({
- String id, String checkInId, CheckinUser? user, String body, String createdAt, String? deletedAt
+ String id, String checkInId, CheckinUser? user, String body, String createdAt, String? deletedAt, String? editedAt
 });
 
 
@@ -62,7 +62,7 @@ class _$CommentCopyWithImpl<$Res>
 
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? checkInId = null,Object? user = freezed,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? checkInId = null,Object? user = freezed,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,Object? editedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,checkInId: null == checkInId ? _self.checkInId : checkInId // ignore: cast_nullable_to_non_nullable
@@ -70,6 +70,7 @@ as String,user: freezed == user ? _self.user : user // ignore: cast_nullable_to_
 as CheckinUser?,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as String?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -167,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt,  String? editedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Comment() when $default != null:
-return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt);case _:
+return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt,_that.editedAt);case _:
   return orElse();
 
 }
@@ -188,10 +189,10 @@ return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt,  String? editedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Comment():
-return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt);case _:
+return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt,_that.editedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +209,10 @@ return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String checkInId,  CheckinUser? user,  String body,  String createdAt,  String? deletedAt,  String? editedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Comment() when $default != null:
-return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt);case _:
+return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_that.deletedAt,_that.editedAt);case _:
   return null;
 
 }
@@ -223,7 +224,7 @@ return $default(_that.id,_that.checkInId,_that.user,_that.body,_that.createdAt,_
 
 
 class _Comment implements Comment {
-  const _Comment({required this.id, required this.checkInId, this.user, required this.body, this.createdAt = '', this.deletedAt});
+  const _Comment({required this.id, required this.checkInId, this.user, required this.body, this.createdAt = '', this.deletedAt, this.editedAt});
   
 
 @override final  String id;
@@ -232,6 +233,7 @@ class _Comment implements Comment {
 @override final  String body;
 @override@JsonKey() final  String createdAt;
 @override final  String? deletedAt;
+@override final  String? editedAt;
 
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +245,16 @@ _$CommentCopyWith<_Comment> get copyWith => __$CommentCopyWithImpl<_Comment>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Comment&&(identical(other.id, id) || other.id == id)&&(identical(other.checkInId, checkInId) || other.checkInId == checkInId)&&(identical(other.user, user) || other.user == user)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Comment&&(identical(other.id, id) || other.id == id)&&(identical(other.checkInId, checkInId) || other.checkInId == checkInId)&&(identical(other.user, user) || other.user == user)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,checkInId,user,body,createdAt,deletedAt);
+int get hashCode => Object.hash(runtimeType,id,checkInId,user,body,createdAt,deletedAt,editedAt);
 
 @override
 String toString() {
-  return 'Comment(id: $id, checkInId: $checkInId, user: $user, body: $body, createdAt: $createdAt, deletedAt: $deletedAt)';
+  return 'Comment(id: $id, checkInId: $checkInId, user: $user, body: $body, createdAt: $createdAt, deletedAt: $deletedAt, editedAt: $editedAt)';
 }
 
 
@@ -263,7 +265,7 @@ abstract mixin class _$CommentCopyWith<$Res> implements $CommentCopyWith<$Res> {
   factory _$CommentCopyWith(_Comment value, $Res Function(_Comment) _then) = __$CommentCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String checkInId, CheckinUser? user, String body, String createdAt, String? deletedAt
+ String id, String checkInId, CheckinUser? user, String body, String createdAt, String? deletedAt, String? editedAt
 });
 
 
@@ -280,7 +282,7 @@ class __$CommentCopyWithImpl<$Res>
 
 /// Create a copy of Comment
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? checkInId = null,Object? user = freezed,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? checkInId = null,Object? user = freezed,Object? body = null,Object? createdAt = null,Object? deletedAt = freezed,Object? editedAt = freezed,}) {
   return _then(_Comment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,checkInId: null == checkInId ? _self.checkInId : checkInId // ignore: cast_nullable_to_non_nullable
@@ -288,6 +290,7 @@ as String,user: freezed == user ? _self.user : user // ignore: cast_nullable_to_
 as CheckinUser?,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as String?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

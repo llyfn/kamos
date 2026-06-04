@@ -11,11 +11,16 @@
 //   * founded_year: optional integer in 800..2100
 //   * website: optional URL (http or https accepted), ≤ 512
 //   * description_i18n: optional, each locale ≤ 2000
+//   * image_upload_id (slice 02): optional photo_uploads.id minted by the
+//     admin presign route below. Edit mode preserves the existing
+//     image_url, with a Clear button that emits clear_image=true on the
+//     next save.
 
 import { useQuery } from '@tanstack/react-query';
-import { type FormEvent, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useState } from 'react';
 import { preferredName } from '@/components/ProducerPicker';
 import { api } from '@/lib/api';
+import { presignProducerImage } from '@/lib/uploads';
 import type { components } from '@/types/api';
 
 type AdminProducer = components['schemas']['AdminProducer'];
@@ -47,6 +52,18 @@ interface FormState {
   description_ko: string;
 }
 
+// Image-input local state. Tracks one of three exclusive states:
+//   * keep        → reuse the existing producer.image_url on save (edit)
+//                   or send nothing (create).
+//   * uploaded    → a new file was successfully PUT to R2; `uploadId`
+//                   is sent as `image_upload_id` on save.
+//   * cleared     → user clicked Clear; sends `clear_image=true` on
+//                   the next PATCH (edit-mode only).
+type ImageSlot =
+  | { kind: 'keep' }
+  | { kind: 'uploaded'; uploadId: string; previewURL: string }
+  | { kind: 'cleared' };
+
 function initialState(b: AdminProducer | null | undefined): FormState {
   return {
     name_en: b?.name.en ?? '',
@@ -71,6 +88,9 @@ export function CatalogProducerForm({
 }: CatalogProducerFormProps) {
   const [form, setForm] = useState<FormState>(() => initialState(initial));
   const [localError, setLocalError] = useState<string | null>(null);
+  const [image, setImage] = useState<ImageSlot>({ kind: 'keep' });
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   // /v1/reference/regions is public, no auth, Cache-Control max-age=3600.
   // Effectively immutable seed data; cache aggressively in-process too.
@@ -95,6 +115,26 @@ export function CatalogProducerForm({
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleImagePick(file: File) {
+    setImageError(null);
+    setImageUploading(true);
+    try {
+      const uploadId = await presignProducerImage(file);
+      const previewURL = URL.createObjectURL(file);
+      setImage({ kind: 'uploaded', uploadId, previewURL });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed.';
+      setImageError(msg);
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  function handleImageClear() {
+    setImageError(null);
+    setImage({ kind: 'cleared' });
   }
 
   function handleSubmit(e: FormEvent) {
@@ -135,6 +175,10 @@ export function CatalogProducerForm({
         if (descKo) desc.ko = descKo;
         body.description_i18n = desc;
       }
+      // Slice 02 (producer images). The form state guarantees these
+      // are mutually exclusive — the backend rejects both being set.
+      if (image.kind === 'uploaded') body.image_upload_id = image.uploadId;
+      if (image.kind === 'cleared') body.clear_image = true;
       onSubmit(body);
       return;
     }
@@ -162,6 +206,9 @@ export function CatalogProducerForm({
       if (descKo) desc.ko = descKo;
       body.description_i18n = desc;
     }
+    // Slice 02. Create has no `clear_image` — leaving image_upload_id
+    // unset is the absence signal.
+    if (image.kind === 'uploaded') body.image_upload_id = image.uploadId;
     onSubmit(body);
   }
 
@@ -220,6 +267,15 @@ export function CatalogProducerForm({
           </span>
         )}
       </label>
+
+      <ImageField
+        currentURL={initial?.image_url ?? null}
+        slot={image}
+        uploading={imageUploading}
+        error={imageError}
+        onPick={(f) => void handleImagePick(f)}
+        onClear={handleImageClear}
+      />
 
       <TextField
         label="Founded year (optional, 800–2100)"
@@ -347,5 +403,86 @@ function TextAreaField({ label, value, onChange, maxLength }: TextAreaFieldProps
         className="border border-[color:var(--color-border)] rounded px-2 py-1"
       />
     </label>
+  );
+}
+
+interface ImageFieldProps {
+  currentURL: string | null;
+  slot: ImageSlot;
+  uploading: boolean;
+  error: string | null;
+  onPick: (file: File) => void;
+  onClear: () => void;
+}
+
+// ImageField renders one of three states:
+//   * uploaded   → preview of the newly-PUT R2 file (objectURL).
+//   * cleared    → "Image will be cleared on save" notice with an Undo.
+//   * keep       → either the existing image_url (edit) or the empty
+//                  dotted drop target (create).
+function ImageField({ currentURL, slot, uploading, error, onPick, onClear }: ImageFieldProps) {
+  function onFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) onPick(file);
+    // Reset the input so picking the same file twice still fires onChange.
+    e.target.value = '';
+  }
+
+  const hasExisting = currentURL != null && currentURL !== '';
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[color:var(--color-muted)]">Producer image (optional)</span>
+      {slot.kind === 'uploaded' ? (
+        <div className="flex items-center gap-3">
+          <img
+            src={slot.previewURL}
+            alt="New producer"
+            className="h-20 w-20 object-cover border border-[color:var(--color-border)] rounded"
+          />
+          <span className="text-xs text-[color:var(--color-muted)]">
+            New image staged. Save the form to attach it.
+          </span>
+        </div>
+      ) : slot.kind === 'cleared' ? (
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-[color:var(--color-muted)]">Image will be cleared on save.</span>
+        </div>
+      ) : hasExisting ? (
+        <div className="flex items-center gap-3">
+          <img
+            src={currentURL}
+            alt="Producer"
+            className="h-20 w-20 object-cover border border-[color:var(--color-border)] rounded"
+          />
+          <span className="text-xs text-[color:var(--color-muted)]">
+            Current image. Pick a new file to replace.
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-20 w-full border border-dashed border-[color:var(--color-border)] rounded text-xs text-[color:var(--color-muted)]">
+          {uploading ? 'Uploading…' : 'No image. Pick a file to upload.'}
+        </div>
+      )}
+      <div className="flex items-center gap-2 mt-1">
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={onFileChange}
+          disabled={uploading}
+          className="text-xs"
+        />
+        {(hasExisting || slot.kind === 'uploaded') && slot.kind !== 'cleared' && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="px-2 py-0.5 text-xs border border-[color:var(--color-border)] rounded"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {error && <span className="text-red-700 text-xs">{error}</span>}
+    </div>
   );
 }

@@ -4,6 +4,7 @@
 //
 //	GET    /v1/check-ins/{id}/comments  — OptionalAuth, cursor-paginated
 //	POST   /v1/check-ins/{id}/comments  — authed; tight per-user rate limit
+//	PATCH  /v1/comments/{id}            — authed; author-only edit (slice 01)
 //	DELETE /v1/comments/{id}            — authed; own-comment OR admin/moderator
 package handlers
 
@@ -84,6 +85,47 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httperr.WriteJSON(w, http.StatusCreated, out)
+}
+
+// UpdateComment — PATCH /v1/comments/{id}.
+//
+// Author-only edit (slice 01 / SPEC §5.4). Body is the only mutable field;
+// `edited_at` is touched by the repo only when the body actually changes
+// (docs/db/query_patterns.md §19). A non-author attempt hits an empty
+// RETURNING and surfaces as 404 — we don't leak comment existence to
+// non-authors. Soft-deleted comments are also 404 (the WHERE clause
+// filters them out).
+func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
+	uid, ok := h.authedID(w, r)
+	if !ok {
+		return
+	}
+	commentID := chi.URLParam(r, "id")
+	var req domain.UpdateCommentRequest
+	if err := decodeJSON(r, &req); err != nil {
+		h.writeErr(w, "UpdateComment decode", err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		h.writeErr(w, "UpdateComment validate", err)
+		return
+	}
+	if h.Services != nil && h.Services.Comment != nil {
+		out, err := h.Services.Comment.Update(r.Context(), commentID, uid, req.Body)
+		if err != nil {
+			h.writeErr(w, "UpdateComment", err)
+			return
+		}
+		httperr.WriteJSON(w, http.StatusOK, out)
+		return
+	}
+	// Legacy fallback (tests that skip the service bundle).
+	out, err := h.Repos.Comments.Update(r.Context(), commentID, uid, req.Body)
+	if err != nil {
+		h.writeErr(w, "UpdateComment", err)
+		return
+	}
+	httperr.WriteJSON(w, http.StatusOK, out)
 }
 
 // DeleteComment — DELETE /v1/comments/{id}.

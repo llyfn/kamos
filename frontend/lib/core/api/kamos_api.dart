@@ -445,6 +445,24 @@ class KamosCheckinsApi {
     return _asMap(res.data);
   }
 
+  /// Body forwarded verbatim — caller owns the tri-state contract
+  /// (absent vs. explicit null) on rating / review / price (SPEC §4.4).
+  /// Do NOT route through `_compact`: it would collapse explicit nulls.
+  Future<Map<String, dynamic>> update(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _dio.patch<dynamic>(
+      ApiPaths.checkin(id),
+      data: body,
+    );
+    return _asMap(res.data);
+  }
+
+  Future<void> deleteOne(String id) async {
+    await _dio.delete<dynamic>(ApiPaths.checkin(id));
+  }
+
   Future<Map<String, dynamic>> attachPhoto({
     required String checkInId,
     required String uploadId,
@@ -488,6 +506,17 @@ class KamosCommentsApi {
   }) async {
     final res = await _dio.post<dynamic>(
       ApiPaths.checkinComments(checkInId),
+      data: {'body': body},
+    );
+    return _asMap(res.data);
+  }
+
+  Future<Map<String, dynamic>> update({
+    required String commentId,
+    required String body,
+  }) async {
+    final res = await _dio.patch<dynamic>(
+      ApiPaths.comment(commentId),
       data: {'body': body},
     );
     return _asMap(res.data);

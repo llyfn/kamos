@@ -34,6 +34,7 @@ SELECT
   ci.rating,
   ci.review_text,
   ci.created_at,
+  ci.edited_at,
   ci.user_id,
   u.username, u.display_username, u.display_name, u.avatar_url,
   ci.beverage_id,
@@ -41,7 +42,7 @@ SELECT
   b.category_slug,
   b.label_image_url,
   cat.name_i18n,
-  br.id, br.name_i18n,` + producerPrefectureSelectCols + `,
+  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
   ci.comment_count,
@@ -78,6 +79,7 @@ LIMIT $4;`
 			catName       []byte
 			brwName       []byte
 			brwID         string
+			brwImageURL   *string
 			brwPref       prefectureScan
 			toastCnt      int64
 			commentCnt    int64
@@ -90,12 +92,13 @@ LIMIT $4;`
 			venueCountry  *string
 		)
 		prefArgs := brwPref.scanArgs()
-		scanArgs := make([]any, 0, 16+len(prefArgs)+7)
+		scanArgs := make([]any, 0, 17+len(prefArgs)+7)
 		scanArgs = append(scanArgs,
 			&it.ID,
 			&it.Rating,
 			&it.Review,
 			&it.CreatedAt,
+			&it.EditedAt,
 			&userIDVal,
 			&it.User.Username, &it.User.DisplayUsername, &it.User.DisplayName, &it.User.AvatarURL,
 			&beverageID,
@@ -103,7 +106,7 @@ LIMIT $4;`
 			&bevSlug,
 			&bevLabel,
 			&catName,
-			&brwID, &brwName,
+			&brwID, &brwName, &brwImageURL,
 		)
 		scanArgs = append(scanArgs, prefArgs...)
 		scanArgs = append(scanArgs,
@@ -123,7 +126,7 @@ LIMIT $4;`
 		it.Beverage = domain.BeverageRef{
 			ID:            beverageID,
 			Name:          bn,
-			Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
+			Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 			LabelImageURL: bevLabel,
 		}

@@ -60,6 +60,26 @@ class _StubRepo implements CommentRepository {
 
   @override
   Future<void> deleteOwn(String commentId) async {}
+
+  @override
+  Future<Comment> edit({
+    required String commentId,
+    required String body,
+  }) async {
+    return Comment(
+      id: commentId,
+      checkInId: 'ci42',
+      user: const CheckinUser(
+        id: 'u-self',
+        username: 'self',
+        displayUsername: 'self',
+        displayName: 'self',
+      ),
+      body: body,
+      createdAt: '2026-05-04T00:00:00Z',
+      editedAt: '2026-05-05T00:00:00Z',
+    );
+  }
 }
 
 Comment _c(String id) => Comment(

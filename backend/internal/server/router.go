@@ -324,6 +324,7 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			} else {
 				r.Post("/check-ins/{id}/comments", h.CreateComment)
 			}
+			r.Patch("/comments/{id}", h.UpdateComment)
 			r.Delete("/comments/{id}", h.DeleteComment)
 		})
 
@@ -390,6 +391,18 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(adminOnly).Patch("/producers/{id}", h.AdminUpdateProducer)
 			r.With(adminOnly).Delete("/producers/{id}", h.AdminSoftDeleteProducer)
 			r.With(adminOnly).Post("/producers/{id}/restore", h.AdminRestoreProducer)
+
+			// Admin-only presign for producer images. Mounted here
+			// because purpose=producer is not user-uploadable in
+			// MVP and the AdminAuth + CSRF middleware on this Route
+			// is exactly the gate we want. Reuses the same per-user
+			// presign-outstanding cap as the public route.
+			if rateLimited {
+				r.With(adminOnly, middleware.RateLimitByUser(log, 2, 4)).
+					Post("/uploads/photo-presign", h.AdminPhotoPresign)
+			} else {
+				r.With(adminOnly).Post("/uploads/photo-presign", h.AdminPhotoPresign)
+			}
 		})
 	})
 

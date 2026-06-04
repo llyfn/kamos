@@ -117,6 +117,7 @@ class EmptyView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (glyph != null)
             Padding(

@@ -749,9 +749,16 @@ paths:
       tags: [checkins]
       operationId: updateCheckin
       description: |
-        Status: scaffold-for-Phase5 (admin edit surface). Endpoint is
-        intentionally pre-wired; no Flutter caller in MVP.
-      x-internal: true
+        Post-creation editability (slice 01 / SPEC §4.4). Author-only edit
+        of a live check-in. `beverage_id` is immutable — sending it returns
+        422. `add_photos` carries `photo_uploads.id` values returned from
+        `/v1/uploads/photo-presign`; `remove_photos` carries existing
+        `PhotoRef.url` values to detach. The SPEC §4.2 four-photo cap is
+        enforced on the resulting set (current − removed + added) — the
+        5th attach returns 422 `PHOTO_CAP_EXCEEDED`. Tags use full
+        replacement semantics: present (even empty) replaces; absent leaves
+        alone. The `edited_at` field on the response is touched only when
+        at least one tracked field actually changes.
       requestBody:
         required: true
         content:
@@ -768,9 +775,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "422":
           description: |
-            422 Unprocessable Entity. Returned on any validation failure AND
-            specifically when the client attempts to change `beverage_id`
-            (SPEC §4.4).
+            422 Unprocessable Entity. Returned on any validation failure,
+            on `PHOTO_CAP_EXCEEDED` (resulting set > 4), AND specifically
+            when the client attempts to change `beverage_id` (SPEC §4.4).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -848,6 +855,31 @@ paths:
         name: id
         required: true
         schema: { type: string, format: uuid }
+    patch:
+      tags: [check-ins]
+      operationId: updateComment
+      description: |
+        Post-creation editability (slice 01 / SPEC §5.4). Author-only edit
+        of the comment body. Same sanitization rules as create — 1..500
+        chars, control characters and bidi-override codepoints rejected.
+        `edited_at` is touched only when the new body differs from the
+        existing column (no-op PATCH leaves the row unchanged). A non-
+        author or a soft-deleted comment returns 404 — we don't leak
+        comment existence to non-authors.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCommentRequest" }
+      responses:
+        "200":
+          description: updated comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
     delete:
       tags: [check-ins]
       operationId: deleteComment
@@ -934,6 +966,15 @@ paths:
         Allowed `content_type`: `image/jpeg`, `image/png`, `image/webp`.
         Max `byte_size`: 10 MB (10485760 bytes).
 
+        Slice 02 (producer images): `purpose` may be `check_in` (default,
+        the only value the public/mobile surface accepts) or `producer`.
+        `producer` is admin-only and is served by
+        `POST /v1/admin/uploads/photo-presign`; sending it to this public
+        route returns 403 ADMIN_ONLY. The `purpose` value is encoded into
+        the resulting `blob_key` path prefix (`checkins/...` vs
+        `producers/...`) and tracked for orphan cleanup by the existing
+        purpose-agnostic sweeper.
+
         Returns 503 `STORAGE_DISABLED` when the deployment has not configured
         the blob backend (Cloudflare R2 credentials unset). Clients should
         gracefully fall back to "photo upload not available on this server".
@@ -952,6 +993,13 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 10485760
+                purpose:
+                  type: string
+                  enum: [check_in, producer]
+                  default: check_in
+                  description: |
+                    `check_in` (default) is the mobile path; `producer`
+                    is admin-only and must use the admin presign route.
       responses:
         "200":
           description: presigned PUT URL issued
@@ -976,6 +1024,70 @@ paths:
                     type: string
                     format: date-time
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: purpose=producer is admin-only on this route
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/Validation" }
+        "503":
+          description: blob storage not configured on this server
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/admin/uploads/photo-presign:
+    post:
+      tags: [admin]
+      operationId: adminPresignPhotoUpload
+      description: |
+        Admin-only presign for producer images (slice 02). Cookie + CSRF
+        auth (HttpOnly `kamos_admin_*` cookies + `X-CSRF-Token` per
+        ARCHITECTURE.md §5). The handler forces `purpose=producer`
+        regardless of the body — the resulting `blob_key` is namespaced
+        under `producers/...` and the returned `upload_id` is the one to
+        send as `image_upload_id` on `POST /v1/admin/producers` or
+        `PATCH /v1/admin/producers/{id}`.
+
+        Shares the per-user presign-outstanding cap with the public
+        route (SEC-008).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content_type, byte_size]
+              properties:
+                content_type:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                byte_size:
+                  type: integer
+                  minimum: 1
+                  maximum: 10485760
+      responses:
+        "200":
+          description: presigned PUT URL issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload_id, upload_url, headers, blob_key, expires_at]
+                properties:
+                  upload_id: { type: string, format: uuid }
+                  upload_url: { type: string, format: uri }
+                  headers:
+                    type: object
+                    additionalProperties: { type: string }
+                  blob_key: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: caller lacks the admin role or the CSRF header is missing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422": { $ref: "#/components/responses/Validation" }
         "503":
           description: blob storage not configured on this server
@@ -2561,15 +2673,21 @@ components:
       type: object
       description: |
         Optional fields (`prefecture`, `founded_year`, `website`,
-        `description`, `beverage_count`) use the **absent-when-unknown**
-        convention: the Go server emits them with `omitempty`, so the JSON
-        key is omitted entirely rather than set to `null`. Clients should
-        treat an absent key the same as `null`.
+        `description`, `image_url`, `beverage_count`) use the
+        **absent-when-unknown** convention: the Go server emits them with
+        `omitempty`, so the JSON key is omitted entirely rather than set
+        to `null`. Clients should treat an absent key the same as `null`.
 
         Migration 016: `prefecture` is now a nested `Prefecture` object
         (which itself embeds its `Region`). The previous free-text
         `prefecture` / `region` string fields are gone. The producer's
         region is derivable via `producer.prefecture.region`.
+
+        Slice 02 (producer images): `image_url` is the optional
+        admin-uploaded image (logo / brewery photo / label collage),
+        resolved server-side from an `image_upload_id` on
+        AdminProducerCreate / AdminProducerUpdate via the existing R2
+        presign flow.
       required: [id, name, created_at]
       properties:
         id: { type: string, format: uuid }
@@ -2578,6 +2696,7 @@ components:
         founded_year: { type: integer }
         website: { type: string, format: uri }
         description: { $ref: "#/components/schemas/I18nText" }
+        image_url: { type: string, format: uri }
         beverage_count:
           type: integer
           minimum: 0
@@ -2689,11 +2808,16 @@ components:
         its Region) follows the absent-when-unknown convention (Go
         `omitempty`). Migration 016 replaced the free-text `region`
         string with this nested shape.
+
+        Slice 02 (producer images): `image_url` mirrors Producer.image_url
+        on the compact embed so the check-in card / feed item can render
+        the optional 16-dp producer thumbnail without a second fetch.
       required: [id, name]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
         prefecture: { $ref: "#/components/schemas/Prefecture" }
+        image_url: { type: string, format: uri }
 
     PhotoRef:
       type: object
@@ -2747,6 +2871,15 @@ components:
         comment_count: { type: integer, default: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        edited_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Slice 01 / SPEC §4.4. Non-null when the author has touched any
+            tracked field (rating / review / tags / price / purchase_type /
+            photos) after creation. Rendering-only; never sorted or
+            filtered server-side. Omitted (or null) for never-edited rows.
 
     CheckinSummary:
       type: object
@@ -2799,6 +2932,16 @@ components:
         `beverage_id` is intentionally NOT in this schema — SPEC §4.4 forbids
         changing the beverage on an existing check-in. If present in the body,
         the server returns 422.
+
+        Slice 01 / SPEC §4.4: `add_photos` and `remove_photos` are the
+        post-creation photo-edit affordances. `add_photos` carries
+        `photo_uploads.id` values returned from
+        `/v1/uploads/photo-presign`; the server resolves each to the
+        matching public URL and flips the row to `attached` in the same
+        transaction. `remove_photos` carries existing `PhotoRef.url`
+        values to detach. The SPEC §4.2 4-photo cap is enforced on the
+        resulting set (`current − removed + added ≤ 4`); a violation
+        returns 422 `PHOTO_CAP_EXCEEDED`.
       properties:
         rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0 }
         review: { type: string, maxLength: 500, nullable: true }
@@ -2807,6 +2950,24 @@ components:
           items: { type: string }
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
+        add_photos:
+          type: array
+          maxItems: 4
+          items: { type: string, format: uuid }
+          description: photo_uploads ids to attach (≤4 per request).
+        remove_photos:
+          type: array
+          items: { type: string, format: uri }
+          description: existing PhotoRef URLs to detach.
+
+    UpdateCommentRequest:
+      type: object
+      required: [body]
+      description: |
+        Slice 01 / SPEC §5.4. Author-only comment edit. Body is the only
+        mutable field — same constraints as the create body.
+      properties:
+        body: { type: string, minLength: 1, maxLength: 500 }
 
     ToastState:
       type: object
@@ -2917,6 +3078,13 @@ components:
           nullable: true
           description: Absent when the check-in has no venue attached.
         created_at: { type: string, format: date-time }
+        edited_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Slice 01 / SPEC §4.4. Mirror of Checkin.edited_at; non-null
+            when any tracked field has been touched after creation.
 
     Comment:
       type: object
@@ -2930,6 +3098,14 @@ components:
         user: { $ref: "#/components/schemas/CheckinUser" }
         body: { type: string, minLength: 1, maxLength: 500 }
         created_at: { type: string, format: date-time }
+        edited_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Slice 01 / SPEC §5.4. Non-null when the author has edited the
+            body after creation. Rendering-only; never sorted or filtered
+            server-side.
         deleted_at:
           type: string
           format: date-time
@@ -3514,6 +3690,15 @@ components:
           allOf:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
+        image_upload_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional photo_uploads.id minted by POST
+            /v1/admin/uploads/photo-presign + a successful PUT to R2. The
+            server resolves it to a public R2 URL and persists it as
+            producers.image_url. Omit when the producer has no image.
 
     AdminProducerUpdate:
       type: object
@@ -3553,6 +3738,21 @@ components:
           allOf:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
+        image_upload_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional photo_uploads.id from POST
+            /v1/admin/uploads/photo-presign. When supplied the server
+            resolves it to a public R2 URL and sets producers.image_url.
+            Mutually exclusive with `clear_image=true`.
+        clear_image:
+          type: boolean
+          description: |
+            When true, sets producers.image_url to NULL. Use this to
+            remove an existing image. Mutually exclusive with
+            `image_upload_id`; supplying both returns 422 VALIDATION.
 
     AdminProducerList:
       type: object

@@ -25,6 +25,7 @@ abstract class Producer with _$Producer {
     int? foundedYear,
     String? website,
     I18nText? description,
+    @JsonKey(name: 'image_url') String? imageUrl,
     // Populated by `GET /v1/producers/{id}` and `GET /v1/producers`. Absent in
     // nested `ProducerRef` embeddings (which use the ProducerRef model) and in
     // /v1/search producer results — `null` then.
@@ -45,6 +46,7 @@ abstract class Producer with _$Producer {
     description: json['description'] is Map<String, dynamic>
         ? I18nText.fromJson(json['description'] as Map<String, dynamic>)
         : null,
+    imageUrl: json['image_url'] as String?,
     beverageCount: (json['beverage_count'] as num?)?.toInt(),
     createdAt: (json['created_at'] as String?) ?? '',
   );
@@ -56,6 +58,7 @@ abstract class ProducerRef with _$ProducerRef {
     required String id,
     required I18nText name,
     Prefecture? prefecture,
+    @JsonKey(name: 'image_url') String? imageUrl,
   }) = _ProducerRef;
 
   factory ProducerRef.fromJson(Map<String, dynamic> json) => ProducerRef(
@@ -66,5 +69,6 @@ abstract class ProducerRef with _$ProducerRef {
     prefecture: json['prefecture'] is Map<String, dynamic>
         ? Prefecture.fromJson(json['prefecture'] as Map<String, dynamic>)
         : null,
+    imageUrl: json['image_url'] as String?,
   );
 }

@@ -3,9 +3,13 @@
 // When the refresh exchange itself fails (network error, 4xx, 5xx), the
 // interceptor must:
 //   1. clear BOTH access and refresh tokens from secure storage,
-//   2. emit `ApiToastKind.unauthorized` on the toast bus,
-//   3. invoke the `onAuthExpired` callback exactly once,
-//   4. propagate the original 401 to the caller.
+//   2. invoke the `onAuthExpired` callback exactly once,
+//   3. propagate the original 401 to the caller.
+//
+// The unauthorized toast is intentionally NOT emitted from this path —
+// `AuthScreen` switches to the calm `wasExpired` fallback (logo + retry)
+// as soon as `onAuthExpired` flips the auth state, and that fallback is
+// the authoritative user-facing surface.
 
 import 'dart:convert';
 
@@ -69,7 +73,9 @@ class _AlwaysUnauthorizedAdapter implements HttpClientAdapter {
 }
 
 void main() {
-  test('failed refresh clears both tokens, fires toast, surfaces 401',
+  test(
+      'failed refresh clears both tokens, fires onAuthExpired, surfaces 401, '
+      'and does NOT emit the unauthorized toast',
       () async {
     FlutterSecureStoragePlatform.instance = _InMemorySecureStorage();
     final storage = SecureStorageService();
@@ -111,7 +117,10 @@ void main() {
     expect(refreshCalls, 1, reason: 'one refresh attempt');
     expect(authExpiredCalls, 1,
         reason: 'onAuthExpired fires exactly once on hard failure');
-    expect(toasts, [ApiToastKind.unauthorized]);
+    expect(toasts, isEmpty,
+        reason:
+            'unauthorized toast is suppressed — AuthScreen wasExpired '
+            'fallback is the authoritative user-facing surface');
 
     // Both tokens were wiped.
     expect(await storage.readToken(), isNull);

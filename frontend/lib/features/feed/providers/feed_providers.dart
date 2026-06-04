@@ -50,7 +50,7 @@ class FeedNotifier extends Notifier<FeedState> {
   }
 
   Future<void> refresh({bool forceRefresh = false}) async {
-    state = const FeedState(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final page = await ref
           .read(feedRepositoryProvider)
@@ -61,9 +61,9 @@ class FeedNotifier extends Notifier<FeedState> {
         hasMore: page.hasMore,
       );
     } on DioException catch (e) {
-      state = FeedState(error: _msg(e));
+      state = state.copyWith(isLoading: false, error: _msg(e));
     } catch (e) {
-      state = FeedState(error: e.toString());
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 

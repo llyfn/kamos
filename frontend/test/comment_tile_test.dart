@@ -1,5 +1,6 @@
-// KAMOS — Widget test: CommentTile shows the delete affordance only for the
-// comment authored by the signed-in user.
+// KAMOS — Widget test: CommentTile shows the overflow (more_horiz) menu only
+// for the comment authored by the signed-in user. Tapping the menu opens a
+// bottom sheet with Edit / Delete; Delete triggers the confirmation dialog.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,7 +46,8 @@ Widget _wrapMaterial(Widget child) => MaterialApp(
 
 void main() {
   group('CommentTile', () {
-    testWidgets('renders delete icon when comment is signed-in user\'s own',
+    testWidgets(
+        'renders overflow menu and Delete action when comment is own',
         (tester) async {
       var deletedWith = '';
       await tester.pumpWidget(
@@ -61,9 +63,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // Single ellipsis affordance on the right edge of the tile.
+      expect(find.byIcon(Icons.more_horiz), findsOneWidget);
+      // Inline pencil and trash should NOT live on the tile anymore —
+      // only the bottom-sheet exposes them.
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
+
+      // Open the sheet.
+      await tester.tap(find.byIcon(Icons.more_horiz));
+      await tester.pumpAndSettle();
+      // Sheet now exposes the inline icons via ListTile leading widgets.
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
 
-      // Tap delete → confirm dialog appears → tap confirm.
+      // Tap the Delete row → confirm dialog → tap confirm.
       await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pumpAndSettle();
       expect(find.text('Delete this comment?'), findsOneWidget);
@@ -78,7 +92,7 @@ void main() {
       expect(deletedWith, 'cm1');
     });
 
-    testWidgets('hides delete icon when comment belongs to another user',
+    testWidgets('hides overflow menu when comment belongs to another user',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -93,6 +107,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.byIcon(Icons.more_horiz), findsNothing);
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
       expect(find.byIcon(Icons.delete_outline), findsNothing);
     });
   });

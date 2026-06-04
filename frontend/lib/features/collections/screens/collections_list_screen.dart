@@ -29,7 +29,10 @@ class CollectionsListScreen extends ConsumerWidget {
           center: true,
           onRetry: () => ref.invalidate(collectionsProvider),
           data: (page) {
-          return ListView(
+          return RefreshIndicator(
+            onRefresh: () => ref.refresh(collectionsProvider.future),
+            child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
               Row(
@@ -119,6 +122,7 @@ class CollectionsListScreen extends ConsumerWidget {
                   );
                 }),
             ],
+          ),
           );
         },
         ),

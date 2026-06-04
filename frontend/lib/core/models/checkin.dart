@@ -59,6 +59,7 @@ abstract class Checkin with _$Checkin {
     @Default(0) int commentCount,
     @Default('') String createdAt,
     @Default('') String updatedAt,
+    String? editedAt,
   }) = _Checkin;
 
   factory Checkin.fromJson(Map<String, dynamic> json) => Checkin(
@@ -89,6 +90,7 @@ abstract class Checkin with _$Checkin {
     commentCount: (json['comment_count'] as int?) ?? 0,
     createdAt: (json['created_at'] as String?) ?? '',
     updatedAt: (json['updated_at'] as String?) ?? '',
+    editedAt: json['edited_at'] as String?,
   );
 }
 
@@ -118,6 +120,7 @@ abstract class FeedItem with _$FeedItem {
     youToasted: (json['you_toasted'] as bool?) ?? false,
     commentCount: (json['comment_count'] as int?) ?? 0,
     createdAt: (json['created_at'] as String?) ?? '',
+    editedAt: json['edited_at'] as String?,
   );
   const FeedItem._();
   const factory FeedItem({
@@ -137,6 +140,7 @@ abstract class FeedItem with _$FeedItem {
     // servers (or omitted-key responses) remain wire-compatible.
     @Default(0) int commentCount,
     @Default('') String createdAt,
+    String? editedAt,
   }) = _FeedItem;
 
   /// Backwards-compatible accessor for callers that still read

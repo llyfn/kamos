@@ -231,6 +231,11 @@ type AdminProducerCreate struct {
 	FoundedYear     *int             `json:"founded_year,omitempty"`
 	Website         *string          `json:"website,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+	// ImageUploadID is the optional photo_uploads.id (purpose='producer')
+	// produced by /v1/admin/uploads/photo-presign + PUT to R2. The handler
+	// resolves it to a public R2 URL and persists it as producers.image_url.
+	// Omit for no image.
+	ImageUploadID *string `json:"image_upload_id,omitempty"`
 }
 
 func (r *AdminProducerCreate) Validate() error {
@@ -272,6 +277,16 @@ type AdminProducerUpdate struct {
 	FoundedYear     *int             `json:"founded_year,omitempty"`
 	Website         *string          `json:"website,omitempty"`
 	DescriptionI18n *domain.I18nText `json:"description_i18n,omitempty"`
+	// ImageUploadID + ClearImage drive the producers.image_url column on
+	// PATCH:
+	//   * both omitted → leave image_url unchanged.
+	//   * ImageUploadID set → resolve to R2 URL, set image_url, mark the
+	//     photo_uploads row attached.
+	//   * ClearImage=true → set image_url to NULL. ImageUploadID is
+	//     ignored when ClearImage is true.
+	// Mutually exclusive in practice; the handler validates.
+	ImageUploadID *string `json:"image_upload_id,omitempty"`
+	ClearImage    bool    `json:"clear_image,omitempty"`
 }
 
 func (r *AdminProducerUpdate) Validate() error {
@@ -296,6 +311,9 @@ func (r *AdminProducerUpdate) Validate() error {
 	}
 	if err := validateWebsite(r.Website); err != nil {
 		return err
+	}
+	if r.ClearImage && r.ImageUploadID != nil && *r.ImageUploadID != "" {
+		return wrapV("clear_image and image_upload_id are mutually exclusive")
 	}
 	return nil
 }

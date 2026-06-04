@@ -102,6 +102,12 @@ func (r *CreateCheckinRequest) Validate() error {
 
 // UpdateCheckinRequest — PATCH /v1/check-ins/:id.
 // `beverage_id` cannot change per SPEC §4.4; if a client sends it, we reject.
+//
+// Post-creation editability (01): the request additionally accepts
+// `add_photos` (newly-uploaded photo_uploads ids to attach) and
+// `remove_photos` (photo ids on the existing check-in to detach). The
+// SPEC §4.2 four-photo cap is enforced against the resulting set
+// (current - removed + added) inside the service layer.
 type UpdateCheckinRequest struct {
 	BeverageID   *string   `json:"beverage_id,omitempty"` // poison field — must be nil
 	Rating       *float64  `json:"rating,omitempty"`
@@ -112,6 +118,13 @@ type UpdateCheckinRequest struct {
 	Price        *Price    `json:"price,omitempty"`
 	ClearPrice   bool      `json:"clear_price,omitempty"`
 	PurchaseType *string   `json:"purchase_type,omitempty"`
+	// AddPhotos lists photo_uploads ids (returned from the
+	// /v1/uploads/photo-presign flow) to attach to the check-in.
+	AddPhotos []string `json:"add_photos,omitempty"`
+	// RemovePhotos lists existing photo URLs (PhotoRef.URL) to detach
+	// from the check-in. The URL is the natural id surfaced to the client
+	// on the existing Checkin.photos projection.
+	RemovePhotos []string `json:"remove_photos,omitempty"`
 }
 
 func (r *UpdateCheckinRequest) Validate() error {
@@ -165,6 +178,9 @@ type Checkin struct {
 	CommentCount int         `json:"comment_count"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
+	// EditedAt is non-nil when the author has touched any tracked field
+	// after creation (SPEC §4.4 / migration 003). Rendering-only.
+	EditedAt *time.Time `json:"edited_at,omitempty"`
 }
 
 type CheckinUser struct {
@@ -215,6 +231,9 @@ type FeedItem struct {
 	CommentCount int         `json:"comment_count"`
 	Venue        *VenueRef   `json:"venue,omitempty"`
 	CreatedAt    time.Time   `json:"created_at"`
+	// EditedAt is non-nil when the author has touched any tracked field
+	// after creation (SPEC §4.4 / migration 003). Rendering-only.
+	EditedAt *time.Time `json:"edited_at,omitempty"`
 }
 
 // ToastState is the response body for the toast toggle endpoint.

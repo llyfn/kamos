@@ -33,6 +33,11 @@ const presignOutstandingCap = 8
 type photoPresignRequest struct {
 	ContentType string `json:"content_type"`
 	ByteSize    int64  `json:"byte_size"`
+	// Purpose categorizes the upload for orphan tracking + blob-key
+	// pathing. Allowed values: "check_in" (default) and "producer".
+	// "producer" requires admin auth; the dedicated admin presign route
+	// at POST /v1/admin/uploads/photo-presign enforces this.
+	Purpose string `json:"purpose,omitempty"`
 }
 
 type photoPresignResponse struct {
@@ -43,16 +48,39 @@ type photoPresignResponse struct {
 	ExpiresAt time.Time         `json:"expires_at"`
 }
 
+// Allowed `purpose` values for photo presigns. Mirrors the blob-key
+// prefix the handler uses when laying objects out in R2.
+const (
+	photoPurposeCheckIn  = "check_in"
+	photoPurposeProducer = "producer"
+)
+
 // PhotoPresign — POST /v1/uploads/photo-presign.
 //
 // Returns a presigned PUT URL for a single photo. The client PUTs the bytes
 // directly to R2 with the supplied Content-Type, then calls
 // POST /v1/check-ins/{id}/photos with the returned upload_id.
 //
+// `purpose` defaults to "check_in"; `purpose=producer` is admin-only and
+// rejected with 403 on this public route — admins use the dedicated
+// /v1/admin/uploads/photo-presign route instead.
+//
 // When the server is running without R2 configured (R2_BUCKET unset), this
 // endpoint returns 503 STORAGE_DISABLED — a deliberate, machine-readable
 // signal that the feature is OFF at this deployment.
 func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
+	h.photoPresign(w, r, "" /* purpose: take from body, default check_in */)
+}
+
+// AdminPhotoPresign — POST /v1/admin/uploads/photo-presign. Forces
+// purpose=producer so a misconfigured admin client can't mint a check-in
+// blob. Cookie + CSRF admin auth applies via the route mount.
+func (h *Handler) AdminPhotoPresign(w http.ResponseWriter, r *http.Request) {
+	h.photoPresign(w, r, photoPurposeProducer)
+}
+
+// `forcedPurpose != ""` overrides the body's purpose (admin route).
+func (h *Handler) photoPresign(w http.ResponseWriter, r *http.Request, forcedPurpose string) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
 		return
@@ -89,8 +117,32 @@ func (h *Handler) PhotoPresign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	purpose := req.Purpose
+	if forcedPurpose != "" {
+		purpose = forcedPurpose
+	}
+	if purpose == "" {
+		purpose = photoPurposeCheckIn
+	}
+	keyPrefix := ""
+	switch purpose {
+	case photoPurposeCheckIn:
+		keyPrefix = "checkins"
+	case photoPurposeProducer:
+		if forcedPurpose != photoPurposeProducer {
+			httperr.WriteError(w, http.StatusForbidden, "ADMIN_ONLY",
+				"purpose=producer requires the admin presign route")
+			return
+		}
+		keyPrefix = "producers"
+	default:
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "VALIDATION",
+			"purpose must be 'check_in' or 'producer'")
+		return
+	}
+
 	uploadID := uuid.New().String()
-	blobKey := fmt.Sprintf("checkins/%s/%s.%s", uid, uploadID, ext)
+	blobKey := fmt.Sprintf("%s/%s/%s.%s", keyPrefix, uid, uploadID, ext)
 
 	if err := h.Repos.PhotoUploads.CreateWithID(
 		r.Context(), uploadID, uid, blobKey, req.ContentType, req.ByteSize,
