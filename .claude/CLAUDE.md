@@ -150,7 +150,7 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 
 **Out of scope for MVP** — push notifications, threaded comments, end-user web client, Apple Sign-In, beverage scanning, blocking, recommendations, export. If a request implies any of these, confirm scope before implementing.
 
-**Reopened for post-MVP (v1.1)** — venue/location (Foursquare, Phase 4), flat comments on check-ins (Phase 6), public collections (Phase 6), user-submitted beverage additions with admin moderation (Phase 5). All four shipped end-to-end by Phase 7 of the post-MVP roadmap.
+**Shipped post-MVP (v1.1)** — venue/location (Foursquare, Phase 4), flat comments on check-ins (Phase 6), public collections (Phase 6), user-submitted beverage additions with admin moderation (Phase 5). All four shipped end-to-end by Phase 7. Phase 8 brought post-create editability on check-ins + comments and admin-managed producer images.
 
 ## Communication
 

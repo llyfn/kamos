@@ -370,9 +370,9 @@ RETURNING id, updated_at, edited_at;
 
 Photo & tag edits are separate batched statements (delete + re-insert pattern; trivial at the ≤4 / ≤many sizes involved). The SPEC §4.1 four-photo cap is enforced in Go pre-write against `count(current) − len(remove_photos) + len(add_photos) ≤ 4`; the DB-level `UNIQUE (check_in_id, sort_order)` + `sort_order BETWEEN 0 AND 3` is the backstop.
 
-### edited_at touch pattern (003)
+### edited_at touch pattern
 
-Both `check_ins` (003) and `comments` (004) carry a nullable `edited_at TIMESTAMPTZ`. Rule: **set `edited_at = NOW()` in the same transaction as any tracked-field change; leave it untouched otherwise.**
+Both `check_ins` and `comments` carry a nullable `edited_at TIMESTAMPTZ` (migration 003, the post-MVP additive squash that also added `producers.image_url`). Rule: **set `edited_at = NOW()` in the same transaction as any tracked-field change; leave it untouched otherwise.**
 
 Two implementation shapes; pick per endpoint:
 

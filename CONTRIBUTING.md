@@ -103,7 +103,7 @@ Workflow:
 2. Run `scripts/gen-tokens.sh`.
 3. Commit the JSON change **and** the regenerated sinks together.
 
-Current sink coverage (Stage 7 partial — see ARCH-011):
+Current sink coverage (partial — see ARCH-011 for the queued codegen targets):
 
 | Sink | Path | Status |
 |---|---|---|
