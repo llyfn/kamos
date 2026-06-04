@@ -160,55 +160,31 @@ class _CommentTileState extends ConsumerState<CommentTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    // Username Text also taps through to the author's
-                    // profile. Orphan comments render the placeholder
-                    // label without a gesture.
-                    Expanded(
-                      child: author != null
-                          ? GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () =>
-                                  pushUserProfile(context, author.username),
-                              child: Text(
-                                displayName,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: t.fg1,
-                                ),
-                              ),
-                            )
-                          : Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: t.fg1,
-                              ),
-                            ),
-                    ),
-                    if (when != null) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        elapsedShort(when, l),
-                        style: TextStyle(fontSize: 11, color: t.fg3),
-                      ),
-                      if (comment.editedAt != null) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          l.editedMarker,
+                // Username Text also taps through to the author's profile.
+                // Orphan comments render the placeholder label without a
+                // gesture.
+                author != null
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            pushUserProfile(context, author.username),
+                        child: Text(
+                          displayName,
                           style: TextStyle(
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic,
-                            color: t.fg3,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: t.fg1,
                           ),
                         ),
-                      ],
-                    ],
-                  ],
-                ),
+                      )
+                    : Text(
+                        displayName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: t.fg1,
+                        ),
+                      ),
                 const SizedBox(height: 2),
                 if (_editing) ...[
                   TextField(
@@ -245,18 +221,49 @@ class _CommentTileState extends ConsumerState<CommentTile> {
               ],
             ),
           ),
-          if (isOwn && !_editing)
-            Padding(
-              padding: const EdgeInsets.only(left: 4, top: 2),
-              child: InkWell(
-                onTap: _openOwnerMenu,
-                borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(Icons.more_horiz, size: 18, color: t.fg3),
-                ),
-              ),
+          // Right meta column: timestamp on top, ellipsis stacked below.
+          // Lives outside the body Expanded so the body Column doesn't grow
+          // taller when the ellipsis appears — the right column simply
+          // hangs to the right of the body without pushing it down.
+          if (when != null || (isOwn && !_editing)) ...[
+            const SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (when != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        elapsedShort(when, l),
+                        style: TextStyle(fontSize: 11, color: t.fg3),
+                      ),
+                      if (comment.editedAt != null) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          l.editedMarker,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            color: t.fg3,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                if (isOwn && !_editing)
+                  InkWell(
+                    onTap: _openOwnerMenu,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(Icons.more_horiz, size: 14, color: t.fg3),
+                    ),
+                  ),
+              ],
             ),
+          ],
         ],
       ),
     );

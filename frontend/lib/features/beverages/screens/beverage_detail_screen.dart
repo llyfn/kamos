@@ -347,39 +347,49 @@ class _RecentCheckinRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () =>
-                          pushUserProfile(context, summary.user.username),
-                      child: Text(
-                        summary.user.displayUsername,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            pushUserProfile(context, summary.user.username),
+                        child: Text(
+                          summary.user.displayUsername,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
-                    if (summary.rating != null)
+                    if (when != null)
+                      Text(
+                        elapsedShort(when, l),
+                        style: TextStyle(
+                          fontFamily: 'NotoSansJP',
+                          fontSize: 11,
+                          color: t.fg3,
+                        ),
+                      ),
+                  ],
+                ),
+                if (summary.rating != null) ...[
+                  const SizedBox(height: KamosSpacing.xs),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      StarsDisplay(value: summary.rating, size: 11),
+                      const SizedBox(width: 4),
                       Text(
                         l.ratingValue(summary.rating!.toStringAsFixed(1)),
                         style: const TextStyle(
                           fontFamily: 'JetBrainsMono',
                           fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ),
-                if (when != null) ...[
-                  const SizedBox(height: KamosSpacing.xs),
-                  Text(
-                    elapsedShort(when, l),
-                    style: TextStyle(
-                      fontFamily: 'NotoSansJP',
-                      fontSize: 11,
-                      color: t.fg3,
-                    ),
+                    ],
                   ),
                 ],
                 if ((summary.review ?? '').isNotEmpty) ...[

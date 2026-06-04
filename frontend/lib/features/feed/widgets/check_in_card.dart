@@ -25,23 +25,10 @@ import '../../users/navigation.dart';
 import '../providers/feed_providers.dart';
 
 class CheckInCard extends ConsumerWidget {
-  const CheckInCard({
-    super.key,
-    required this.item,
-    required this.onToast,
-    this.recent = false,
-  });
+  const CheckInCard({super.key, required this.item, required this.onToast});
 
   final FeedItem item;
   final VoidCallback onToast;
-
-  /// Layout variant. `false` (default) is the feed card: createdAt anchored
-  /// top-right, rating rendered in the beverage info row. `true` is the
-  /// "recent check-in" tile used on the profile screen: createdAt + username
-  /// stacked top-left inside the header column, with the rating (small
-  /// stars + numeric value) lifted up to the header's top-right. The two
-  /// shapes share everything below the header.
-  final bool recent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -85,42 +72,21 @@ class CheckInCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (recent && when != null)
-                        _TimestampRow(
-                          label: elapsedShort(when, l),
-                          edited: item.editedAt != null,
-                          editedLabel: l.editedMarker,
-                          tokens: t,
-                        ),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () =>
-                            pushUserProfile(context, item.user.username),
-                        child: Text(
-                          item.user.displayUsername,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: t.fg1,
-                          ),
-                        ),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () =>
+                        pushUserProfile(context, item.user.username),
+                    child: Text(
+                      item.user.displayUsername,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: t.fg1,
                       ),
-                    ],
-                  ),
-                ),
-                if (recent && item.rating != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: _StarRatingChip(
-                      value: item.rating!,
-                      starSize: 11,
-                      label: l.ratingValue(item.rating!.toStringAsFixed(1)),
                     ),
                   ),
-                if (!recent && when != null)
+                ),
+                if (when != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: _TimestampRow(
@@ -180,7 +146,7 @@ class CheckInCard extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        if (!recent && item.rating != null) ...[
+                        if (item.rating != null) ...[
                           const SizedBox(height: 6),
                           _StarRatingChip(
                             value: item.rating!,

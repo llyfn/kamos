@@ -292,6 +292,10 @@ class _RecentCheckins extends ConsumerWidget {
     final l = AppLocalizations.of(context);
     final async = ref.watch(userCheckinsProvider(username));
     return async.when(
+      // Same rationale as AsyncWidget — keep the previous list rendered while
+      // pull-to-refresh re-fetches so the strip doesn't flash to a spinner.
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
       data: (items) {
         if (items.isEmpty) {
           return EmptyView(
@@ -309,7 +313,6 @@ class _RecentCheckins extends ConsumerWidget {
             for (final c in items)
               CheckInCard(
                 item: _checkinToFeedItem(c),
-                recent: true,
                 onToast: () {
                   // Toast toggling lives on the dedicated feed/detail
                   // surfaces; recent-check-ins on the profile is a

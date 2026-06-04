@@ -66,6 +66,14 @@ class AsyncWidget<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value.when(
+      // Pull-to-refresh and provider invalidations push the underlying
+      // AsyncValue back through `AsyncLoading<T>`. With both flags set, the
+      // data builder is called with the previous value during that window so
+      // the screen stays painted; the loading branch only fires on the very
+      // first fetch (when there's no previous value). Without these flags
+      // every refresh wiped the screen to a LogoLoader for a frame.
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
       loading: loading ??
           () => center ? const LogoLoader() : const LoadingView(),
       error: (e, s) {
