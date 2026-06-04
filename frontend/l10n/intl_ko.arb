@@ -103,7 +103,7 @@
   "authPasswordLabel": "비밀번호",
   "authPasswordHelper": "8자 이상",
   "authPasswordTooShort": "너무 짧습니다",
-  "authTagline": "니혼슈, 쇼츄, 리큐어를 기록하는 앱.",
+  "authTagline": "장인의 술을 탐험하고, 기억에 새기다.",
 
   "verifyPendingTitle": "이메일을 확인하세요",
   "verifyPendingBody": "{email} (으)로 인증 링크를 보냈습니다. 이 기기 또는 브라우저에서 링크를 열어 계정을 인증하세요.",
