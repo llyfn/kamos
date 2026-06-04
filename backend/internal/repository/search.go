@@ -68,7 +68,7 @@ func (r *SearchRepo) SearchProducers(ctx context.Context, q string, cursorID *st
 	// Migration 016: prefecture is nested via the LEFT JOIN to
 	// prefectures + regions (producer.prefecture_id is nullable).
 	const brq = `
-SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,` + producerPrefectureSelectCols + `
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
   AND to_tsvector('simple',

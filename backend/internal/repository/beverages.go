@@ -50,6 +50,7 @@ type beverageRow struct {
 	createdAt       time.Time
 	producerID      string
 	producerNameRaw []byte
+	producerImgURL  *string
 	producerPref    prefectureScan
 }
 
@@ -77,7 +78,8 @@ SELECT
   b.flavor_profile,
   b.created_at,
   br.id           AS producer_id,
-  br.name_i18n    AS producer_name_i18n,` + producerPrefectureSelectCols + `
+  br.name_i18n    AS producer_name_i18n,
+  br.image_url    AS producer_image_url,` + producerPrefectureSelectCols + `
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
 JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
@@ -102,7 +104,8 @@ SELECT
   b.flavor_profile,
   b.created_at,
   br.id           AS producer_id,
-  br.name_i18n    AS producer_name_i18n,` + producerPrefectureSelectCols + `
+  br.name_i18n    AS producer_name_i18n,
+  br.image_url    AS producer_image_url,` + producerPrefectureSelectCols + `
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
 JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
@@ -110,7 +113,7 @@ JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoin
 func scanBeverage(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
 	prefArgs := b.producerPref.scanArgs()
-	args := make([]any, 0, 16+len(prefArgs))
+	args := make([]any, 0, 17+len(prefArgs))
 	args = append(args,
 		&b.id,
 		&b.nameJSON,
@@ -128,6 +131,7 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 		&b.createdAt,
 		&b.producerID,
 		&b.producerNameRaw,
+		&b.producerImgURL,
 	)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
@@ -143,7 +147,7 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
 	prefArgs := b.producerPref.scanArgs()
-	args := make([]any, 0, 14+len(prefArgs))
+	args := make([]any, 0, 15+len(prefArgs))
 	args = append(args,
 		&b.id,
 		&b.nameJSON,
@@ -159,6 +163,7 @@ func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 		&b.createdAt,
 		&b.producerID,
 		&b.producerNameRaw,
+		&b.producerImgURL,
 	)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
@@ -187,6 +192,7 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 			ID:         row.producerID,
 			Name:       prodName,
 			Prefecture: row.producerPref.toPrefecture(),
+			ImageURL:   row.producerImgURL,
 		},
 		Category:       domain.CategoryLabel{Slug: row.categorySlug, LabelI18n: catLabel},
 		ABV:            row.abv,
@@ -448,7 +454,7 @@ func (r *ProducerRepo) List(ctx context.Context, q *string, cursorTs *time.Time,
 	// Migration 016: prefecture comes from a LEFT JOIN on
 	// prefectures + regions via producers.prefecture_id; nullable.
 	const sql = `
-SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,
        b.beverage_count,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
@@ -471,7 +477,7 @@ LIMIT $4;`
 
 func (r *ProducerRepo) Detail(ctx context.Context, id string) (*domain.Producer, error) {
 	const sql = `
-SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.created_at,
+SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,
        b.beverage_count,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.id = $1 AND b.deleted_at IS NULL;`
@@ -523,15 +529,15 @@ LIMIT $4;`
 // scanProducer scans the count-free producer projection used by
 // /v1/search. Column order:
 //
-//	id, name_i18n, founded_year, website, description_i18n, created_at,
-//	+ producerPrefectureSelectCols (8 join columns).
+//	id, name_i18n, founded_year, website, description_i18n, image_url,
+//	created_at, + producerPrefectureSelectCols (8 join columns).
 func scanProducer(row pgx.Row) (*domain.Producer, error) {
 	var b domain.Producer
 	var nameJSON, descJSON []byte
 	var pref prefectureScan
 	prefArgs := pref.scanArgs()
-	args := make([]any, 0, 6+len(prefArgs))
-	args = append(args, &b.ID, &nameJSON, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt)
+	args := make([]any, 0, 7+len(prefArgs))
+	args = append(args, &b.ID, &nameJSON, &b.FoundedYear, &b.Website, &descJSON, &b.ImageURL, &b.CreatedAt)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
 		return nil, err
@@ -549,16 +555,16 @@ func scanProducer(row pgx.Row) (*domain.Producer, error) {
 // column. Used by ProducerRepo.List/Detail; search.go still uses the count-
 // free variant. Column order:
 //
-//	id, name_i18n, founded_year, website, description_i18n, created_at,
-//	beverage_count, + producerPrefectureSelectCols (8 join columns).
+//	id, name_i18n, founded_year, website, description_i18n, image_url,
+//	created_at, beverage_count, + producerPrefectureSelectCols (8 join columns).
 func scanProducerWithCount(row pgx.Row) (*domain.Producer, error) {
 	var b domain.Producer
 	var nameJSON, descJSON []byte
 	var count int
 	var pref prefectureScan
 	prefArgs := pref.scanArgs()
-	args := make([]any, 0, 7+len(prefArgs))
-	args = append(args, &b.ID, &nameJSON, &b.FoundedYear, &b.Website, &descJSON, &b.CreatedAt, &count)
+	args := make([]any, 0, 8+len(prefArgs))
+	args = append(args, &b.ID, &nameJSON, &b.FoundedYear, &b.Website, &descJSON, &b.ImageURL, &b.CreatedAt, &count)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
 		return nil, err

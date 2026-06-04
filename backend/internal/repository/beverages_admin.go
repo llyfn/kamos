@@ -48,6 +48,10 @@ type ProducerCreateInput struct {
 	FoundedYear  *int
 	Website      *string
 	Description  *domain.I18nText
+	// ImageURL is the public R2 URL the handler resolved from an
+	// `image_upload_id` (photo_uploads.id with purpose='producer'). nil
+	// means no image was supplied.
+	ImageURL *string
 }
 
 // ProducerUpdateInput is the partial-update shape for AdminUpdateProducer.
@@ -60,6 +64,12 @@ type ProducerUpdateInput struct {
 	FoundedYear  *int
 	Website      *string
 	Description  *domain.I18nText
+	// ImageURL semantics mirror the other Update fields:
+	//   * nil           → leave column unchanged.
+	//   * ptr to ""     → clear image_url to NULL.
+	//   * ptr to "https…" → set to that URL (resolved server-side from the
+	//                     handler's image_upload_id).
+	ImageURL *string
 }
 
 // AdminProducerListParams scopes the admin producer search.
@@ -92,7 +102,7 @@ type AdminProducerRow struct {
 // in favor of `prefecture_id`.
 const adminProducerSelect = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website,
-       b.description_i18n, b.created_at, b.beverage_count, b.deleted_at,` + producerPrefectureSelectCols + `
+       b.description_i18n, b.image_url, b.created_at, b.beverage_count, b.deleted_at,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause
 
 func scanAdminProducer(row pgx.Row) (*AdminProducerRow, error) {
@@ -101,10 +111,10 @@ func scanAdminProducer(row pgx.Row) (*AdminProducerRow, error) {
 	var count int
 	var pref prefectureScan
 	prefArgs := pref.scanArgs()
-	args := make([]any, 0, 8+len(prefArgs))
+	args := make([]any, 0, 9+len(prefArgs))
 	args = append(args,
 		&out.ID, &nameJSON, &out.FoundedYear,
-		&out.Website, &descJSON, &out.CreatedAt, &count, &out.DeletedAt,
+		&out.Website, &descJSON, &out.ImageURL, &out.CreatedAt, &count, &out.DeletedAt,
 	)
 	args = append(args, prefArgs...)
 	if err := row.Scan(args...); err != nil {
@@ -214,12 +224,12 @@ func (r *ProducerRepo) Create(ctx context.Context, tx pgx.Tx, in ProducerCreateI
 	// prefecture + region. A single statement with RETURNING cannot
 	// easily reach across the prefectures + regions joins.
 	const ins = `
-INSERT INTO producers (name_i18n, prefecture_id, founded_year, website, description_i18n)
-VALUES ($1::jsonb, $2, $3, $4, $5::jsonb)
+INSERT INTO producers (name_i18n, prefecture_id, founded_year, website, description_i18n, image_url)
+VALUES ($1::jsonb, $2, $3, $4, $5::jsonb, $6)
 RETURNING id;`
 	var id string
 	if err := tx.QueryRow(ctx, ins,
-		string(nameJSON), in.PrefectureID, in.FoundedYear, in.Website, descArg,
+		string(nameJSON), in.PrefectureID, in.FoundedYear, in.Website, descArg, in.ImageURL,
 	).Scan(&id); err != nil {
 		return nil, fmt.Errorf("ProducerRepo.Create: %w", err)
 	}
@@ -281,6 +291,15 @@ func (r *ProducerRepo) Update(ctx context.Context, tx pgx.Tx, id string, in Prod
 				return nil, err
 			}
 			add("description_i18n", string(b))
+		}
+	}
+	if in.ImageURL != nil {
+		// Empty string clears image_url to NULL; non-empty sets it to
+		// the resolved R2 URL.
+		if *in.ImageURL == "" {
+			add("image_url", nil)
+		} else {
+			add("image_url", *in.ImageURL)
 		}
 	}
 	if len(sets) == 0 {

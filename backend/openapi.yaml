@@ -966,6 +966,15 @@ paths:
         Allowed `content_type`: `image/jpeg`, `image/png`, `image/webp`.
         Max `byte_size`: 10 MB (10485760 bytes).
 
+        Slice 02 (producer images): `purpose` may be `check_in` (default,
+        the only value the public/mobile surface accepts) or `producer`.
+        `producer` is admin-only and is served by
+        `POST /v1/admin/uploads/photo-presign`; sending it to this public
+        route returns 403 ADMIN_ONLY. The `purpose` value is encoded into
+        the resulting `blob_key` path prefix (`checkins/...` vs
+        `producers/...`) and tracked for orphan cleanup by the existing
+        purpose-agnostic sweeper.
+
         Returns 503 `STORAGE_DISABLED` when the deployment has not configured
         the blob backend (Cloudflare R2 credentials unset). Clients should
         gracefully fall back to "photo upload not available on this server".
@@ -984,6 +993,13 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 10485760
+                purpose:
+                  type: string
+                  enum: [check_in, producer]
+                  default: check_in
+                  description: |
+                    `check_in` (default) is the mobile path; `producer`
+                    is admin-only and must use the admin presign route.
       responses:
         "200":
           description: presigned PUT URL issued
@@ -1008,6 +1024,70 @@ paths:
                     type: string
                     format: date-time
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: purpose=producer is admin-only on this route
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/Validation" }
+        "503":
+          description: blob storage not configured on this server
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/admin/uploads/photo-presign:
+    post:
+      tags: [admin]
+      operationId: adminPresignPhotoUpload
+      description: |
+        Admin-only presign for producer images (slice 02). Cookie + CSRF
+        auth (HttpOnly `kamos_admin_*` cookies + `X-CSRF-Token` per
+        ARCHITECTURE.md §5). The handler forces `purpose=producer`
+        regardless of the body — the resulting `blob_key` is namespaced
+        under `producers/...` and the returned `upload_id` is the one to
+        send as `image_upload_id` on `POST /v1/admin/producers` or
+        `PATCH /v1/admin/producers/{id}`.
+
+        Shares the per-user presign-outstanding cap with the public
+        route (SEC-008).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content_type, byte_size]
+              properties:
+                content_type:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                byte_size:
+                  type: integer
+                  minimum: 1
+                  maximum: 10485760
+      responses:
+        "200":
+          description: presigned PUT URL issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload_id, upload_url, headers, blob_key, expires_at]
+                properties:
+                  upload_id: { type: string, format: uuid }
+                  upload_url: { type: string, format: uri }
+                  headers:
+                    type: object
+                    additionalProperties: { type: string }
+                  blob_key: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: caller lacks the admin role or the CSRF header is missing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422": { $ref: "#/components/responses/Validation" }
         "503":
           description: blob storage not configured on this server
@@ -2593,15 +2673,21 @@ components:
       type: object
       description: |
         Optional fields (`prefecture`, `founded_year`, `website`,
-        `description`, `beverage_count`) use the **absent-when-unknown**
-        convention: the Go server emits them with `omitempty`, so the JSON
-        key is omitted entirely rather than set to `null`. Clients should
-        treat an absent key the same as `null`.
+        `description`, `image_url`, `beverage_count`) use the
+        **absent-when-unknown** convention: the Go server emits them with
+        `omitempty`, so the JSON key is omitted entirely rather than set
+        to `null`. Clients should treat an absent key the same as `null`.
 
         Migration 016: `prefecture` is now a nested `Prefecture` object
         (which itself embeds its `Region`). The previous free-text
         `prefecture` / `region` string fields are gone. The producer's
         region is derivable via `producer.prefecture.region`.
+
+        Slice 02 (producer images): `image_url` is the optional
+        admin-uploaded image (logo / brewery photo / label collage),
+        resolved server-side from an `image_upload_id` on
+        AdminProducerCreate / AdminProducerUpdate via the existing R2
+        presign flow.
       required: [id, name, created_at]
       properties:
         id: { type: string, format: uuid }
@@ -2610,6 +2696,7 @@ components:
         founded_year: { type: integer }
         website: { type: string, format: uri }
         description: { $ref: "#/components/schemas/I18nText" }
+        image_url: { type: string, format: uri }
         beverage_count:
           type: integer
           minimum: 0
@@ -2721,11 +2808,16 @@ components:
         its Region) follows the absent-when-unknown convention (Go
         `omitempty`). Migration 016 replaced the free-text `region`
         string with this nested shape.
+
+        Slice 02 (producer images): `image_url` mirrors Producer.image_url
+        on the compact embed so the check-in card / feed item can render
+        the optional 16-dp producer thumbnail without a second fetch.
       required: [id, name]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
         prefecture: { $ref: "#/components/schemas/Prefecture" }
+        image_url: { type: string, format: uri }
 
     PhotoRef:
       type: object
@@ -3598,6 +3690,15 @@ components:
           allOf:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
+        image_upload_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional photo_uploads.id minted by POST
+            /v1/admin/uploads/photo-presign + a successful PUT to R2. The
+            server resolves it to a public R2 URL and persists it as
+            producers.image_url. Omit when the producer has no image.
 
     AdminProducerUpdate:
       type: object
@@ -3637,6 +3738,21 @@ components:
           allOf:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
+        image_upload_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Optional photo_uploads.id from POST
+            /v1/admin/uploads/photo-presign. When supplied the server
+            resolves it to a public R2 URL and sets producers.image_url.
+            Mutually exclusive with `clear_image=true`.
+        clear_image:
+          type: boolean
+          description: |
+            When true, sets producers.image_url to NULL. Use this to
+            remove an existing image. Mutually exclusive with
+            `image_upload_id`; supplying both returns 422 VALIDATION.
 
     AdminProducerList:
       type: object

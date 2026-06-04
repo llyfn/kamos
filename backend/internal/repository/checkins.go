@@ -585,7 +585,7 @@ SELECT
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id, br.name_i18n,` + producerPrefectureSelectCols + `,
+  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `,
   v.id, v.name, v.locality, v.country,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
@@ -656,6 +656,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		brwName                  []byte
 		bevSlug                  string
 		bevLabel                 *string
+		brwImageURL              *string
 		brwPref                  prefectureScan
 		brwID, userIDVal, bevID  string
 		venueID, venueName       *string
@@ -666,7 +667,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		commentCnt               int64
 	)
 	prefArgs := brwPref.scanArgs()
-	scanArgs := make([]any, 0, 23+len(prefArgs)+7)
+	scanArgs := make([]any, 0, 24+len(prefArgs)+7)
 	scanArgs = append(scanArgs,
 		&c.ID, &userIDVal, &bevID,
 		&c.Rating, &c.Review,
@@ -676,7 +677,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		&c.User.Username, &c.User.DisplayUsername, &c.User.DisplayName, &c.User.AvatarURL, &userPrivacy,
 		&bevName, &bevSlug, &bevLabel,
 		&catName,
-		&brwID, &brwName,
+		&brwID, &brwName, &brwImageURL,
 	)
 	scanArgs = append(scanArgs, prefArgs...)
 	scanArgs = append(scanArgs,
@@ -696,7 +697,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 	c.Beverage = domain.BeverageRef{
 		ID:            bevID,
 		Name:          bn,
-		Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture()},
+		Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
 		LabelImageURL: bevLabel,
 	}

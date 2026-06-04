@@ -554,8 +554,16 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * @description Status: scaffold-for-Phase5 (admin edit surface). Endpoint is
-         *     intentionally pre-wired; no Flutter caller in MVP.
+         * @description Post-creation editability (slice 01 / SPEC §4.4). Author-only edit
+         *     of a live check-in. `beverage_id` is immutable — sending it returns
+         *     422. `add_photos` carries `photo_uploads.id` values returned from
+         *     `/v1/uploads/photo-presign`; `remove_photos` carries existing
+         *     `PhotoRef.url` values to detach. The SPEC §4.2 four-photo cap is
+         *     enforced on the resulting set (current − removed + added) — the
+         *     5th attach returns 422 `PHOTO_CAP_EXCEEDED`. Tags use full
+         *     replacement semantics: present (even empty) replaces; absent leaves
+         *     alone. The `edited_at` field on the response is touched only when
+         *     at least one tracked field actually changes.
          */
         patch: operations["updateCheckin"];
         trace?: never;
@@ -610,7 +618,16 @@ export interface paths {
         delete: operations["deleteComment"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * @description Post-creation editability (slice 01 / SPEC §5.4). Author-only edit
+         *     of the comment body. Same sanitization rules as create — 1..500
+         *     chars, control characters and bidi-override codepoints rejected.
+         *     `edited_at` is touched only when the new body differs from the
+         *     existing column (no-op PATCH leaves the row unchanged). A non-
+         *     author or a soft-deleted comment returns 404 — we don't leak
+         *     comment existence to non-authors.
+         */
+        patch: operations["updateComment"];
         trace?: never;
     };
     "/v1/check-ins/{id}/photos": {
@@ -656,11 +673,48 @@ export interface paths {
          *     Allowed `content_type`: `image/jpeg`, `image/png`, `image/webp`.
          *     Max `byte_size`: 10 MB (10485760 bytes).
          *
+         *     Slice 02 (producer images): `purpose` may be `check_in` (default,
+         *     the only value the public/mobile surface accepts) or `producer`.
+         *     `producer` is admin-only and is served by
+         *     `POST /v1/admin/uploads/photo-presign`; sending it to this public
+         *     route returns 403 ADMIN_ONLY. The `purpose` value is encoded into
+         *     the resulting `blob_key` path prefix (`checkins/...` vs
+         *     `producers/...`) and tracked for orphan cleanup by the existing
+         *     purpose-agnostic sweeper.
+         *
          *     Returns 503 `STORAGE_DISABLED` when the deployment has not configured
          *     the blob backend (Cloudflare R2 credentials unset). Clients should
          *     gracefully fall back to "photo upload not available on this server".
          */
         post: operations["presignPhotoUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/uploads/photo-presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Admin-only presign for producer images (slice 02). Cookie + CSRF
+         *     auth (HttpOnly `kamos_admin_*` cookies + `X-CSRF-Token` per
+         *     ARCHITECTURE.md §5). The handler forces `purpose=producer`
+         *     regardless of the body — the resulting `blob_key` is namespaced
+         *     under `producers/...` and the returned `upload_id` is the one to
+         *     send as `image_upload_id` on `POST /v1/admin/producers` or
+         *     `PATCH /v1/admin/producers/{id}`.
+         *
+         *     Shares the per-user presign-outstanding cap with the public
+         *     route (SEC-008).
+         */
+        post: operations["adminPresignPhotoUpload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -749,22 +803,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/follow-requests": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listFollowRequests"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/follow-requests/{id}/approve": {
         parameters: {
             query?: never;
@@ -797,6 +835,76 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["declineFollowRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description SPEC §5.4. Cursor-paginated inbox, newest first, 20 per page.
+         *     Soft-deleted actor / check-in / comment references survive as
+         *     nulls so the row keeps rendering (Flutter shows a "Deleted user"
+         *     placeholder per SPEC §5.4).
+         */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description SPEC §5.4. Count of unread rows for the authed user — feeds the
+         *     bottom-tab unread dot. Backed by a partial index so the query is
+         *     cheap (Index Only Scan).
+         */
+        get: operations["notificationUnreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description SPEC §5.4. Marks notifications read. Body is exactly one of
+         *     `{ "ids": ["uuid", ...] }` or `{ "all": true }` — sending both
+         *     or neither is a 422.
+         *
+         *     IDOR-safe: ids that do not belong to the caller are silently
+         *     skipped (the SQL UPDATE is scoped to the caller's recipient id);
+         *     the response always reports the actual rowcount. This way the
+         *     endpoint cannot be used to probe for the existence of
+         *     notifications on other users.
+         */
+        post: operations["markNotificationsRead"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1620,15 +1728,21 @@ export interface components {
         };
         /**
          * @description Optional fields (`prefecture`, `founded_year`, `website`,
-         *     `description`, `beverage_count`) use the **absent-when-unknown**
-         *     convention: the Go server emits them with `omitempty`, so the JSON
-         *     key is omitted entirely rather than set to `null`. Clients should
-         *     treat an absent key the same as `null`.
+         *     `description`, `image_url`, `beverage_count`) use the
+         *     **absent-when-unknown** convention: the Go server emits them with
+         *     `omitempty`, so the JSON key is omitted entirely rather than set
+         *     to `null`. Clients should treat an absent key the same as `null`.
          *
          *     Migration 016: `prefecture` is now a nested `Prefecture` object
          *     (which itself embeds its `Region`). The previous free-text
          *     `prefecture` / `region` string fields are gone. The producer's
          *     region is derivable via `producer.prefecture.region`.
+         *
+         *     Slice 02 (producer images): `image_url` is the optional
+         *     admin-uploaded image (logo / brewery photo / label collage),
+         *     resolved server-side from an `image_upload_id` on
+         *     AdminProducerCreate / AdminProducerUpdate via the existing R2
+         *     presign flow.
          */
         Producer: {
             /** Format: uuid */
@@ -1639,6 +1753,8 @@ export interface components {
             /** Format: uri */
             website?: string;
             description?: components["schemas"]["I18nText"];
+            /** Format: uri */
+            image_url?: string;
             /**
              * @description Number of beverages associated with this producer. Populated by
              *     `GetProducer` and `ListProducers`; absent in nested `ProducerRef`
@@ -1735,12 +1851,18 @@ export interface components {
          *     its Region) follows the absent-when-unknown convention (Go
          *     `omitempty`). Migration 016 replaced the free-text `region`
          *     string with this nested shape.
+         *
+         *     Slice 02 (producer images): `image_url` mirrors Producer.image_url
+         *     on the compact embed so the check-in card / feed item can render
+         *     the optional 16-dp producer thumbnail without a second fetch.
          */
         ProducerRef: {
             /** Format: uuid */
             id: string;
             name: components["schemas"]["I18nText"];
             prefecture?: components["schemas"]["Prefecture"];
+            /** Format: uri */
+            image_url?: string;
         };
         PhotoRef: {
             /** Format: uri */
@@ -1780,6 +1902,14 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            /**
+             * Format: date-time
+             * @description Slice 01 / SPEC §4.4. Non-null when the author has touched any
+             *     tracked field (rating / review / tags / price / purchase_type /
+             *     photos) after creation. Rendering-only; never sorted or
+             *     filtered server-side. Omitted (or null) for never-edited rows.
+             */
+            edited_at?: string | null;
         };
         CheckinSummary: {
             /** Format: uuid */
@@ -1818,6 +1948,16 @@ export interface components {
          * @description `beverage_id` is intentionally NOT in this schema — SPEC §4.4 forbids
          *     changing the beverage on an existing check-in. If present in the body,
          *     the server returns 422.
+         *
+         *     Slice 01 / SPEC §4.4: `add_photos` and `remove_photos` are the
+         *     post-creation photo-edit affordances. `add_photos` carries
+         *     `photo_uploads.id` values returned from
+         *     `/v1/uploads/photo-presign`; the server resolves each to the
+         *     matching public URL and flips the row to `attached` in the same
+         *     transaction. `remove_photos` carries existing `PhotoRef.url`
+         *     values to detach. The SPEC §4.2 4-photo cap is enforced on the
+         *     resulting set (`current − removed + added ≤ 4`); a violation
+         *     returns 422 `PHOTO_CAP_EXCEEDED`.
          */
         UpdateCheckinRequest: {
             rating?: number | null;
@@ -1826,6 +1966,17 @@ export interface components {
             price?: components["schemas"]["Price"];
             /** @enum {string} */
             purchase_type?: "on_premise" | "retail" | "gift" | "other";
+            /** @description photo_uploads ids to attach (≤4 per request). */
+            add_photos?: string[];
+            /** @description existing PhotoRef URLs to detach. */
+            remove_photos?: string[];
+        };
+        /**
+         * @description Slice 01 / SPEC §5.4. Author-only comment edit. Body is the only
+         *     mutable field — same constraints as the create body.
+         */
+        UpdateCommentRequest: {
+            body: string;
         };
         ToastState: {
             toasts: number;
@@ -1917,6 +2068,12 @@ export interface components {
             venue?: components["schemas"]["VenueRef"] | null;
             /** Format: date-time */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Slice 01 / SPEC §4.4. Mirror of Checkin.edited_at; non-null
+             *     when any tracked field has been touched after creation.
+             */
+            edited_at?: string | null;
         };
         /**
          * @description Phase 6a. Flat comment on a check-in. `user` embeds the slim
@@ -1933,25 +2090,87 @@ export interface components {
             created_at: string;
             /**
              * Format: date-time
+             * @description Slice 01 / SPEC §5.4. Non-null when the author has edited the
+             *     body after creation. Rendering-only; never sorted or filtered
+             *     server-side.
+             */
+            edited_at?: string | null;
+            /**
+             * Format: date-time
              * @description Server-side-filtered on list; exposed for completeness.
              */
             deleted_at?: string | null;
         };
-        FollowRequest: {
-            /** Format: uuid */
-            user_id: string;
-            username: string;
-            display_username: string;
-            display_name: string;
-            /** Format: uri */
-            avatar_url?: string | null;
-            bio?: string | null;
-            /** Format: date-time */
-            created_at: string;
-        };
         FollowResult: {
             /** @enum {string} */
             status: "accepted" | "pending";
+        };
+        /**
+         * @description SPEC §5.4. In-app notification row.
+         *
+         *     `actor` is nullable because the `actor_user_id` FK is
+         *     `ON DELETE SET NULL` — when the original actor has been hard-deleted
+         *     by the username-hold sweep, the row survives and the client renders
+         *     a localized "Deleted user" placeholder. The same nil-actor projection
+         *     is also applied when the actor is soft-deleted
+         *     (`users.deleted_at IS NOT NULL`), so the wire shape is identical for
+         *     both failure modes.
+         *
+         *     `check_in_id` and `comment_id` were `ON DELETE CASCADE` in migration
+         *     020: a hard-delete of the referenced check-in or comment wipes the
+         *     notification row entirely, so these columns never arrive null at the
+         *     wire for `toast` or `comment` rows. They are absent (omitted) for
+         *     the three `follow*` types since those carry no source reference.
+         *
+         *     Soft-deletes of a referenced check-in or comment do NOT fire the
+         *     CASCADE — the notification row stays, only its tap target stops
+         *     resolving on the client side.
+         */
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "toast" | "comment" | "follow" | "follow_request" | "follow_approved";
+            actor: components["schemas"]["CheckinUser"] | null;
+            /**
+             * Format: uuid
+             * @description Present on `toast` and `comment` rows only. CASCADE'd on
+             *     hard-delete (the whole notification row is wiped), so the
+             *     field never arrives null at the wire for those types.
+             */
+            check_in_id?: string;
+            /**
+             * Format: uuid
+             * @description Present on `comment` rows only. CASCADE'd on hard-delete
+             *     (the whole notification row is wiped), so the field never
+             *     arrives null at the wire.
+             */
+            comment_id?: string;
+            /** Format: date-time */
+            read_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        /**
+         * @description Body for POST /v1/notifications/read. Exactly one of `ids` or
+         *     `all` must be set. The handler returns 422 if neither or both
+         *     are present, or if any entry in `ids` is not a valid UUID.
+         */
+        MarkReadRequest: {
+            ids: string[];
+        } | {
+            /**
+             * @description When true, marks every unread row read.
+             * @enum {boolean}
+             */
+            all: true;
+        };
+        MarkReadResponse: {
+            /** @description Number of rows transitioned to read. */
+            marked: number;
+        };
+        UnreadCountResponse: {
+            count: number;
         };
         SocialUser: {
             /** Format: uuid */
@@ -2036,8 +2255,8 @@ export interface components {
         PageOfComment: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["Comment"][];
         };
-        PageOfFollowRequest: components["schemas"]["PageBase"] & {
-            items?: components["schemas"]["FollowRequest"][];
+        PageOfNotification: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["Notification"][];
         };
         PageOfSocialUser: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["SocialUser"][];
@@ -2251,6 +2470,14 @@ export interface components {
             /** Format: uri */
             website?: string | null;
             description_i18n?: components["schemas"]["I18nText"] | null;
+            /**
+             * Format: uuid
+             * @description Optional photo_uploads.id minted by POST
+             *     /v1/admin/uploads/photo-presign + a successful PUT to R2. The
+             *     server resolves it to a public R2 URL and persists it as
+             *     producers.image_url. Omit when the producer has no image.
+             */
+            image_upload_id?: string | null;
         };
         /**
          * @description Partial-update body for PATCH /v1/admin/producers/{id}. Every
@@ -2276,6 +2503,20 @@ export interface components {
             /** Format: uri */
             website?: string | null;
             description_i18n?: components["schemas"]["I18nText"] | null;
+            /**
+             * Format: uuid
+             * @description Optional photo_uploads.id from POST
+             *     /v1/admin/uploads/photo-presign. When supplied the server
+             *     resolves it to a public R2 URL and sets producers.image_url.
+             *     Mutually exclusive with `clear_image=true`.
+             */
+            image_upload_id?: string | null;
+            /**
+             * @description When true, sets producers.image_url to NULL. Use this to
+             *     remove an existing image. Mutually exclusive with
+             *     `image_upload_id`; supplying both returns 422 VALIDATION.
+             */
+            clear_image?: boolean;
         };
         AdminProducerList: {
             items: components["schemas"]["AdminProducer"][];
@@ -3231,9 +3472,9 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /**
-             * @description 422 Unprocessable Entity. Returned on any validation failure AND
-             *     specifically when the client attempts to change `beverage_id`
-             *     (SPEC §4.4).
+             * @description 422 Unprocessable Entity. Returned on any validation failure,
+             *     on `PHOTO_CAP_EXCEEDED` (resulting set > 4), AND specifically
+             *     when the client attempts to change `beverage_id` (SPEC §4.4).
              */
             422: {
                 headers: {
@@ -3330,6 +3571,35 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    updateComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description updated comment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
     addCheckinPhoto: {
         parameters: {
             query?: never;
@@ -3404,6 +3674,13 @@ export interface operations {
                     /** @enum {string} */
                     content_type: "image/jpeg" | "image/png" | "image/webp";
                     byte_size: number;
+                    /**
+                     * @description `check_in` (default) is the mobile path; `producer`
+                     *     is admin-only and must use the admin presign route.
+                     * @default check_in
+                     * @enum {string}
+                     */
+                    purpose?: "check_in" | "producer";
                 };
             };
         };
@@ -3429,6 +3706,74 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            /** @description purpose=producer is admin-only on this route */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Validation"];
+            /** @description blob storage not configured on this server */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    adminPresignPhotoUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    content_type: "image/jpeg" | "image/png" | "image/webp";
+                    byte_size: number;
+                };
+            };
+        };
+        responses: {
+            /** @description presigned PUT URL issued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        upload_id: string;
+                        /** Format: uri */
+                        upload_url: string;
+                        headers: {
+                            [key: string]: string;
+                        };
+                        blob_key: string;
+                        /** Format: date-time */
+                        expires_at: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description caller lacks the admin role or the CSRF header is missing */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             422: components["responses"]["Validation"];
             /** @description blob storage not configured on this server */
             503: {
@@ -3589,30 +3934,6 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
         };
     };
-    listFollowRequests: {
-        parameters: {
-            query?: {
-                cursor?: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description pending requests */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PageOfFollowRequest"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-        };
-    };
     approveFollowRequest: {
         parameters: {
             query?: never;
@@ -3657,6 +3978,86 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of notifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfNotification"];
+                };
+            };
+            /** @description tampered or malformed cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    notificationUnreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description unread count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    markNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkReadRequest"];
+            };
+        };
+        responses: {
+            /** @description rows marked read */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkReadResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Validation"];
         };
     };
     listCollections: {
