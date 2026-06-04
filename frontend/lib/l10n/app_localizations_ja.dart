@@ -264,7 +264,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authPasswordTooShort => '短すぎます';
 
   @override
-  String get authTagline => 'お酒を見つけて、シェアしよう。';
+  String get authTagline => 'お酒に、しおり。';
 
   @override
   String get verifyPendingTitle => 'メールをご確認ください';

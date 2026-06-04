@@ -107,7 +107,7 @@
   "authPasswordLabel": "비밀번호",
   "authPasswordHelper": "8자 이상",
   "authPasswordTooShort": "너무 짧습니다",
-  "authTagline": "마신 술을 친구와 공유하세요.",
+  "authTagline": "한 모금의 발견.",
 
   "verifyPendingTitle": "이메일을 확인하세요",
   "verifyPendingBody": "{email} (으)로 인증 링크를 보냈습니다. 이 기기 또는 브라우저에서 링크를 열어 계정을 인증하세요.",

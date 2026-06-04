@@ -107,7 +107,7 @@
   "authPasswordLabel": "パスワード",
   "authPasswordHelper": "8文字以上",
   "authPasswordTooShort": "短すぎます",
-  "authTagline": "お酒を見つけて、シェアしよう。",
+  "authTagline": "お酒に、しおり。",
 
   "verifyPendingTitle": "メールをご確認ください",
   "verifyPendingBody": "{email} 宛に確認用リンクを送信しました。このデバイスまたはお使いのブラウザでリンクを開いてアカウントを認証してください。",

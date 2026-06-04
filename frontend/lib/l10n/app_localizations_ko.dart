@@ -264,7 +264,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authPasswordTooShort => '너무 짧습니다';
 
   @override
-  String get authTagline => '마신 술을 친구와 공유하세요.';
+  String get authTagline => '한 모금의 발견.';
 
   @override
   String get verifyPendingTitle => '이메일을 확인하세요';
