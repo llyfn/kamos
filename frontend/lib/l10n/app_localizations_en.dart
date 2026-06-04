@@ -269,7 +269,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authPasswordTooShort => 'Too short';
 
   @override
-  String get authTagline => 'Explore the craft, keep the memories.';
+  String get authTagline => 'Explore the craft, share the memories.';
 
   @override
   String get verifyPendingTitle => 'Check your email';

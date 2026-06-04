@@ -107,7 +107,7 @@
   "authPasswordLabel": "Password",
   "authPasswordHelper": "At least 8 characters",
   "authPasswordTooShort": "Too short",
-  "authTagline": "Explore the craft, keep the memories.",
+  "authTagline": "Explore the craft, share the memories.",
 
   "verifyPendingTitle": "Check your email",
   "verifyPendingBody": "We sent a verification link to {email}. Open it on this device or any browser to verify your account.",
