@@ -188,26 +188,36 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ref.read(beverageListProvider.notifier).refresh(),
                       ),
                     )
-                  : state.items.isEmpty
-                  ? EmptyView(
-                      glyph: '—',
-                      title: l.searchNoResultsTitle,
-                      body: l.searchNoResultsBody,
-                      // Only offer the "suggest a beverage" CTA when
-                      // the user has actually issued a search.
-                      // Cold-start (zero query + no filter) just shows
-                      // the empty copy — the catalog being empty is
-                      // not something the user can suggest their way
-                      // out of.
-                      action: (_q.text.isNotEmpty || _category != null)
-                          ? TextButton(
-                              onPressed: () =>
-                                  context.push('/beverage-requests/new'),
-                              child: Text(l.searchSuggestMissingCta),
+                  : RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(beverageListProvider.notifier).refresh(),
+                      child: state.items.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                EmptyView(
+                                  glyph: '—',
+                                  title: l.searchNoResultsTitle,
+                                  body: l.searchNoResultsBody,
+                                  // Only offer the "suggest a beverage" CTA when
+                                  // the user has actually issued a search.
+                                  // Cold-start (zero query + no filter) just shows
+                                  // the empty copy — the catalog being empty is
+                                  // not something the user can suggest their way
+                                  // out of.
+                                  action:
+                                      (_q.text.isNotEmpty || _category != null)
+                                      ? TextButton(
+                                          onPressed: () => context.push(
+                                            '/beverage-requests/new',
+                                          ),
+                                          child: Text(l.searchSuggestMissingCta),
+                                        )
+                                      : null,
+                                ),
+                              ],
                             )
-                          : null,
-                    )
-                  : NotificationListener<ScrollNotification>(
+                          : NotificationListener<ScrollNotification>(
                       onNotification: (s) {
                         if (s.metrics.pixels >=
                             s.metrics.maxScrollExtent - 600) {
@@ -216,6 +226,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         return false;
                       },
                       child: ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(16),
                         itemCount: state.items.length + 1,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -298,6 +309,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           );
                         },
                       ),
+                    ),
                     ),
             ),
           ],

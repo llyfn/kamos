@@ -133,11 +133,18 @@ class _Results extends ConsumerWidget {
       value: async,
       onRetry: () => ref.invalidate(userSearchProvider(query)),
       data: (state) {
-        if (state.items.isEmpty) {
-          return EmptyView(glyph: '人', title: l.userSearchNoResults);
-        }
-        return ListView.separated(
+        return RefreshIndicator(
+          onRefresh: () => ref.refresh(userSearchProvider(query).future),
+          child: state.items.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    EmptyView(glyph: '人', title: l.userSearchNoResults),
+                  ],
+                )
+              : ListView.separated(
           controller: scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: KamosSpacing.sm),
           itemCount: state.items.length + 1,
           separatorBuilder: (_, _) =>
@@ -197,6 +204,7 @@ class _Results extends ConsumerWidget {
               ),
             );
           },
+        ),
         );
       },
     );

@@ -18,6 +18,7 @@ import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
 import '../../../shared/widgets/stars_display.dart';
+import '../../comments/providers/comment_providers.dart';
 import '../../comments/widgets/comments_section.dart';
 import '../../users/navigation.dart';
 import '../providers/checkin_providers.dart';
@@ -45,7 +46,18 @@ class CheckInDetailScreen extends ConsumerWidget {
             checkin.beverage.producer.name,
             locale,
           );
-          return ListView(
+          return RefreshIndicator(
+            onRefresh: () async {
+              // Two providers back this screen: the check-in itself (header
+              // card) and the comments thread underneath. Refresh both in
+              // parallel so the spinner is honest about end-of-load.
+              await Future.wait<void>([
+                ref.refresh(checkInDetailProvider(checkInId).future),
+                ref.refresh(commentsProvider(checkin.id).future),
+              ]);
+            },
+            child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -216,6 +228,7 @@ class CheckInDetailScreen extends ConsumerWidget {
               ),
               CommentsSection(checkInId: checkin.id),
             ],
+          ),
           );
         },
       ),

@@ -56,8 +56,19 @@ class MeProfileScreen extends ConsumerWidget {
         value: async,
         center: true,
         onRetry: () => ref.invalidate(meProvider),
-        data: (me) =>
-            _ProfileBody(user: me.user, stats: me.stats, isMe: true),
+        data: (me) => RefreshIndicator(
+          onRefresh: () async {
+            // Profile chrome (avatar / name / stats) lives on meProvider; the
+            // recent-check-ins strip lives on userCheckinsProvider(handle).
+            // Refresh both in parallel so the spinner stays up until the
+            // slower of the two completes.
+            await Future.wait<void>([
+              ref.refresh(meProvider.future),
+              ref.refresh(userCheckinsProvider(me.user.username).future),
+            ]);
+          },
+          child: _ProfileBody(user: me.user, stats: me.stats, isMe: true),
+        ),
       ),
     );
   }
@@ -91,11 +102,22 @@ class OtherProfileScreen extends ConsumerWidget {
         value: async,
         center: true,
         onRetry: () => ref.invalidate(publicProfileProvider(username)),
-        data: (p) => _ProfileBody(
-          user: p.user,
-          stats: p.stats,
-          isMe: false,
-          followState: p.followState,
+        data: (p) => RefreshIndicator(
+          onRefresh: () async {
+            // Profile chrome + follow-state come from publicProfileProvider;
+            // the recent-check-ins strip is its own provider keyed on the
+            // handle. Both must reload for the spinner to honestly say "new".
+            await Future.wait<void>([
+              ref.refresh(publicProfileProvider(username).future),
+              ref.refresh(userCheckinsProvider(username).future),
+            ]);
+          },
+          child: _ProfileBody(
+            user: p.user,
+            stats: p.stats,
+            isMe: false,
+            followState: p.followState,
+          ),
         ),
       ),
     );
@@ -124,6 +146,9 @@ class _ProfileBody extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     return SingleChildScrollView(
+      // Always-scrollable physics so the surrounding RefreshIndicator can fire
+      // even when the rendered profile is shorter than the viewport.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

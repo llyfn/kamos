@@ -39,7 +39,14 @@ class BeverageDetailScreen extends ConsumerWidget {
         value: asyncDetail,
         center: true,
         onRetry: () => ref.invalidate(beverageDetailProvider(beverageId)),
-        data: (detail) => _Body(detail: detail),
+        data: (detail) => RefreshIndicator(
+          // The detail provider returns the catalog row, aggregated flavor,
+          // and the recent check-ins strip in a single payload — refreshing
+          // it covers everything the screen renders.
+          onRefresh: () =>
+              ref.refresh(beverageDetailProvider(beverageId).future),
+          child: _Body(detail: detail),
+        ),
       ),
     );
   }
@@ -71,6 +78,9 @@ class _Body extends ConsumerWidget {
         : resolveI18n(b.subcategory!, locale);
 
     return SingleChildScrollView(
+      // Always-scrollable physics so the surrounding RefreshIndicator can fire
+      // even when the rendered detail is shorter than the viewport.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
