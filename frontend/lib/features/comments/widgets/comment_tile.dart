@@ -204,11 +204,29 @@ class _CommentTileState extends ConsumerState<CommentTile> {
                     children: [
                       TextButton(
                         onPressed: _saving ? null : _cancelEdit,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 28),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         child: Text(l.actionCancel),
                       ),
                       const SizedBox(width: 4),
                       FilledButton(
                         onPressed: _saving ? null : _saveEdit,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 28),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         child: Text(l.actionSave),
                       ),
                     ],

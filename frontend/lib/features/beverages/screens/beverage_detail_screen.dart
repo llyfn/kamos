@@ -407,21 +407,6 @@ class _RecentCheckinRow extends StatelessWidget {
                   const SizedBox(height: KamosSpacing.sm),
                   _PhotoStrip(photos: summary.photos),
                 ],
-                if (summary.tags.isNotEmpty) ...[
-                  const SizedBox(height: KamosSpacing.sm),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      ...summary.tags.map(
-                        (tag) => KamosChip(
-                          label: resolveI18n(tag.name, locale),
-                          kind: KamosChipKind.tag,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
