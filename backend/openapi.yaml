@@ -916,8 +916,10 @@ paths:
       operationId: addCheckinPhoto
       description: |
         Attach a previously-presigned blob (see `/v1/uploads/photo-presign`)
-        to this check-in. The 4-photo cap from SPEC §4.5 is enforced — the
-        5th attach returns 422 `PHOTO_CAP_EXCEEDED`.
+        to this check-in. The SPEC §4.1 1-photo submission cap (Slice B)
+        is enforced — attaching to a check-in that already has a photo
+        returns 422 `PHOTO_CAP_EXCEEDED`. Existing multi-photo check-ins
+        remain readable but cannot be added to.
 
         Phase 3 shipped: the MVP `{ url }` body was replaced by `{ upload_id }`.
       requestBody:
