@@ -1,7 +1,4 @@
-// KAMOS — Check-in card used in the feed list.
-//
-// Renders avatar + username, beverage label + name + producer, rating, review
-// (truncated @140 chars), tag chips, photo placeholder, kanpai (toast) button.
+// KAMOS — Shared check-in card. Used by feed, beverage detail, and profile.
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -39,11 +36,6 @@ class CheckInCard extends ConsumerWidget {
     final isOwn = me != null && me.user.id == item.user.id;
     final beverageName = resolveI18n(item.beverage.name, locale);
     final producerName = resolveI18n(item.beverage.producer.name, locale);
-    // Migration 016: ProducerRef.region (free-text) was replaced by
-    // ProducerRef.prefecture (nested Prefecture). Display the prefecture name.
-    final region = item.beverage.producer.prefecture == null
-        ? ''
-        : resolveI18n(item.beverage.producer.prefecture!.name, locale);
     final when = parseIsoDateOrNull(item.createdAt);
 
     return Padding(
@@ -54,10 +46,9 @@ class CheckInCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Avatar taps through to the author's profile.
-                // HitTestBehavior.opaque ensures taps on the transparent gap
+                // HitTestBehavior.opaque so taps on the transparent gap
                 // between avatar and text are absorbed by this gesture
                 // instead of bubbling to the card-level open-detail tap.
                 GestureDetector(
@@ -74,28 +65,30 @@ class CheckInCard extends ConsumerWidget {
                 Expanded(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () =>
-                        pushUserProfile(context, item.user.username),
-                    child: Text(
-                      item.user.displayUsername,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: t.fg1,
-                      ),
+                    onTap: () => context.push('/check-ins/${item.id}'),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.user.displayUsername,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: t.fg1,
+                          ),
+                        ),
+                        if (when != null)
+                          _TimestampRow(
+                            label: elapsedShort(when, l),
+                            edited: item.editedAt != null,
+                            editedLabel: l.editedMarker,
+                            tokens: t,
+                          ),
+                      ],
                     ),
                   ),
                 ),
-                if (when != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: _TimestampRow(
-                      label: elapsedShort(when, l),
-                      edited: item.editedAt != null,
-                      editedLabel: l.editedMarker,
-                      tokens: t,
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: KamosSpacing.md),
@@ -137,10 +130,7 @@ class CheckInCard extends ConsumerWidget {
                             ],
                             Expanded(
                               child: Text(
-                                [
-                                  producerName,
-                                  if (region.isNotEmpty) region,
-                                ].join(' · '),
+                                producerName,
                                 style: TextStyle(fontSize: 12, color: t.fg2),
                               ),
                             ),
