@@ -787,7 +787,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get userBeveragesSortRating => '평점';
 
   @override
-  String get userBeveragesSortLastCheckin => '최근';
+  String get userBeveragesSortLastCheckin => '날짜';
 
   @override
   String get userBeveragesSortProducer => '생산자';

@@ -808,7 +808,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get userBeveragesSortRating => 'Rating';
 
   @override
-  String get userBeveragesSortLastCheckin => 'Last check-in';
+  String get userBeveragesSortLastCheckin => 'Date';
 
   @override
   String get userBeveragesSortProducer => 'Producer';
