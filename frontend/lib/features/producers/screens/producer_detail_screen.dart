@@ -45,52 +45,58 @@ class ProducerDetailScreen extends ConsumerWidget {
           return ListView(
             padding: EdgeInsets.zero,
             children: [
-              _ProducerHeroImage(
-                imageUrl: producer.imageUrl,
-                missingLabel: l.producerImageMissing,
-              ),
               Container(
                 color: t.bgWarm,
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 child: Column(
                   children: [
-                    Text(
-                      l.producerOverline.toUpperCase(),
-                      style: TextStyle(
-                        fontFamily: 'NotoSansJP',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.3,
-                        color: t.fg3,
-                      ),
+                    _ProducerHeroImage(
+                      imageUrl: producer.imageUrl,
+                      missingLabel: l.producerImageMissing,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'ShipporiMincho',
-                        fontSize: 30,
-                        fontWeight: FontWeight.w600,
-                        color: t.fg1,
-                      ),
-                    ),
-                    if (region.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(region, style: TextStyle(color: t.fg2)),
-                    ],
-                    if (producer.foundedYear != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '${l.producerFounded} ${producer.foundedYear}',
-                          style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
-                            fontSize: 12,
-                            color: t.fg3,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                      child: Column(
+                        children: [
+                          Text(
+                            l.producerOverline.toUpperCase(),
+                            style: TextStyle(
+                              fontFamily: 'NotoSansJP',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.3,
+                              color: t.fg3,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          Text(
+                            name,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'ShipporiMincho',
+                              fontSize: 30,
+                              fontWeight: FontWeight.w600,
+                              color: t.fg1,
+                            ),
+                          ),
+                          if (region.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(region, style: TextStyle(color: t.fg2)),
+                          ],
+                          if (producer.foundedYear != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                '${l.producerFounded} ${producer.foundedYear}',
+                                style: TextStyle(
+                                  fontFamily: 'JetBrainsMono',
+                                  fontSize: 12,
+                                  color: t.fg3,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               ),
