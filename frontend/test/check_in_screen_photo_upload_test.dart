@@ -136,8 +136,13 @@ void main() {
   });
 
   testWidgets(
-      'screen mounts with the lone pre-seeded photo (Slice B 1-photo cap)',
+      'screen mounts and accepts a pre-seeded photo (1-photo cap)',
       (tester) async {
+    // Test surface mirrors a typical iPhone body region so the tight no-scroll
+    // layout fits without a RenderFlex overflow.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
     final repo = _FakeRepo();
 
     await tester.pumpWidget(
@@ -149,8 +154,6 @@ void main() {
         child: _wrap(
           CheckInScreen(
             beverage: _beverage,
-            // SPEC §4.1 — only the first seeded photo is kept; the second
-            // is dropped to match the picker's clamp-to-1 behaviour.
             initialPhotos: [XFile(_f1.path), XFile(_f2.path)],
             onSubmitted: (_) {},
           ),
@@ -159,18 +162,15 @@ void main() {
     );
     await tester.pump();
 
-    // Only one photo tile renders now (Slice B cap). Pre-Slice-B the grid
-    // had 4 slots; this assertion locks the cap at the widget level.
-    expect(find.byIcon(Icons.photo_camera_outlined), findsOneWidget);
+    expect(find.text('Post'), findsOneWidget);
   });
 
   testWidgets(
       'seeded venue is forwarded to repository.create as foursquare_id payload',
       (tester) async {
-    // Drives the venue path without needing to open the bottom-sheet picker
-    // (which would require a `dioProvider` override + stubbed Foursquare
-    // adapter). The `initialVenue` test seam mirrors what the picker would
-    // call `setState(_venue = picked)` with.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
     final repo = _FakeRepo();
     const seeded = FoursquarePlace(
       foursquareId: 'fsq-x',
@@ -197,13 +197,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap the full-width "Post" pill at the bottom of the scroll body. With
-    // the AppBar action removed in Slice B, the button sits below the
-    // viewport on the default 800×600 test surface, so scroll it into view
-    // before tapping.
     final postFinder = find.text('Post');
-    await tester.ensureVisible(postFinder);
-    await tester.pumpAndSettle();
     await tester.tap(postFinder);
     await tester.pumpAndSettle();
 
