@@ -83,6 +83,13 @@ func truncateAll(t *testing.T) {
 SELECT tablename FROM pg_tables
 WHERE schemaname = 'public'
   AND tablename NOT IN ('beverage_categories','beverage_subcategories','flavor_tags','regions','prefectures');`)
+	// fall-through to the regular TRUNCATE branch below; the partial-seed
+	// tables (beverage_subcategories, flavor_tags) are reset to their
+	// known seed state by truncateAdminTaxonomySeedTables below so an
+	// uninvited test residue from a prior run can't pollute the suite.
+	defer func() {
+		truncateAdminTaxonomySeedTables(t)
+	}()
 	if err != nil {
 		t.Fatalf("list tables: %v", err)
 	}
@@ -104,6 +111,48 @@ WHERE schemaname = 'public'
 	sql := "TRUNCATE TABLE " + strings.Join(names, ", ") + " RESTART IDENTITY CASCADE;"
 	if _, err := p.Exec(ctx, sql); err != nil {
 		t.Fatalf("truncate: %v", err)
+	}
+}
+
+// truncateAdminTaxonomySeedTables resets beverage_subcategories and
+// flavor_tags to their post-migration seed state: keep only the rows
+// that were inserted by migration 002 / 005 (admin-curated rows have a
+// `created_at` newer than the migration commit time), drop any test
+// residue, and clear deleted_at on any tombstoned seed row a prior test
+// soft-deleted. Slice C added these tables to truncateAll's exclusion
+// list so the seed survives — this function backstops the consequence
+// (admin tests that POST new rows accumulate across runs).
+func truncateAdminTaxonomySeedTables(t *testing.T) {
+	t.Helper()
+	p := getPool(t)
+	ctx := context.Background()
+	// Re-fresh tombstones on the seeded rows. The seeded slugs are
+	// known and stable; anything else is admin-curated test residue.
+	const subcatReset = `
+UPDATE beverage_subcategories SET deleted_at = NULL
+WHERE slug IN (
+  'junmai','honjozo','ginjo','daiginjo','junmai_ginjo','junmai_daiginjo',
+  'nigori','nihonshu_other','imo','mugi','kome','soba','kokuto','awamori',
+  'shochu_other','umeshu','yuzushu','liqueur_other'
+);
+DELETE FROM beverage_subcategories WHERE slug NOT IN (
+  'junmai','honjozo','ginjo','daiginjo','junmai_ginjo','junmai_daiginjo',
+  'nigori','nihonshu_other','imo','mugi','kome','soba','kokuto','awamori',
+  'shochu_other','umeshu','yuzushu','liqueur_other'
+);`
+	if _, err := p.Exec(ctx, subcatReset); err != nil {
+		t.Fatalf("reset beverage_subcategories: %v", err)
+	}
+	// Flavor tags: the seeded slugs are documented in migration 002.
+	// We don't enumerate them here; instead, drop test residue by
+	// `created_at > NOW() - 1h` (the migration sets created_at to the
+	// migration time, which is days/weeks old in CI). Wipe tombstones
+	// on the rest.
+	const flavorReset = `
+DELETE FROM flavor_tags WHERE created_at > NOW() - INTERVAL '1 hour' AND slug LIKE 'test_%';
+UPDATE flavor_tags SET deleted_at = NULL WHERE deleted_at IS NOT NULL;`
+	if _, err := p.Exec(ctx, flavorReset); err != nil {
+		t.Fatalf("reset flavor_tags: %v", err)
 	}
 }
 
