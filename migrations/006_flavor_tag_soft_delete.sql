@@ -24,7 +24,7 @@ BEGIN;
 -- flavor_tags.deleted_at
 -- ---------------------------------------------------------------------------
 ALTER TABLE flavor_tags
-  ADD COLUMN deleted_at TIMESTAMPTZ;
+ADD COLUMN deleted_at TIMESTAMPTZ;
 
 -- Public taxonomy reads should never include tombstones. The existing
 -- idx_flavor_tags_dimension and idx_flavor_tags_slug are full-table
@@ -33,8 +33,8 @@ ALTER TABLE flavor_tags
 -- intact so the slug uniqueness invariant survives even across
 -- soft-delete/re-create churn.
 CREATE INDEX idx_flavor_tags_active
-  ON flavor_tags (dimension, sort_order)
-  WHERE deleted_at IS NULL;
+ON flavor_tags (dimension, sort_order)
+WHERE deleted_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- moderation_target_type — add 'subcategory' + 'flavor_tag'
@@ -43,7 +43,7 @@ CREATE INDEX idx_flavor_tags_active
 -- variant, but ALTER TYPE ... ADD VALUE *does* run inside a tx as of PG12+
 -- as long as the new value isn't used in the same tx. We don't use the
 -- new values until later runtime, so this is safe.
-ALTER TYPE moderation_target_type ADD VALUE IF NOT EXISTS 'subcategory';
-ALTER TYPE moderation_target_type ADD VALUE IF NOT EXISTS 'flavor_tag';
+ALTER TYPE MODERATION_TARGET_TYPE ADD VALUE IF NOT EXISTS 'subcategory';
+ALTER TYPE MODERATION_TARGET_TYPE ADD VALUE IF NOT EXISTS 'flavor_tag';
 
 COMMIT;
