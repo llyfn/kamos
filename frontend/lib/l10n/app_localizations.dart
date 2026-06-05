@@ -226,23 +226,17 @@ abstract class AppLocalizations {
   /// **'{value} / 5.0'**
   String ratingValue(String value);
 
-  /// No description provided for @ratingTapToRate.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap a star to rate · half-steps allowed'**
-  String get ratingTapToRate;
-
   /// No description provided for @ratingLabel.
   ///
   /// In en, this message translates to:
   /// **'Rating'**
   String get ratingLabel;
 
-  /// No description provided for @ratingClear.
+  /// No description provided for @ratingEmptyValue.
   ///
   /// In en, this message translates to:
-  /// **'Clear'**
-  String get ratingClear;
+  /// **'–.– / 5.0'**
+  String get ratingEmptyValue;
 
   /// No description provided for @checkInTitle.
   ///
@@ -304,28 +298,10 @@ abstract class AppLocalizations {
   /// **'Flavor Profiles'**
   String get checkInFlavorTags;
 
-  /// No description provided for @checkInFlavorBrowse.
-  ///
-  /// In en, this message translates to:
-  /// **'+ Browse'**
-  String get checkInFlavorBrowse;
-
-  /// No description provided for @checkInFlavorSheetSearch.
-  ///
-  /// In en, this message translates to:
-  /// **'Search tags'**
-  String get checkInFlavorSheetSearch;
-
-  /// No description provided for @checkInFlavorSheetEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No matching tags.'**
-  String get checkInFlavorSheetEmpty;
-
   /// No description provided for @checkInPhotosLabel.
   ///
   /// In en, this message translates to:
-  /// **'Photos · up to 4'**
+  /// **'Photos'**
   String get checkInPhotosLabel;
 
   /// No description provided for @checkInPhotoCounter.
@@ -340,12 +316,6 @@ abstract class AppLocalizations {
   /// **'Price'**
   String get checkInPriceLabel;
 
-  /// No description provided for @checkInPurchaseType.
-  ///
-  /// In en, this message translates to:
-  /// **'Purchase type'**
-  String get checkInPurchaseType;
-
   /// No description provided for @checkInPriceServing.
   ///
   /// In en, this message translates to:
@@ -357,30 +327,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Per bottle'**
   String get checkInPriceBottle;
-
-  /// No description provided for @checkInPurchaseOnPremise.
-  ///
-  /// In en, this message translates to:
-  /// **'On-premise'**
-  String get checkInPurchaseOnPremise;
-
-  /// No description provided for @checkInPurchaseRetail.
-  ///
-  /// In en, this message translates to:
-  /// **'Retail'**
-  String get checkInPurchaseRetail;
-
-  /// No description provided for @checkInPurchaseGift.
-  ///
-  /// In en, this message translates to:
-  /// **'Gift'**
-  String get checkInPurchaseGift;
-
-  /// No description provided for @checkInPurchaseOther.
-  ///
-  /// In en, this message translates to:
-  /// **'Other'**
-  String get checkInPurchaseOther;
 
   /// No description provided for @checkInFirstToast.
   ///
@@ -400,23 +346,53 @@ abstract class AppLocalizations {
   /// **'You can attach up to 4 photos.'**
   String get checkInPhotoLimitReached;
 
+  /// No description provided for @checkInPostingButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Posting…'**
+  String get checkInPostingButton;
+
+  /// No description provided for @checkInSavingButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get checkInSavingButton;
+
   /// No description provided for @photoUploadDisabled.
   ///
   /// In en, this message translates to:
   /// **'Photo upload is not available — saved without photos.'**
   String get photoUploadDisabled;
 
-  /// Section label on the check-in compose screen for the venue picker row. Renamed from 'Where?' to 'Location' in Slice B; the key name is retained for change-set hygiene.
+  /// No description provided for @checkInLocationLabel.
   ///
   /// In en, this message translates to:
   /// **'Location'**
-  String get checkInWhereLabel;
+  String get checkInLocationLabel;
 
-  /// Placeholder text inside the venue picker row when no venue is picked. Renamed in Slice B alongside checkInWhereLabel.
+  /// No description provided for @checkInLocationCta.
   ///
   /// In en, this message translates to:
   /// **'Add a location'**
-  String get checkInWhereCta;
+  String get checkInLocationCta;
+
+  /// No description provided for @flavorProfilesPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Flavor Profiles'**
+  String get flavorProfilesPageTitle;
+
+  /// No description provided for @flavorProfilesSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search flavor profiles'**
+  String get flavorProfilesSearchHint;
+
+  /// No description provided for @flavorProfilesSelectedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get flavorProfilesSelectedLabel;
 
   /// No description provided for @venuePickerSearchPlaceholder.
   ///

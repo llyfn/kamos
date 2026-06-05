@@ -78,13 +78,10 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get ratingTapToRate => 'スターをタップ · 0.5刻みで評価';
-
-  @override
   String get ratingLabel => '評価';
 
   @override
-  String get ratingClear => 'クリア';
+  String get ratingEmptyValue => '–.– / 5.0';
 
   @override
   String get checkInTitle => 'チェックイン';
@@ -108,7 +105,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInReviewLabel => 'レビュー';
 
   @override
-  String get checkInReviewPlaceholder => 'メモを残す';
+  String get checkInReviewPlaceholder => '一言メモ';
 
   @override
   String get checkInReviewTooLong => 'レビューが長すぎます';
@@ -117,16 +114,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInFlavorTags => 'フレーバータグ';
 
   @override
-  String get checkInFlavorBrowse => '+ 一覧';
-
-  @override
-  String get checkInFlavorSheetSearch => 'タグを検索';
-
-  @override
-  String get checkInFlavorSheetEmpty => '該当するタグがありません。';
-
-  @override
-  String get checkInPhotosLabel => '写真 · 4枚まで';
+  String get checkInPhotosLabel => '写真';
 
   @override
   String checkInPhotoCounter(int count) {
@@ -137,25 +125,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPriceLabel => '価格';
 
   @override
-  String get checkInPurchaseType => '購入種別';
-
-  @override
   String get checkInPriceServing => '一杯';
 
   @override
   String get checkInPriceBottle => '一本';
-
-  @override
-  String get checkInPurchaseOnPremise => '店舗';
-
-  @override
-  String get checkInPurchaseRetail => '小売';
-
-  @override
-  String get checkInPurchaseGift => '贈物';
-
-  @override
-  String get checkInPurchaseOther => 'その他';
 
   @override
   String get checkInFirstToast => '最初のチェックイン。乾杯！';
@@ -167,13 +140,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPhotoLimitReached => '写真は4枚までです。';
 
   @override
+  String get checkInPostingButton => '投稿中…';
+
+  @override
+  String get checkInSavingButton => '保存中…';
+
+  @override
   String get photoUploadDisabled => '写真のアップロードは利用できません — 写真なしで保存しました。';
 
   @override
-  String get checkInWhereLabel => '場所';
+  String get checkInLocationLabel => '場所';
 
   @override
-  String get checkInWhereCta => '場所を追加';
+  String get checkInLocationCta => '場所を追加';
+
+  @override
+  String get flavorProfilesPageTitle => 'フレーバータグ';
+
+  @override
+  String get flavorProfilesSearchHint => 'フレーバータグを検索';
+
+  @override
+  String get flavorProfilesSelectedLabel => '選択中';
 
   @override
   String get venuePickerSearchPlaceholder => '場所を検索';

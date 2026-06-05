@@ -79,13 +79,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get ratingTapToRate => 'Tap a star to rate · half-steps allowed';
-
-  @override
   String get ratingLabel => 'Rating';
 
   @override
-  String get ratingClear => 'Clear';
+  String get ratingEmptyValue => '–.– / 5.0';
 
   @override
   String get checkInTitle => 'Check-in';
@@ -118,16 +115,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInFlavorTags => 'Flavor Profiles';
 
   @override
-  String get checkInFlavorBrowse => '+ Browse';
-
-  @override
-  String get checkInFlavorSheetSearch => 'Search tags';
-
-  @override
-  String get checkInFlavorSheetEmpty => 'No matching tags.';
-
-  @override
-  String get checkInPhotosLabel => 'Photos · up to 4';
+  String get checkInPhotosLabel => 'Photos';
 
   @override
   String checkInPhotoCounter(int count) {
@@ -138,25 +126,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPriceLabel => 'Price';
 
   @override
-  String get checkInPurchaseType => 'Purchase type';
-
-  @override
   String get checkInPriceServing => 'Per serving';
 
   @override
   String get checkInPriceBottle => 'Per bottle';
-
-  @override
-  String get checkInPurchaseOnPremise => 'On-premise';
-
-  @override
-  String get checkInPurchaseRetail => 'Retail';
-
-  @override
-  String get checkInPurchaseGift => 'Gift';
-
-  @override
-  String get checkInPurchaseOther => 'Other';
 
   @override
   String get checkInFirstToast => 'First check-in saved. Kanpai!';
@@ -168,14 +141,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPhotoLimitReached => 'You can attach up to 4 photos.';
 
   @override
+  String get checkInPostingButton => 'Posting…';
+
+  @override
+  String get checkInSavingButton => 'Saving…';
+
+  @override
   String get photoUploadDisabled =>
       'Photo upload is not available — saved without photos.';
 
   @override
-  String get checkInWhereLabel => 'Location';
+  String get checkInLocationLabel => 'Location';
 
   @override
-  String get checkInWhereCta => 'Add a location';
+  String get checkInLocationCta => 'Add a location';
+
+  @override
+  String get flavorProfilesPageTitle => 'Flavor Profiles';
+
+  @override
+  String get flavorProfilesSearchHint => 'Search flavor profiles';
+
+  @override
+  String get flavorProfilesSelectedLabel => 'Selected';
 
   @override
   String get venuePickerSearchPlaceholder => 'Search for a venue';
