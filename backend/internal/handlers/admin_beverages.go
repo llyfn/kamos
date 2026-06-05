@@ -114,9 +114,14 @@ func (h *Handler) AdminCreateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeCategoryErr(w, "AdminCreateBeverage", err)
 		return
 	}
-	// Slice C: validate subcategory_id (if supplied) points to a live row
-	// in beverage_subcategories under the same category.
-	if body.SubcategoryID != nil && *body.SubcategoryID != "" {
+	// Slice C: empty subcategory_id on POST means "no subcategory" —
+	// the repo expects nil, not a ptr to empty string (the UUID cast
+	// would otherwise raise).
+	if body.SubcategoryID != nil && *body.SubcategoryID == "" {
+		body.SubcategoryID = nil
+	}
+	// Validate (if supplied) that the row exists under the same category.
+	if body.SubcategoryID != nil {
 		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, categoryID); err != nil {
 			h.writeSubcategoryErr(w, "AdminCreateBeverage", err)
 			return
