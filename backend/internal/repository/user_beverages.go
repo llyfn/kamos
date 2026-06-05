@@ -75,7 +75,7 @@ type UserBeveragesParams struct {
 // statement so caller-side hydration is unnecessary.
 //
 // Index coverage: the aggregation's WHERE / GROUP BY is satisfied by
-// idx_check_ins_user_beverage (migration 004). Without that index the
+// idx_check_ins_user_beverage (migration 007). Without that index the
 // query falls back to a scan over idx_check_ins_user_created followed
 // by an in-memory HashAggregate — fine at low user-check-in counts,
 // but the explicit composite keeps the plan tight as users approach
