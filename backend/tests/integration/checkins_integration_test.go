@@ -44,53 +44,21 @@ func TestCreateCheckinRatingPrecision(t *testing.T) {
 	}
 }
 
-// 5th photo on a single check-in must be rejected (4 photo cap).
-func TestCheckinPhotoCap(t *testing.T) {
+// Creating a check-in with 2 photos inline is rejected at the validation
+// layer (handler returns 422 before the DB sees it). Slice B / SPEC §4.1
+// dropped the submission cap from 4 to 1; the legacy upload endpoint
+// (POST /v1/check-ins/{id}/photos) keeps its storage-side cap and is
+// covered by TestAttachUploadedPhotoToCheckin in photos_integration_test.go.
+func TestCheckinTwoPhotosInlineRejected(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	tok, _ := mustRegister(t, srv, "photog", "photog@example.com", "password11")
-	bevID := seedBeverage(t, "Photog")
-
-	// Create a check-in with 4 photo URLs inline (the max).
+	tok, _ := mustRegister(t, srv, "two", "two@example.com", "password11")
+	bevID := seedBeverage(t, "Two")
 	code, body := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
 		"beverage_id": bevID,
-		"photos":      []string{"http://a/1.jpg", "http://a/2.jpg", "http://a/3.jpg", "http://a/4.jpg"},
-	})
-	if code != http.StatusCreated {
-		t.Fatalf("create status=%d body=%s", code, body)
-	}
-	var ci map[string]any
-	if err := json.Unmarshal(body, &ci); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	id, _ := ci["id"].(string)
-	if id == "" {
-		t.Fatalf("missing check-in id: %s", body)
-	}
-
-	// Adding a 5th photo via the upload endpoint must be rejected.
-	code, body = doReq(t, srv, http.MethodPost, "/v1/check-ins/"+id+"/photos", tok, map[string]string{
-		"url": "http://a/5.jpg",
-	})
-	if code < 400 || code >= 500 {
-		t.Fatalf("5th photo: status=%d body=%s (want 4xx)", code, body)
-	}
-}
-
-// Creating a check-in with 5 photos inline is rejected at the validation
-// layer (handler returns 422 before the DB sees it).
-func TestCheckinFivePhotosInlineRejected(t *testing.T) {
-	truncateAll(t)
-	srv := newServer(t)
-	defer srv.Close()
-
-	tok, _ := mustRegister(t, srv, "five", "five@example.com", "password11")
-	bevID := seedBeverage(t, "Five")
-	code, body := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
-		"beverage_id": bevID,
-		"photos":      []string{"a", "b", "c", "d", "e"},
+		"photos":      []string{"a", "b"},
 	})
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422, got %d body=%s", code, body)

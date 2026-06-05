@@ -44,7 +44,7 @@ var (
 	allowedPriceMode = map[string]bool{"serving": true, "bottle": true}
 )
 
-// ValidRating enforces SPEC §4.2: 0.5–5.0 in 0.5 steps. Nil is valid.
+// ValidRating enforces SPEC §4.2: 0.5–5.0 in 0.25 steps (19 levels). Nil is valid.
 func ValidRating(r *float64) error {
 	if r == nil {
 		return nil
@@ -52,10 +52,10 @@ func ValidRating(r *float64) error {
 	if *r < 0.5 || *r > 5.0 {
 		return wrapValidation("rating must be between 0.5 and 5.0")
 	}
-	// 0.5 step grid check using *10 % 5.
-	scaled := math.Round(*r * 10)
-	if math.Mod(scaled, 5) != 0 {
-		return wrapValidation("rating must be in 0.5 steps")
+	// 0.25 step grid check: round to the nearest 0.25 and compare back.
+	q := math.Round(*r / 0.25)
+	if math.Abs(*r-q*0.25) > 1e-9 {
+		return wrapValidation("rating must be in 0.25 steps")
 	}
 	return nil
 }
@@ -74,8 +74,8 @@ func (r *CreateCheckinRequest) Validate() error {
 		}
 		*r.Review = clean
 	}
-	if len(r.Photos) > 4 {
-		return wrapValidation("a check-in may have at most 4 photos")
+	if len(r.Photos) > 1 {
+		return wrapValidation("a check-in may have at most 1 photo on submission")
 	}
 	if r.PurchaseType != nil {
 		v := strings.ToLower(strings.ReplaceAll(*r.PurchaseType, "-", "_"))
@@ -106,8 +106,9 @@ func (r *CreateCheckinRequest) Validate() error {
 // Post-creation editability (01): the request additionally accepts
 // `add_photos` (newly-uploaded photo_uploads ids to attach) and
 // `remove_photos` (photo ids on the existing check-in to detach). The
-// SPEC §4.2 four-photo cap is enforced against the resulting set
-// (current - removed + added) inside the service layer.
+// SPEC §4.1 one-photo submission cap is enforced against the resulting
+// set (current - removed + added) inside the service layer. Existing
+// multi-photo check-ins remain readable; only the write path tightens.
 type UpdateCheckinRequest struct {
 	BeverageID   *string   `json:"beverage_id,omitempty"` // poison field — must be nil
 	Rating       *float64  `json:"rating,omitempty"`

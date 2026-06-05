@@ -211,7 +211,7 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "UpdateCheckin count photos", err)
 			return
 		}
-		if current-len(removeURLs)+len(addURLs) > 4 {
+		if current-len(removeURLs)+len(addURLs) > 1 {
 			h.writeErr(w, "UpdateCheckin photo cap", domain.ErrPhotoCapExceeded)
 			return
 		}

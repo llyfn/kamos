@@ -87,14 +87,16 @@ func TestRegisterRequestValidate(t *testing.T) {
 }
 
 func TestValidRating(t *testing.T) {
-	good := []float64{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
+	// SPEC §4.2 grid is now 0.25 steps. Sample one value per quarter
+	// across the legal range so a regression to coarser steps trips.
+	good := []float64{0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0}
 	for _, v := range good {
 		v := v
 		if err := ValidRating(&v); err != nil {
 			t.Errorf("rating %v: want valid, got %v", v, err)
 		}
 	}
-	bad := []float64{0, 0.3, 0.75, 1.1, 5.5, -1}
+	bad := []float64{0, 0.3, 0.6, 1.1, 5.5, -1}
 	for _, v := range bad {
 		v := v
 		if err := ValidRating(&v); err == nil {
@@ -108,13 +110,17 @@ func TestValidRating(t *testing.T) {
 }
 
 // TestRating_SPECScale centralizes the SPEC §4.2 rating invariant
-// (0.5–5.0 in 0.5 steps; nil is allowed since rating is optional). The
-// existing TestValidRating sprays the cases across two slices; this
-// table-driven shape is what reviewers should grep for when checking
-// "is the rating scale still enforced?" — one row per documented edge.
+// (0.5–5.0 in 0.25 steps, 19 levels; nil is allowed since rating is
+// optional). The existing TestValidRating sprays the cases across two
+// slices; this table-driven shape is what reviewers should grep for
+// when checking "is the rating scale still enforced?" — one row per
+// documented edge.
 func TestRating_SPECScale(t *testing.T) {
 	v0 := 0.0
+	v025 := 0.25
 	v05 := 0.5
+	v075 := 0.75
+	v125 := 1.25
 	v04 := 0.4
 	v5 := 5.0
 	v55 := 5.5
@@ -126,7 +132,10 @@ func TestRating_SPECScale(t *testing.T) {
 		ok   bool
 	}{
 		{"zero is rejected (below floor)", &v0, false},
-		{"half-step floor is accepted", &v05, true},
+		{"0.25 is rejected (below floor)", &v025, false},
+		{"floor 0.5 is accepted", &v05, true},
+		{"quarter-step 0.75 is accepted", &v075, true},
+		{"quarter-step 1.25 is accepted", &v125, true},
 		{"below floor (0.4) is rejected", &v04, false},
 		{"ceiling 5.0 is accepted", &v5, true},
 		{"above ceiling 5.5 is rejected", &v55, false},
@@ -157,24 +166,37 @@ func TestCreateCheckinValidate(t *testing.T) {
 		{"missing beverage", CreateCheckinRequest{}, "beverage_id"},
 		{"review too long", CreateCheckinRequest{BeverageID: "x", Review: &tooLong}, "review"},
 		{
-			"5 photos", CreateCheckinRequest{
-				BeverageID: "x", Photos: []string{"a", "b", "c", "d", "e"},
-			}, "4 photos",
+			"2 photos", CreateCheckinRequest{
+				BeverageID: "x", Photos: []string{"a", "b"},
+			}, "1 photo on submission",
 		},
 		{
 			"bad rating step",
 			func() CreateCheckinRequest {
-				r := 3.25
+				r := 1.1
 				return CreateCheckinRequest{BeverageID: "x", Rating: &r}
 			}(),
-			"0.5",
+			"0.25",
 		},
 		{
-			"good",
+			"good (0.5)",
 			func() CreateCheckinRequest {
 				r := 4.5
 				return CreateCheckinRequest{BeverageID: "x", Rating: &r}
 			}(),
+			"",
+		},
+		{
+			"good (0.25 step)",
+			func() CreateCheckinRequest {
+				r := 3.25
+				return CreateCheckinRequest{BeverageID: "x", Rating: &r}
+			}(),
+			"",
+		},
+		{
+			"good (single photo)",
+			CreateCheckinRequest{BeverageID: "x", Photos: []string{"a"}},
 			"",
 		},
 	}

@@ -123,8 +123,8 @@ func (s *CheckinService) Create(ctx context.Context, userID string, req domain.C
 // CheckinUpdateInput is the post-validation projection the handler passes
 // to Update. The handler has already resolved photo upload IDs into the
 // matching (public_url, upload_id) pairs via its PhotoUploadRepo + Storage
-// references; the service just enforces the SPEC §4.2 4-photo cap and
-// delegates the multi-row write to the repo.
+// references; the service just enforces the SPEC §4.1 one-photo submission
+// cap and delegates the multi-row write to the repo.
 type CheckinUpdateInput struct {
 	Req               domain.UpdateCheckinRequest
 	AddPhotoURLs      []string
@@ -134,16 +134,18 @@ type CheckinUpdateInput struct {
 
 // Update owns the check-in update + cache-bust dance.
 func (s *CheckinService) Update(ctx context.Context, userID, id string, in CheckinUpdateInput) (*domain.Checkin, error) {
-	// SPEC §4.2 four-photo cap on the resulting set. We compute the
-	// floor BEFORE the repo write so the canonical 422
+	// SPEC §4.1 one-photo submission cap on the resulting set. We compute
+	// the floor BEFORE the repo write so the canonical 422
 	// PHOTO_CAP_EXCEEDED surfaces instead of the DB CHECK constraint
-	// raising a generic 500.
+	// raising a generic 500. Existing multi-photo check-ins remain
+	// readable; only writes that would land the resulting set above the
+	// cap are rejected.
 	if len(in.AddPhotoURLs) > 0 || len(in.RemovePhotoURLs) > 0 {
 		current, err := s.checkins.CountPhotos(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("CheckinService.Update count: %w", err)
 		}
-		if current-len(in.RemovePhotoURLs)+len(in.AddPhotoURLs) > 4 {
+		if current-len(in.RemovePhotoURLs)+len(in.AddPhotoURLs) > 1 {
 			return nil, domain.ErrPhotoCapExceeded
 		}
 	}
