@@ -1,6 +1,6 @@
 -- 002_seeding.sql
--- Seed the admin-curated taxonomy and locality reference data that the SPEC
--- (and the post-MVP roadmap) fix as part of the contract:
+-- Seed the admin-curated taxonomy and locality reference data that the
+-- SPEC fixes as part of the contract:
 --   - beverage_categories:    the three canonical SPEC §2.1 rows.
 --   - beverage_subcategories: 18 seeded subtypes (Nihonshu × 8, Shochu × 7,
 --                             Liqueur × 3, including a per-category "Other").
@@ -10,10 +10,6 @@
 --
 -- These rows are referenced by FK from beverages, check_in_flavor_tags, and
 -- producers.prefecture_id, so they must exist before any catalog data loads.
---
--- This is the consolidated seed baseline. The original sequence had
--- regions / prefectures / subcategories added in later migrations; they're
--- folded in here so a fresh DB reaches production parity from 001 + 002.
 
 BEGIN;
 
