@@ -223,7 +223,7 @@ class _SectionLabel extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.3,
-          color: t.fg3,
+          color: t.fg1,
         ),
       ),
     );

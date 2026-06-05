@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/kamos_page_title.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/feed_providers.dart';
 import '../widgets/check_in_card.dart';
@@ -16,10 +17,9 @@ class FeedScreen extends ConsumerStatefulWidget {
   ConsumerState<FeedScreen> createState() => _FeedScreenState();
 }
 
-// Stage 5 (PERF-032 / STYLE-027): the prefetch heuristic is "trigger
-// loadMore when the viewport is within 1.5 screens of the end". The
-// 280px-per-item magic constant is gone — viewport-derived threshold
-// is correct at any item height and any screen size.
+// Prefetch threshold: trigger loadMore when the viewport is within 1.5
+// screens of the end. Viewport-derived so any item height and screen size
+// behave correctly.
 const double _kFeedPrefetchViewports = 1.5;
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
@@ -82,21 +82,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
-            // The header bell that pushed /inbox was removed alongside the
-            // post-MVP nav rewrite — follow-request notifications now live
-            // inline on the Notifications tab as `follow_request` rows.
             Padding(
               padding: const EdgeInsets.only(top: 8, bottom: 14),
-              child: Text(
-                l.feedHeader,
-                style: TextStyle(
-                  fontFamily: 'ShipporiMincho',
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                  color: t.fg1,
-                  height: 1.1,
-                ),
-              ),
+              child: KamosPageTitle(l.feedHeader),
             ),
             if (state.items.isEmpty)
               EmptyView(

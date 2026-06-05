@@ -18,6 +18,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/kamos_page_title.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../models/notification.dart';
 import '../providers/notification_providers.dart';
@@ -119,92 +120,100 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final t = context.tokens;
     final async = ref.watch(notificationListProvider);
 
+    final markAllReadButton = async.when(
+      data: (state) {
+        final hasUnread = state.items.any((n) => n.isUnread);
+        return TextButton(
+          onPressed: hasUnread
+              ? () =>
+                    ref.read(notificationListProvider.notifier).markAllRead()
+              : null,
+          child: Text(l.notificationsMarkAllRead),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+
     return Scaffold(
       backgroundColor: t.bgPage,
-      appBar: AppBar(
-        title: Text(l.notificationsTitle),
-        actions: [
-          async.when(
-            data: (state) {
-              final hasUnread = state.items.any((n) => n.isUnread);
-              return TextButton(
-                onPressed: hasUnread
-                    ? () => ref
-                        .read(notificationListProvider.notifier)
-                        .markAllRead()
-                    : null,
-                child: Text(l.notificationsMarkAllRead),
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, _) => const SizedBox.shrink(),
-          ),
-        ],
-      ),
       body: SafeArea(
-        top: false,
+        top: true,
         bottom: false,
-        child: RefreshIndicator(
-          onRefresh: () =>
-              ref.read(notificationListProvider.notifier).refresh(),
-          child: async.when(
-            loading: () => const LogoLoader(),
-            error: (_, _) => Center(
-              child: ErrorView(
-                onRetry: () =>
-                    ref.read(notificationListProvider.notifier).refresh(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: KamosPageTitle(
+                l.notificationsTitle,
+                trailing: markAllReadButton,
               ),
             ),
-            data: (state) {
-              if (state.items.isEmpty) {
-                // Wrap the empty view in a list view so pull-to-refresh
-                // works without items (RefreshIndicator needs a scrollable).
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(height: _viewportHeight * 0.12),
-                    EmptyView(
-                      glyph: '通',
-                      title: l.notificationsEmptyTitle,
-                      body: l.notificationsEmptyBody,
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(notificationListProvider.notifier).refresh(),
+                child: async.when(
+                  loading: () => const LogoLoader(),
+                  error: (_, _) => Center(
+                    child: ErrorView(
+                      onRetry: () => ref
+                          .read(notificationListProvider.notifier)
+                          .refresh(),
                     ),
-                  ],
-                );
-              }
-              return NotificationListener<ScrollEndNotification>(
-                onNotification: _onScrollEnd,
-                child: ListView.separated(
-                  controller: _scroll,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
-                    KamosSpacing.lg,
-                    KamosSpacing.sm,
-                    KamosSpacing.lg,
-                    KamosSpacing.lg,
                   ),
-                  itemCount: state.items.length + 1,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: KamosSpacing.sm),
-                  itemBuilder: (_, i) {
-                    if (i == state.items.length) {
-                      return PagingFooter(
-                        isLoading: state.isLoadingMore,
-                        hasMore: state.hasMore,
-                        endLabel: l.notificationsEnd,
+                  data: (state) {
+                    if (state.items.isEmpty) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(height: _viewportHeight * 0.12),
+                          EmptyView(
+                            glyph: '通',
+                            title: l.notificationsEmptyTitle,
+                            body: l.notificationsEmptyBody,
+                          ),
+                        ],
                       );
                     }
-                    final n = state.items[i];
-                    return VisibilityDetector(
-                      key: Key('notification-${n.id}'),
-                      onVisibilityChanged: (info) =>
-                          _onRowVisibility(n, info.visibleFraction),
-                      child: NotificationRow(notification: n),
+                    return NotificationListener<ScrollEndNotification>(
+                      onNotification: _onScrollEnd,
+                      child: ListView.separated(
+                        controller: _scroll,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(
+                          KamosSpacing.lg,
+                          KamosSpacing.sm,
+                          KamosSpacing.lg,
+                          KamosSpacing.lg,
+                        ),
+                        itemCount: state.items.length + 1,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(height: KamosSpacing.sm),
+                        itemBuilder: (_, i) {
+                          if (i == state.items.length) {
+                            return PagingFooter(
+                              isLoading: state.isLoadingMore,
+                              hasMore: state.hasMore,
+                              endLabel: l.notificationsEnd,
+                            );
+                          }
+                          final n = state.items[i];
+                          return VisibilityDetector(
+                            key: Key('notification-${n.id}'),
+                            onVisibilityChanged: (info) =>
+                                _onRowVisibility(n, info.visibleFraction),
+                            child: NotificationRow(notification: n),
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
