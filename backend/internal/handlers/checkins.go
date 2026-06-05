@@ -390,11 +390,11 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 
 // Photo attach is a 3-step flow:
 //
-// 1. POST /v1/uploads/photo-presign → server returns a presigned PUT URL.
-// 2. Client PUTs the bytes to R2 with the supplied Content-Type header.
-// 3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
-//    server promotes the photo_uploads row to 'attached', looks up the
-//    public URL for the blob_key, and inserts into check_in_photos.
+//  1. POST /v1/uploads/photo-presign → server returns a presigned PUT URL.
+//  2. Client PUTs the bytes to R2 with the supplied Content-Type header.
+//  3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
+//     server promotes the photo_uploads row to 'attached', looks up the
+//     public URL for the blob_key, and inserts into check_in_photos.
 //
 // We do NOT verify the client's PUT against R2 — the orphan cleanup job
 // sweeps anything that never reaches 'attached'.
