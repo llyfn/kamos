@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme.dart';
 import '../../../l10n/app_localizations.dart';
@@ -31,6 +32,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _name.dispose();
     _bio.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAvatar() async {
+    final l = AppLocalizations.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l.profileAvatarPickGallery),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text(l.profileAvatarPickCamera),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    try {
+      // The upload pipeline for avatars is not wired yet (no server endpoint
+      // beyond `PATCH /me {avatar_url}`); picking the file is the slice we
+      // own. Server-side persistence stays as-is.
+      await ImagePicker().pickImage(source: source);
+    } catch (_) {
+      // Image picker not available (sim/test) — silently no-op.
+    }
   }
 
   @override
@@ -97,19 +132,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             child: Column(
               children: [
                 Center(
-                  child: Column(
-                    children: [
-                      KamosAvatar(
-                        initial: me.user.displayUsername,
-                        size: 84,
-                        imageUrl: me.user.avatarUrl,
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(l.profileChangeAvatar),
-                      ),
-                    ],
+                  child: InkResponse(
+                    onTap: _pickAvatar,
+                    radius: 56,
+                    child: KamosAvatar(
+                      initial: me.user.displayUsername,
+                      size: 84,
+                      imageUrl: me.user.avatarUrl,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
