@@ -1,10 +1,11 @@
 // subcategories.go — public read endpoint for the beverage_subcategories
 // taxonomy table. Slice C (migration 005).
 //
-// The endpoint is cached per (category, locale) tuple via the existing
-// in-process LRU bundle. Admin mutations on /v1/admin/subcategories emit
-// pg_notify('kamos_cache_invalidate', 'subcategories') so every replica
-// drops the slot on the next NOTIFY tick.
+// The endpoint is cached per category via the existing in-process LRU
+// bundle. The loader returns the raw name_i18n JSONB blob (no server-side
+// locale resolution), so the cache key is locale-agnostic. Admin mutations
+// on /v1/admin/subcategories emit pg_notify('kamos_cache_invalidate',
+// 'subcategories') so every replica drops the slot on the next NOTIFY tick.
 
 package handlers
 
@@ -24,12 +25,11 @@ import (
 func (h *Handler) ListSubcategories(w http.ResponseWriter, r *http.Request) {
 	categoryQuery := r.URL.Query().Get("category")
 	var categoryPtr *string
-	keyCat := "all"
+	key := "all"
 	if categoryQuery != "" {
 		categoryPtr = &categoryQuery
-		keyCat = categoryQuery
+		key = categoryQuery
 	}
-	key := keyCat + ":" + localeKey(r)
 	//nolint:contextcheck // loader runs synchronously inside the request; captures r.Context() (GetOrLoad takes no ctx).
 	loader := func() ([]domain.Subcategory, error) {
 		return h.Repos.Subcategories.List(r.Context(), categoryPtr)
