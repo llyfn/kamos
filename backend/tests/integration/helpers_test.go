@@ -82,7 +82,7 @@ func truncateAll(t *testing.T) {
 	rows, err := p.Query(ctx, `
 SELECT tablename FROM pg_tables
 WHERE schemaname = 'public'
-  AND tablename NOT IN ('beverage_categories','flavor_tags','regions','prefectures');`)
+  AND tablename NOT IN ('beverage_categories','beverage_subcategories','flavor_tags','regions','prefectures');`)
 	if err != nil {
 		t.Fatalf("list tables: %v", err)
 	}
