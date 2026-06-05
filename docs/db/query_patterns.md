@@ -372,7 +372,7 @@ Photo & tag edits are separate batched statements (delete + re-insert pattern; t
 
 ### edited_at touch pattern
 
-Both `check_ins` and `comments` carry a nullable `edited_at TIMESTAMPTZ` (migration 003, the post-MVP additive squash that also added `producers.image_url`). Rule: **set `edited_at = NOW()` in the same transaction as any tracked-field change; leave it untouched otherwise.**
+Both `check_ins` and `comments` carry a nullable `edited_at TIMESTAMPTZ`. Rule: **set `edited_at = NOW()` in the same transaction as any tracked-field change; leave it untouched otherwise.**
 
 Two implementation shapes; pick per endpoint:
 

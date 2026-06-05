@@ -70,7 +70,7 @@ Or use a host install of Postgres 18 — that is what `local.env.example` assume
 ```bash
 export DATABASE_URL=postgres://kamos:kamos@localhost:5432/kamos?sslmode=disable
 psql "$DATABASE_URL" -f ../migrations/001_initial.sql
-psql "$DATABASE_URL" -f ../migrations/002_seed_taxonomy.sql
+psql "$DATABASE_URL" -f ../migrations/002_seeding.sql
 ```
 
 Verify:
