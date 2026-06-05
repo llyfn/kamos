@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// Phase 4 venues — three contracts exercised here:
+// Venues — three contracts exercised here:
 //
 //   1. GET /v1/venues/search with no Foursquare key configured → 503
 //      VENUE_SEARCH_DISABLED. The test harness never sets FOURSQUARE_API_KEY,

@@ -1,5 +1,4 @@
-// admin_checkins.go — admin check-in moderation. Split out of
-// admin.go in Stage 3.
+// admin_checkins.go — admin check-in moderation.
 package handlers
 
 import (

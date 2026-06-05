@@ -1,5 +1,5 @@
-// Flavor tag admin API helpers. Slice C. Thin wrappers around the
-// typed openapi-fetch client.
+// Flavor tag admin API helpers. Thin wrappers around the typed
+// openapi-fetch client.
 
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';

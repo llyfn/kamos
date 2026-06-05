@@ -1,9 +1,9 @@
 // subcategories.go — admin + public CRUD over beverage_subcategories.
 //
-// Slice C (migration 005). The public read path (/v1/subcategories) is
-// read-only; the admin path mounted under /v1/admin/subcategories owns
-// create / update / soft-delete / restore with an "in-use" guard so a
-// subcategory still attached to a live beverage cannot be tombstoned.
+// The public read path (/v1/subcategories) is read-only; the admin path
+// mounted under /v1/admin/subcategories owns create / update / soft-delete
+// / restore with an "in-use" guard so a subcategory still attached to a
+// live beverage cannot be tombstoned.
 //
 // The handler bundles each mutation with a moderation_log row inside the
 // supplied pgx.Tx, mirroring the beverages_admin / producers_admin

@@ -106,20 +106,20 @@ type Config struct {
 	// payloads still succeed (the upsert path does not need the API key).
 	FoursquareAPIKey string
 
-	// SEC-005 / Stage 0 — HMAC key used to sign cursor tokens. In production
+	// SEC-005 — HMAC key used to sign cursor tokens. In production
 	// this MUST be at least 32 bytes (256 bits). In non-production environments
 	// (dev / test / integration) the loader synthesizes a stable key derived
 	// from JWTSecret if CURSOR_SECRET is unset so local development doesn't
 	// require an extra env knob; production refuses to start without one.
 	CursorSecret string
 
-	// SEC-002 / Stage 0 — CORS allowlist. Comma-separated origins via env
+	// SEC-002 — CORS allowlist. Comma-separated origins via env
 	// CORS_ALLOWED_ORIGINS. In dev the default is the admin Vite dev
 	// server (http://localhost:5173). Production requires the explicit
 	// admin domain(s); wildcards are not supported.
 	CORSAllowedOrigins []string
 
-	// Stage 4 — cache backend selection. CACHE_BACKEND chooses between
+	// Cache backend selection. CACHE_BACKEND chooses between
 	// "in_process" (default; per-replica LRU) and "redis" (multi-replica
 	// coherent). CACHE_REDIS_URL is required when CacheBackend=="redis";
 	// in any other mode it is ignored.
@@ -247,9 +247,9 @@ func Load() (*Config, error) {
 		c.CORSAllowedOrigins = []string{"http://localhost:5173"}
 	}
 
-	// Stage 4 — cache backend cross-validation. CACHE_BACKEND=redis without
-	// a URL is a misconfiguration; refuse to start so deploys notice on
-	// boot rather than at first cache call.
+	// Cache backend cross-validation. CACHE_BACKEND=redis without a URL is
+	// a misconfiguration; refuse to start so deploys notice on boot rather
+	// than at first cache call.
 	if c.CacheBackend == "redis" && c.CacheRedisURL == "" {
 		return nil, errors.New("Load: CACHE_REDIS_URL is required when CACHE_BACKEND=redis")
 	}

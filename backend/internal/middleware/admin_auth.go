@@ -1,4 +1,4 @@
-// admin_auth.go — Stage 4 admin cookie auth + CSRF middlewares.
+// admin_auth.go — admin cookie auth + CSRF middlewares.
 //
 // AdminAuth: like Auth, but reads the access token from the
 // kamos_admin_access cookie first and falls back to Authorization:

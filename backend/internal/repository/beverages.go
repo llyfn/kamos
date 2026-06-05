@@ -52,9 +52,9 @@ type beverageRow struct {
 	producerNameRaw []byte
 	producerImgURL  *string
 	producerPref    prefectureScan
-	// Slice C — beverage_subcategories JOIN. All five fields are nullable
-	// because the JOIN is LEFT (a beverage may have subcategory_id NULL
-	// during the dual-source window — see toBeverage for the fallback).
+	// beverage_subcategories JOIN. All five fields are nullable because the
+	// JOIN is LEFT (a beverage may have subcategory_id NULL during the
+	// dual-source window — see toBeverage for the fallback).
 	subID           *string
 	subCategoryID   *string
 	subCategorySlug *string
@@ -87,14 +87,12 @@ LEFT JOIN beverage_subcategories sc ON sc.id = b.subcategory_id AND sc.deleted_a
 // It carries the two i18n JSONB blobs (subcategory_i18n,
 // description_i18n) that are needed on the detail screen.
 //
-// Migration 016 dropped beverages.prefecture / beverages.region; the
-// row's locality is now derived via the producer's prefecture chain
-// (LEFT JOIN prefectures + regions on producers.prefecture_id).
+// Locality is derived via the producer's prefecture chain (LEFT JOIN
+// prefectures + regions on producers.prefecture_id).
 //
-// Slice C (migration 005) added the beverage_subcategories JOIN. The
-// legacy b.subcategory_i18n column is still SELECTed because the
+// The legacy b.subcategory_i18n column is still SELECTed because the
 // dual-source fallback in toBeverage reads it when subcategory_id is
-// NULL (until 005's follow-up migration drops the column).
+// NULL.
 const beverageSelect = `
 SELECT
   b.id,
@@ -121,11 +119,11 @@ JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoin
 // beverageListSelect is the slim projection used by list/search paths:
 // it drops the description JSONB and the legacy subcategory_i18n blob
 // because list cards only show name + category + producer + counts.
-// Dropping the JSONB cuts list-response payload size by ~30%
-// (PERF-017). The corresponding scan helper is scanBeverageList.
+// Dropping the JSONB cuts list-response payload size by ~30%.
+// The corresponding scan helper is scanBeverageList.
 //
-// Slice C: the joined beverage_subcategories projection is included
-// because the list cards in admin already need slug/name to render a
+// The joined beverage_subcategories projection is included because list
+// cards in admin already need slug/name to render a
 // "category · subcategory" overline and the JSONB-free slim subcategory
 // shape is small. Legacy b.subcategory_i18n stays excluded.
 const beverageListSelect = `
@@ -263,13 +261,12 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 		CheckInCount:   row.checkInCount,
 		CreatedAt:      row.createdAt,
 	}
-	// Slice C dual-source path:
+	// Dual-source subcategory path:
 	//   1. Canonical: beverage_subcategories JOIN populated (subID != nil)
 	//      → ship the full Subcategory ref (id, slug, name, sort_order).
 	//   2. Legacy fallback: subcategory_id is NULL but the legacy
 	//      b.subcategory_i18n JSONB has data → ship a partial Subcategory
-	//      ref with only the name populated and empty id/slug. This window
-	//      closes when the follow-up migration drops the column.
+	//      ref with only the name populated and empty id/slug.
 	switch {
 	case row.subID != nil && *row.subID != "":
 		name, _ := domain.I18nFromJSON(row.subNameJSON)
@@ -315,8 +312,7 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 // are optional. The triple keyset is backed by
 // idx_beverages_popularity_keyset (migration 012).
 //
-// Stage 8 (admin catalog soft-delete, migration 014): rows with
-// deleted_at set are filtered out on the public read path. The
+// Soft-deleted rows are filtered out on the public read path. The
 // partial indexes (idx_beverages_* WHERE deleted_at IS NULL) keep
 // the planner using index scans without the predicate slowing down
 // the hot path.
@@ -362,9 +358,9 @@ LIMIT $6;`
 
 // Detail returns one beverage by id along with producer + category info.
 //
-// Stage 8: rows with deleted_at set are treated as not found on the public
-// read path. The admin GET handler uses AdminDetail to surface soft-deleted
-// rows so an admin can restore them.
+// Soft-deleted rows are treated as not found on the public read path.
+// The admin GET handler uses AdminDetail to surface soft-deleted rows so
+// an admin can restore them.
 func (r *BeverageRepo) Detail(ctx context.Context, id string) (*domain.Beverage, error) {
 	q := beverageSelect + ` WHERE b.id = $1 AND b.deleted_at IS NULL AND br.deleted_at IS NULL;`
 	row := r.db.QueryRow(ctx, q, id)
@@ -379,9 +375,9 @@ func (r *BeverageRepo) Detail(ctx context.Context, id string) (*domain.Beverage,
 	return &d, nil
 }
 
-// Exists is a cheap presence check. Stage 8: soft-deleted rows return
-// false so callers (check-in create, collection add-entry) cannot
-// reference a tombstoned beverage.
+// Exists is a cheap presence check. Soft-deleted rows return false so
+// callers (check-in create, collection add-entry) cannot reference a
+// tombstoned beverage.
 func (r *BeverageRepo) Exists(ctx context.Context, id string) (bool, error) {
 	var exists bool
 	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM beverages WHERE id = $1 AND deleted_at IS NULL);`, id).Scan(&exists); err != nil {
@@ -456,11 +452,9 @@ LIMIT $4;`
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	// Stage 5 (PERF-010): batch-hydrate photos so the beverage detail
-	// "recent check-ins" strip can render thumbnails inline.
-	// Profile-UX expansion: also batch-hydrate flavor tags so the
-	// recent-check-ins rows can render chip arrays without a second
-	// round trip per row.
+	// Batch-hydrate photos and flavor tags so the beverage detail
+	// "recent check-ins" strip can render thumbnails + chip arrays
+	// inline without a second round trip per row.
 	ck := CheckinRepo{db: r.db}
 	photos, err := ck.PhotosFor(ctx, ids)
 	if err != nil {
@@ -537,18 +531,15 @@ func (r *ProducerRepo) List(ctx context.Context, q *string, cursorTs *time.Time,
 	if limit <= 0 {
 		limit = 20
 	}
-	// Stage 5 (PERF-015): beverage_count comes from the denormalized
-	// column on producers (migration 011) instead of a correlated
-	// subquery per row. The ordering switches from id-only (which is
-	// pseudo-random for v7 UUIDs) to (created_at DESC, id DESC) so
-	// the list paginates in a meaningful order.
+	// beverage_count comes from the denormalized column on producers
+	// instead of a correlated subquery per row. Ordering is
+	// (created_at DESC, id DESC) so the list paginates in a meaningful
+	// order (v7 UUIDs are pseudo-random).
 	//
-	// Stage 8 (admin catalog soft-delete, migration 014): rows with
-	// deleted_at set are excluded from the public catalog. The partial
-	// idx_producers_name_tsv keeps FTS index-friendly.
-	//
-	// Migration 016: prefecture comes from a LEFT JOIN on
-	// prefectures + regions via producers.prefecture_id; nullable.
+	// Soft-deleted rows are excluded from the public catalog. The partial
+	// idx_producers_name_tsv keeps FTS index-friendly. Prefecture comes
+	// from a LEFT JOIN on prefectures + regions via
+	// producers.prefecture_id; nullable.
 	const sql = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,
        b.beverage_count,` + producerPrefectureSelectCols + `
@@ -587,9 +578,8 @@ WHERE b.id = $1 AND b.deleted_at IS NULL;`
 
 // Beverages lists beverages by producer, cursor-paginated on
 // (created_at, id) so a producer detail page shows newest first
-// instead of the v7-UUID-pseudo-random id order.
-//
-// Stage 8: public path filters soft-deleted rows on both joined tables.
+// instead of the v7-UUID-pseudo-random id order. Soft-deleted rows
+// are filtered on both joined tables.
 func (r *ProducerRepo) Beverages(ctx context.Context, producerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Beverage, error) {
 	if limit <= 0 {
 		limit = 20

@@ -1,5 +1,4 @@
-// admin_comments.go — admin comment moderation surface. Split out
-// of admin.go in Stage 3.
+// admin_comments.go — admin comment moderation surface.
 package handlers
 
 import (

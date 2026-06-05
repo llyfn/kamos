@@ -6,7 +6,7 @@ import (
 )
 
 // SecurityHeaders sets standard HTTP security-response headers on every
-// outbound response. SEC-007 (Stage 0):
+// outbound response (SEC-007):
 //
 //   - Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 //     (only when the request is HTTPS or FORCE_HSTS=1 in env, so local

@@ -12,9 +12,7 @@
 // `flutter pub get` would have to downgrade the entire codegen toolchain.
 // That trade — risking a broken generator output for the convenience of
 // not maintaining this file — was not worth it for a 13-repository surface
-// of cursor-paged GETs, idempotent POSTs, and small PATCH bodies. The
-// `openapi_generator: ^7.x` family referenced in the Stage 6 plan does not
-// exist on pub.dev as of writing.
+// of cursor-paged GETs, idempotent POSTs, and small PATCH bodies.
 //
 // Strategy
 // --------

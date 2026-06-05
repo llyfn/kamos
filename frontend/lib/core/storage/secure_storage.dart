@@ -43,12 +43,12 @@ class SecureStorageService {
   /// the truth most-recently returned.
   static String? _accessTokenSnapshot;
 
-  /// Stage 5 (PERF-018): memoized decoded `sub` claim for
-  /// `_accessTokenSnapshot`. The cache keyBuilder fires on every request
-  /// — base64-decoding the JWT payload + parsing the JSON was ~30 µs per
-  /// hit before the memo. We invalidate by storing the token that
-  /// produced the cached sub; if the token changes the keyBuilder
-  /// recomputes once and re-fills the memo.
+  /// Memoized decoded `sub` claim for `_accessTokenSnapshot`. The cache
+  /// keyBuilder fires on every request — base64-decoding the JWT
+  /// payload + parsing the JSON was ~30 µs per hit before the memo. We
+  /// invalidate by storing the token that produced the cached sub; if
+  /// the token changes the keyBuilder recomputes once and re-fills the
+  /// memo.
   static String? _subSnapshot;
   static String? _subSnapshotForToken;
 

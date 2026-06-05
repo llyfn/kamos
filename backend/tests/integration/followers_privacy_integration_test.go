@@ -1,11 +1,10 @@
 //go:build integration
 // +build integration
 
-// Slice D follow-up — privacy gate on followers/following list
-// endpoints. Brief decision #5: when the target user's
-// privacy_mode = 'private', the list surfaces are visible only to
-// the target themselves and their accepted followers. Mirrors the
-// gate already applied to GET /v1/users/{username} and to the new
+// Privacy gate on followers/following list endpoints. When the target
+// user's privacy_mode = 'private', the list surfaces are visible only
+// to the target themselves and their accepted followers. Mirrors the
+// gate already applied to GET /v1/users/{username} and to the
 // user-beverages endpoint.
 
 package integration

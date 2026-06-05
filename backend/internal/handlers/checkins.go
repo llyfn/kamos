@@ -18,10 +18,9 @@ import (
 
 // CreateCheckin — POST /v1/check-ins.
 //
-// Stage 3 (architectural refactor): the body's orchestration (beverage-
-// existence gate, venue resolve, multi-row insert, cache invalidate,
-// counter bump) now lives in CheckinService.Create. The handler does
-// decode → validate → call → respond.
+// Orchestration (beverage-existence gate, venue resolve, multi-row
+// insert, cache invalidate, counter bump) lives in CheckinService.Create.
+// The handler does decode → validate → call → respond.
 func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -51,7 +50,7 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 		httperr.WriteJSON(w, http.StatusCreated, out)
 		return
 	}
-	// Legacy fallback (tests that don't construct services): pre-Stage-3 path.
+	// Legacy fallback for tests that don't construct services.
 	exists, err := h.Repos.Beverages.Exists(r.Context(), req.BeverageID)
 	if err != nil {
 		h.writeErr(w, "CreateCheckin exists", err)
@@ -103,8 +102,8 @@ func (h *Handler) CreateCheckin(w http.ResponseWriter, r *http.Request) {
 // given beverage. Cheap (cache size <= 1000) and best-effort —
 // downstream HTTP caches still honor max-age=300 from the
 // Cache-Control header, but in-process readers see fresh data
-// immediately. Stage 4: also fire a pg_notify so peer replicas bust
-// their copies; the notify is fire-and-forget (silent on nil DB).
+// immediately. Also fires a pg_notify so peer replicas bust their
+// copies; the notify is fire-and-forget (silent on nil DB).
 func (h *Handler) invalidateBeverageDetail(ctx context.Context, beverageID string) {
 	if beverageID == "" {
 		return
@@ -119,10 +118,6 @@ func (h *Handler) invalidateBeverageDetail(ctx context.Context, beverageID strin
 }
 
 // GetCheckin — GET /v1/check-ins/{id}.
-//
-// Status: scaffold-for-Phase6 (comments need a check-in detail view) and
-// Phase5 (admin moderation surface). Endpoint is intentionally pre-wired;
-// no Flutter caller in MVP.
 func (h *Handler) GetCheckin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	viewerID := ""
@@ -139,21 +134,13 @@ func (h *Handler) GetCheckin(w http.ResponseWriter, r *http.Request) {
 
 // UpdateCheckin — PATCH /v1/check-ins/{id}.
 //
-// Stage 3 (ARCH-014) cleanup: the previous implementation decoded the body
-// twice — first into a `map[string]json.RawMessage`, then re-marshalled and
-// re-decoded into the typed request struct — only to detect "field present
-// and null" for the clear-rating / clear-review / clear-price semantics.
+// Decodes into `updateCheckinPatch` (which uses `json.RawMessage` for the
+// three fields where null-vs-absent matters: rating, review, price), then
+// projects onto the typed request. `beverage_id` is rejected by
+// `domain.UpdateCheckinRequest.Validate`.
 //
-// The new implementation does a single decode using the dedicated
-// `updateCheckinPatch` shape that uses `json.RawMessage` for the three
-// fields where null-vs-absent matters. The `beverage_id` poison-pill is
-// rejected by `domain.UpdateCheckinRequest.Validate` after the patch is
-// projected onto the typed request — saving the JSON-encode round trip.
-//
-// Wire contract: unchanged (still SPEC §4.4 — `beverage_id` not allowed,
-// null on rating/review/price means "clear").
-//
-// Status: scaffold-for-Phase5 (admin edit surface).
+// Wire contract is SPEC §4.4 — `beverage_id` not allowed; null on rating /
+// review / price means "clear".
 func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -372,10 +359,8 @@ func (p updateCheckinPatch) toRequest() (domain.UpdateCheckinRequest, error) {
 
 // DeleteCheckin — DELETE /v1/check-ins/{id}.
 //
-// Stage 3: the (fetch beverage_id → soft-delete → invalidate cache) dance
-// is now owned by CheckinService.Delete.
-//
-// Status: scaffold-for-Phase5 (admin moderation).
+// Service owns the (fetch beverage_id → soft-delete → invalidate cache)
+// orchestration.
 func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {
@@ -403,21 +388,16 @@ func (h *Handler) DeleteCheckin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// The MVP scaffold accepted `{ url }` (any URL the client claimed
-// to have stored somewhere). That contract is replaced by a 3-step flow:
+// Photo attach is a 3-step flow:
 //
-// 1. POST /v1/uploads/photo-presign → server returns a presigned PUT URL.
-// 2. Client PUTs the bytes to R2 with the supplied Content-Type header.
-// 3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
-// server promotes the photo_uploads row to 'attached', looks up the
-// public URL for the blob_key, and inserts into check_in_photos.
+//  1. POST /v1/uploads/photo-presign → server returns a presigned PUT URL.
+//  2. Client PUTs the bytes to R2 with the supplied Content-Type header.
+//  3. POST /v1/check-ins/{id}/photos with `{ "upload_id": <uuid> }`. The
+//     server promotes the photo_uploads row to 'attached', looks up the
+//     public URL for the blob_key, and inserts into check_in_photos.
 //
-// We do NOT verify the client's PUT against R2 historically — the orphan
-// cleanup job sweeps anything that never reaches 'attached'. A future
-// hardening pass can add a HEAD check before the attach.
-//
-// The mobile clients in the field at MVP did not expose a photo upload UI,
-// so the wire change is acceptable.
+// We do NOT verify the client's PUT against R2 — the orphan cleanup job
+// sweeps anything that never reaches 'attached'.
 type uploadPhotoRequest struct {
 	UploadID string `json:"upload_id"`
 }
@@ -425,8 +405,8 @@ type uploadPhotoRequest struct {
 // UploadCheckinPhoto — POST /v1/check-ins/{id}/photos.
 //
 // Attaches a previously-presigned blob to a check-in. The SPEC §4.1
-// 1-photo submission cap (Slice B) is enforced by AddPhoto; existing
-// multi-photo check-ins remain readable but cannot be added to.
+// 1-photo submission cap is enforced by AddPhoto; existing multi-photo
+// check-ins remain readable but cannot be added to.
 func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {

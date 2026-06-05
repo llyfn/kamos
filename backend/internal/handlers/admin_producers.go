@@ -1,22 +1,13 @@
 // admin_producers.go — admin direct CRUD over producers.
 //
-// Stage 8 (admin catalog CRUD). Six endpoints, all admin-only:
-//
-//	GET    /v1/admin/producers
-//	GET    /v1/admin/producers/{id}
-//	POST   /v1/admin/producers
-//	PATCH  /v1/admin/producers/{id}
-//	DELETE /v1/admin/producers/{id}
-//	POST   /v1/admin/producers/{id}/restore
-//
 // Every mutation runs inside a single pgx.Tx that bundles the moderation
 // _log audit row, so the change + audit commit atomically. DELETE returns
 // 409 PRODUCER_HAS_LIVE_BEVERAGES when at least one beverage still
 // references the producer with deleted_at IS NULL.
 //
-// Migration 016: producer locality is captured via `prefecture_id` (FK
-// into `prefectures`). Admin clients send `prefecture_slug`; this
-// handler resolves it to a UUID before the write. Unknown slug → 422
+// Producer locality is captured via `prefecture_id` (FK into
+// `prefectures`). Admin clients send `prefecture_slug`; this handler
+// resolves it to a UUID before the write. Unknown slug → 422
 // INVALID_PREFECTURE_SLUG (mirrors `category_slug` on beverages).
 package handlers
 
@@ -37,7 +28,7 @@ import (
 // errUnknownPrefectureSlug is returned by the prefecture-slug resolver
 // when the supplied slug does not match any row in `prefectures`. The
 // handler maps this to 422 INVALID_PREFECTURE_SLUG (the canonical 47
-// slugs are seeded in migration 016).
+// slugs are seeded in `prefectures`).
 var errUnknownPrefectureSlug = errors.New("unknown prefecture_slug")
 
 // errEmptyPrefectureSlugOnCreate is returned when an AdminProducerCreate

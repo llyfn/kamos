@@ -17,11 +17,10 @@ type CollectionRepo struct{ db *pgxpool.Pool }
 
 // List returns the user's live collections with entry counts.
 //
-// Stage 5 (PERF-016): entry_count comes from the denormalized column
-// on collections (migration 011). The previous query LEFT JOINed
-// collection_entries and GROUP BYed c.id per row — that's O(rows) for
-// the JOIN scan even on the common case of a user with <20
-// collections, where the denormalized column is a single read.
+// entry_count is read directly from the denormalized column on
+// collections — a JOIN + GROUP BY on collection_entries would scan O(rows)
+// even in the common case of a user with <20 collections, where the
+// denormalized column is a single read.
 func (r *CollectionRepo) List(ctx context.Context, userID string) ([]domain.Collection, error) {
 	const q = `
 SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,

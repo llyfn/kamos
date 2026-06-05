@@ -1,11 +1,11 @@
-// Package repository — admin moderation_log reads (Stage 7, item M-8.1).
+// Package repository — admin moderation_log reads.
 //
 // The write path is in admin.go::insertModerationLog, called from inside the
 // approve/reject/moderate/suspend/role-change transactions. This file adds
 // the read counterpart so the admin UI can render the audit trail without
 // dropping into psql.
 //
-// Index reuse (migration 008):
+// Index reuse:
 //   - (target_type, target_id, created_at DESC)  → idx_moderation_log_target
 //   - (moderator_id, created_at DESC)            → idx_moderation_log_moderator
 //

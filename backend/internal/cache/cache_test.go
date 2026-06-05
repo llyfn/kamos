@@ -98,10 +98,10 @@ func TestLRUConcurrentReadWrite(t *testing.T) {
 	}
 }
 
-// TestLRUGetOrLoadCoalescesConcurrentMisses — Phase 7a MAJOR-1 regression.
-// Fires N concurrent GetOrLoad calls on the same missing key with a slow
-// loader and asserts the loader runs exactly once. Without singleflight,
-// every concurrent caller would issue its own loader call (the
+// TestLRUGetOrLoadCoalescesConcurrentMisses fires N concurrent
+// GetOrLoad calls on the same missing key with a slow loader and
+// asserts the loader runs exactly once. Without singleflight, every
+// concurrent caller would issue its own loader call (the
 // thundering-herd problem on hot-key TTL expiry).
 func TestLRUGetOrLoadCoalescesConcurrentMisses(t *testing.T) {
 	c := NewLRU[string, int]("sf-test", 16, time.Minute)

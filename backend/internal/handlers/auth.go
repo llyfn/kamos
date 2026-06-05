@@ -1,10 +1,10 @@
 // Package handlers — auth shared helpers.
 //
-// Stage 3 split: the actual HTTP handlers for the auth endpoints now live
-// in auth_credentials.go (Register/Login/GoogleLogin), auth_tokens.go
-// (RefreshToken/Logout), and auth_account.go (VerifyEmail/Resend/
-// PasswordChange/EmailChange). This file keeps the receiver helpers that
-// every group reaches for: sendVerificationEmail, refreshTTL, issueAuthPair.
+// The auth HTTP handlers live in auth_credentials.go (Register / Login /
+// GoogleLogin), auth_tokens.go (RefreshToken / Logout), and
+// auth_account.go (VerifyEmail / Resend / PasswordChange / EmailChange).
+// This file keeps the receiver helpers every group reaches for:
+// sendVerificationEmail, refreshTTL, issueAuthPair.
 package handlers
 
 import (

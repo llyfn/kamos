@@ -12,9 +12,9 @@ import (
 // visible across replicas (paired with cache.NotifyInvalidation), while
 // the existing typed LRU bundle remains the read-path fast lane.
 //
-// Stage 4 — the in-process backend continues to back the typed Caches
-// bundle (Categories / FlavorTags / BeverageDetail / ProducerDetail) used
-// by handlers. The Redis backend is an optional alternative selected by
+// The in-process backend backs the typed Caches bundle
+// (Categories / FlavorTags / BeverageDetail / ProducerDetail) used by
+// handlers. The Redis backend is an optional alternative selected by
 // CACHE_BACKEND=redis; when wired, the Bundle stays in front as an L1
 // and Redis serves as an L2 + cross-replica coherence layer.
 //

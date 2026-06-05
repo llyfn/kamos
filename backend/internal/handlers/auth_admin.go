@@ -1,4 +1,4 @@
-// auth_admin.go — Stage 4 admin cookie auth.
+// auth_admin.go — admin cookie auth.
 //
 // Three endpoints layered on top of the existing AuthService:
 //

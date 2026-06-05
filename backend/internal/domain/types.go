@@ -2,8 +2,7 @@
 // handlers and repositories. Validation methods enforce SPEC caps at the API
 // boundary (DB CHECKs are a backstop, not the primary line of defense).
 //
-// Stage 3 split: types previously lived in a single types.go file. The
-// individual structs and per-aggregate validators now live in:
+// Per-aggregate types live in:
 //
 //   - types_user.go        — User, PublicUser, Me, RegisterRequest, UpdateMeRequest, UserStats
 //   - types_auth.go        — LoginRequest, GoogleLoginRequest, VerifyEmail, PasswordChange,
@@ -14,8 +13,7 @@
 //     PhotoRef, CheckinSummary, FeedItem, ToastState, ValidRating
 //   - types_venue.go       — CheckinVenue + venue validation helpers, Venue, VenueRef
 //   - types_comment.go     — Comment, CreateCommentRequest
-//   - types_collection.go  — Collection, CollectionEntry,
-//     CollectionDetail, requests
+//   - types_collection.go  — Collection, CollectionEntry, CollectionDetail, requests
 //   - types_social.go      — FollowRequest, FollowResult
 //   - types_admin.go       — UserRole
 //   - types_request.go     — BeverageRequest (user-submitted feedback)

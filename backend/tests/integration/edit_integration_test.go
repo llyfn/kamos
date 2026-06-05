@@ -106,7 +106,7 @@ func TestUpdateCheckinNoOpDoesNotTouchEditedAt(t *testing.T) {
 }
 
 // TestUpdateCheckinPhotoCap — exceeding the 1-photo submission cap via
-// add_photos returns 422 PHOTO_CAP_EXCEEDED (Slice B / SPEC §4.1).
+// add_photos returns 422 PHOTO_CAP_EXCEEDED (SPEC §4.1).
 func TestUpdateCheckinPhotoCap(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)

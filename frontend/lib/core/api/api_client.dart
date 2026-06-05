@@ -94,10 +94,9 @@ String cacheKeyBuilder({
   Map<String, String>? headers,
   Object? body,
 }) {
-  // Stage 5 (PERF-018): the JWT `sub` is memoized inside
-  // SecureStorageService so the keyBuilder doesn't pay the base64 +
-  // JSON parse cost on every request. The memo invalidates whenever
-  // the active token changes.
+  // The JWT `sub` is memoized inside SecureStorageService so the
+  // keyBuilder doesn't pay the base64 + JSON parse cost on every
+  // request. The memo invalidates whenever the active token changes.
   final uid =
       SecureStorageService.currentSubMemoized(decodeUserIdFromJwt) ?? 'anon';
   // The default builder accepts a Uri, but we want to fold a non-URL

@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 
-// Stage 4 — auth state lives in HttpOnly cookies, so we can't synchronously
+// Auth state lives in HttpOnly cookies, so we can't synchronously
 // inspect "is logged in" before the route activates. Always redirect to
 // /queue; the route's own guards push the operator back to /login when
 // the session has lapsed.

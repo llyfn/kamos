@@ -1,22 +1,14 @@
 -- 001_initial.sql
--- KAMOS — consolidated baseline schema (post-MVP polish state).
+-- KAMOS — consolidated baseline schema.
 --
--- This file is a SQUASH of the entire pre-1.0 migration history (the
--- original 001..020 sequence and the post-MVP polish arc 003..007) into a
--- single DDL baseline that reproduces the exact production schema. It
--- carries no seed data — taxonomy / reference rows live in 002_seeding.sql.
+-- DDL baseline reproducing the production schema; carries no seed data
+-- (taxonomy / reference rows live in 002_seeding.sql). One transaction.
+-- Append-only: future changes go in a new file (003_…).
 --
--- It is recorded in schema_migrations as `001_initial.sql` (unchanged
--- filename) so production, which already has the full history applied,
--- never re-runs it. A fresh environment applies 001 + 002 and is then at
--- parity with production.
---
--- One transaction. Append-only: future changes go in a new file (003_…).
--- Traces: SPEC.md §2-§8 plus the post-MVP roadmap (refresh tokens, photo
--- uploads, venues, RBAC + moderation log, public collections, flat
--- comments, regions/prefectures, producer rename, notifications,
--- post-create editability, producer images, 0.25-step ratings, single
--- photo cap, subcategory taxonomy, flavor-tag soft-delete).
+-- Tracks SPEC.md §2-§8 plus refresh tokens, photo uploads, venues,
+-- RBAC + moderation log, public collections, flat comments,
+-- regions/prefectures, producer images, 0.25-step ratings, single
+-- photo cap, subcategory taxonomy, flavor-tag soft-delete.
 --
 -- A NOTE ON CONSTRAINT NAMES: several objects retain identifiers from the
 -- pre-rename era because PostgreSQL's ALTER … RENAME does not rewrite the
@@ -628,7 +620,7 @@ CREATE INDEX idx_beverage_flavor_tags_tag
   ON beverage_flavor_tags (flavor_tag_id);
 
 -- ===========================================================================
--- VENUES  (post-MVP roadmap, Foursquare-backed)
+-- VENUES  (Foursquare-backed)
 -- ===========================================================================
 -- Optional venue tag on check-ins. Venues live as long as any check-in
 -- references them; on check-in delete the FK is SET NULL and orphan venue rows
@@ -806,7 +798,7 @@ CREATE INDEX idx_check_in_flavor_tags_tag
   ON check_in_flavor_tags (flavor_tag_id);
 
 -- ===========================================================================
--- PHOTO UPLOADS  (post-MVP roadmap — presigned R2/S3 uploads)
+-- PHOTO UPLOADS  (presigned R2/S3 uploads)
 -- ===========================================================================
 -- Tracks presigned-PUT photo uploads to Cloudflare R2 (or any S3-compatible
 -- backend). Lifecycle:
@@ -1017,10 +1009,9 @@ CREATE INDEX idx_collection_entries_beverage
   ON collection_entries (beverage_id);
 
 -- ===========================================================================
--- COMMENTS  (post-MVP roadmap — flat comments on check-ins)
+-- COMMENTS  (flat comments on check-ins)
 -- ===========================================================================
--- One row per comment. No threading (SPEC §9 keeps threaded comments
--- anti-scope; flat is reopened in v1.1). The body-length check mirrors the
+-- One row per comment. No threading. The body-length check mirrors the
 -- SPEC §6.7 review-text cap (≤ 500 chars). The no-control-character check is
 -- defense in depth against poisoned UTF-8 reaching the shared comment surface.
 --

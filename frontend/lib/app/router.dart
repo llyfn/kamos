@@ -127,10 +127,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (_, state) =>
                 _noTransition(state, const MeProfileScreen()),
           ),
-          // Slice D — user-beverages + followers/following pages keep the
-          // bottom tab bar visible per the brief; they live inside the
-          // ShellRoute even though the parent `/users/:username` profile
-          // sits outside it.
+          // user-beverages + followers/following pages keep the bottom
+          // tab bar visible; they live inside the ShellRoute even
+          // though the parent `/users/:username` profile sits outside it.
           GoRoute(
             path: '/users/:username/beverages',
             pageBuilder: (_, state) => _noTransition(

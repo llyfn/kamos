@@ -1,5 +1,5 @@
 // subcategories.go — public read endpoint for the beverage_subcategories
-// taxonomy table. Slice C (migration 005).
+// taxonomy table.
 //
 // The endpoint is cached per category via the existing in-process LRU
 // bundle. The loader returns the raw name_i18n JSONB blob (no server-side

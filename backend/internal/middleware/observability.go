@@ -32,12 +32,11 @@ func Trace(next http.Handler) http.Handler {
 		// Pull the chi route pattern after routing — chi populates it.
 		// We need to defer the span name until then, so we start with a
 		// placeholder and rename via SpanFromContext after ServeHTTP.
-		// Stage 5 (PERF-030): `http.target` (raw URL path) is high-
-		// cardinality — every UUID in /v1/check-ins/{id} blows up the
-		// span attribute set in OTel and the search index downstream.
-		// We start the span with just the method, then attach the
-		// chi-resolved route pattern as `http.route` after the handler
-		// runs (see below).
+		// `http.target` (raw URL path) is high-cardinality — every UUID
+		// in /v1/check-ins/{id} blows up the span attribute set in OTel
+		// and the search index downstream. We start the span with just
+		// the method, then attach the chi-resolved route pattern as
+		// `http.route` after the handler runs (see below).
 		ctx, span := tr.Start(r.Context(), "HTTP "+r.Method,
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(

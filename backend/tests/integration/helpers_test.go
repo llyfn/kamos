@@ -115,13 +115,12 @@ WHERE schemaname = 'public'
 }
 
 // truncateAdminTaxonomySeedTables resets beverage_subcategories and
-// flavor_tags to their post-migration seed state: keep only the rows
-// that were inserted by migration 002 / 005 (admin-curated rows have a
-// `created_at` newer than the migration commit time), drop any test
-// residue, and clear deleted_at on any tombstoned seed row a prior test
-// soft-deleted. Slice C added these tables to truncateAll's exclusion
-// list so the seed survives — this function backstops the consequence
-// (admin tests that POST new rows accumulate across runs).
+// flavor_tags to their post-migration seed state: keep only the seeded
+// rows (admin-curated rows have a `created_at` newer than the migration
+// commit time), drop any test residue, and clear deleted_at on any
+// tombstoned seed row a prior test soft-deleted. The truncateAll
+// exclusion list preserves the seed; this function backstops the
+// consequence (admin tests that POST new rows accumulate across runs).
 func truncateAdminTaxonomySeedTables(t *testing.T) {
 	t.Helper()
 	p := getPool(t)

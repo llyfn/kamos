@@ -79,9 +79,9 @@ func TestFollowRequestFlowPrivate(t *testing.T) {
 		t.Errorf("status: %v want pending", resp["status"])
 	}
 
-	// B reads the notifications inbox and sees a follow_request from A
-	// (GET /v1/follow-requests was retired in Phase 4 — the notifications
-	// inbox subsumed the listing).
+	// B reads the notifications inbox and sees a follow_request from A.
+	// (The notifications inbox subsumes the legacy
+	// GET /v1/follow-requests listing.)
 	code, raw = doReq(t, srv, http.MethodGet, "/v1/notifications", tokB, nil)
 	if code != http.StatusOK {
 		t.Fatalf("inbox: %d body=%s", code, raw)

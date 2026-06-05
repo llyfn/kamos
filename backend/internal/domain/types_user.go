@@ -74,10 +74,10 @@ type Me struct {
 	// the SoftDeleteCache, so this field is normally only seen by admin
 	// queues looking at lapsed soft-deleted accounts.
 	//
-	// Stage 7 (M-11.3): omitempty so live users do not carry a literal
-	// `"deleted_at": null` on every /me poll. When set (rare — only the
-	// brief window between admin suspension and the next refresh failure)
-	// the field appears as an RFC3339 timestamp.
+	// omitempty so live users do not carry a literal `"deleted_at": null`
+	// on every /me poll. When set (rare — only the brief window between
+	// admin suspension and the next refresh failure) the field appears as
+	// an RFC3339 timestamp.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 }
 

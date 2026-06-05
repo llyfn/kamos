@@ -1,14 +1,5 @@
 // admin_beverages.go — admin direct CRUD over beverages.
 //
-// Stage 8 (admin catalog CRUD). Six endpoints, all admin-only:
-//
-//	GET    /v1/admin/beverages
-//	GET    /v1/admin/beverages/{id}
-//	POST   /v1/admin/beverages
-//	PATCH  /v1/admin/beverages/{id}
-//	DELETE /v1/admin/beverages/{id}
-//	POST   /v1/admin/beverages/{id}/restore
-//
 // Direct admin write access supplements the existing user-submission
 // queue (/v1/admin/beverage-requests). Every mutation bundles its
 // moderation_log audit row into the same pgx.Tx so the change + audit
@@ -114,9 +105,9 @@ func (h *Handler) AdminCreateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeCategoryErr(w, "AdminCreateBeverage", err)
 		return
 	}
-	// Slice C: empty subcategory_id on POST means "no subcategory" —
-	// the repo expects nil, not a ptr to empty string (the UUID cast
-	// would otherwise raise).
+	// Empty subcategory_id on POST means "no subcategory" — the repo
+	// expects nil, not a ptr to empty string (the UUID cast would
+	// otherwise raise).
 	if body.SubcategoryID != nil && *body.SubcategoryID == "" {
 		body.SubcategoryID = nil
 	}

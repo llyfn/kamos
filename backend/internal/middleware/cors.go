@@ -25,8 +25,8 @@ type CORSConfig struct {
 //   - Vary: Origin
 //
 // Allow-Credentials is required because the admin SPA calls the API with
-// credentials:'include' for its HttpOnly cookie auth (Stage 4). Echoing the
-// exact matched origin (never "*") is what lets a credentialed cross-origin
+// credentials:'include' for its HttpOnly cookie auth. Echoing the exact
+// matched origin (never "*") is what lets a credentialed cross-origin
 // request succeed; the allowlist is exact-match (SEC-002), so this is safe.
 //
 // Unmatched origins fall through with no CORS headers; the browser will

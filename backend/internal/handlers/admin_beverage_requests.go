@@ -1,5 +1,4 @@
-// admin_beverage_requests.go — admin queue for user-submitted
-// beverage feedback. Split out of admin.go in Stage 3.
+// admin_beverage_requests.go — admin queue for user-submitted beverage feedback.
 package handlers
 
 import (
@@ -96,12 +95,12 @@ func (h *Handler) AdminApproveBeverageRequest(w http.ResponseWriter, r *http.Req
 		h.writeErr(w, "AdminApproveBeverageRequest", err)
 		return
 	}
-	// a new beverage just landed under this producer. The producer's
+	// A new beverage just landed under this producer. The producer's
 	// detail response shape doesn't actually change (the LRU caches the
 	// producer row only, not the inline beverages page), so this is
 	// belt-and-braces: if the response ever embeds beverage_count or a
-	// preview, the cache stays consistent. Stage 4: also fire NOTIFY so
-	// peer replicas bust their copies.
+	// preview, the cache stays consistent. Also fires NOTIFY so peer
+	// replicas bust their copies.
 	if body.ProducerID != "" {
 		if h.Caches != nil {
 			h.Caches.ProducerDetail.InvalidatePrefix(body.ProducerID + ":")

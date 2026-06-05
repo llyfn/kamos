@@ -1,7 +1,6 @@
 // Package jobs runs background maintenance tasks: username-hold release,
 // email-verification cleanup, photo-orphan cleanup, and the rating-aggregate
-// self-heal. Owned by cmd/worker as of Stage 4 — the API server no longer
-// registers any jobs.
+// self-heal. Owned by cmd/worker; the API server does not register jobs.
 //
 // Each tick is wrapped in pg_try_advisory_lock keyed on the job name. This
 // is a belt-and-suspenders guard: the worker is a single replica by
@@ -101,10 +100,10 @@ func (s *Scheduler) run(j Job) {
 // scheduler's; ticks must not deadlock if a single iteration hangs forever,
 // so we give the job a generous-but-bounded budget of 5 minutes.
 //
-// Stage 4 — the tick body is gated by pg_try_advisory_lock("kamos:job:<name>").
-// When the lock is held by another worker the tick logs at DEBUG and skips;
-// when the DB is missing (nil pool, tests), we skip the lock and run as
-// before so unit tests keep their old shape.
+// The tick body is gated by pg_try_advisory_lock("kamos:job:<name>").
+// When the lock is held by another worker the tick logs at DEBUG and
+// skips; when the DB is missing (nil pool, tests), we skip the lock and
+// run synchronously so unit tests keep their shape.
 func (s *Scheduler) invoke(j Job) {
 	defer func() {
 		if rec := recover(); rec != nil {

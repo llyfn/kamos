@@ -35,10 +35,10 @@ import (
 
 // RoleResolver wraps the user-role lookup. One per server.
 //
-// SEC-027 (Stage 4): an in-process LRU + 5s TTL on (user_id → role)
-// lookups cuts the hot-admin-endpoint DB pressure from one SELECT per
-// request to ~one per 5s per user. The 5s ceiling is the explicit
-// staleness window — a demotion via UpdateUserRole / SuspendUser flushes
+// SEC-027: an in-process LRU + 5s TTL on (user_id → role) lookups cuts
+// the hot-admin-endpoint DB pressure from one SELECT per request to
+// ~one per 5s per user. The 5s ceiling is the explicit staleness window
+// — a demotion via UpdateUserRole / SuspendUser flushes
 // the entry immediately via Invalidate, so the cache is staleness-
 // bounded in both directions.
 type RoleResolver struct {

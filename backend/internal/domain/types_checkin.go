@@ -198,11 +198,9 @@ type PhotoRef struct {
 }
 
 // CheckinSummary is a lighter shape for "recent check-ins" sections.
-// Stage 5 (PERF-010): the summary carries Photos hydrated via the
-// PhotosFor batch helper so the beverage detail screen can render
-// thumbnails without a follow-up round trip. Profile-UX expansion: it
-// also carries Tags (flavor tag chips) so the beverage detail
-// "recent check-ins" rows can render richer cards.
+// Carries Photos (via PhotosFor) and Tags (flavor tag chips) so the
+// beverage detail screen can render thumbnails + rich cards without
+// follow-up round trips.
 type CheckinSummary struct {
 	ID        string      `json:"id"`
 	User      CheckinUser `json:"user"`
@@ -213,12 +211,10 @@ type CheckinSummary struct {
 	CreatedAt time.Time   `json:"created_at"`
 }
 
-// FeedItem matches HANDOFF's feedItem shape. Stage 5 (PERF-002):
-// the previous `photo_count` integer is replaced by a hydrated
-// `photos: []PhotoRef` slice so the Flutter feed card can render
-// the actual photo grid without a follow-up request per check-in.
-// `comment_count` and `toasts` are now denormalized counter reads
-// from check_ins (migration 011) rather than correlated subqueries.
+// FeedItem matches HANDOFF's feedItem shape. `photos` is a hydrated
+// []PhotoRef slice so the Flutter feed card can render the actual
+// photo grid without a follow-up request per check-in. `comment_count`
+// and `toasts` are denormalized counter reads from check_ins.
 type FeedItem struct {
 	ID           string      `json:"id"`
 	User         CheckinUser `json:"user"`

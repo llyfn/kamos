@@ -101,9 +101,9 @@ function initialState(
   p: CatalogBeverageFormPartial | undefined,
 ): FormState {
   if (b) {
-    // Slice C: prefer the canonical subcategory.id; the dual-source
-    // fallback (id="") means "show legacy text only" — surface that as
-    // null in the picker so the admin can pick a real row.
+    // Prefer the canonical subcategory.id; the dual-source fallback
+    // (id="") means "show legacy text only" — surface that as null in
+    // the picker so the admin can pick a real row.
     const subId = b.subcategory?.id ? b.subcategory.id : null;
     return {
       producer: { id: b.producer.id, label: preferredName(b.producer.name) },
@@ -242,10 +242,9 @@ export function CatalogBeverageForm({
       category_slug: form.category_slug,
       name_i18n: ko ? { en, ja, ko } : { en, ja },
     };
-    // Slice C: subcategory_id flow. Always emit the field so the PATCH
-    // path can clear it (empty string) when the user picked (none). On
-    // create the empty string is harmless — the server treats it as
-    // "no subcategory" (the same as omitting).
+    // Always emit subcategory_id so the PATCH path can clear it (empty
+    // string) when the user picks (none). On create the empty string
+    // is harmless — the server treats it as "no subcategory".
     body.subcategory_id = form.subcategory_id ?? '';
     if (form.abv.trim()) {
       const n = Number(form.abv);

@@ -38,13 +38,12 @@ const resendHTTPTimeout = 10 * time.Second
 
 // ResendMailer ships outbound mail through Resend's REST API.
 //
-// Stage 5 (PERF-029): the previous shape blocked the caller for one
-// in-request HTTP round trip plus, on 5xx, a `time.Sleep(1s)` retry.
-// The Sleep tied up the request goroutine and the user-visible
-// latency for /v1/auth/register included the Resend POST. We now
+// A synchronous shape would block the caller for one in-request HTTP
+// round trip plus a sleep-retry on 5xx, tying up the request goroutine
+// and folding the Resend latency into /v1/auth/register. We instead
 // enqueue the request onto a bounded channel and let two background
-// workers drain it; Send returns nil after a successful enqueue,
-// errors only on shutdown or a full queue.
+// workers drain it; Send returns nil after a successful enqueue, errors
+// only on shutdown or a full queue.
 //
 // We intentionally avoid the resend-go SDK to keep the dependency
 // surface minimal — the wire protocol is a single POST.
@@ -61,9 +60,9 @@ type ResendMailer struct {
 
 // NewResendMailer builds the mailer with a sensible HTTP client and
 // starts the background worker pool. The workers exit when Stop is
-// called; we don't currently wire Stop to a server-side shutdown
-// hook — when we do (post-Stage 9 graceful drain), in-flight mail
-// finishes; queued-but-not-sent mail is dropped with a log line.
+// called. Stop is not currently wired to a server-side shutdown hook;
+// when it is, in-flight mail finishes and queued-but-not-sent mail is
+// dropped with a log line.
 func NewResendMailer(apiKey, from string, log *slog.Logger) *ResendMailer {
 	m := &ResendMailer{
 		APIKey:  apiKey,

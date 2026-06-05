@@ -29,7 +29,7 @@ func (r UserRole) Valid() bool {
 }
 
 // ---------------------------------------------------------------------------
-// Moderation log audit entry (Stage 7, item M-8.1)
+// Moderation log audit entry
 // ---------------------------------------------------------------------------
 
 // ModerationLogEntry is one row of the audit trail backing

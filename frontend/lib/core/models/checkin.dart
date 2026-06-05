@@ -52,9 +52,9 @@ abstract class Checkin with _$Checkin {
     VenueRef? venue,
     @Default(0) int toasts,
     @Default(false) bool youToasted,
-    // Server-aggregated comment count (Phase 6a). Defaults to 0 so older
-    // servers (or omitted-key responses) remain wire-compatible. Mirrors
-    // the same field on FeedItem so the detail screen can render the
+    // Server-aggregated comment count. Defaults to 0 so older servers
+    // (or omitted-key responses) remain wire-compatible. Mirrors the
+    // same field on FeedItem so the detail screen can render the
     // comment badge without a separate `GET /comments` round trip.
     @Default(0) int commentCount,
     @Default('') String createdAt,
@@ -130,8 +130,8 @@ abstract class FeedItem with _$FeedItem {
     double? rating,
     String? review,
     @Default(<FlavorTag>[]) List<FlavorTag> tags,
-    // Stage 5: the server now hydrates photos[] directly on the feed.
-    // The card uses photos.length for the count (no separate field).
+    // The server hydrates photos[] directly on the feed; the card uses
+    // photos.length for the count (no separate field).
     @Default(<PhotoRef>[]) List<PhotoRef> photos,
     VenueRef? venue,
     @Default(0) int toasts,

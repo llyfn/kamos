@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Phase 6a — flat comments on check-ins.
+// Flat comments on check-ins.
 package integration
 
 import (

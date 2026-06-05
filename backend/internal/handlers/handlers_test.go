@@ -117,23 +117,21 @@ func TestAuthedRoutesRequireBearer(t *testing.T) {
 		{http.MethodPost, "/v1/follow-requests/u-1/decline"},
 		{http.MethodGet, "/v1/collections"},
 		{http.MethodPost, "/v1/collections"},
-		// GET /v1/collections/{id} is OptionalAuth as of Phase 6a — the
-		// public-discovery route deep-links here, so anonymous viewers
-		// must succeed on public rows. Excluded from the bearer-required
-		// list deliberately.
+		// GET /v1/collections/{id} is OptionalAuth — the public-discovery
+		// route deep-links here, so anonymous viewers must succeed on
+		// public rows. Excluded from the bearer-required list deliberately.
 		{http.MethodPatch, "/v1/collections/c-1"},
 		{http.MethodDelete, "/v1/collections/c-1"},
 		{http.MethodPost, "/v1/collections/c-1/entries"},
 		{http.MethodPatch, "/v1/collections/c-1/entries/b-1"},
 		{http.MethodDelete, "/v1/collections/c-1/entries/b-1"},
 		{http.MethodPost, "/v1/beverage-requests"},
-		// slice 01 — PATCH /v1/comments/{id} is the comment edit endpoint.
 		{http.MethodPatch, "/v1/comments/c-1"},
 		{http.MethodPost, "/v1/auth/resend-verification"},
 		{http.MethodPost, "/v1/auth/password-change"},
 		{http.MethodPost, "/v1/auth/email-change"},
-		// Phase 5a — admin routes. Auth fires first, so a missing token
-		// returns 401 UNAUTHORIZED before RequireRole hits the DB.
+		// Admin routes. Auth fires first, so a missing token returns 401
+		// UNAUTHORIZED before RequireRole hits the DB.
 		{http.MethodGet, "/v1/admin/beverage-requests"},
 		{http.MethodPost, "/v1/admin/beverage-requests/req-1/approve"},
 		{http.MethodPost, "/v1/admin/beverage-requests/req-1/reject"},
@@ -287,7 +285,7 @@ func TestCreateCheckinRatingValidation(t *testing.T) {
 }
 
 // Create-checkin with 2 photos is rejected by Validate() (SPEC §4.1 caps
-// submissions at 1 photo; Slice B).
+// submissions at 1 photo).
 func TestCreateCheckinPhotoCap(t *testing.T) {
 	srv, signer := newTestServer(t)
 	tok, _ := signer.Sign("u-1", "yamamoto")
@@ -364,7 +362,6 @@ func TestCreateCollectionValidation(t *testing.T) {
 }
 
 // UploadCheckinPhoto without an upload_id is rejected by the handler.
-// (Phase 3 replaced the MVP `{ url }` body with `{ upload_id }`.)
 func TestUploadCheckinPhotoRequiresUploadID(t *testing.T) {
 	srv, signer := newTestServer(t)
 	tok, _ := signer.Sign("u-1", "yamamoto")

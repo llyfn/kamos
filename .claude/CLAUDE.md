@@ -166,6 +166,38 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 - Do not modify files outside the requested scope. No bundled refactors.
 - If the work is multi-layer (e.g., new endpoint requiring a migration + handler + Flutter screen), prefer invoking `kamos-build` or coordinating through the agent files rather than freelancing all three layers in one pass.
 
+## Code comments — strict policy
+
+Default to writing **no comments**. Only two kinds of comment are acceptable:
+
+1. The **non-obvious why or how** of a tricky piece of code — a hidden constraint, a subtle invariant, a workaround for a known bug, an unusual decision. If a future reader who already understands the surrounding code would be confused without it, write it. Otherwise don't.
+2. A **really brief outline** (one short line, not a multi-line docstring) at the top of a file, class, or function describing its purpose.
+
+**Never write:**
+
+- History/changelog comments — `// added for Slice B`, `// post-MVP polish`, `// Phase 2`, PR/issue numbers, dates, `// removed in 2026-…`, `// see PR #42`.
+- Task-tracking comments — `// used by Z`, `// handles the case from issue #…`, `// for the Y flow`.
+- Restatements of well-named identifiers.
+- Apologies/hedges/TODOs you don't intend to action this turn.
+
+**When editing existing code:** if you touch a function, sweep out the surrounding comments that violate the rules above — they're orphans from prior work, not load-bearing.
+
+This rule is non-negotiable and applies to Go, Dart, TypeScript, SQL, and ARB description fields alike. `qa-inspector` and code reviewers should flag violations as MAJOR.
+
+## UI consistency baseline
+
+All non-auth screens (Feed / Lists / Discover / Notifications / Me + every detail/edit/sub screen) share one chrome baseline:
+
+- A page title in the same size/weight token as Collections (`KamosTypography.titleLg` or equivalent).
+- Stat tiles and info rows are **chromeless** — no `bgWarm` panel, no border, no rounded background — unless the spec calls out a card.
+- Form labels (`RATING`, `REVIEW`, etc.) use the high-contrast label token, never a low-opacity grey.
+- Form placeholders never include example values (no `e.g. 1500`, no sample text). Placeholders state the field's purpose only.
+- Primary CTAs at the bottom of forms are full-width pills. While submitting, the button stays styled the same — no inline spinner — and the label switches to a short progress word (e.g. `Posting…`).
+- Avatars, names, and inline meta-rows align on a single vertical center axis. Profile-image taps go to the user's profile; user-name taps inside a check-in card go to the check-in detail, not the profile.
+- Beverage subtitle lines show **Category · Subcategory** (never Category · Prefecture, never Producer · Prefecture in feed/discover/check-in card contexts).
+
+If a screen looks "off" against any of these, fix it in the slice that touches it — don't accept inconsistency.
+
 ## Verification — before declaring "done"
 
 A task is not complete until the relevant verification passes:
