@@ -26,6 +26,7 @@ import {
   type ProducerPickerValue,
   preferredName,
 } from '@/components/ProducerPicker';
+import { SubcategoryPicker } from '@/components/SubcategoryPicker';
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';
 
@@ -50,6 +51,7 @@ export interface CatalogBeverageFormPartial {
   producer_id?: string;
   producer_label?: string;
   category_slug?: CategorySlug | '';
+  subcategory_id?: string | null;
   name_en?: string;
   name_ja?: string;
   name_ko?: string;
@@ -75,6 +77,7 @@ interface CatalogBeverageFormProps {
 interface FormState {
   producer: ProducerPickerValue | null;
   category_slug: CategorySlug | '';
+  subcategory_id: string | null;
   name_en: string;
   name_ja: string;
   name_ko: string;
@@ -98,9 +101,14 @@ function initialState(
   p: CatalogBeverageFormPartial | undefined,
 ): FormState {
   if (b) {
+    // Slice C: prefer the canonical subcategory.id; the dual-source
+    // fallback (id="") means "show legacy text only" — surface that as
+    // null in the picker so the admin can pick a real row.
+    const subId = b.subcategory?.id ? b.subcategory.id : null;
     return {
       producer: { id: b.producer.id, label: preferredName(b.producer.name) },
       category_slug: b.category.slug,
+      subcategory_id: subId,
       name_en: b.name.en ?? '',
       name_ja: b.name.ja ?? '',
       name_ko: b.name.ko ?? '',
@@ -117,6 +125,7 @@ function initialState(
   return {
     producer: p?.producer_id ? { id: p.producer_id, label: p.producer_label ?? '' } : null,
     category_slug: p?.category_slug ?? '',
+    subcategory_id: p?.subcategory_id ?? null,
     name_en: p?.name_en ?? '',
     name_ja: p?.name_ja ?? '',
     name_ko: p?.name_ko ?? '',
@@ -233,6 +242,11 @@ export function CatalogBeverageForm({
       category_slug: form.category_slug,
       name_i18n: ko ? { en, ja, ko } : { en, ja },
     };
+    // Slice C: subcategory_id flow. Always emit the field so the PATCH
+    // path can clear it (empty string) when the user picked (none). On
+    // create the empty string is harmless — the server treats it as
+    // "no subcategory" (the same as omitting).
+    body.subcategory_id = form.subcategory_id ?? '';
     if (form.abv.trim()) {
       const n = Number(form.abv);
       if (Number.isNaN(n) || n < 0 || n > 60) {
@@ -313,7 +327,13 @@ export function CatalogBeverageForm({
         <span className="text-[color:var(--color-muted)]">Category *</span>
         <select
           value={form.category_slug}
-          onChange={(e) => set('category_slug', e.target.value as CategorySlug | '')}
+          onChange={(e) => {
+            const next = e.target.value as CategorySlug | '';
+            // Changing the category invalidates the current subcategory
+            // (subcategory_id is FK-scoped to category_id). Clear it so
+            // the user has to repick from the now-filtered dropdown.
+            setForm((prev) => ({ ...prev, category_slug: next, subcategory_id: null }));
+          }}
           required
           className="border border-[color:var(--color-border)] rounded px-2 py-1 bg-[color:var(--color-surface)]"
         >
@@ -325,6 +345,12 @@ export function CatalogBeverageForm({
           ))}
         </select>
       </label>
+
+      <SubcategoryPicker
+        categorySlug={form.category_slug}
+        value={form.subcategory_id}
+        onChange={(id) => set('subcategory_id', id)}
+      />
 
       <TextField
         label="ABV % (optional, 0–60)"

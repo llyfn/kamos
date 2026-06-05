@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as SubcategoriesRouteImport } from './routes/subcategories'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as ProducersRouteImport } from './routes/producers'
 import { Route as ModerationLogRouteImport } from './routes/moderation-log'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as FlavorTagsRouteImport } from './routes/flavor-tags'
 import { Route as CommentsRouteImport } from './routes/comments'
 import { Route as CheckinsRouteImport } from './routes/checkins'
 import { Route as BeveragesRouteImport } from './routes/beverages'
@@ -22,6 +24,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubcategoriesRoute = SubcategoriesRouteImport.update({
+  id: '/subcategories',
+  path: '/subcategories',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueueRoute = QueueRouteImport.update({
@@ -42,6 +49,11 @@ const ModerationLogRoute = ModerationLogRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlavorTagsRoute = FlavorTagsRouteImport.update({
+  id: '/flavor-tags',
+  path: '/flavor-tags',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommentsRoute = CommentsRouteImport.update({
@@ -70,10 +82,12 @@ export interface FileRoutesByFullPath {
   '/beverages': typeof BeveragesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
+  '/flavor-tags': typeof FlavorTagsRoute
   '/login': typeof LoginRoute
   '/moderation-log': typeof ModerationLogRoute
   '/producers': typeof ProducersRoute
   '/queue': typeof QueueRoute
+  '/subcategories': typeof SubcategoriesRoute
   '/users': typeof UsersRoute
 }
 export interface FileRoutesByTo {
@@ -81,10 +95,12 @@ export interface FileRoutesByTo {
   '/beverages': typeof BeveragesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
+  '/flavor-tags': typeof FlavorTagsRoute
   '/login': typeof LoginRoute
   '/moderation-log': typeof ModerationLogRoute
   '/producers': typeof ProducersRoute
   '/queue': typeof QueueRoute
+  '/subcategories': typeof SubcategoriesRoute
   '/users': typeof UsersRoute
 }
 export interface FileRoutesById {
@@ -93,10 +109,12 @@ export interface FileRoutesById {
   '/beverages': typeof BeveragesRoute
   '/checkins': typeof CheckinsRoute
   '/comments': typeof CommentsRoute
+  '/flavor-tags': typeof FlavorTagsRoute
   '/login': typeof LoginRoute
   '/moderation-log': typeof ModerationLogRoute
   '/producers': typeof ProducersRoute
   '/queue': typeof QueueRoute
+  '/subcategories': typeof SubcategoriesRoute
   '/users': typeof UsersRoute
 }
 export interface FileRouteTypes {
@@ -106,10 +124,12 @@ export interface FileRouteTypes {
     | '/beverages'
     | '/checkins'
     | '/comments'
+    | '/flavor-tags'
     | '/login'
     | '/moderation-log'
     | '/producers'
     | '/queue'
+    | '/subcategories'
     | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -117,10 +137,12 @@ export interface FileRouteTypes {
     | '/beverages'
     | '/checkins'
     | '/comments'
+    | '/flavor-tags'
     | '/login'
     | '/moderation-log'
     | '/producers'
     | '/queue'
+    | '/subcategories'
     | '/users'
   id:
     | '__root__'
@@ -128,10 +150,12 @@ export interface FileRouteTypes {
     | '/beverages'
     | '/checkins'
     | '/comments'
+    | '/flavor-tags'
     | '/login'
     | '/moderation-log'
     | '/producers'
     | '/queue'
+    | '/subcategories'
     | '/users'
   fileRoutesById: FileRoutesById
 }
@@ -140,10 +164,12 @@ export interface RootRouteChildren {
   BeveragesRoute: typeof BeveragesRoute
   CheckinsRoute: typeof CheckinsRoute
   CommentsRoute: typeof CommentsRoute
+  FlavorTagsRoute: typeof FlavorTagsRoute
   LoginRoute: typeof LoginRoute
   ModerationLogRoute: typeof ModerationLogRoute
   ProducersRoute: typeof ProducersRoute
   QueueRoute: typeof QueueRoute
+  SubcategoriesRoute: typeof SubcategoriesRoute
   UsersRoute: typeof UsersRoute
 }
 
@@ -154,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subcategories': {
+      id: '/subcategories'
+      path: '/subcategories'
+      fullPath: '/subcategories'
+      preLoaderRoute: typeof SubcategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/queue': {
@@ -182,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flavor-tags': {
+      id: '/flavor-tags'
+      path: '/flavor-tags'
+      fullPath: '/flavor-tags'
+      preLoaderRoute: typeof FlavorTagsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/comments': {
@@ -220,10 +260,12 @@ const rootRouteChildren: RootRouteChildren = {
   BeveragesRoute: BeveragesRoute,
   CheckinsRoute: CheckinsRoute,
   CommentsRoute: CommentsRoute,
+  FlavorTagsRoute: FlavorTagsRoute,
   LoginRoute: LoginRoute,
   ModerationLogRoute: ModerationLogRoute,
   ProducersRoute: ProducersRoute,
   QueueRoute: QueueRoute,
+  SubcategoriesRoute: SubcategoriesRoute,
   UsersRoute: UsersRoute,
 }
 export const routeTree = rootRouteImport
