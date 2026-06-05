@@ -1,18 +1,15 @@
 // KAMOS — User beverages provider.
 //
-// AsyncNotifier family keyed by `UserBeveragesArgs` (username + filter +
-// sort tuple). The filter UI rebuilds the args record on each toggle; a
-// fresh provider key spins up a fresh notifier, which means switching
-// filters re-issues the first-page fetch from scratch — exactly the
-// behaviour the screen wants. `loadMore` paginates within a given key.
+// AsyncNotifier family keyed by `UserBeveragesArgs`. A change in any
+// filter/sort/dir field creates a fresh notifier with a fresh first-page
+// fetch (cursor null). `autoDispose` releases the prior notifier so the
+// list never reuses a cursor across sort modes.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/user_beverage.dart';
 import '../repository/users_repository.dart';
 
-/// Family key for `userBeveragesProvider`. Equality is value-based so
-/// two identical filter sets land on the same notifier instance.
 class UserBeveragesArgs {
   const UserBeveragesArgs({
     required this.username,
@@ -126,15 +123,13 @@ class UserBeveragesNotifier
         ),
       );
     } catch (_) {
-      // Load-more failures don't replace the visible list — restore
-      // the flag so the scroll listener can retry on the next nudge.
       state = AsyncValue.data(current.copyWith(isLoadingMore: false));
     }
   }
 }
 
 final userBeveragesProvider =
-    AsyncNotifierProvider.family<
+    AsyncNotifierProvider.autoDispose.family<
       UserBeveragesNotifier,
       UserBeveragesState,
       UserBeveragesArgs

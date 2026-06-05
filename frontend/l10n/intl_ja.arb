@@ -310,7 +310,7 @@
   "@userBeveragesCheckinCount": { "placeholders": { "count": { "type": "int" } } },
   "userBeveragesSort": "並び替え",
   "userBeveragesSortRating": "評価",
-  "userBeveragesSortLastCheckin": "最近",
+  "userBeveragesSortLastCheckin": "日付",
   "userBeveragesSortProducer": "生産者",
   "userBeveragesSortCategory": "カテゴリ",
   "userBeveragesMinRating": "最低評価",

@@ -791,7 +791,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get userBeveragesSortRating => '評価';
 
   @override
-  String get userBeveragesSortLastCheckin => '最近';
+  String get userBeveragesSortLastCheckin => '日付';
 
   @override
   String get userBeveragesSortProducer => '生産者';

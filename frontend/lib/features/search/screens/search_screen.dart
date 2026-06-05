@@ -33,13 +33,13 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _q = TextEditingController();
   Timer? _debounce;
-  String? _category;
 
   @override
   void initState() {
     super.initState();
-    // Bootstrap the listing with no filter.
-    Future.microtask(() => ref.read(beverageListProvider.notifier).refresh());
+    final notifier = ref.read(beverageListProvider.notifier);
+    _q.text = ref.read(beverageListProvider).query;
+    Future.microtask(() => notifier.refresh());
   }
 
   @override
@@ -130,13 +130,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: KamosChip(
                         label: l.searchCategoryAll,
-                        selected: _category == null,
-                        onTap: () {
-                          setState(() => _category = null);
-                          ref
-                              .read(beverageListProvider.notifier)
-                              .setCategory(null);
-                        },
+                        selected: state.category == null,
+                        onTap: () => ref
+                            .read(beverageListProvider.notifier)
+                            .setCategory(null),
                       ),
                     ),
                     for (final slug in CategorySlug.values)
@@ -144,14 +141,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: KamosChip(
                           label: categoryLabel(context, slug),
-                          selected: _category == categorySlugToWire(slug),
-                          onTap: () {
-                            final wire = categorySlugToWire(slug);
-                            setState(() => _category = wire);
-                            ref
-                                .read(beverageListProvider.notifier)
-                                .setCategory(wire);
-                          },
+                          selected:
+                              state.category == categorySlugToWire(slug),
+                          onTap: () => ref
+                              .read(beverageListProvider.notifier)
+                              .setCategory(categorySlugToWire(slug)),
                         ),
                       ),
                   ],
@@ -206,7 +200,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                   // not something the user can suggest their way
                                   // out of.
                                   action:
-                                      (_q.text.isNotEmpty || _category != null)
+                                      (_q.text.isNotEmpty || state.category != null)
                                       ? TextButton(
                                           onPressed: () => context.push(
                                             '/beverage-requests/new',
@@ -242,6 +236,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           final catLabel = slug == null
                               ? resolveI18n(b.category.labelI18n, locale)
                               : categoryLabel(context, slug);
+                          final sub = b.subcategory == null
+                              ? ''
+                              : resolveI18n(b.subcategory!.name, locale);
+                          final subtitle = sub.isEmpty
+                              ? catLabel
+                              : '$catLabel · $sub';
                           return KamosCard(
                             onTap: () => context.push('/beverages/${b.id}'),
                             child: Row(
@@ -274,7 +274,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                         ),
                                       ),
                                       Text(
-                                        catLabel,
+                                        subtitle,
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: t.fg3,

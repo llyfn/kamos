@@ -1579,7 +1579,7 @@ abstract class AppLocalizations {
   /// No description provided for @userBeveragesSortLastCheckin.
   ///
   /// In en, this message translates to:
-  /// **'Last check-in'**
+  /// **'Date'**
   String get userBeveragesSortLastCheckin;
 
   /// No description provided for @userBeveragesSortProducer.
