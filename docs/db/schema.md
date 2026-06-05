@@ -259,7 +259,7 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
 | `flavor_tags` | Admin taxonomy (SPEC §4.3). | — | 5 fixed dimensions. |
 | `beverage_flavor_tags` | Aggregate tags per beverage. | — | Composite PK. |
-| `check_ins` | User logs. | `deleted_at` | Rating 0.5..5.0 in 0.5 steps, review ≤500, price coherence. Beverage immutable post-create (SPEC §4.4) — enforced at app layer. `edited_at TIMESTAMPTZ NULL` (003): rendering-only marker; set by the backend in the same TX as any tracked-field change. No CHECK, no index. |
+| `check_ins` | User logs. | `deleted_at` | Rating `NUMERIC(3,2)` 0.5..5.0 in 0.25 steps (widened from `NUMERIC(3,1)` / 0.5 steps in 004), review ≤500, price coherence. Beverage immutable post-create (SPEC §4.4) — enforced at app layer. `edited_at TIMESTAMPTZ NULL` (003): rendering-only marker; set by the backend in the same TX as any tracked-field change. No CHECK, no index. |
 | `comments` | Flat comments on check-ins (post-MVP v1.1). | `deleted_at` | Body 1..500 chars, control-char backstop CHECK. `user_id` is `ON DELETE SET NULL` so author hard-purge doesn't orphan the body. `edited_at TIMESTAMPTZ NULL` (004): rendering-only marker; set by the backend in the same TX as any body change. No CHECK, no index. |
 | `check_in_photos` | ≤4 photos per check-in. | — | `sort_order ∈ {0..3}` + UNIQUE. |
 | `check_in_flavor_tags` | Tags per check-in. | — | Composite PK. |
@@ -287,7 +287,7 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `beverage_categories` 3 seeded rows | §2.1 |
 | `beverages.polishing_ratio` nihonshu-only | §2.2 |
 | `beverages.abv` range | §2.2 |
-| `check_ins.rating` 0.5..5.0 step 0.5 | §4.2, §6.2 |
+| `check_ins.rating` `NUMERIC(3,2)` 0.5..5.0 step 0.25 (004) | §4.2, §6.2 |
 | `check_ins.review_text` ≤ 500 | §4.1, §6.7 |
 | `check_in_photos.sort_order 0..3` + UNIQUE | §4.1, §6.7 |
 | `check_ins.purchase_type` enum | §4.1 |
