@@ -299,5 +299,26 @@
   "profileRecentEmptyMeTitle": "아직 체크인이 없습니다",
   "profileRecentEmptyMeBody": "첫 기록을 남기면 여기에 표시됩니다.",
   "profileRecentEmptyOtherTitle": "아직 체크인이 없습니다",
-  "profileRecentEmptyOtherBody": "이 사용자가 기록하면 여기에 표시됩니다."
+  "profileRecentEmptyOtherBody": "이 사용자가 기록하면 여기에 표시됩니다.",
+
+  "userBeveragesTitle": "마신 술",
+  "userBeveragesEmpty": "아직 체크인이 없습니다 — 한 잔 시도해 보세요!",
+  "userBeveragesYourAvg": "내 평균",
+  "userBeveragesGlobalAvg": "전체 평균",
+  "userBeveragesCheckinCount": "체크인 {count}회",
+  "@userBeveragesCheckinCount": { "placeholders": { "count": { "type": "int" } } },
+  "userBeveragesSort": "정렬",
+  "userBeveragesSortRating": "평점",
+  "userBeveragesSortLastCheckin": "최근",
+  "userBeveragesSortProducer": "생산자",
+  "userBeveragesSortCategory": "카테고리",
+  "userBeveragesMinRating": "최소 평점",
+  "userBeveragesAllCategories": "전체",
+
+  "socialFollowersTitle": "팔로워",
+  "socialFollowingTitle": "팔로잉",
+  "socialSearchHint": "사용자 검색",
+  "socialEmptyFollowers": "아직 팔로워가 없습니다",
+  "socialEmptyFollowing": "아무도 팔로우하지 않습니다",
+  "socialSearchNoMatch": "일치하는 사용자가 없습니다"
 }

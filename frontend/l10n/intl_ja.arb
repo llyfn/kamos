@@ -299,5 +299,26 @@
   "profileRecentEmptyMeTitle": "まだチェックインがありません",
   "profileRecentEmptyMeBody": "最初の一本を記録するとここに表示されます。",
   "profileRecentEmptyOtherTitle": "まだチェックインがありません",
-  "profileRecentEmptyOtherBody": "このユーザーが記録するとここに表示されます。"
+  "profileRecentEmptyOtherBody": "このユーザーが記録するとここに表示されます。",
+
+  "userBeveragesTitle": "飲んだお酒",
+  "userBeveragesEmpty": "まだチェックインがありません。一杯試してみましょう。",
+  "userBeveragesYourAvg": "あなたの評価",
+  "userBeveragesGlobalAvg": "全体平均",
+  "userBeveragesCheckinCount": "{count}件のチェックイン",
+  "@userBeveragesCheckinCount": { "placeholders": { "count": { "type": "int" } } },
+  "userBeveragesSort": "並び替え",
+  "userBeveragesSortRating": "評価",
+  "userBeveragesSortLastCheckin": "最近",
+  "userBeveragesSortProducer": "生産者",
+  "userBeveragesSortCategory": "カテゴリ",
+  "userBeveragesMinRating": "最低評価",
+  "userBeveragesAllCategories": "すべて",
+
+  "socialFollowersTitle": "フォロワー",
+  "socialFollowingTitle": "フォロー中",
+  "socialSearchHint": "ユーザーを検索",
+  "socialEmptyFollowers": "フォロワーはまだいません",
+  "socialEmptyFollowing": "誰もフォローしていません",
+  "socialSearchNoMatch": "該当なし"
 }

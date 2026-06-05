@@ -762,4 +762,60 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get profileRecentEmptyOtherBody => '이 사용자가 기록하면 여기에 표시됩니다.';
+
+  @override
+  String get userBeveragesTitle => '마신 술';
+
+  @override
+  String get userBeveragesEmpty => '아직 체크인이 없습니다 — 한 잔 시도해 보세요!';
+
+  @override
+  String get userBeveragesYourAvg => '내 평균';
+
+  @override
+  String get userBeveragesGlobalAvg => '전체 평균';
+
+  @override
+  String userBeveragesCheckinCount(int count) {
+    return '체크인 $count회';
+  }
+
+  @override
+  String get userBeveragesSort => '정렬';
+
+  @override
+  String get userBeveragesSortRating => '평점';
+
+  @override
+  String get userBeveragesSortLastCheckin => '최근';
+
+  @override
+  String get userBeveragesSortProducer => '생산자';
+
+  @override
+  String get userBeveragesSortCategory => '카테고리';
+
+  @override
+  String get userBeveragesMinRating => '최소 평점';
+
+  @override
+  String get userBeveragesAllCategories => '전체';
+
+  @override
+  String get socialFollowersTitle => '팔로워';
+
+  @override
+  String get socialFollowingTitle => '팔로잉';
+
+  @override
+  String get socialSearchHint => '사용자 검색';
+
+  @override
+  String get socialEmptyFollowers => '아직 팔로워가 없습니다';
+
+  @override
+  String get socialEmptyFollowing => '아무도 팔로우하지 않습니다';
+
+  @override
+  String get socialSearchNoMatch => '일치하는 사용자가 없습니다';
 }

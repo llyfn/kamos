@@ -763,4 +763,60 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get profileRecentEmptyOtherBody => 'このユーザーが記録するとここに表示されます。';
+
+  @override
+  String get userBeveragesTitle => '飲んだお酒';
+
+  @override
+  String get userBeveragesEmpty => 'まだチェックインがありません。一杯試してみましょう。';
+
+  @override
+  String get userBeveragesYourAvg => 'あなたの評価';
+
+  @override
+  String get userBeveragesGlobalAvg => '全体平均';
+
+  @override
+  String userBeveragesCheckinCount(int count) {
+    return '$count件のチェックイン';
+  }
+
+  @override
+  String get userBeveragesSort => '並び替え';
+
+  @override
+  String get userBeveragesSortRating => '評価';
+
+  @override
+  String get userBeveragesSortLastCheckin => '最近';
+
+  @override
+  String get userBeveragesSortProducer => '生産者';
+
+  @override
+  String get userBeveragesSortCategory => 'カテゴリ';
+
+  @override
+  String get userBeveragesMinRating => '最低評価';
+
+  @override
+  String get userBeveragesAllCategories => 'すべて';
+
+  @override
+  String get socialFollowersTitle => 'フォロワー';
+
+  @override
+  String get socialFollowingTitle => 'フォロー中';
+
+  @override
+  String get socialSearchHint => 'ユーザーを検索';
+
+  @override
+  String get socialEmptyFollowers => 'フォロワーはまだいません';
+
+  @override
+  String get socialEmptyFollowing => '誰もフォローしていません';
+
+  @override
+  String get socialSearchNoMatch => '該当なし';
 }

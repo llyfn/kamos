@@ -1527,6 +1527,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When they log a bottle, it will show up here.'**
   String get profileRecentEmptyOtherBody;
+
+  /// No description provided for @userBeveragesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Beverages'**
+  String get userBeveragesTitle;
+
+  /// No description provided for @userBeveragesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No check-ins yet — try one!'**
+  String get userBeveragesEmpty;
+
+  /// No description provided for @userBeveragesYourAvg.
+  ///
+  /// In en, this message translates to:
+  /// **'Your avg'**
+  String get userBeveragesYourAvg;
+
+  /// No description provided for @userBeveragesGlobalAvg.
+  ///
+  /// In en, this message translates to:
+  /// **'Global avg'**
+  String get userBeveragesGlobalAvg;
+
+  /// No description provided for @userBeveragesCheckinCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} check-ins'**
+  String userBeveragesCheckinCount(int count);
+
+  /// No description provided for @userBeveragesSort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get userBeveragesSort;
+
+  /// No description provided for @userBeveragesSortRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get userBeveragesSortRating;
+
+  /// No description provided for @userBeveragesSortLastCheckin.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check-in'**
+  String get userBeveragesSortLastCheckin;
+
+  /// No description provided for @userBeveragesSortProducer.
+  ///
+  /// In en, this message translates to:
+  /// **'Producer'**
+  String get userBeveragesSortProducer;
+
+  /// No description provided for @userBeveragesSortCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get userBeveragesSortCategory;
+
+  /// No description provided for @userBeveragesMinRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Min rating'**
+  String get userBeveragesMinRating;
+
+  /// No description provided for @userBeveragesAllCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get userBeveragesAllCategories;
+
+  /// No description provided for @socialFollowersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
+  String get socialFollowersTitle;
+
+  /// No description provided for @socialFollowingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Following'**
+  String get socialFollowingTitle;
+
+  /// No description provided for @socialSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by username or name'**
+  String get socialSearchHint;
+
+  /// No description provided for @socialEmptyFollowers.
+  ///
+  /// In en, this message translates to:
+  /// **'No followers yet'**
+  String get socialEmptyFollowers;
+
+  /// No description provided for @socialEmptyFollowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not following anyone yet'**
+  String get socialEmptyFollowing;
+
+  /// No description provided for @socialSearchNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get socialSearchNoMatch;
 }
 
 class _AppLocalizationsDelegate

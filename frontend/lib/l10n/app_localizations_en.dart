@@ -783,4 +783,60 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get profileRecentEmptyOtherBody =>
       'When they log a bottle, it will show up here.';
+
+  @override
+  String get userBeveragesTitle => 'Beverages';
+
+  @override
+  String get userBeveragesEmpty => 'No check-ins yet — try one!';
+
+  @override
+  String get userBeveragesYourAvg => 'Your avg';
+
+  @override
+  String get userBeveragesGlobalAvg => 'Global avg';
+
+  @override
+  String userBeveragesCheckinCount(int count) {
+    return '$count check-ins';
+  }
+
+  @override
+  String get userBeveragesSort => 'Sort';
+
+  @override
+  String get userBeveragesSortRating => 'Rating';
+
+  @override
+  String get userBeveragesSortLastCheckin => 'Last check-in';
+
+  @override
+  String get userBeveragesSortProducer => 'Producer';
+
+  @override
+  String get userBeveragesSortCategory => 'Category';
+
+  @override
+  String get userBeveragesMinRating => 'Min rating';
+
+  @override
+  String get userBeveragesAllCategories => 'All';
+
+  @override
+  String get socialFollowersTitle => 'Followers';
+
+  @override
+  String get socialFollowingTitle => 'Following';
+
+  @override
+  String get socialSearchHint => 'Search by username or name';
+
+  @override
+  String get socialEmptyFollowers => 'No followers yet';
+
+  @override
+  String get socialEmptyFollowing => 'Not following anyone yet';
+
+  @override
+  String get socialSearchNoMatch => 'No matches';
 }
