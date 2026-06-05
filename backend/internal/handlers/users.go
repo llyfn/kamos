@@ -301,6 +301,19 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 		h.writeErr(w, "listSocial find", err)
 		return
 	}
+	// Brief decision #5 / SPEC privacy: private profiles' follower &
+	// following lists are visible only to the user themselves and
+	// their accepted followers. Reuses the shared gate so all
+	// per-profile list surfaces (beverages, followers, following)
+	// stay in lock-step.
+	if ok, err := h.privateProfileGate(r, user); err != nil {
+		h.writeErr(w, "listSocial gate", err)
+		return
+	} else if !ok {
+		httperr.WriteError(w, http.StatusForbidden, "PRIVATE_PROFILE",
+			"this user's social graph is private")
+		return
+	}
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)
 	if err != nil {
