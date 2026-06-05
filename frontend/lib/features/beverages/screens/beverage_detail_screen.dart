@@ -177,33 +177,25 @@ class _Body extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 22),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: t.bgWarm,
-              border: Border.all(color: t.border1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                if (b.abv != null)
-                  _Stat(
-                    label: l.beverageDetailAbv,
-                    value: '${b.abv!.toStringAsFixed(1)}%',
-                  ),
-                if (b.polishingRatio != null)
-                  _Stat(
-                    label: l.beverageDetailSeimai,
-                    value: '${b.polishingRatio}%',
-                  ),
-                if (region.isNotEmpty)
-                  _Stat(label: l.beverageDetailRegion, value: region),
-                if (sub.isNotEmpty)
-                  _Stat(label: l.beverageDetailType, value: sub),
-              ],
-            ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              if (region.isNotEmpty)
+                _Stat(label: l.beverageDetailRegion, value: region),
+              if (sub.isNotEmpty)
+                _Stat(label: l.beverageDetailType, value: sub),
+              if (b.abv != null)
+                _Stat(
+                  label: l.beverageDetailAbv,
+                  value: '${b.abv!.toStringAsFixed(1)}%',
+                ),
+              if (b.polishingRatio != null)
+                _Stat(
+                  label: l.beverageDetailSeimai,
+                  value: '${b.polishingRatio}%',
+                ),
+            ],
           ),
           if (detail.aggregatedFlavor.isNotEmpty) ...[
             _SectionHeader(text: l.beverageDetailAggregatedFlavor),

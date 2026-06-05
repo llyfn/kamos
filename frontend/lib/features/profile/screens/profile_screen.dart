@@ -351,14 +351,8 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        decoration: BoxDecoration(
-          color: t.bgWarm,
-          border: Border.all(color: t.border1),
-          borderRadius: BorderRadius.circular(10),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
         child: Column(
           // Center single-line content within IntrinsicHeight-driven
           // tile height so short and longer-label tiles balance.
