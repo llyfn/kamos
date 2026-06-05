@@ -1,10 +1,11 @@
-// KAMOS — Collections list (SPEC §6).
+// KAMOS — Collections list.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/models/collection.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
@@ -109,7 +110,7 @@ class CollectionsListScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  '${c.entryCount == 1 ? l.collectionsBottleCountOne(c.entryCount) : l.collectionsBottleCountOther(c.entryCount)} · ${l.collectionsPrivate}',
+                                  '${c.entryCount == 1 ? l.collectionsBottleCountOne(c.entryCount) : l.collectionsBottleCountOther(c.entryCount)} · ${c.visibility == CollectionVisibility.public ? l.collectionsPublic : l.collectionsPrivate}',
                                   style: TextStyle(fontSize: 12, color: t.fg2),
                                 ),
                               ],

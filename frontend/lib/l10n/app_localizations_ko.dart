@@ -460,6 +460,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get collectionsPrivate => '비공개';
 
   @override
+  String get collectionsPublic => '공개';
+
+  @override
   String collectionsBottleCountOne(int count) {
     return '$count병';
   }

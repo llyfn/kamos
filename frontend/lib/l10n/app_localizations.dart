@@ -964,6 +964,12 @@ abstract class AppLocalizations {
   /// **'Private'**
   String get collectionsPrivate;
 
+  /// No description provided for @collectionsPublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get collectionsPublic;
+
   /// No description provided for @collectionsBottleCountOne.
   ///
   /// In en, this message translates to:
