@@ -78,13 +78,10 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get ratingTapToRate => '별을 탭하여 평가 · 0.5 단위';
-
-  @override
   String get ratingLabel => '평점';
 
   @override
-  String get ratingClear => '지우기';
+  String get ratingEmptyValue => '–.– / 5.0';
 
   @override
   String get checkInTitle => '체크인';
@@ -108,7 +105,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInReviewLabel => '리뷰';
 
   @override
-  String get checkInReviewPlaceholder => '메모 남기기';
+  String get checkInReviewPlaceholder => '메모를 남겨주세요';
 
   @override
   String get checkInReviewTooLong => '리뷰가 너무 깁니다';
@@ -117,16 +114,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInFlavorTags => '풍미 태그';
 
   @override
-  String get checkInFlavorBrowse => '+ 둘러보기';
-
-  @override
-  String get checkInFlavorSheetSearch => '태그 검색';
-
-  @override
-  String get checkInFlavorSheetEmpty => '일치하는 태그가 없습니다.';
-
-  @override
-  String get checkInPhotosLabel => '사진 · 최대 4장';
+  String get checkInPhotosLabel => '사진';
 
   @override
   String checkInPhotoCounter(int count) {
@@ -137,25 +125,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInPriceLabel => '가격';
 
   @override
-  String get checkInPurchaseType => '구매 유형';
-
-  @override
   String get checkInPriceServing => '잔당';
 
   @override
   String get checkInPriceBottle => '병당';
-
-  @override
-  String get checkInPurchaseOnPremise => '매장';
-
-  @override
-  String get checkInPurchaseRetail => '소매';
-
-  @override
-  String get checkInPurchaseGift => '선물';
-
-  @override
-  String get checkInPurchaseOther => '기타';
 
   @override
   String get checkInFirstToast => '첫 체크인을 기록했습니다. 건배!';
@@ -167,13 +140,28 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInPhotoLimitReached => '사진은 최대 4장까지 첨부할 수 있습니다.';
 
   @override
+  String get checkInPostingButton => '게시 중…';
+
+  @override
+  String get checkInSavingButton => '저장 중…';
+
+  @override
   String get photoUploadDisabled => '사진 업로드를 사용할 수 없습니다 — 사진 없이 저장했습니다.';
 
   @override
-  String get checkInWhereLabel => '위치';
+  String get checkInLocationLabel => '위치';
 
   @override
-  String get checkInWhereCta => '장소 추가';
+  String get checkInLocationCta => '장소 추가';
+
+  @override
+  String get flavorProfilesPageTitle => '풍미 태그';
+
+  @override
+  String get flavorProfilesSearchHint => '풍미 태그 검색';
+
+  @override
+  String get flavorProfilesSelectedLabel => '선택됨';
 
   @override
   String get venuePickerSearchPlaceholder => '장소 검색';

@@ -43,7 +43,7 @@ import '../features/beverage_requests/screens/submit_beverage_request_screen.dar
 import '../features/beverages/screens/beverage_detail_screen.dart';
 import '../features/check_in/screens/check_in_detail_screen.dart';
 import '../features/check_in/screens/check_in_screen.dart';
-import '../features/check_in/screens/edit_check_in_screen.dart';
+import '../features/check_in/screens/flavor_profiles_picker_screen.dart';
 import '../features/collections/screens/collection_detail_screen.dart';
 import '../features/collections/screens/collections_list_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
@@ -164,11 +164,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/check-in',
         pageBuilder: (_, state) {
           final b = state.extra as Beverage?;
-          // Defensive: if launched without a beverage, bounce back to discover.
           final child = b == null
               ? const SearchScreen()
               : CheckInScreen(beverage: b);
           return _noTransition(state, child);
+        },
+      ),
+      GoRoute(
+        path: '/check-in/flavor-profiles',
+        pageBuilder: (_, state) {
+          final initial = (state.extra is Set<String>)
+              ? state.extra as Set<String>
+              : const <String>{};
+          return _noTransition(
+            state,
+            FlavorProfilesPickerScreen(initial: initial),
+          );
         },
       ),
       GoRoute(
@@ -223,7 +234,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/check-ins/:id/edit',
         pageBuilder: (_, state) => _noTransition(
           state,
-          EditCheckInScreen(checkInId: state.pathParameters['id']!),
+          CheckInEditLoader(checkInId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(

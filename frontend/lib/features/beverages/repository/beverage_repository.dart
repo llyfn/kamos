@@ -35,8 +35,8 @@ class BeverageRepository {
     );
   }
 
-  Future<BeverageDetail> get(String id) async {
-    final data = await _api.beverages.get(id);
+  Future<BeverageDetail> get(String id, {bool forceRefresh = false}) async {
+    final data = await _api.beverages.get(id, forceRefresh: forceRefresh);
     return BeverageDetail.fromJson(data);
   }
 }

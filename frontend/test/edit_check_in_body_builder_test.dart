@@ -13,7 +13,7 @@ import 'package:kamos/core/models/checkin.dart';
 import 'package:kamos/core/models/flavor_tag.dart';
 import 'package:kamos/core/models/i18n_text.dart';
 import 'package:kamos/core/models/producer.dart';
-import 'package:kamos/features/check_in/screens/edit_check_in_screen.dart';
+import 'package:kamos/features/check_in/screens/check_in_screen.dart';
 
 Checkin _original({
   double? rating,

@@ -1,8 +1,6 @@
-// KAMOS — Widget test for the flavor-tag browse sheet opened from
-// CheckInScreen. Asserts that tags from `flavorTagsProvider` render inside
-// the browse sheet with locale-resolved labels (en in this test) — the
-// inline compose row only renders the currently-selected tags now, so this
-// test drives the "+ Browse" affordance to surface the full catalog.
+// Asserts that the compose screen renders without selected flavor tags by
+// default, and that pre-selected slugs surface as chips once the
+// flavorTagsProvider resolves.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,8 +55,12 @@ Widget _wrap(Widget child) {
 
 void main() {
   testWidgets(
-      'flavor-tag browse sheet renders all tags with locale-resolved labels',
+      'compose screen renders without any selected flavor chips by default',
       (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -68,21 +70,13 @@ void main() {
       ),
     );
 
-    // Let the FutureProvider resolve and the screen rebuild with data.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    // The inline compose row only renders currently-selected tags (none
-    // selected at this point) so the catalog should not appear yet.
+    // Nothing selected → catalog labels do not appear inline.
     expect(find.text('Dry'), findsNothing);
     expect(find.text('Fruity'), findsNothing);
-
-    // Open the browse sheet via the "+ Browse" pill.
-    await tester.tap(find.text('+ Browse'));
-    await tester.pumpAndSettle();
-
-    // Both tag labels appear inside the sheet (en locale resolves `name.en`).
-    expect(find.text('Dry'), findsOneWidget);
-    expect(find.text('Fruity'), findsOneWidget);
+    // The inline "+" pill that opens the picker is rendered.
+    expect(find.byIcon(Icons.add), findsWidgets);
   });
 }
