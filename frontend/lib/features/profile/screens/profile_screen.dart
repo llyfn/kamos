@@ -1,7 +1,4 @@
-// KAMOS — Profile screen (me + other) (SPEC §3.2, §6.3).
-//
-// `display_username` is rendered for casing; `handle` (lowercase) appears as
-// the @-mention. Locale toggle is a SegmentedControl mirroring the JSX kit.
+// KAMOS — Profile screen (me + other).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -143,81 +140,82 @@ class _ProfileBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 24),
-          Center(
-            child: isMe
-                ? GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => context.push('/me/edit'),
-                    child: KamosAvatar(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              isMe
+                  ? GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => context.push('/me/edit'),
+                      child: KamosAvatar(
+                        initial: user.displayUsername,
+                        size: 84,
+                        imageUrl: user.avatarUrl,
+                      ),
+                    )
+                  : KamosAvatar(
                       initial: user.displayUsername,
                       size: 84,
                       imageUrl: user.avatarUrl,
                     ),
-                  )
-                : KamosAvatar(
-                    initial: user.displayUsername,
-                    size: 84,
-                    imageUrl: user.avatarUrl,
-                  ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              user.displayName.isEmpty
-                  ? user.displayUsername
-                  : user.displayName,
-              style: TextStyle(
-                fontFamily: 'ShipporiMincho',
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: t.fg1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Text(
-              '@${user.username}',
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 12,
-                color: t.fg3,
-              ),
-            ),
-          ),
-          if (user.privacyMode == 'private') ...[
-            const SizedBox(height: 6),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: t.bgTintMizu,
-                  borderRadius: BorderRadius.circular(999),
+              const SizedBox(height: 8),
+              Text(
+                user.displayName.isEmpty
+                    ? user.displayUsername
+                    : user.displayName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'ShipporiMincho',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: t.fg1,
                 ),
-                child: Text(
-                  l.profilePrivate,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: t.kon,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '@${user.username}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontSize: 12,
+                  color: t.fg3,
+                ),
+              ),
+              if (user.privacyMode == 'private') ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: t.bgTintMizu,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    l.profilePrivate,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: t.kon,
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
-          if ((user.bio ?? '').isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 280),
-                child: Text(
-                  user.bio!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: t.fg2),
+              ],
+              if ((user.bio ?? '').isNotEmpty) ...[
+                const SizedBox(height: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 280),
+                  child: Text(
+                    user.bio!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: t.fg2),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            ],
+          ),
           const SizedBox(height: 16),
           // IntrinsicHeight gives every _StatTile the row's max content
           // height so single-line and scaled-down labels still produce a
@@ -375,10 +373,6 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    // Slice A stripped the warm-container chrome from the tile; Slice D
-    // wraps the tile body in an InkWell when tappable so the full tile
-    // area registers taps and the ink-ripple decorates the chrome-less
-    // surface.
     final body = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Column(
