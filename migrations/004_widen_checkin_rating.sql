@@ -6,18 +6,18 @@
 BEGIN;
 
 ALTER TABLE check_ins
-  DROP CONSTRAINT check_ins_rating_valid;
+DROP CONSTRAINT check_ins_rating_valid;
 
 ALTER TABLE check_ins
-  ALTER COLUMN rating TYPE NUMERIC(3,2);
+ALTER COLUMN rating TYPE NUMERIC(3, 2);
 
 ALTER TABLE check_ins
-  ADD CONSTRAINT check_ins_rating_valid
-  CHECK (
-    rating IS NULL OR (
-      rating >= 0.5 AND rating <= 5.0
-      AND (rating * 100)::int % 25 = 0
-    )
-  );
+ADD CONSTRAINT check_ins_rating_valid
+CHECK (
+  rating IS NULL OR (
+    rating >= 0.5 AND rating <= 5.0
+    AND (rating * 100)::INT % 25 = 0
+  )
+);
 
 COMMIT;
