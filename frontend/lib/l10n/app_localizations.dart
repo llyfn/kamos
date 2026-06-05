@@ -238,6 +238,12 @@ abstract class AppLocalizations {
   /// **'Rating'**
   String get ratingLabel;
 
+  /// No description provided for @ratingClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get ratingClear;
+
   /// No description provided for @checkInTitle.
   ///
   /// In en, this message translates to:
@@ -283,7 +289,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkInReviewPlaceholder.
   ///
   /// In en, this message translates to:
-  /// **'Pear, soft rice, a clean finish…'**
+  /// **'Leave a note'**
   String get checkInReviewPlaceholder;
 
   /// No description provided for @checkInReviewTooLong.
@@ -295,8 +301,26 @@ abstract class AppLocalizations {
   /// No description provided for @checkInFlavorTags.
   ///
   /// In en, this message translates to:
-  /// **'Flavor tags'**
+  /// **'Flavor Profiles'**
   String get checkInFlavorTags;
+
+  /// No description provided for @checkInFlavorBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Browse'**
+  String get checkInFlavorBrowse;
+
+  /// No description provided for @checkInFlavorSheetSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search tags'**
+  String get checkInFlavorSheetSearch;
+
+  /// No description provided for @checkInFlavorSheetEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching tags.'**
+  String get checkInFlavorSheetEmpty;
 
   /// No description provided for @checkInPhotosLabel.
   ///
@@ -382,16 +406,16 @@ abstract class AppLocalizations {
   /// **'Photo upload is not available — saved without photos.'**
   String get photoUploadDisabled;
 
-  /// No description provided for @checkInWhereLabel.
+  /// Section label on the check-in compose screen for the venue picker row. Renamed from 'Where?' to 'Location' in Slice B; the key name is retained for change-set hygiene.
   ///
   /// In en, this message translates to:
-  /// **'Where?'**
+  /// **'Location'**
   String get checkInWhereLabel;
 
-  /// No description provided for @checkInWhereCta.
+  /// Placeholder text inside the venue picker row when no venue is picked. Renamed in Slice B alongside checkInWhereLabel.
   ///
   /// In en, this message translates to:
-  /// **'Add a venue'**
+  /// **'Add a location'**
   String get checkInWhereCta;
 
   /// No description provided for @venuePickerSearchPlaceholder.
@@ -1231,7 +1255,7 @@ abstract class AppLocalizations {
   /// No description provided for @beverageDetailSeimai.
   ///
   /// In en, this message translates to:
-  /// **'Seimai'**
+  /// **'Polishing Ratio'**
   String get beverageDetailSeimai;
 
   /// No description provided for @beverageDetailRegion.
@@ -1255,7 +1279,7 @@ abstract class AppLocalizations {
   /// No description provided for @beverageDetailAggregatedFlavor.
   ///
   /// In en, this message translates to:
-  /// **'Aggregated flavor'**
+  /// **'Flavor Profile'**
   String get beverageDetailAggregatedFlavor;
 
   /// No description provided for @beverageDetailAbout.

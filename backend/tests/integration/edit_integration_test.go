@@ -105,8 +105,8 @@ func TestUpdateCheckinNoOpDoesNotTouchEditedAt(t *testing.T) {
 	}
 }
 
-// TestUpdateCheckinPhotoCap — exceeding the 4-photo cap via add_photos
-// returns 422 PHOTO_CAP_EXCEEDED.
+// TestUpdateCheckinPhotoCap — exceeding the 1-photo submission cap via
+// add_photos returns 422 PHOTO_CAP_EXCEEDED (Slice B / SPEC §4.1).
 func TestUpdateCheckinPhotoCap(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -115,23 +115,22 @@ func TestUpdateCheckinPhotoCap(t *testing.T) {
 	bevID := seedBeverage(t, "CapBev")
 	tok, uid := mustRegister(t, srv, "caprock", "cap@example.com", "password-123")
 
-	// Create with 3 inline photos so we have 3 attached on the row.
+	// Create with 1 inline photo so we have 1 attached on the row.
 	code, raw := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
 		"beverage_id": bevID,
-		"photos":      []string{"http://a/1.jpg", "http://a/2.jpg", "http://a/3.jpg"},
+		"photos":      []string{"http://a/1.jpg"},
 	})
 	if code != http.StatusCreated {
 		t.Fatalf("create: %d body=%s", code, raw)
 	}
 	created := decodeCheckin(t, raw)
 
-	// Prep 2 pending uploads; adding both would push us to 5 → reject.
+	// Prep 1 pending upload; adding it would push us to 2 → reject.
 	p := getPool(t)
 	id1 := mustInsertPendingUpload(t, p, uid, "checkins/cap/x1.jpg")
-	id2 := mustInsertPendingUpload(t, p, uid, "checkins/cap/x2.jpg")
 
 	code, raw = doReq(t, srv, http.MethodPatch, "/v1/check-ins/"+created.ID, tok, map[string]any{
-		"add_photos": []string{id1, id2},
+		"add_photos": []string{id1},
 	})
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422 PHOTO_CAP_EXCEEDED, got %d body=%s", code, raw)

@@ -189,7 +189,9 @@ ui_kits/
       NotificationsScreen.jsx      In-app inbox for the 5 notification types (SPEC §5.4)
       SearchScreen.jsx             Discover · category chips (exact SPEC strings) · recent + no-results
       BeverageScreen.jsx           Beverage detail · link to producer · CTAs to check-in + collection picker
-      CheckInScreen.jsx            Modal check-in flow · 0.5-step rating · counter · 4-photo grid · price · purchase
+      CheckInScreen.jsx            Modal check-in flow · 0.25-step rating slider (nullable, Clear) ·
+                                   review + 1-photo Row · flat flavor chips + browse sheet · Location ·
+                                   price · full-width bottom Post (no AppBar action)
       ProfileLists.jsx             Lists (Collections) + Profile (Me) with locale toggle
       AuthScreen.jsx               Sign in · Create account · Forgot password · Verify email · Google OAuth
       EditProfileScreen.jsx        Display name + bio + avatar
@@ -220,8 +222,8 @@ fonts/                     (empty — Google Fonts loaded via colors_and_type.cs
 | Beverage catalog (§2.1–§2.2) | Category overline + chips with exact i18n strings | `data.jsx::CATEGORY_LABELS`, `SearchScreen.jsx`, `BeverageScreen.jsx` |
 | Beverage detail (§7) | Catalog info, avg rating, aggregated flavor, recent check-ins, producer link | `BeverageScreen.jsx` |
 | Producer detail (§2.3, §7) | i18n name + region + founded + website + beverage list | `ProducerScreen.jsx` |
-| Check-in (§4) | 0.5-step rating, 500-char review, ≤4 photos, price + currency, per-serving / per-bottle, purchase type | `CheckInScreen.jsx` |
-| Rating widget (§4.2) | 0.5-step input + display | `Primitives.jsx::StarsInput` + `Primitives.jsx::Stars` |
+| Check-in (§4) | 0.25-step rating slider (nullable, Clear), 500-char review beside a 1-photo square, flat searchable flavor-tag sheet, Location row, price + currency, per-serving / per-bottle, full-width bottom Post | `CheckInScreen.jsx` |
+| Rating widget (§4.2) | 0.25-step compose slider + 0.5-step display | `CheckInScreen.jsx::RatingSlider` (compose) + `Primitives.jsx::Stars`/`StarsInput` (read + legacy) |
 | Toast reactions (§5.3) | Kanpai-mark toggle with animation | `FeedScreen.jsx::FeedItem` |
 | Feed (§5.2) | Reverse-chronological list + cursor pagination footer | `FeedScreen.jsx`, `Primitives.jsx::PagingFooter` |
 | Notifications (§5.4) | Toast / comment / follow / follow_request (inline Approve / Decline) / follow_approved rows; unread dot on the Notifications tab | `NotificationsScreen.jsx`, `Shell.jsx::TabBar` (unread dot) |

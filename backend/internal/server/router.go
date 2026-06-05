@@ -257,7 +257,8 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// SEC-008: tight per-user limit on top of the global authed
 			// 60/120 cap. 2 rps / burst 4 prevents a single account from
 			// minting hundreds of presigns per second while still
-			// allowing the SPEC 4-photos-per-check-in burst.
+			// leaving headroom for the SPEC §4.1 1-photo submission flow
+			// plus retries (sized historically for the 4-photo cap).
 			if rateLimited {
 				r.With(middleware.RateLimitByUser(log, 2, 4)).
 					Post("/uploads/photo-presign", h.PhotoPresign)

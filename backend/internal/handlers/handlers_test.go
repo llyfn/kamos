@@ -268,7 +268,7 @@ func TestSearchRequiresQuery(t *testing.T) {
 	}
 }
 
-// Create-checkin validation rejects rating 0.25 (not in 0.5 steps),
+// Create-checkin validation rejects rating 0.1 (not on the 0.25 grid),
 // without ever touching the DB.
 func TestCreateCheckinRatingValidation(t *testing.T) {
 	srv, signer := newTestServer(t)
@@ -278,7 +278,7 @@ func TestCreateCheckinRatingValidation(t *testing.T) {
 	}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/check-ins",
-		bytes.NewReader([]byte(`{"beverage_id":"b-1","rating":0.25}`)))
+		bytes.NewReader([]byte(`{"beverage_id":"b-1","rating":0.1}`)))
 	req.Header.Set("Authorization", "Bearer "+tok)
 	srv.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnprocessableEntity {
@@ -286,11 +286,12 @@ func TestCreateCheckinRatingValidation(t *testing.T) {
 	}
 }
 
-// Create-checkin with 5 photos is rejected by Validate() (≤ 4 cap).
+// Create-checkin with 2 photos is rejected by Validate() (SPEC §4.1 caps
+// submissions at 1 photo; Slice B).
 func TestCreateCheckinPhotoCap(t *testing.T) {
 	srv, signer := newTestServer(t)
 	tok, _ := signer.Sign("u-1", "yamamoto")
-	body := `{"beverage_id":"b-1","photos":["a","b","c","d","e"]}`
+	body := `{"beverage_id":"b-1","photos":["a","b"]}`
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/check-ins",
 		bytes.NewReader([]byte(body)))

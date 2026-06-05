@@ -69,12 +69,13 @@ RETURNING id, created_at;`
 
 	// Stage 5 (PERF-009): one multi-row INSERT for all photos instead
 	// of N round-trips. unnest($2, $3) zips the URL array with a
-	// generated sort_order series. The 4-photo cap is enforced both
-	// by domain.CreateCheckinRequest.Validate at the handler edge and
-	// by the check_in_photos_sort_order_range CHECK constraint at
-	// the DB; this code path additionally short-circuits with the
-	// domain error if a future caller passes more than 4.
-	if len(p.PhotoURLs) > 4 {
+	// generated sort_order series. Slice B / SPEC §4.1: submission is
+	// capped at 1 photo (enforced both by
+	// domain.CreateCheckinRequest.Validate at the handler edge and
+	// here as defense-in-depth). The DB's check_in_photos_sort_order
+	// CHECK still tolerates the historical 0..3 range so existing
+	// multi-photo check-ins remain readable.
+	if len(p.PhotoURLs) > 1 {
 		return "", time.Time{}, domain.ErrPhotoCapExceeded
 	}
 	if len(p.PhotoURLs) > 0 {
@@ -339,8 +340,9 @@ ON CONFLICT DO NOTHING;`
 // runs first so the next-sort_order math reflects the post-removal floor.
 // The photo_uploads rows are flipped to 'attached' in the same TX so the
 // orphan-cleanup job leaves them alone. The DB CHECK on sort_order is
-// the backstop — the service layer enforces the 4-photo cap pre-write
-// so callers see the canonical PHOTO_CAP_EXCEEDED 422.
+// the backstop — the service layer enforces the SPEC §4.1 1-photo
+// submission cap pre-write so callers see the canonical
+// PHOTO_CAP_EXCEEDED 422.
 func (r *CheckinRepo) applyPhotoEdits(ctx context.Context, tx pgx.Tx, p UpdateCheckinParams) error {
 	if len(p.RemovePhotoURLs) > 0 {
 		if _, err := tx.Exec(ctx,
@@ -360,9 +362,11 @@ func (r *CheckinRepo) applyPhotoEdits(ctx context.Context, tx pgx.Tx, p UpdateCh
 	}
 	sortOrders := make([]int32, len(p.AddPhotoURLs))
 	for i := range p.AddPhotoURLs {
-		// Cap is enforced upstream (≤ 4); int32 conversion of a value
-		// known to be in [0, 3] is safe. Explicit conversion silences
-		// the gosec G115 warning for this loop.
+		// Submission cap (Slice B / SPEC §4.1) is enforced upstream at
+		// 1 photo; the storage-side sort_order range remains 0..3 so
+		// existing multi-photo rows stay readable. int32 conversion of
+		// these small bounded values is safe. Explicit conversion
+		// silences the gosec G115 warning for this loop.
 		sortOrders[i] = int32(next + i) //nolint:gosec
 	}
 	const insPh = `
@@ -383,8 +387,8 @@ WHERE id = ANY($2) AND status IN ('pending', 'uploaded');`
 }
 
 // CountPhotos returns the current count of photos attached to a check-in.
-// Used by the service layer's PATCH pre-check to enforce the SPEC §4.2
-// 4-photo cap on the resulting set (current - removed + added).
+// Used by the service layer's PATCH pre-check to enforce the SPEC §4.1
+// 1-photo submission cap on the resulting set (current - removed + added).
 func (r *CheckinRepo) CountPhotos(ctx context.Context, checkinID string) (int, error) {
 	const q = `SELECT COUNT(*) FROM check_in_photos WHERE check_in_id = $1;`
 	var n int
@@ -420,15 +424,17 @@ RETURNING id;`
 }
 
 // AddPhoto inserts a single photo into the next free slot. Returns
-// ErrPhotoCapExceeded if all four slots are taken, ErrForbidden if
-// the check-in isn't owned by userID, and ErrNotFound if it doesn't
-// exist or is soft-deleted.
+// ErrPhotoCapExceeded if the check-in already has a photo attached,
+// ErrForbidden if the check-in isn't owned by userID, and ErrNotFound
+// if it doesn't exist or is soft-deleted.
 //
 // Stage 5 (PERF-008): collapsed from a four-statement tx (lock +
 // count + max + insert) into a single INSERT … SELECT … HAVING
-// statement. The HAVING < 4 clause is what enforces the photo cap
-// without needing a separate count round-trip; ownership + liveness
-// are baked into the inner JOIN's WHERE. On NoRows we issue a
+// statement. The HAVING < 1 clause is what enforces the SPEC §4.1
+// 1-photo submission cap (Slice B) without needing a separate count
+// round-trip; ownership + liveness are baked into the inner JOIN's
+// WHERE. Existing multi-photo check-ins remain readable; only new
+// attaches are blocked once any photo exists. On NoRows we issue a
 // cheap discriminator query (one extra round-trip on the error
 // path only) to map to NotFound / Forbidden / PhotoCapExceeded.
 func (r *CheckinRepo) AddPhoto(ctx context.Context, checkinID, userID, photoURL string) (domain.PhotoRef, error) {
@@ -439,7 +445,7 @@ FROM check_ins ci
 LEFT JOIN check_in_photos p ON p.check_in_id = ci.id
 WHERE ci.id = $1 AND ci.user_id = $3 AND ci.deleted_at IS NULL
 GROUP BY ci.id
-HAVING COUNT(p.id) < 4
+HAVING COUNT(p.id) < 1
 RETURNING sort_order;`
 	var sortOrder int
 	if err := r.db.QueryRow(ctx, q, checkinID, photoURL, userID).Scan(&sortOrder); err != nil {
@@ -473,7 +479,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 	if owner != userID {
 		return domain.ErrForbidden
 	}
-	if photoCount >= 4 {
+	if photoCount >= 1 {
 		return domain.ErrPhotoCapExceeded
 	}
 	// All known reasons ruled out — surface an internal error so the

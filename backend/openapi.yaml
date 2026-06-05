@@ -753,12 +753,14 @@ paths:
         of a live check-in. `beverage_id` is immutable — sending it returns
         422. `add_photos` carries `photo_uploads.id` values returned from
         `/v1/uploads/photo-presign`; `remove_photos` carries existing
-        `PhotoRef.url` values to detach. The SPEC §4.2 four-photo cap is
-        enforced on the resulting set (current − removed + added) — the
-        5th attach returns 422 `PHOTO_CAP_EXCEEDED`. Tags use full
-        replacement semantics: present (even empty) replaces; absent leaves
-        alone. The `edited_at` field on the response is touched only when
-        at least one tracked field actually changes.
+        `PhotoRef.url` values to detach. The SPEC §4.1 1-photo submission
+        cap is enforced on the resulting set (current − removed + added) —
+        any update that would land the set above 1 returns 422
+        `PHOTO_CAP_EXCEEDED`. Existing multi-photo check-ins remain
+        readable. Tags use full replacement semantics: present (even
+        empty) replaces; absent leaves alone. The `edited_at` field on
+        the response is touched only when at least one tracked field
+        actually changes.
       requestBody:
         required: true
         content:
@@ -776,8 +778,9 @@ paths:
         "422":
           description: |
             422 Unprocessable Entity. Returned on any validation failure,
-            on `PHOTO_CAP_EXCEEDED` (resulting set > 4), AND specifically
-            when the client attempts to change `beverage_id` (SPEC §4.4).
+            on `PHOTO_CAP_EXCEEDED` (resulting set > 1, SPEC §4.1), AND
+            specifically when the client attempts to change `beverage_id`
+            (SPEC §4.4).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -913,8 +916,10 @@ paths:
       operationId: addCheckinPhoto
       description: |
         Attach a previously-presigned blob (see `/v1/uploads/photo-presign`)
-        to this check-in. The 4-photo cap from SPEC §4.5 is enforced — the
-        5th attach returns 422 `PHOTO_CAP_EXCEEDED`.
+        to this check-in. The SPEC §4.1 1-photo submission cap (Slice B)
+        is enforced — attaching to a check-in that already has a photo
+        returns 422 `PHOTO_CAP_EXCEEDED`. Existing multi-photo check-ins
+        remain readable but cannot be added to.
 
         Phase 3 shipped: the MVP `{ url }` body was replaced by `{ upload_id }`.
       requestBody:
@@ -948,7 +953,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: photo cap (4) exceeded
+          description: photo cap (1) exceeded
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2847,8 +2852,9 @@ components:
           minimum: 0.5
           maximum: 5.0
           description: |
-            SPEC §4.2 / §6.2: 0.5–5.0 in 0.5 steps. Optional — `null` is valid
-            and means "I tried this". Emit as a number, never a string.
+            SPEC §4.2 / §6.2: 0.5–5.0 in 0.25 steps (19 levels). Optional —
+            `null` is valid and means "I tried this". Emit as a number,
+            never a string.
         review: { type: string, maxLength: 500, nullable: true }
         tags:
           type: array
@@ -2913,7 +2919,10 @@ components:
           items: { type: string, description: "flavor tag slug" }
         photos:
           type: array
-          maxItems: 4
+          maxItems: 1
+          description: |
+            Up to 1 photo on submission (SPEC §4.1). Existing multi-photo
+            check-ins remain readable.
           items: { type: string, format: uri }
         price: { $ref: "#/components/schemas/Price", nullable: true }
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
@@ -2939,9 +2948,10 @@ components:
         `/v1/uploads/photo-presign`; the server resolves each to the
         matching public URL and flips the row to `attached` in the same
         transaction. `remove_photos` carries existing `PhotoRef.url`
-        values to detach. The SPEC §4.2 4-photo cap is enforced on the
-        resulting set (`current − removed + added ≤ 4`); a violation
-        returns 422 `PHOTO_CAP_EXCEEDED`.
+        values to detach. The SPEC §4.1 1-photo submission cap is
+        enforced on the resulting set (`current − removed + added ≤ 1`);
+        a violation returns 422 `PHOTO_CAP_EXCEEDED`. Existing
+        multi-photo check-ins remain readable.
       properties:
         rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0 }
         review: { type: string, maxLength: 500, nullable: true }
@@ -2952,9 +2962,10 @@ components:
         purchase_type: { type: string, enum: [on_premise, retail, gift, other] }
         add_photos:
           type: array
-          maxItems: 4
           items: { type: string, format: uuid }
-          description: photo_uploads ids to attach (≤4 per request).
+          description: |
+            photo_uploads ids to attach. The cap is enforced server-side
+            against the resulting set (current − removed + added).
         remove_photos:
           type: array
           items: { type: string, format: uri }

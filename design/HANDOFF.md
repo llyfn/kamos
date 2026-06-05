@@ -137,3 +137,84 @@ Admin-uploaded optional image on the `producers` row. Mobile renders it where it
 ### Deferred
 
 User-submitted producer images, multi-image galleries, in-app cropping/resizing, admin moderation queue beyond the existing producer publish flow.
+
+## Check-in compose redesign (Slice B)
+
+Refresh of `CheckInScreen.jsx`. Brief: `docs/history/03_checkin_compose_redesign/00_brief.md`. SPEC §4.1 (photo cap) and §4.2 (rating step) move from `≤4 photos / 0.5 step` to `≤1 photo / 0.25 step` in lockstep; `CLAUDE.md` "Project invariants" mirrors. No new design tokens.
+
+### New field order (top → bottom)
+
+1. Beverage card header (unchanged: label image, name, producer · region, category overline).
+2. **Rating** — `RatingSlider` (see below).
+3. **Review** + photo Row (see below).
+4. **Flavor Tags** — flat horizontally-scrolling chip row of currently selected tags + trailing `+ Browse` chip; tapping the section header *or* the `+ Browse` chip opens the flavor tag browse bottom sheet (see below).
+5. **Location** — venue picker row (renamed from "Where?"). Foursquare flow unchanged.
+6. **Price** — currency segmented (`¥` / `₩` / `$`) + amount field + serving/bottle toggle. Unchanged.
+7. Full-width primary submit pill (`Post`). Inside the scrollable body, immediately after price.
+
+The AppBar no longer carries a Post button; the right-hand AppBar slot is a 40-dp spacer to keep the title centered against the leading `X`.
+
+### Rating slider primitive
+
+`RatingSlider` (defined inline in `CheckInScreen.jsx`; Flutter to mirror as `frontend/lib/features/check_in/widgets/rating_slider.dart`).
+
+- Continuous horizontal slider, single line. No star glyphs on compose. (Read-only `StarsDisplay` continues to round 0.25 values to half/full stars on feed cards and detail screens — no change.)
+- Range: `0.5..5.0` inclusive, `0.25` step → 19 stops (18 segments). Internal index `0..18`, value = `0.5 + i * 0.25`.
+- Value is **nullable**. `null` = unrated (SPEC §4.2 says rating is optional). The slider visually parks at the low rail when unrated; the readout shows `— / 5.0`.
+- Readout: small `var(--font-mono)` 13-sp text `x.xx / 5.0` (two-decimal formatting, e.g. `4.25 / 5.0`) sitting under the slider on the left.
+- Trailing `Clear` text affordance (`var(--font-body)` 12-sp, `var(--fg-brand)`, disabled-state `var(--fg-muted)`) sets the value back to `null`. Disabled when value is already `null`.
+- **No** "Tap a star to rate" helper text. The `ratingTapToRate` ARB key is removed.
+- Track styling: `var(--c-gray-200)` rail, `var(--c-ai)` fill, 4-dp thickness, 2-dp radius. Thumb is the platform native (Material in Flutter; default `<input type=range>` in the HTML kit) — no custom thumb token introduced.
+
+### Review + photo Row layout
+
+A horizontal `Row` containing:
+
+- **Left:** multi-line note `TextArea` inside a `FormField` with the existing 500-char counter and overflow error. Placeholder: `Leave a note` / `メモを残す` / `메모 남기기`. `minHeight` = 104-dp so it visually matches the photo tile height. `flex: 1`.
+- **Right:** a single fixed-size **104 × 104 dp** square photo tile (`PhotoTile` primitive). Empty state opens the picker; filled state renders the picked thumbnail with the existing 22-dp remove `x` chip in the top-right corner.
+
+Cap: **1 photo per check-in on submission**, enforced UI-side and server-side. Existing multi-photo check-ins (pre-redesign) remain readable in the feed and on the detail screen — only the compose surface is capped. The old 4-tile grid is gone.
+
+### Flavor tag pattern
+
+- **Inline row:** a horizontally scrolling flat `Row` (`overflow-x: auto`, no wrap) of currently selected tag chips, terminated by a `+ Browse` chip. The section header (`Flavor Tags`) is itself tappable and opens the same sheet — gives the user two ways in.
+- **Browse sheet:** the existing `Sheet` primitive (large modal bottom sheet, `var(--radius-xl)` top corners, backdrop blur), titled `Flavor Tags`. Top of the sheet: a single-line `TextField` search input (placeholder `Search tags` / `タグを検索` / `태그 검색`). Below: a single **flat** wrapped list of all tag chips — no dimension grouping anymore. Tapping a chip toggles selection in place; the underlying screen state updates immediately. The sheet has no Save/Done button — closing dismisses.
+- Empty search → `No matching tags.` message in `var(--fg-3)`.
+- Selected tags persist across sheet open/close.
+- The old dimension-grouped layout (`Sweetness`, `Body`, `Acidity`, `Character`, `Finish`) is gone from the UI. The taxonomy data still informs Flutter's tag catalog; the picker just renders it flat and searchable.
+
+### Location label (renaming)
+
+The section formerly labeled `Where?` is now **`Location`** (EN `Location` / JA `場所` / KO `위치`). The Foursquare venue picker flow is unchanged — the row still opens the venue search, returns a `venue_id`, and renders the selected venue name with an inline clear affordance. ARB key text updates; code identifiers should rename where it adds clarity.
+
+### Purchase Type removal (UI only)
+
+The `Purchase type` section (on-premise / retail / gift / other chips) is **gone from the compose UI**. The `checkInPurchase*` ARB keys are removed.
+
+- DB column `check_ins.purchase_type` stays.
+- The API stops requiring/accepting `purchase_type` in `POST /v1/check-ins` and `PATCH /v1/check-ins/{id}` from the Flutter compose flow. (If the column is kept in the request body schema for forward-compat, document it as nullable, never set by the mobile client.)
+- No UI surface displays the value either; existing rows that have a value keep it in the DB but it's not rendered anywhere user-facing.
+
+### Submit button placement
+
+A single full-width primary pill (`Post`, `var(--c-ai)` background, white text, 14-sp body, 999-px radius) sits at the bottom of the scrollable form, **inside** the scroll region — not pinned. The AppBar action button is removed; the trailing AppBar slot is empty (a 40-dp spacer maintains centering of the title).
+
+### Open i18n strings introduced by this redesign
+
+Inline in the HTML kit; Flutter ARB keys to be confirmed by `flutter-engineer` (suggested names):
+
+| Key (suggested) | EN | JA | KO |
+|---|---|---|---|
+| `checkInLocation` | Location | 場所 | 위치 |
+| `checkInLocationEmpty` | Add a venue | 会場を追加 | 장소 추가 |
+| `checkInReviewPlaceholder` | Leave a note | メモを残す | 메모 남기기 |
+| `checkInFlavorBrowse` | + Browse | + 一覧 | + 둘러보기 |
+| `checkInFlavorSheetSearch` | Search tags | タグを検索 | 태그 검색 |
+| `checkInFlavorSheetEmpty` | No matching tags. | 該当するタグがありません。 | 일치하는 태그가 없습니다. |
+| `ratingClear` | Clear | クリア | 지우기 |
+
+### Removed strings
+
+- `ratingTapToRate` (`Tap a star to rate · half-steps allowed` / etc.) — gone with the slider.
+- `checkInPurchase*` (section label + on-premise / retail / gift / other) — section removed.
+- `checkInPhotosCap` (`Photos · up to 4` / etc.) — there is no separate photo section anymore; the lone tile lives in the review Row.

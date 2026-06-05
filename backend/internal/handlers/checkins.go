@@ -211,7 +211,7 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "UpdateCheckin count photos", err)
 			return
 		}
-		if current-len(removeURLs)+len(addURLs) > 4 {
+		if current-len(removeURLs)+len(addURLs) > 1 {
 			h.writeErr(w, "UpdateCheckin photo cap", domain.ErrPhotoCapExceeded)
 			return
 		}
@@ -424,8 +424,9 @@ type uploadPhotoRequest struct {
 
 // UploadCheckinPhoto — POST /v1/check-ins/{id}/photos.
 //
-// Attaches a previously-presigned blob to a check-in. The 4-photo cap is
-// still enforced by AddPhoto.
+// Attaches a previously-presigned blob to a check-in. The SPEC §4.1
+// 1-photo submission cap (Slice B) is enforced by AddPhoto; existing
+// multi-photo check-ins remain readable but cannot be added to.
 func (h *Handler) UploadCheckinPhoto(w http.ResponseWriter, r *http.Request) {
 	uid, ok := h.authedID(w, r)
 	if !ok {

@@ -79,7 +79,8 @@ func TestPhotoPresignContentTypeValidation(t *testing.T) {
 
 // Attach a synthetic 'pending' photo_uploads row to a check-in. Because
 // storage is Disabled, the resulting check_in_photos.photo_url is "". The
-// 4-photo cap still applies on the 5th attempt.
+// SPEC §4.1 1-photo submission cap (Slice B) is enforced on the 2nd
+// attempt by the repository.
 func TestAttachUploadedPhotoToCheckin(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -99,24 +100,24 @@ func TestAttachUploadedPhotoToCheckin(t *testing.T) {
 	}
 	_ = json.Unmarshal(raw, &ci)
 
-	// Plant four 'pending' rows directly. Attaching all four succeeds; a
-	// fifth returns the SPEC PHOTO_CAP_EXCEEDED.
+	// Plant two 'pending' rows directly. The 1st attach succeeds; the
+	// 2nd returns the SPEC PHOTO_CAP_EXCEEDED (Slice B / SPEC §4.1).
 	p := getPool(t)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 2; i++ {
 		uploadID := mustInsertPendingUpload(t, p, uid, fmt.Sprintf("checkins/%s/p%d.jpg", uid, i))
 		code, raw := doReq(t, srv, http.MethodPost,
 			"/v1/check-ins/"+ci.ID+"/photos", tok,
 			map[string]any{"upload_id": uploadID})
 		switch i {
-		case 4:
-			// 5th photo — repository enforces the cap.
+		case 1:
+			// 2nd photo — repository enforces the cap.
 			if code != http.StatusUnprocessableEntity {
-				t.Fatalf("5th photo attach: status=%d body=%s", code, raw)
+				t.Fatalf("2nd photo attach: status=%d body=%s", code, raw)
 			}
 			var e errBodyShape
 			_ = json.Unmarshal(raw, &e)
 			if e.Code != "PHOTO_CAP_EXCEEDED" {
-				t.Errorf("5th photo code: %q", e.Code)
+				t.Errorf("2nd photo code: %q", e.Code)
 			}
 		default:
 			if code != http.StatusCreated {

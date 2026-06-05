@@ -128,7 +128,7 @@ These are non-negotiable across every layer. Violating any of these is a QA bloc
 
 Never abbreviate, never substitute "Sake" alone in `en`.
 
-**Rating scale** — `0.5–5.0` in `0.5` steps (10 levels). Optional per check-in. Stored in PostgreSQL as `NUMERIC(3,1)`. In Go and Dart, use a type that preserves one decimal (`float64` / `double` is acceptable; integer is not). API responses emit it as a number, never a string.
+**Rating scale** — `0.5–5.0` in `0.25` steps (19 levels). Optional per check-in. Stored in PostgreSQL as `NUMERIC(3,2)` (migration 004). In Go and Dart, use a type that preserves two decimals (`float64` / `double` is acceptable; integer is not). API responses emit it as a number, never a string.
 
 **Username** — case-insensitive, stored lowercase, displayed as entered at registration. `3–30` chars, alphanumeric + underscore.
 
@@ -138,7 +138,7 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 
 **Pagination** — feed and all list endpoints use cursor pagination, never offset. Response shape: `{ "items": [...], "next_cursor": "...", "has_more": bool }`. Page size is 20 for the feed. Cursors are HMAC-signed with `CURSOR_SECRET` (Stage 0); tampered cursors return `400 INVALID_CURSOR`.
 
-**Check-in caps** — review text ≤ 500 chars; up to 4 photos per check-in.
+**Check-in caps** — review text ≤ 500 chars; up to 1 photo per check-in on submission. Existing multi-photo check-ins remain readable (the API still serves their full photo arrays).
 
 **Default collections** — every new user is created with two collections: `Inventory` and `Wishlist`. They are renameable and deletable, not special. Stage 5 localized the seed names per the registering user's `locale`.
 

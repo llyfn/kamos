@@ -44,53 +44,69 @@ func TestCreateCheckinRatingPrecision(t *testing.T) {
 	}
 }
 
-// 5th photo on a single check-in must be rejected (4 photo cap).
-func TestCheckinPhotoCap(t *testing.T) {
+// SPEC §4.2 (Slice B): the grid is 0.25 steps. Migration 004 widens
+// check_ins.rating from NUMERIC(3,1) to NUMERIC(3,2) so the quarter-step
+// values survive the round-trip. Pre-004 this test fails because PG
+// silently rounds 4.25 → 4.3 / 0.75 → 0.8 on insert.
+func TestCreateCheckinRatingQuarterStepRoundTrip(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	tok, _ := mustRegister(t, srv, "photog", "photog@example.com", "password11")
-	bevID := seedBeverage(t, "Photog")
+	tok, _ := mustRegister(t, srv, "quarter", "quarter@example.com", "password11")
+	bevID := seedBeverage(t, "QuarterRatingTest")
 
-	// Create a check-in with 4 photo URLs inline (the max).
-	code, body := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
-		"beverage_id": bevID,
-		"photos":      []string{"http://a/1.jpg", "http://a/2.jpg", "http://a/3.jpg", "http://a/4.jpg"},
-	})
-	if code != http.StatusCreated {
-		t.Fatalf("create status=%d body=%s", code, body)
+	cases := []struct {
+		name string
+		in   float64
+		wire string // exact substring expected in the JSON body
+	}{
+		{"4.25 upper quarter", 4.25, `"rating":4.25`},
+		{"0.75 lower quarter", 0.75, `"rating":0.75`},
 	}
-	var ci map[string]any
-	if err := json.Unmarshal(body, &ci); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	id, _ := ci["id"].(string)
-	if id == "" {
-		t.Fatalf("missing check-in id: %s", body)
-	}
-
-	// Adding a 5th photo via the upload endpoint must be rejected.
-	code, body = doReq(t, srv, http.MethodPost, "/v1/check-ins/"+id+"/photos", tok, map[string]string{
-		"url": "http://a/5.jpg",
-	})
-	if code < 400 || code >= 500 {
-		t.Fatalf("5th photo: status=%d body=%s (want 4xx)", code, body)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			code, body := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
+				"beverage_id": bevID,
+				"rating":      tc.in,
+			})
+			if code != http.StatusCreated {
+				t.Fatalf("status=%d body=%s", code, body)
+			}
+			if !strings.Contains(string(body), tc.wire) {
+				t.Errorf("rating round-trip wrong; want %q in body, got %s", tc.wire, body)
+			}
+			var ci map[string]any
+			if err := json.Unmarshal(body, &ci); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			r, ok := ci["rating"].(float64)
+			if !ok {
+				t.Fatalf("rating type: %T", ci["rating"])
+			}
+			if r != tc.in {
+				t.Errorf("rating: got %v want %v", r, tc.in)
+			}
+		})
 	}
 }
 
-// Creating a check-in with 5 photos inline is rejected at the validation
-// layer (handler returns 422 before the DB sees it).
-func TestCheckinFivePhotosInlineRejected(t *testing.T) {
+// Creating a check-in with 2 photos inline is rejected at the validation
+// layer (handler returns 422 before the DB sees it). Slice B / SPEC §4.1
+// dropped the submission cap from 4 to 1; the legacy upload endpoint
+// (POST /v1/check-ins/{id}/photos) is covered by
+// TestAttachUploadedPhotoToCheckin in photos_integration_test.go.
+func TestCheckinTwoPhotosInlineRejected(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	tok, _ := mustRegister(t, srv, "five", "five@example.com", "password11")
-	bevID := seedBeverage(t, "Five")
+	tok, _ := mustRegister(t, srv, "two", "two@example.com", "password11")
+	bevID := seedBeverage(t, "Two")
 	code, body := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
 		"beverage_id": bevID,
-		"photos":      []string{"a", "b", "c", "d", "e"},
+		"photos":      []string{"a", "b"},
 	})
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422, got %d body=%s", code, body)

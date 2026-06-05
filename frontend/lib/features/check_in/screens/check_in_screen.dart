@@ -1,17 +1,24 @@
-// KAMOS — Check-in screen (SPEC §4).
+// KAMOS — Screen: Check-in flow (SPEC §4, post-MVP redesign per
+// docs/history/03_checkin_compose_redesign/00_brief.md).
 //
-// - Optional 0.5-step rating (null = "I tried this")
-// - 500-char review hard cap with live counter
-// - Flavor tag chips, multi-select
-// - Up to 4 photos (UI cap; the server is the backstop)
-// - Price (amount + currency + per-serving|per-bottle)
-// - Purchase type
+// New layout (top → bottom):
+//   1. Beverage card header (label image + name + producer + category overline)
+//   2. Rating  — continuous slider 0.5..5.0, 0.25 step, nullable; mono "x.xx / 5.0"
+//   3. Review + photo — Row: multi-line note on the left (≤500), 1 fixed square photo right
+//   4. Flavor tags — flat horizontally-scrolling row of selected chips + "+ Browse";
+//                    Browse opens a tall bottom sheet with search + flat tag list
+//   5. Location — venue picker row (Foursquare flow unchanged; just renamed from "Where?")
+//   6. Price — currency segmented + amount field + serving/bottle toggle
+//   7. Submit — full-width primary pill at the bottom of the form (AppBar action removed)
 //
-// Photo upload: on submit, the check-in is created first; then each
-// selected photo is uploaded sequentially through the 3-step presign → PUT →
-// attach flow on `CheckInRepository.uploadPhotoAndAttach`. Per-photo status
-// is tracked in `_photoStates`. If the storage provider is disabled, the
-// upload is skipped and the check-in still succeeds.
+// Removed from compose UI: Purchase Type section. (DB column stays — server-side only.)
+//
+// Photo upload: cap is 1 on submission (SPEC §4.1). On submit, the check-in
+// is created first, then the lone photo is uploaded through the 3-step
+// presign → PUT → attach flow on `CheckInRepository.uploadPhotoAndAttach`.
+// Upload status is tracked in `_photoStates[0]` (single slot). If the
+// storage provider is disabled, the upload is skipped and the check-in
+// still succeeds.
 
 import 'dart:io';
 
@@ -33,13 +40,20 @@ import '../../../core/observability/sentry_observer.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
-import '../../../shared/widgets/stars_input.dart';
+import '../../../shared/widgets/kamos_pill_button.dart';
 import '../../beverages/providers/beverage_providers.dart';
 import '../../feed/providers/feed_providers.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../../venues/widgets/venue_picker_sheet.dart';
 import '../providers/checkin_providers.dart';
 import '../repository/checkin_repository.dart';
+import '../widgets/flavor_tag_browse_sheet.dart';
+import '../widgets/rating_slider.dart';
+
+/// SPEC §4.1 — compose-side photo cap. Post-Slice-B this is 1; existing
+/// multi-photo check-ins (rows authored before the cap was tightened) keep
+/// rendering. Server enforces the same cap.
+const int _kPhotoCap = 1;
 
 /// Per-photo upload state machine.
 enum PhotoUploadStatus { idle, uploading, done, failed }
@@ -78,7 +92,8 @@ class CheckInScreen extends ConsumerStatefulWidget {
   final Beverage beverage;
 
   /// Pre-seeded photos. Tests use this to bypass `image_picker` (which has no
-  /// platform binding in widget tests).
+  /// platform binding in widget tests). If more than [_kPhotoCap] are
+  /// supplied, only the first is retained (Slice B tightened the cap to 1).
   @visibleForTesting
   final List<XFile> initialPhotos;
 
@@ -105,32 +120,19 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   final List<PhotoUploadState> _photoStates = [];
   String _currency = 'JPY';
   String _priceMode = 'serving';
-  String? _purchase;
   FoursquarePlace? _venue;
   bool _uploadingPhotos = false;
-
-  // Server-canonical dimensions, in display order. The labels for each tag are
-  // resolved from `flavorTagsProvider` and rendered per-locale via
-  // `resolveI18n`. The selected values stored in `_tags` are slugs (sent to
-  // the server as-is in the check-in POST body).
-  static const _dimensionOrder = [
-    'sweetness',
-    'body',
-    'acidity',
-    'character',
-    'finish',
-  ];
 
   @override
   void initState() {
     super.initState();
     if (widget.initialPhotos.isNotEmpty) {
-      _photos.addAll(widget.initialPhotos);
+      // Clamp to the post-Slice-B 1-photo cap. Tests that seed more than one
+      // file now exercise the same code path the picker takes.
+      final seeded = widget.initialPhotos.take(_kPhotoCap).toList();
+      _photos.addAll(seeded);
       _photoStates.addAll(
-        List.generate(
-          widget.initialPhotos.length,
-          (_) => const PhotoUploadState(),
-        ),
+        List.generate(seeded.length, (_) => const PhotoUploadState()),
       );
     }
     _venue = widget.initialVenue;
@@ -152,13 +154,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   }
 
   Future<void> _addPhoto() async {
-    if (_photos.length >= 4) {
-      final l = AppLocalizations.of(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.checkInPhotoLimitReached)));
-      return;
-    }
+    if (_photos.length >= _kPhotoCap) return;
     try {
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.gallery);
@@ -181,6 +177,14 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         _tags.add(t);
       }
     });
+  }
+
+  Future<void> _openFlavorSheet() async {
+    await showFlavorTagBrowseSheet(
+      context: context,
+      selected: _tags,
+      onToggle: _toggleTag,
+    );
   }
 
   /// Sequentially upload selected photos. The check-in must already exist.
@@ -234,7 +238,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
             context,
           ).showSnackBar(SnackBar(content: Text(l.photoUploadDisabled)));
         }
-        // Skip the remaining photos — storage is off for everyone.
         if (mounted) {
           setState(() {
             for (var k = i; k < _photoStates.length; k++) {
@@ -271,6 +274,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     if (amount != null && amount > 0) {
       price = Price(amount: amount, currency: _currency, mode: _priceMode);
     }
+    // SPEC §4.4 — purchase_type is no longer sent from the compose flow as
+    // of Slice B; the column stays in the DB but is not surfaced anywhere.
     final posted = await ref
         .read(checkInControllerProvider.notifier)
         .submit(
@@ -279,7 +284,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           review: _review.text.isEmpty ? null : _review.text,
           tags: _tags.toList(),
           price: price,
-          purchaseType: _purchase,
           venue: _venue?.toCheckinVenueJson(),
         );
     if (posted == null) {
@@ -297,8 +301,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     if (!mounted) return;
     if (!uploadsOk &&
         _photoStates.any((s) => s.status == PhotoUploadStatus.failed)) {
-      // At least one failed upload — keep the screen open so the user can
-      // retry (per-tile retry button). The check-in itself is already saved.
+      // The lone failed upload — keep the screen open so the user can hit
+      // the retry button on the photo tile. The check-in itself is saved.
       return;
     }
     ScaffoldMessenger.of(
@@ -309,13 +313,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     // own activity: the home Feed, /v1/users/me stats, the
     // user-check-ins list shown on the Me profile, and the beverage
     // detail page's recent-check-ins block.
-    // Capture the username BEFORE invalidating `meProvider` — otherwise
-    // the synchronous read after invalidation returns a loading state
-    // and we'd skip the userCheckins invalidation. The family key is the
-    // username (not the user id) because that is what the Me profile
-    // screen watches via `userCheckinsProvider(user.username)`; passing
-    // the id here would invalidate a different cache slot than the one
-    // the profile actually reads.
     final meUsername = ref.read(meProvider).asData?.value.user.username;
     ref.invalidate(feedProvider);
     ref.invalidate(meProvider);
@@ -331,7 +328,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     }
   }
 
-  /// Retry one previously-failed photo upload.
+  /// Retry the failed photo upload. With the 1-photo cap, this only ever
+  /// targets index 0 — but we keep the parameter for clarity at the call site
+  /// and in case the cap is ever relaxed.
   Future<void> _retryPhoto(int index) async {
     final posted = ref.read(checkInControllerProvider).posted;
     if (posted == null) return;
@@ -363,7 +362,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           photoRef: photoRef,
         );
       });
-      // If all are done, complete the flow.
       if (_photoStates.every((s) => s.status == PhotoUploadStatus.done)) {
         ScaffoldMessenger.of(
           context,
@@ -423,30 +421,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(l.checkInTitle),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-            child: FilledButton(
-              onPressed: canPost ? _submit : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: t.ai,
-                shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                visualDensity: VisualDensity.compact,
-              ),
-              child: (state.isSubmitting || _uploadingPhotos)
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(l.actionPost),
-            ),
-          ),
-        ],
+        // 40-dp trailing spacer keeps the title centred against the leading
+        // `X` now that the AppBar Post action is gone (lives at the bottom).
+        actions: const [SizedBox(width: 40)],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -505,90 +482,38 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               ),
             ),
             _Section(text: l.ratingLabel),
-            const SizedBox(height: 8),
-            StarsInput(
+            RatingSlider(
               value: _rating,
               onChanged: (v) => setState(() => _rating = v),
-              size: 32,
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                _rating == null
-                    ? l.ratingTapToRate
-                    : l.ratingValue(_rating!.toStringAsFixed(1)),
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 13,
-                  color: t.fg2,
-                ),
-              ),
             ),
             _Section(text: l.checkInReviewLabel),
-            TextField(
-              controller: _review,
-              maxLength: 500,
-              // SPEC §6.4 cap is 500 chars. We allow the field to momentarily
-              // exceed so `checkInReviewTooLong` can render as the validator
-              // error; the submit button is also gated on `!reviewTooLong`.
-              maxLengthEnforcement: MaxLengthEnforcement.none,
-              maxLines: 4,
-              minLines: 3,
-              decoration: InputDecoration(
-                hintText: l.checkInReviewPlaceholder,
-                errorText: reviewTooLong ? l.checkInReviewTooLong : null,
-              ),
-              onChanged: (_) => setState(() {}),
+            _ReviewAndPhotoRow(
+              reviewController: _review,
+              reviewTooLong: reviewTooLong,
+              hasPhoto: _photos.isNotEmpty,
+              photoState: _photos.isNotEmpty ? _photoStates.first : null,
+              onAddPhoto: _addPhoto,
+              onRemovePhoto: () => _removePhoto(0),
+              onRetryPhoto: () => _retryPhoto(0),
+              onReviewChanged: () => setState(() {}),
+              retryLabel: l.actionRetry,
             ),
-            _Section(text: l.checkInFlavorTags),
-            _FlavorTagPicker(
-              selected: _tags,
+            _FlavorTagSectionHeader(
+              label: l.checkInFlavorTags,
+              onTap: _openFlavorSheet,
+            ),
+            _FlavorTagChipRow(
+              selectedSlugs: _tags,
               locale: locale,
-              dimensionOrder: _dimensionOrder,
-              dimensionLabel: (key) => _dimensionLabel(l, key),
               onToggle: _toggleTag,
+              onBrowse: _openFlavorSheet,
+              browseLabel: l.checkInFlavorBrowse,
             ),
             _Section(text: l.checkInWhereLabel),
             _VenuePickerRow(
               venue: _venue,
               onPick: _pickVenue,
               onClear: _clearVenue,
-            ),
-            _Section(text: l.checkInPhotosLabel),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 4,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              children: List.generate(4, (i) {
-                if (i < _photos.length) {
-                  return _PhotoTile(
-                    filled: true,
-                    state: _photoStates[i],
-                    onRemove: () => _removePhoto(i),
-                    onRetry: _photoStates[i].status == PhotoUploadStatus.failed
-                        ? () => _retryPhoto(i)
-                        : null,
-                    retryLabel: l.actionRetry,
-                  );
-                }
-                return _PhotoTile(filled: false, onTap: _addPhoto);
-              }),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  l.checkInPhotoCounter(_photos.length),
-                  style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 11,
-                    color: t.fg3,
-                  ),
-                ),
-              ),
             ),
             _Section(text: l.checkInPriceLabel),
             Row(
@@ -619,49 +544,32 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
               ],
               onChanged: (v) => setState(() => _priceMode = v),
             ),
-            _Section(text: l.checkInPurchaseType),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children:
-                  [
-                        ('on_premise', l.checkInPurchaseOnPremise),
-                        ('retail', l.checkInPurchaseRetail),
-                        ('gift', l.checkInPurchaseGift),
-                        ('other', l.checkInPurchaseOther),
-                      ]
-                      .map(
-                        (o) => KamosChip(
-                          label: o.$2,
-                          selected: _purchase == o.$1,
-                          onTap: () => setState(() {
-                            _purchase = _purchase == o.$1 ? null : o.$1;
-                          }),
-                        ),
-                      )
-                      .toList(),
+            const SizedBox(height: 24),
+            // Full-width Post pill at the bottom of the scroll body. The
+            // AppBar action button moved here per the Slice B redesign.
+            Row(
+              children: [
+                KamosPillButton.primary(
+                  label: l.actionPost,
+                  onPressed: canPost ? _submit : null,
+                ),
+              ],
             ),
+            if (state.isSubmitting || _uploadingPhotos)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Center(
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
-  }
-
-  String _dimensionLabel(AppLocalizations l, String dimension) {
-    switch (dimension) {
-      case 'sweetness':
-        return l.flavorSweetness;
-      case 'body':
-        return l.flavorBody;
-      case 'acidity':
-        return l.flavorAcidity;
-      case 'character':
-        return l.flavorCharacter;
-      case 'finish':
-        return l.flavorFinish;
-      default:
-        return dimension;
-    }
   }
 }
 
@@ -671,85 +579,161 @@ void unawaitedSafe(Future<dynamic> f) {
   f.catchError((_) {});
 }
 
-/// Renders flavor-tag chips grouped by `dimension`, with locale-resolved
-/// labels. The list is fetched from `/v1/flavor-tags` via `flavorTagsProvider`.
-/// `selected` holds tag slugs.
-class _FlavorTagPicker extends ConsumerWidget {
-  const _FlavorTagPicker({
-    required this.selected,
+/// Tappable section label for the Flavor Tags row. Mirrors `_Section`'s
+/// typography but routes taps into the browse sheet so the user has two
+/// entry points (header or "+ Browse" chip).
+class _FlavorTagSectionHeader extends StatelessWidget {
+  const _FlavorTagSectionHeader({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 20, bottom: 8),
+        child: Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontFamily: 'NotoSansJP',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.3,
+            color: t.fg3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontally-scrolling row of selected flavor-tag chips followed by a
+/// `+ Browse` chip. The chips read locale-resolved names from
+/// `flavorTagsProvider`.
+class _FlavorTagChipRow extends ConsumerWidget {
+  const _FlavorTagChipRow({
+    required this.selectedSlugs,
     required this.locale,
-    required this.dimensionOrder,
-    required this.dimensionLabel,
     required this.onToggle,
+    required this.onBrowse,
+    required this.browseLabel,
   });
 
-  final Set<String> selected;
+  final Set<String> selectedSlugs;
   final String locale;
-  final List<String> dimensionOrder;
-  final String Function(String dimension) dimensionLabel;
   final void Function(String slug) onToggle;
+  final VoidCallback onBrowse;
+  final String browseLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.tokens;
     final tagsAsync = ref.watch(flavorTagsProvider);
-    return tagsAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: SizedBox(
-          height: 18,
-          width: 18,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (tags) {
-        // Group tags by dimension, preserving server order within each group.
-        final byDimension = <String, List<FlavorTag>>{};
-        for (final tag in tags) {
-          byDimension.putIfAbsent(tag.dimension, () => []).add(tag);
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final dim in dimensionOrder)
-              if ((byDimension[dim] ?? const []).isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          dimensionLabel(dim).toUpperCase(),
-                          style: TextStyle(
-                            fontFamily: 'NotoSansJP',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.3,
-                            color: t.fg3,
-                          ),
-                        ),
-                      ),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final tag in byDimension[dim]!)
-                            KamosChip(
-                              label: resolveI18n(tag.name, locale),
-                              selected: selected.contains(tag.slug),
-                              onTap: () => onToggle(tag.slug),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+    // Resolve selected slugs to FlavorTag objects so we can render
+    // locale-aware labels. If the provider hasn't resolved yet we still
+    // render the "+ Browse" chip so the entry point is always available.
+    final tags = tagsAsync.asData?.value ?? const <FlavorTag>[];
+    final selectedTags = [
+      for (final tag in tags)
+        if (selectedSlugs.contains(tag.slug)) tag,
+    ];
+
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final tag in selectedTags) ...[
+            Center(
+              child: KamosChip(
+                label: resolveI18n(tag.name, locale),
+                selected: true,
+                onTap: () => onToggle(tag.slug),
+              ),
+            ),
+            const SizedBox(width: 6),
           ],
-        );
-      },
+          Center(
+            child: KamosChip(
+              label: browseLabel,
+              onTap: onBrowse,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Row containing the multi-line review note on the left and a single
+/// 104×104 photo tile on the right. The two widgets are sized to match
+/// heights so the row reads as a coherent block.
+class _ReviewAndPhotoRow extends StatelessWidget {
+  const _ReviewAndPhotoRow({
+    required this.reviewController,
+    required this.reviewTooLong,
+    required this.hasPhoto,
+    required this.photoState,
+    required this.onAddPhoto,
+    required this.onRemovePhoto,
+    required this.onRetryPhoto,
+    required this.onReviewChanged,
+    required this.retryLabel,
+  });
+
+  final TextEditingController reviewController;
+  final bool reviewTooLong;
+  final bool hasPhoto;
+  final PhotoUploadState? photoState;
+  final VoidCallback onAddPhoto;
+  final VoidCallback onRemovePhoto;
+  final VoidCallback onRetryPhoto;
+  final VoidCallback onReviewChanged;
+  final String retryLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: reviewController,
+            maxLength: 500,
+            // SPEC §6.4 cap is 500 chars. We allow the field to momentarily
+            // exceed so `checkInReviewTooLong` can render as the validator
+            // error; the submit button is also gated on `!reviewTooLong`.
+            maxLengthEnforcement: MaxLengthEnforcement.none,
+            // minLines: 4 matches the 104-dp photo tile height to the right
+            // visually; the field can grow past that as the user types.
+            maxLines: 6,
+            minLines: 4,
+            decoration: InputDecoration(
+              hintText: l.checkInReviewPlaceholder,
+              errorText: reviewTooLong ? l.checkInReviewTooLong : null,
+            ),
+            onChanged: (_) => onReviewChanged(),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 104,
+          height: 104,
+          child: _PhotoTile(
+            filled: hasPhoto,
+            state: photoState,
+            onTap: hasPhoto ? null : onAddPhoto,
+            onRemove: hasPhoto ? onRemovePhoto : null,
+            onRetry: photoState?.status == PhotoUploadStatus.failed
+                ? onRetryPhoto
+                : null,
+            retryLabel: retryLabel,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -877,7 +861,7 @@ class _PhotoTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: filled ? t.border1 : t.border2,
-            style: filled ? BorderStyle.solid : BorderStyle.solid,
+            style: BorderStyle.solid,
           ),
         ),
         child: Stack(
@@ -892,14 +876,14 @@ class _PhotoTile extends StatelessWidget {
                 color: isDone
                     ? t.fg1
                     : (isFailed ? Colors.red : (filled ? t.fg2 : t.fgMuted)),
-                size: filled ? 24 : 20,
+                size: filled ? 32 : 28,
               ),
             ),
             if (isUploading)
               Positioned(
-                left: 4,
-                right: 4,
-                bottom: 4,
+                left: 6,
+                right: 6,
+                bottom: 6,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
@@ -910,9 +894,9 @@ class _PhotoTile extends StatelessWidget {
               ),
             if (isFailed && retryLabel != null)
               Positioned(
-                left: 4,
-                right: 4,
-                bottom: 4,
+                left: 6,
+                right: 6,
+                bottom: 6,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   color: Colors.red.withValues(alpha: 0.85),

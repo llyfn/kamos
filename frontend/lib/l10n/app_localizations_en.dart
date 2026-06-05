@@ -85,6 +85,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ratingLabel => 'Rating';
 
   @override
+  String get ratingClear => 'Clear';
+
+  @override
   String get checkInTitle => 'Check-in';
 
   @override
@@ -106,13 +109,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInReviewLabel => 'Review';
 
   @override
-  String get checkInReviewPlaceholder => 'Pear, soft rice, a clean finish…';
+  String get checkInReviewPlaceholder => 'Leave a note';
 
   @override
   String get checkInReviewTooLong => 'Review is too long';
 
   @override
-  String get checkInFlavorTags => 'Flavor tags';
+  String get checkInFlavorTags => 'Flavor Profiles';
+
+  @override
+  String get checkInFlavorBrowse => '+ Browse';
+
+  @override
+  String get checkInFlavorSheetSearch => 'Search tags';
+
+  @override
+  String get checkInFlavorSheetEmpty => 'No matching tags.';
 
   @override
   String get checkInPhotosLabel => 'Photos · up to 4';
@@ -160,10 +172,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Photo upload is not available — saved without photos.';
 
   @override
-  String get checkInWhereLabel => 'Where?';
+  String get checkInWhereLabel => 'Location';
 
   @override
-  String get checkInWhereCta => 'Add a venue';
+  String get checkInWhereCta => 'Add a location';
 
   @override
   String get venuePickerSearchPlaceholder => 'Search for a venue';
@@ -631,7 +643,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beverageDetailAbv => 'ABV';
 
   @override
-  String get beverageDetailSeimai => 'Seimai';
+  String get beverageDetailSeimai => 'Polishing Ratio';
 
   @override
   String get beverageDetailRegion => 'Region';
@@ -643,7 +655,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get beverageDetailAddToList => 'List';
 
   @override
-  String get beverageDetailAggregatedFlavor => 'Aggregated flavor';
+  String get beverageDetailAggregatedFlavor => 'Flavor Profile';
 
   @override
   String get beverageDetailAbout => 'About the producer';

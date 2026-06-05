@@ -26,8 +26,9 @@ const maxPhotoBytes int64 = 10 * 1024 * 1024
 // presignOutstandingCap caps the number of un-attached, un-expired
 // pending presigns a single user may hold. SEC-008: prevents a user from
 // minting thousands of pending rows + presigned URLs to scrape R2
-// capacity or stage a flood. 8 is comfortably above the SPEC 4-photos-
-// per-check-in cap × concurrent drafts in the UI.
+// capacity or stage a flood. 8 is comfortably above the SPEC §4.1
+// 1-photo submission cap × concurrent drafts in the UI (sized
+// historically for the 4-photo cap).
 const presignOutstandingCap = 8
 
 type photoPresignRequest struct {
