@@ -122,7 +122,7 @@ SELECT
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id AS producer_id, br.name_i18n AS producer_name_i18n, br.image_url AS producer_image_url,` + producerPrefectureSelectCols + `,
+  br.id AS producer_id, br.name_i18n AS producer_name_i18n, br.image_url AS producer_image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `,
   v.id AS venue_id, v.name AS venue_name, v.locality AS venue_locality, v.country AS venue_country,
   ci.toast_count AS toasts,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid) AS you_toasted,
@@ -131,7 +131,7 @@ FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 
@@ -591,7 +591,7 @@ SELECT
   u.username, u.display_username, u.display_name, u.avatar_url, u.privacy_mode,
   b.name_i18n, b.category_slug, b.label_image_url,
   cat.name_i18n AS category_name_i18n,
-  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `,
+  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `,
   v.id, v.name, v.locality, v.country,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts WHERE check_in_id = ci.id AND user_id = NULLIF($2, '')::uuid),
@@ -600,7 +600,7 @@ FROM check_ins ci
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.user_id = $1
   AND ci.deleted_at IS NULL
@@ -664,6 +664,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		bevLabel                 *string
 		brwImageURL              *string
 		brwPref                  prefectureScan
+		bevSub                   subcategoryRefScan
 		brwID, userIDVal, bevID  string
 		venueID, venueName       *string
 		venueLocality, venueCtry *string
@@ -673,7 +674,8 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		commentCnt               int64
 	)
 	prefArgs := brwPref.scanArgs()
-	scanArgs := make([]any, 0, 24+len(prefArgs)+7)
+	subArgs := bevSub.scanArgs()
+	scanArgs := make([]any, 0, 24+len(prefArgs)+len(subArgs)+7)
 	scanArgs = append(scanArgs,
 		&c.ID, &userIDVal, &bevID,
 		&c.Rating, &c.Review,
@@ -686,6 +688,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		&brwID, &brwName, &brwImageURL,
 	)
 	scanArgs = append(scanArgs, prefArgs...)
+	scanArgs = append(scanArgs, subArgs...)
 	scanArgs = append(scanArgs,
 		&venueID, &venueName, &venueLocality, &venueCtry,
 		&toastCnt, &youToast, &commentCnt,
@@ -705,6 +708,7 @@ func scanCheckinRow(rows rowScanner) (domain.Checkin, string, error) {
 		Name:          bn,
 		Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
+		Subcategory:   bevSub.toSubcategory(),
 		LabelImageURL: bevLabel,
 	}
 	if priceAmount != nil && priceCcy != nil && priceUnit != nil {
