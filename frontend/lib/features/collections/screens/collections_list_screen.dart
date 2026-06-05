@@ -48,7 +48,8 @@ class CollectionsListScreen extends ConsumerWidget {
                       color: t.fg1,
                     ),
                   ),
-                  OutlinedButton.icon(
+                  _NewCollectionButton(
+                    semanticLabel: l.collectionsNewList,
                     onPressed: () async {
                       final name = await _newCollectionName(context, l);
                       if (name != null && name.isNotEmpty) {
@@ -58,8 +59,6 @@ class CollectionsListScreen extends ConsumerWidget {
                         ref.invalidate(collectionsProvider);
                       }
                     },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: Text(l.collectionsNewList),
                   ),
                 ],
               ),
@@ -126,6 +125,38 @@ class CollectionsListScreen extends ConsumerWidget {
           ),
           );
         },
+        ),
+      ),
+    );
+  }
+}
+
+class _NewCollectionButton extends StatelessWidget {
+  const _NewCollectionButton({
+    required this.semanticLabel,
+    required this.onPressed,
+  });
+
+  final String semanticLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Material(
+        color: t.bgPage,
+        shape: CircleBorder(side: BorderSide(color: t.border2)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(Icons.add, size: 20, color: t.fg1),
+          ),
         ),
       ),
     );
