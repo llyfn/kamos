@@ -87,11 +87,10 @@ abstract class Me with _$Me {
     // as "you have admin rights; open the admin console" links. Defaults to
     // `UserRole.user` if the key is missing so older servers keep working.
     @Default(UserRole.user) UserRole role,
-    // Soft-delete timestamp on the owner's own account. The Stage 7
-    // backend change made the field `omitempty`, so it's absent for live
-    // users; non-null only in the rare window between admin suspension
-    // and the SoftDeleteCache refresh. UI can branch on this to show a
-    // "your account is being deleted" banner.
+    // Soft-delete timestamp on the owner's own account. The backend
+    // omits the field for live users; non-null only in the rare window
+    // between admin suspension and the SoftDeleteCache refresh. UI can
+    // branch on this to show a "your account is being deleted" banner.
     String? deletedAt,
   }) = _Me;
 

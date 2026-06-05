@@ -28,11 +28,10 @@ class _CommentComposerState extends State<CommentComposer> {
   final _controller = TextEditingController();
   bool _submitting = false;
 
-  // Stage 5 (PERF-033): the previous shape called setState on every
-  // keystroke through controller.addListener(setState). That rebuilt
-  // the entire composer (TextField + counter + button) for every
-  // character typed. We now scope rebuilds to the counter + button
-  // via ValueListenableBuilder; the TextField itself is rebuild-free.
+  // Per-keystroke setState would rebuild the entire composer
+  // (TextField + counter + button) for every character typed. We scope
+  // rebuilds to the counter + button via ValueListenableBuilder; the
+  // TextField itself stays rebuild-free.
 
   @override
   void dispose() {

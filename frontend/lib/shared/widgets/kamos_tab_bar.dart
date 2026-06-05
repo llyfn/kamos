@@ -1,14 +1,13 @@
-// KAMOS — Bottom tab bar (Shell.jsx parity, post-MVP nav rewrite per
+// KAMOS — Bottom tab bar (Shell.jsx parity per
 // design/notifications_ux.md §1).
 //
 // Five equal-width tabs in this order:
 //   Feed · Lists · Discover · Notifications · Me
 //
-// The MVP-era raised center "Check in" button is gone — check-in is
-// reached from the Feed CTA and the beverage-detail page. The
-// Notifications tab carries an unread dot (var(--c-koh), 8px) when any
-// notification row is unread; the dot is presence-only, never a count
-// (SPEC §5.4).
+// Check-in is reached from the Feed CTA and the beverage-detail page.
+// The Notifications tab carries an unread dot (var(--c-koh), 8px) when
+// any notification row is unread; the dot is presence-only, never a
+// count (SPEC §5.4).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

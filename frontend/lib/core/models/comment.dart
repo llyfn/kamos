@@ -9,11 +9,10 @@
 // soft-deleted comments out of the list response — clients never need to
 // render a tombstone.
 //
-// Stage 7 (M-12.2): `user` is nullable. Migration 013 sets
-// comments.user_id ON DELETE SET NULL, so a comment whose author was
-// hard-purged by the username-hold sweep arrives with `user: null`. The
-// tile renders the localized commentAuthorDeleted placeholder in that
-// case.
+// `user` is nullable. comments.user_id is ON DELETE SET NULL, so a
+// comment whose author was hard-purged by the username-hold sweep
+// arrives with `user: null`. The tile renders the localized
+// commentAuthorDeleted placeholder in that case.
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 

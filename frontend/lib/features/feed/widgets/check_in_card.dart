@@ -323,11 +323,11 @@ class _ProducerThumb extends StatelessWidget {
   }
 }
 
-/// Stage 5 (PERF-022): renders 1-4 photos at the bottom of a check-in
-/// card. Single-photo layouts go full-bleed; multi-photo layouts use
-/// a tight 2- or 2x2-column grid. We pin memCacheWidth to the logical
-/// width * devicePixelRatio so cached_network_image stores a properly-
-/// sized bitmap instead of a full-resolution JPEG.
+/// Renders 1-4 photos at the bottom of a check-in card. Single-photo
+/// layouts go full-bleed; multi-photo layouts use a tight 2- or 2x2-
+/// column grid. We pin memCacheWidth to the logical width *
+/// devicePixelRatio so cached_network_image stores a properly-sized
+/// bitmap instead of a full-resolution JPEG.
 class _CheckInPhotoGrid extends StatelessWidget {
   const _CheckInPhotoGrid({required this.photos});
 

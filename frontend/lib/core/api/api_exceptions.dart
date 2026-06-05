@@ -1,8 +1,6 @@
 // KAMOS — Central API exceptions.
 //
 // Single source of truth for the typed exceptions that repositories throw.
-// Previously each feature had its own `exceptions.dart`; Stage 8 deleted
-// those compat shims, so every import now resolves directly here.
 //
 // Layers
 // ------
@@ -317,7 +315,7 @@ class BeverageRequestSubmissionException extends KamosApiException {
   String toString() => 'BeverageRequestSubmissionException(${cause ?? ''})';
 }
 
-// ----- photo upload (used by CheckInRepository) -----
+// ----- photo upload -----
 
 /// 503 + `STORAGE_DISABLED` on `POST /v1/uploads/photo-presign` — server has
 /// no R2 configured. UI shows a "saved without photos" friendly path.

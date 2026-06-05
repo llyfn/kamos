@@ -112,10 +112,10 @@ class _CommentTileState extends ConsumerState<CommentTile> {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final me = ref.watch(meProvider).asData?.value;
-    // Stage 7 (M-12.2): comment.user can be null when the original author
-    // was hard-purged (migration 013 sets comments.user_id ON DELETE SET
-    // NULL). isOwn is false for orphaned rows — only moderator+ can
-    // delete them and that surface lives in the admin React client.
+    // comment.user can be null when the original author was hard-purged
+    // (comments.user_id is ON DELETE SET NULL). isOwn is false for
+    // orphaned rows — only moderator+ can delete them and that surface
+    // lives in the admin React client.
     final author = comment.user;
     final isOwn = me != null && author != null && me.user.id == author.id;
     final displayName = author?.displayUsername ?? l.commentAuthorDeleted;

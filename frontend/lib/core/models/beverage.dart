@@ -61,12 +61,12 @@ abstract class Beverage with _$Beverage {
   );
 }
 
-// Slice C — `beverages.subcategory` is now a slim FK reference to the
-// `beverage_subcategories` table (see migration 005 + OpenAPI `Subcategory`).
-// During the dual-source release window the server may emit a Subcategory
-// where only `name` is populated (id/categoryId/categorySlug/slug fall back
-// to empty strings) for legacy rows that still carry the old
-// `subcategory_i18n` JSONB. Treat id/slug as optional during that window.
+// `beverages.subcategory` is a slim FK reference to the
+// `beverage_subcategories` table (see OpenAPI `Subcategory`). The server
+// may emit a Subcategory where only `name` is populated
+// (id/categoryId/categorySlug/slug fall back to empty strings) for
+// legacy rows that still carry the old `subcategory_i18n` JSONB; treat
+// id/slug as optional.
 @Freezed(fromJson: false, toJson: false)
 abstract class Subcategory with _$Subcategory {
   const factory Subcategory({
@@ -158,10 +158,10 @@ abstract class BeverageDetail with _$BeverageDetail {
   );
 }
 
-// CheckinSummary lives here to avoid a circular import; the full Checkin is
-// in `checkin.dart`. Stage post-MVP widened the projection to include
-// `photos` and `tags` so beverage-detail recent-check-in rows render rich
-// cards without a second round trip.
+// CheckinSummary lives here to avoid a circular import; the full Checkin
+// is in `checkin.dart`. The projection includes `photos` and `tags` so
+// beverage-detail recent-check-in rows render rich cards without a
+// second round trip.
 @Freezed(fromJson: false, toJson: false)
 abstract class CheckinSummary with _$CheckinSummary {
   const factory CheckinSummary({
