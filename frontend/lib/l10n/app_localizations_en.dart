@@ -337,9 +337,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileBioLabel => 'Bio';
 
   @override
-  String get profileUsernameLocked => 'Cannot be changed.';
-
-  @override
   String get profileStatCheckins => 'Check-ins';
 
   @override

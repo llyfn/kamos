@@ -329,9 +329,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get profileBioLabel => '소개';
 
   @override
-  String get profileUsernameLocked => '변경할 수 없습니다.';
-
-  @override
   String get profileStatCheckins => '체크인';
 
   @override

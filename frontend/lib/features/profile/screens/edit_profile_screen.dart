@@ -143,13 +143,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                _Label(l.profileDisplayName),
-                TextField(
-                  controller: _name,
-                  maxLength: 50,
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 10),
                 _Label(l.authUsernameLabel),
                 TextField(
                   controller: TextEditingController(
@@ -157,12 +150,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                   enabled: false,
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    l.profileUsernameLocked,
-                    style: TextStyle(fontSize: 12, color: t.fg3),
-                  ),
+                const SizedBox(height: 10),
+                _Label(l.profileDisplayName),
+                TextField(
+                  controller: _name,
+                  maxLength: 50,
+                  onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 10),
                 _Label(l.profileBioLabel),
@@ -198,7 +191,7 @@ class _Label extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.3,
-            color: t.fg3,
+            color: t.fg1,
           ),
         ),
       ),

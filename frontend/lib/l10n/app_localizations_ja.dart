@@ -329,9 +329,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileBioLabel => '自己紹介';
 
   @override
-  String get profileUsernameLocked => '変更できません。';
-
-  @override
   String get profileStatCheckins => 'チェックイン';
 
   @override

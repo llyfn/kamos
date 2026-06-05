@@ -712,12 +712,6 @@ abstract class AppLocalizations {
   /// **'Bio'**
   String get profileBioLabel;
 
-  /// No description provided for @profileUsernameLocked.
-  ///
-  /// In en, this message translates to:
-  /// **'Cannot be changed.'**
-  String get profileUsernameLocked;
-
   /// No description provided for @profileStatCheckins.
   ///
   /// In en, this message translates to:
