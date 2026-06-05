@@ -106,7 +106,7 @@ SELECT
   b.label_image_url,
   br.id                  AS producer_id,
   br.name_i18n           AS producer_name_i18n,
-  br.image_url           AS producer_image_url,` + producerPrefectureSelectCols + `,
+  br.image_url           AS producer_image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `,
   u.user_avg,
   u.user_count,
   u.last_at,
@@ -115,7 +115,7 @@ SELECT
 FROM u
 JOIN beverages b           ON b.id = u.beverage_id AND b.deleted_at IS NULL
 JOIN producers br          ON br.id = b.producer_id AND br.deleted_at IS NULL
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause + `
 WHERE TRUE
   -- Type anchors for the optional keyset placeholders: pgx can't infer
   -- the SQL type of a Go nil unless the placeholder is referenced in
@@ -175,6 +175,7 @@ func scanUserBeverageRow(rows rowScanner) (domain.UserBeverageRow, error) {
 		prodID                              string
 		prodImgURL                          *string
 		prodPref                            prefectureScan
+		bevSub                              subcategoryRefScan
 		userAvg                             *float64
 		userCount                           int64
 		lastAt                              time.Time
@@ -182,7 +183,8 @@ func scanUserBeverageRow(rows rowScanner) (domain.UserBeverageRow, error) {
 		globalCount                         int64
 	)
 	prefArgs := prodPref.scanArgs()
-	scanArgs := make([]any, 0, 13+len(prefArgs))
+	subArgs := bevSub.scanArgs()
+	scanArgs := make([]any, 0, 13+len(prefArgs)+len(subArgs))
 	scanArgs = append(scanArgs,
 		&bevID,
 		&bevNameRaw,
@@ -194,6 +196,7 @@ func scanUserBeverageRow(rows rowScanner) (domain.UserBeverageRow, error) {
 		&prodImgURL,
 	)
 	scanArgs = append(scanArgs, prefArgs...)
+	scanArgs = append(scanArgs, subArgs...)
 	scanArgs = append(scanArgs,
 		&userAvg,
 		&userCount,
@@ -217,6 +220,7 @@ func scanUserBeverageRow(rows rowScanner) (domain.UserBeverageRow, error) {
 			ImageURL:   prodImgURL,
 		},
 		Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: catName},
+		Subcategory:   bevSub.toSubcategory(),
 		LabelImageURL: bevLabelURL,
 	}
 	row.UserAvgRating = userAvg

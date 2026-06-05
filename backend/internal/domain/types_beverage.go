@@ -91,6 +91,7 @@ type BeverageRef struct {
 	Name          I18nText      `json:"name"`
 	Producer      ProducerRef   `json:"producer"`
 	Category      CategoryLabel `json:"category"`
+	Subcategory   *Subcategory  `json:"subcategory,omitempty"`
 	LabelImageURL *string       `json:"label_image_url,omitempty"`
 }
 

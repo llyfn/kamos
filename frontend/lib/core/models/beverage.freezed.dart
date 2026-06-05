@@ -705,7 +705,7 @@ $I18nTextCopyWith<$Res> get name {
 /// @nodoc
 mixin _$BeverageRef {
 
- String get id; I18nText get name; ProducerRef get producer; CategoryLabel get category; String? get labelImageUrl;
+ String get id; I18nText get name; ProducerRef get producer; CategoryLabel get category; Subcategory? get subcategory; String? get labelImageUrl;
 /// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -716,16 +716,16 @@ $BeverageRefCopyWith<BeverageRef> get copyWith => _$BeverageRefCopyWithImpl<Beve
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,producer,category,labelImageUrl);
+int get hashCode => Object.hash(runtimeType,id,name,producer,category,subcategory,labelImageUrl);
 
 @override
 String toString() {
-  return 'BeverageRef(id: $id, name: $name, producer: $producer, category: $category, labelImageUrl: $labelImageUrl)';
+  return 'BeverageRef(id: $id, name: $name, producer: $producer, category: $category, subcategory: $subcategory, labelImageUrl: $labelImageUrl)';
 }
 
 
@@ -736,11 +736,11 @@ abstract mixin class $BeverageRefCopyWith<$Res>  {
   factory $BeverageRefCopyWith(BeverageRef value, $Res Function(BeverageRef) _then) = _$BeverageRefCopyWithImpl;
 @useResult
 $Res call({
- String id, I18nText name, ProducerRef producer, CategoryLabel category, String? labelImageUrl
+ String id, I18nText name, ProducerRef producer, CategoryLabel category, Subcategory? subcategory, String? labelImageUrl
 });
 
 
-$I18nTextCopyWith<$Res> get name;$ProducerRefCopyWith<$Res> get producer;$CategoryLabelCopyWith<$Res> get category;
+$I18nTextCopyWith<$Res> get name;$ProducerRefCopyWith<$Res> get producer;$CategoryLabelCopyWith<$Res> get category;$SubcategoryCopyWith<$Res>? get subcategory;
 
 }
 /// @nodoc
@@ -753,13 +753,14 @@ class _$BeverageRefCopyWithImpl<$Res>
 
 /// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? labelImageUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? subcategory = freezed,Object? labelImageUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
 as ProducerRef,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
-as CategoryLabel,labelImageUrl: freezed == labelImageUrl ? _self.labelImageUrl : labelImageUrl // ignore: cast_nullable_to_non_nullable
+as CategoryLabel,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
+as Subcategory?,labelImageUrl: freezed == labelImageUrl ? _self.labelImageUrl : labelImageUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -789,6 +790,18 @@ $CategoryLabelCopyWith<$Res> get category {
   
   return $CategoryLabelCopyWith<$Res>(_self.category, (value) {
     return _then(_self.copyWith(category: value));
+  });
+}/// Create a copy of BeverageRef
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SubcategoryCopyWith<$Res>? get subcategory {
+    if (_self.subcategory == null) {
+    return null;
+  }
+
+  return $SubcategoryCopyWith<$Res>(_self.subcategory!, (value) {
+    return _then(_self.copyWith(subcategory: value));
   });
 }
 }
@@ -872,10 +885,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  String? labelImageUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  Subcategory? subcategory,  String? labelImageUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BeverageRef() when $default != null:
-return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelImageUrl);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.labelImageUrl);case _:
   return orElse();
 
 }
@@ -893,10 +906,10 @@ return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelIma
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  String? labelImageUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  Subcategory? subcategory,  String? labelImageUrl)  $default,) {final _that = this;
 switch (_that) {
 case _BeverageRef():
-return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelImageUrl);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.labelImageUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -913,10 +926,10 @@ return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelIma
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  String? labelImageUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  ProducerRef producer,  CategoryLabel category,  Subcategory? subcategory,  String? labelImageUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _BeverageRef() when $default != null:
-return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelImageUrl);case _:
+return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.labelImageUrl);case _:
   return null;
 
 }
@@ -928,13 +941,14 @@ return $default(_that.id,_that.name,_that.producer,_that.category,_that.labelIma
 
 
 class _BeverageRef implements BeverageRef {
-  const _BeverageRef({required this.id, required this.name, required this.producer, required this.category, this.labelImageUrl});
+  const _BeverageRef({required this.id, required this.name, required this.producer, required this.category, this.subcategory, this.labelImageUrl});
   
 
 @override final  String id;
 @override final  I18nText name;
 @override final  ProducerRef producer;
 @override final  CategoryLabel category;
+@override final  Subcategory? subcategory;
 @override final  String? labelImageUrl;
 
 /// Create a copy of BeverageRef
@@ -947,16 +961,16 @@ _$BeverageRefCopyWith<_BeverageRef> get copyWith => __$BeverageRefCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BeverageRef&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.producer, producer) || other.producer == producer)&&(identical(other.category, category) || other.category == category)&&(identical(other.subcategory, subcategory) || other.subcategory == subcategory)&&(identical(other.labelImageUrl, labelImageUrl) || other.labelImageUrl == labelImageUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,producer,category,labelImageUrl);
+int get hashCode => Object.hash(runtimeType,id,name,producer,category,subcategory,labelImageUrl);
 
 @override
 String toString() {
-  return 'BeverageRef(id: $id, name: $name, producer: $producer, category: $category, labelImageUrl: $labelImageUrl)';
+  return 'BeverageRef(id: $id, name: $name, producer: $producer, category: $category, subcategory: $subcategory, labelImageUrl: $labelImageUrl)';
 }
 
 
@@ -967,11 +981,11 @@ abstract mixin class _$BeverageRefCopyWith<$Res> implements $BeverageRefCopyWith
   factory _$BeverageRefCopyWith(_BeverageRef value, $Res Function(_BeverageRef) _then) = __$BeverageRefCopyWithImpl;
 @override @useResult
 $Res call({
- String id, I18nText name, ProducerRef producer, CategoryLabel category, String? labelImageUrl
+ String id, I18nText name, ProducerRef producer, CategoryLabel category, Subcategory? subcategory, String? labelImageUrl
 });
 
 
-@override $I18nTextCopyWith<$Res> get name;@override $ProducerRefCopyWith<$Res> get producer;@override $CategoryLabelCopyWith<$Res> get category;
+@override $I18nTextCopyWith<$Res> get name;@override $ProducerRefCopyWith<$Res> get producer;@override $CategoryLabelCopyWith<$Res> get category;@override $SubcategoryCopyWith<$Res>? get subcategory;
 
 }
 /// @nodoc
@@ -984,13 +998,14 @@ class __$BeverageRefCopyWithImpl<$Res>
 
 /// Create a copy of BeverageRef
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? labelImageUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? producer = null,Object? category = null,Object? subcategory = freezed,Object? labelImageUrl = freezed,}) {
   return _then(_BeverageRef(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
 as ProducerRef,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
-as CategoryLabel,labelImageUrl: freezed == labelImageUrl ? _self.labelImageUrl : labelImageUrl // ignore: cast_nullable_to_non_nullable
+as CategoryLabel,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
+as Subcategory?,labelImageUrl: freezed == labelImageUrl ? _self.labelImageUrl : labelImageUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -1021,6 +1036,18 @@ $CategoryLabelCopyWith<$Res> get category {
   
   return $CategoryLabelCopyWith<$Res>(_self.category, (value) {
     return _then(_self.copyWith(category: value));
+  });
+}/// Create a copy of BeverageRef
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SubcategoryCopyWith<$Res>? get subcategory {
+    if (_self.subcategory == null) {
+    return null;
+  }
+
+  return $SubcategoryCopyWith<$Res>(_self.subcategory!, (value) {
+    return _then(_self.copyWith(subcategory: value));
   });
 }
 }

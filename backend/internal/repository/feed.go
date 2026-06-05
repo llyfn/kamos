@@ -42,7 +42,7 @@ SELECT
   b.category_slug,
   b.label_image_url,
   cat.name_i18n,
-  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `,
+  br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `,
   ci.toast_count,
   EXISTS(SELECT 1 FROM toasts tt WHERE tt.check_in_id = ci.id AND tt.user_id = $1),
   ci.comment_count,
@@ -55,7 +55,7 @@ LEFT JOIN follows f
 JOIN users u ON u.id = ci.user_id AND u.deleted_at IS NULL
 JOIN beverages b ON b.id = ci.beverage_id
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause + `
 LEFT JOIN venues v ON v.id = ci.venue_id
 WHERE ci.deleted_at IS NULL
   AND (ci.user_id = $1 OR f.followed_id IS NOT NULL)
@@ -81,6 +81,7 @@ LIMIT $4;`
 			brwID         string
 			brwImageURL   *string
 			brwPref       prefectureScan
+			bevSub        subcategoryRefScan
 			toastCnt      int64
 			commentCnt    int64
 			youToast      bool
@@ -92,7 +93,8 @@ LIMIT $4;`
 			venueCountry  *string
 		)
 		prefArgs := brwPref.scanArgs()
-		scanArgs := make([]any, 0, 17+len(prefArgs)+7)
+		subArgs := bevSub.scanArgs()
+		scanArgs := make([]any, 0, 17+len(prefArgs)+len(subArgs)+7)
 		scanArgs = append(scanArgs,
 			&it.ID,
 			&it.Rating,
@@ -109,6 +111,7 @@ LIMIT $4;`
 			&brwID, &brwName, &brwImageURL,
 		)
 		scanArgs = append(scanArgs, prefArgs...)
+		scanArgs = append(scanArgs, subArgs...)
 		scanArgs = append(scanArgs,
 			&toastCnt,
 			&youToast,
@@ -128,6 +131,7 @@ LIMIT $4;`
 			Name:          bn,
 			Producer:      domain.ProducerRef{ID: brwID, Name: rn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
+			Subcategory:   bevSub.toSubcategory(),
 			LabelImageURL: bevLabel,
 		}
 		it.Toasts = int(toastCnt)

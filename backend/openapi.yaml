@@ -3182,14 +3182,17 @@ components:
       type: object
       description: |
         Compact beverage embedding used by check-in / feed / collection
-        entries. `label_image_url` follows the absent-when-unknown
-        convention (Go `omitempty`).
+        entries. `subcategory` and `label_image_url` follow the absent-
+        when-unknown convention (Go `omitempty`): the key is omitted
+        entirely when the beverage has no `subcategory_id` FK / no
+        label image.
       required: [id, name, producer, category]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
         producer: { $ref: "#/components/schemas/ProducerRef" }
         category: { $ref: "#/components/schemas/CategoryLabel" }
+        subcategory: { $ref: "#/components/schemas/Subcategory" }
         label_image_url: { type: string, format: uri }
 
     UserBeverageRow:

@@ -36,6 +36,11 @@ class CheckInCard extends ConsumerWidget {
     final isOwn = me != null && me.user.id == item.user.id;
     final beverageName = resolveI18n(item.beverage.name, locale);
     final producerName = resolveI18n(item.beverage.producer.name, locale);
+    final sub = item.beverage.subcategory;
+    final subName = sub != null ? resolveI18n(sub.name, locale) : '';
+    final subtitle = subName.isNotEmpty
+        ? '$producerName · $subName'
+        : producerName;
     final when = parseIsoDateOrNull(item.createdAt);
 
     return Padding(
@@ -130,7 +135,7 @@ class CheckInCard extends ConsumerWidget {
                             ],
                             Expanded(
                               child: Text(
-                                producerName,
+                                subtitle,
                                 style: TextStyle(fontSize: 12, color: t.fg2),
                               ),
                             ),

@@ -220,12 +220,12 @@ func (r *CollectionRepo) Entries(ctx context.Context, userID, collectionID strin
 SELECT ce.beverage_id, ce.note, ce.added_at,
        b.name_i18n, b.category_slug, b.label_image_url,
        cat.name_i18n,
-       br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + `
+       br.id, br.name_i18n, br.image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `
 FROM collection_entries ce
 JOIN collections c ON c.id = ce.collection_id AND c.user_id = $1 AND c.deleted_at IS NULL
 JOIN beverages b ON b.id = ce.beverage_id
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + `
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause + `
 WHERE ce.collection_id = $2
   AND ($3::timestamptz IS NULL OR (ce.added_at, ce.beverage_id) < ($3::timestamptz, $4::uuid))
 ORDER BY ce.added_at DESC, ce.beverage_id DESC
@@ -248,11 +248,14 @@ LIMIT $5;`
 			brwName     []byte
 			brwImageURL *string
 			brwPref     prefectureScan
+			bevSub      subcategoryRefScan
 		)
 		prefArgs := brwPref.scanArgs()
-		scanArgs := make([]any, 0, 10+len(prefArgs))
+		subArgs := bevSub.scanArgs()
+		scanArgs := make([]any, 0, 10+len(prefArgs)+len(subArgs))
 		scanArgs = append(scanArgs, &bevID, &e.Note, &e.AddedAt, &bevName, &bevSlug, &bevLabel, &catName, &brwID, &brwName, &brwImageURL)
 		scanArgs = append(scanArgs, prefArgs...)
+		scanArgs = append(scanArgs, subArgs...)
 		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, fmt.Errorf("CollectionRepo.Entries scan: %w", err)
 		}
@@ -264,6 +267,7 @@ LIMIT $5;`
 			Name:          bn,
 			Producer:      domain.ProducerRef{ID: brwID, Name: brn, Prefecture: brwPref.toPrefecture(), ImageURL: brwImageURL},
 			Category:      domain.CategoryLabel{Slug: bevSlug, LabelI18n: cn},
+			Subcategory:   bevSub.toSubcategory(),
 			LabelImageURL: bevLabel,
 		}
 		out = append(out, e)
