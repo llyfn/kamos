@@ -27,6 +27,8 @@ type Repos struct {
 	Collections   *CollectionRepo
 	Search        *SearchRepo
 	Taxonomy      *TaxonomyRepo
+	Subcategories *SubcategoryRepo
+	FlavorTags    *FlavorTagRepo
 	RefreshTokens *RefreshTokenRepo
 	PhotoUploads  *PhotoUploadRepo
 	Venues        *VenueRepo
@@ -50,6 +52,8 @@ func New(db *pgxpool.Pool) *Repos {
 		Collections:   &CollectionRepo{db: db},
 		Search:        &SearchRepo{db: db},
 		Taxonomy:      &TaxonomyRepo{db: db},
+		Subcategories: &SubcategoryRepo{db: db},
+		FlavorTags:    &FlavorTagRepo{db: db},
 		RefreshTokens: &RefreshTokenRepo{db: db},
 		PhotoUploads:  &PhotoUploadRepo{db: db},
 		Venues:        &VenueRepo{db: db},

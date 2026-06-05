@@ -36,7 +36,7 @@ type BeverageListParams struct {
 type beverageRow struct {
 	id              string
 	nameJSON        []byte
-	subcatJSON      []byte
+	subcatJSON      []byte // legacy free-text JSONB — one-release fallback
 	categorySlug    string
 	categoryName    []byte
 	categoryID      string
@@ -52,7 +52,36 @@ type beverageRow struct {
 	producerNameRaw []byte
 	producerImgURL  *string
 	producerPref    prefectureScan
+	// Slice C — beverage_subcategories JOIN. All five fields are nullable
+	// because the JOIN is LEFT (a beverage may have subcategory_id NULL
+	// during the dual-source window — see toBeverage for the fallback).
+	subID           *string
+	subCategoryID   *string
+	subCategorySlug *string
+	subSlug         *string
+	subNameJSON     []byte
+	subSortOrder    *int16
 }
+
+// subcategoryJoinCols is the comma-prefixed projection of beverage_subcategories
+// columns appended to every beverageSelect / beverageListSelect /
+// adminBeverageSelect. Defined once to keep the projection consistent.
+//
+// The JOIN is LEFT — beverages may have subcategory_id NULL during the
+// one-release dual-source window after migration 005. When the FK is
+// NULL the toBeverage fallback uses the legacy beverages.subcategory_i18n
+// JSONB so the response still surfaces the (pre-promotion) free-text
+// subcategory.
+const subcategoryJoinCols = `,
+  sc.id          AS subcategory_id_join,
+  sc.category_id AS subcategory_category_id_join,
+  sc.category_slug AS subcategory_category_slug_join,
+  sc.slug        AS subcategory_slug_join,
+  sc.name_i18n   AS subcategory_name_i18n_join,
+  sc.sort_order  AS subcategory_sort_order_join`
+
+const subcategoryJoinClause = `
+LEFT JOIN beverage_subcategories sc ON sc.id = b.subcategory_id AND sc.deleted_at IS NULL`
 
 // beverageSelect is the full projection used by /v1/beverages/{id}.
 // It carries the two i18n JSONB blobs (subcategory_i18n,
@@ -61,6 +90,11 @@ type beverageRow struct {
 // Migration 016 dropped beverages.prefecture / beverages.region; the
 // row's locality is now derived via the producer's prefecture chain
 // (LEFT JOIN prefectures + regions on producers.prefecture_id).
+//
+// Slice C (migration 005) added the beverage_subcategories JOIN. The
+// legacy b.subcategory_i18n column is still SELECTed because the
+// dual-source fallback in toBeverage reads it when subcategory_id is
+// NULL (until 005's follow-up migration drops the column).
 const beverageSelect = `
 SELECT
   b.id,
@@ -79,16 +113,21 @@ SELECT
   b.created_at,
   br.id           AS producer_id,
   br.name_i18n    AS producer_name_i18n,
-  br.image_url    AS producer_image_url,` + producerPrefectureSelectCols + `
+  br.image_url    AS producer_image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause
 
 // beverageListSelect is the slim projection used by list/search paths:
-// it drops the two JSONB blobs (subcategory_i18n, description_i18n)
+// it drops the description JSONB and the legacy subcategory_i18n blob
 // because list cards only show name + category + producer + counts.
 // Dropping the JSONB cuts list-response payload size by ~30%
 // (PERF-017). The corresponding scan helper is scanBeverageList.
+//
+// Slice C: the joined beverage_subcategories projection is included
+// because the list cards in admin already need slug/name to render a
+// "category · subcategory" overline and the JSONB-free slim subcategory
+// shape is small. Legacy b.subcategory_i18n stays excluded.
 const beverageListSelect = `
 SELECT
   b.id,
@@ -105,15 +144,31 @@ SELECT
   b.created_at,
   br.id           AS producer_id,
   br.name_i18n    AS producer_name_i18n,
-  br.image_url    AS producer_image_url,` + producerPrefectureSelectCols + `
+  br.image_url    AS producer_image_url,` + producerPrefectureSelectCols + subcategoryJoinCols + `
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause
+
+// subcategoryScanArgs returns the 6 pointers that match subcategoryJoinCols
+// in order. Centralized so every scanner appends the same slice and
+// future tweaks (e.g. adding admin-only columns to the projection) edit
+// one spot.
+func (b *beverageRow) subcategoryScanArgs() []any {
+	return []any{
+		&b.subID,
+		&b.subCategoryID,
+		&b.subCategorySlug,
+		&b.subSlug,
+		&b.subNameJSON,
+		&b.subSortOrder,
+	}
+}
 
 func scanBeverage(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
 	prefArgs := b.producerPref.scanArgs()
-	args := make([]any, 0, 17+len(prefArgs))
+	subArgs := b.subcategoryScanArgs()
+	args := make([]any, 0, 17+len(prefArgs)+len(subArgs))
 	args = append(args,
 		&b.id,
 		&b.nameJSON,
@@ -134,6 +189,7 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 		&b.producerImgURL,
 	)
 	args = append(args, prefArgs...)
+	args = append(args, subArgs...)
 	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
@@ -143,11 +199,14 @@ func scanBeverage(row pgx.Row) (*beverageRow, error) {
 // scanBeverageList matches the column order of beverageListSelect (no
 // subcategory_i18n, no description_i18n). The returned beverageRow
 // has subcatJSON / descJSON left nil; toBeverage already treats
-// len-0 as "absent", so the API response omits those fields.
+// len-0 as "absent", so the API response omits those fields. The
+// joined subcategory columns ARE populated here so list cards can
+// still render the canonical subcategory.
 func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 	var b beverageRow
 	prefArgs := b.producerPref.scanArgs()
-	args := make([]any, 0, 15+len(prefArgs))
+	subArgs := b.subcategoryScanArgs()
+	args := make([]any, 0, 15+len(prefArgs)+len(subArgs))
 	args = append(args,
 		&b.id,
 		&b.nameJSON,
@@ -166,6 +225,7 @@ func scanBeverageList(row pgx.Row) (*beverageRow, error) {
 		&b.producerImgURL,
 	)
 	args = append(args, prefArgs...)
+	args = append(args, subArgs...)
 	if err := row.Scan(args...); err != nil {
 		return nil, err
 	}
@@ -203,9 +263,45 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 		CheckInCount:   row.checkInCount,
 		CreatedAt:      row.createdAt,
 	}
-	if len(row.subcatJSON) > 0 {
-		sub, _ := domain.I18nFromJSON(row.subcatJSON)
-		out.Subcategory = &sub
+	// Slice C dual-source path:
+	//   1. Canonical: beverage_subcategories JOIN populated (subID != nil)
+	//      → ship the full Subcategory ref (id, slug, name, sort_order).
+	//   2. Legacy fallback: subcategory_id is NULL but the legacy
+	//      b.subcategory_i18n JSONB has data → ship a partial Subcategory
+	//      ref with only the name populated and empty id/slug. This window
+	//      closes when the follow-up migration drops the column.
+	switch {
+	case row.subID != nil && *row.subID != "":
+		name, _ := domain.I18nFromJSON(row.subNameJSON)
+		var sort16 int16
+		if row.subSortOrder != nil {
+			sort16 = *row.subSortOrder
+		}
+		var catID, catSlug, slug string
+		if row.subCategoryID != nil {
+			catID = *row.subCategoryID
+		}
+		if row.subCategorySlug != nil {
+			catSlug = *row.subCategorySlug
+		}
+		if row.subSlug != nil {
+			slug = *row.subSlug
+		}
+		out.Subcategory = &domain.Subcategory{
+			ID:           *row.subID,
+			CategoryID:   catID,
+			CategorySlug: catSlug,
+			Slug:         slug,
+			Name:         name,
+			SortOrder:    sort16,
+		}
+	case len(row.subcatJSON) > 0:
+		// Legacy free-text fallback. The dual-source window closes when
+		// the follow-up migration drops beverages.subcategory_i18n; until
+		// then we still surface it so existing un-backfilled beverages
+		// don't render with an empty subcategory line.
+		name, _ := domain.I18nFromJSON(row.subcatJSON)
+		out.Subcategory = &domain.Subcategory{Name: name}
 	}
 	if len(row.descJSON) > 0 {
 		desc, _ := domain.I18nFromJSON(row.descJSON)

@@ -117,11 +117,15 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 // `category_id` stays for any direct DB-aware caller. If both are sent
 // `category_id` wins and `category_slug` is ignored.
 type AdminBeverageCreate struct {
-	ProducerID      string           `json:"producer_id"`
-	CategoryID      *string          `json:"category_id,omitempty"`
-	CategorySlug    *string          `json:"category_slug,omitempty"`
+	ProducerID   string  `json:"producer_id"`
+	CategoryID   *string `json:"category_id,omitempty"`
+	CategorySlug *string `json:"category_slug,omitempty"`
+	// SubcategoryID is the Slice C canonical FK into beverage_subcategories.
+	// nil means "no subcategory". The handler validates that the row
+	// exists and belongs to the same category as this beverage.
+	SubcategoryID   *string          `json:"subcategory_id,omitempty"`
 	NameI18n        domain.I18nText  `json:"name_i18n"`
-	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"`
+	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"` // legacy free-text, one-release backwards-compat
 	ABV             *float64         `json:"abv,omitempty"`
 	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
 	FlavorProfile   []string         `json:"flavor_profile,omitempty"`
@@ -158,11 +162,18 @@ func (r *AdminBeverageCreate) Validate() error {
 // are sent, `category_id` wins. If only `category_slug` is supplied the
 // handler resolves it to a UUID before the UPDATE runs.
 type AdminBeverageUpdate struct {
-	ProducerID      *string          `json:"producer_id,omitempty"`
-	CategoryID      *string          `json:"category_id,omitempty"`
-	CategorySlug    *string          `json:"category_slug,omitempty"`
+	ProducerID   *string `json:"producer_id,omitempty"`
+	CategoryID   *string `json:"category_id,omitempty"`
+	CategorySlug *string `json:"category_slug,omitempty"`
+	// SubcategoryID pointer semantics (Slice C):
+	//   nil       → leave subcategory_id unchanged.
+	//   ptr to "" → clear subcategory_id to NULL.
+	//   ptr to UUID → set subcategory_id to that value.
+	// The handler validates that any non-empty value points to a live
+	// row under the beverage's (possibly-just-changed) category.
+	SubcategoryID   *string          `json:"subcategory_id,omitempty"`
 	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
-	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"`
+	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"` // legacy free-text, one-release backwards-compat
 	ABV             *float64         `json:"abv,omitempty"`
 	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
 	FlavorProfile   *[]string        `json:"flavor_profile,omitempty"`

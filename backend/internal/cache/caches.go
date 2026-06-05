@@ -37,6 +37,7 @@ import (
 type Caches struct {
 	Categories     *LRU[string, []domain.CategoryLabel]
 	FlavorTags     *LRU[string, []domain.FlavorTag]
+	Subcategories  *LRU[string, []domain.Subcategory]
 	Regions        *LRU[string, []domain.RegionWithPrefectures]
 	BeverageDetail *LRU[string, domain.BeverageDetail]
 	ProducerDetail *LRU[string, domain.Producer]
@@ -52,6 +53,13 @@ const (
 
 	flavorTagsCacheSize = 4
 	flavorTagsCacheTTL  = time.Hour
+
+	// Subcategories: small (~18 seed rows + a handful of admin-curated
+	// additions), but cached by (category, locale) tuple so the key axis
+	// is wider than Categories. 16 leaves headroom for 4 admin locales
+	// per category × 3 categories + an "all-categories" key per locale.
+	subcategoriesCacheSize = 16
+	subcategoriesCacheTTL  = time.Hour
 
 	// Regions: same shape as Categories / FlavorTags (locale-axis cache
 	// key) and the same long TTL — the 8 regions × 47 prefectures
@@ -72,6 +80,7 @@ func NewCaches() *Caches {
 	return &Caches{
 		Categories:     NewLRU[string, []domain.CategoryLabel]("categories", categoriesCacheSize, categoriesCacheTTL),
 		FlavorTags:     NewLRU[string, []domain.FlavorTag]("flavor_tags", flavorTagsCacheSize, flavorTagsCacheTTL),
+		Subcategories:  NewLRU[string, []domain.Subcategory]("subcategories", subcategoriesCacheSize, subcategoriesCacheTTL),
 		Regions:        NewLRU[string, []domain.RegionWithPrefectures]("regions", regionsCacheSize, regionsCacheTTL),
 		BeverageDetail: NewLRU[string, domain.BeverageDetail]("beverage_detail", beverageDetailCacheSize, beverageDetailCacheTTL),
 		ProducerDetail: NewLRU[string, domain.Producer]("producer_detail", producerDetailCacheSize, producerDetailCacheTTL),
@@ -83,6 +92,7 @@ func NewCaches() *Caches {
 func (c *Caches) SetObservers(onHit, onMiss func(name string)) {
 	c.Categories.SetObservers(onHit, onMiss)
 	c.FlavorTags.SetObservers(onHit, onMiss)
+	c.Subcategories.SetObservers(onHit, onMiss)
 	c.Regions.SetObservers(onHit, onMiss)
 	c.BeverageDetail.SetObservers(onHit, onMiss)
 	c.ProducerDetail.SetObservers(onHit, onMiss)
@@ -97,7 +107,9 @@ func (c *Caches) SetObservers(onHit, onMiss func(name string)) {
 //
 //	"beverage:<id>" → BeverageDetail.InvalidatePrefix(id + ":")
 //	"producer:<id>" → ProducerDetail.InvalidatePrefix(id + ":")
-//	"taxonomy" → Categories.InvalidatePrefix("") + FlavorTags.InvalidatePrefix("")
+//	"taxonomy"      → Categories + FlavorTags + Subcategories + Regions
+//	"subcategories" → Subcategories.InvalidatePrefix("")
+//	"flavor-tags"   → FlavorTags.InvalidatePrefix("")
 //
 // Empty payloads, unknown prefixes, and nil receivers all no-op — the
 // invalidator MUST stay alive across schema drift.
@@ -109,7 +121,23 @@ func (c *Caches) InvalidatePrefix(payload string) {
 	case payload == "taxonomy":
 		c.Categories.InvalidatePrefix("")
 		c.FlavorTags.InvalidatePrefix("")
+		c.Subcategories.InvalidatePrefix("")
 		c.Regions.InvalidatePrefix("")
+	case payload == "subcategories" || strings.HasPrefix(payload, "subcategories:"):
+		// Admin mutations on /v1/admin/subcategories emit this payload.
+		// The full list refresh is cheap (≤ ~20 rows) so we blow away the
+		// whole cache slot rather than try to keyspace-prune.
+		c.Subcategories.InvalidatePrefix("")
+		// Subcategory churn changes the JSON shape of every beverage that
+		// links to one — beverage detail responses embed the joined name,
+		// so the detail LRU must also drop. Same rationale as the
+		// "taxonomy" route's sweep.
+		c.BeverageDetail.InvalidatePrefix("")
+	case payload == "flavor-tags" || strings.HasPrefix(payload, "flavor-tags:"):
+		c.FlavorTags.InvalidatePrefix("")
+		// Aggregated-flavor blocks on beverage detail embed flavor tag
+		// metadata; flush the detail cache to keep names current.
+		c.BeverageDetail.InvalidatePrefix("")
 	case strings.HasPrefix(payload, "beverage:"):
 		id := strings.TrimPrefix(payload, "beverage:")
 		if id != "" {

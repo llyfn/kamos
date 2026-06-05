@@ -87,6 +87,8 @@ func WriteFrom(w http.ResponseWriter, log *slog.Logger, op string, err error) {
 	case errors.Is(err, domain.ErrProducerHasLiveBeverages):
 		WriteError(w, http.StatusConflict, "PRODUCER_HAS_LIVE_BEVERAGES",
 			"producer has live beverages — soft-delete or reassign them first")
+	case errors.Is(err, domain.ErrInUse):
+		WriteError(w, http.StatusConflict, "IN_USE", err.Error())
 	case errors.Is(err, domain.ErrConflict),
 		errors.Is(err, domain.ErrUsernameHeld),
 		errors.Is(err, domain.ErrEmailTaken):

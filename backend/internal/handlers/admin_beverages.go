@@ -114,6 +114,14 @@ func (h *Handler) AdminCreateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeCategoryErr(w, "AdminCreateBeverage", err)
 		return
 	}
+	// Slice C: validate subcategory_id (if supplied) points to a live row
+	// in beverage_subcategories under the same category.
+	if body.SubcategoryID != nil && *body.SubcategoryID != "" {
+		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, categoryID); err != nil {
+			h.writeSubcategoryErr(w, "AdminCreateBeverage", err)
+			return
+		}
+	}
 	bevID, err := h.createBeverageTx(r.Context(), uid, categoryID, body)
 	if err != nil {
 		h.writeErr(w, "AdminCreateBeverage", err)
@@ -169,6 +177,39 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.writeErr(w, "AdminUpdateBeverage prefetch", err)
 		return
+	}
+	// Slice C: validate subcategory_id against the effective category.
+	// If the category is changing on this PATCH, the subcategory must
+	// belong to the new category. If the category is unchanged, validate
+	// against prev.Category.
+	if body.SubcategoryID != nil && *body.SubcategoryID != "" {
+		effectiveCategoryID := prev.Category.Slug // placeholder; we need the UUID
+		if resolved != nil {
+			effectiveCategoryID = *resolved
+		} else {
+			// AdminBeverageRow embeds Beverage which has Category.Slug but
+			// not Category.ID. We need the UUID for the FK check — read it
+			// from the row via the categoryID we stashed in prev. Pull it
+			// from the producer's join by re-resolving the slug.
+			catID, err := h.Repos.Beverages.CategoryIDForSlug(r.Context(), prev.Category.Slug)
+			if err != nil {
+				h.writeErr(w, "AdminUpdateBeverage category lookup", err)
+				return
+			}
+			effectiveCategoryID = catID
+		}
+		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, effectiveCategoryID); err != nil {
+			h.writeSubcategoryErr(w, "AdminUpdateBeverage", err)
+			return
+		}
+	}
+	// If the category is changing AND no explicit subcategory_id was
+	// supplied, clear the existing subcategory_id so the FK doesn't
+	// dangle across the category change. (The DB FK is ON DELETE SET
+	// NULL, but a category change is a different kind of mutation.)
+	if resolved != nil && body.SubcategoryID == nil && prev.Subcategory != nil && prev.Subcategory.ID != "" {
+		empty := ""
+		body.SubcategoryID = &empty
 	}
 	if err := h.updateBeverageTx(r.Context(), uid, id, resolved, body); err != nil {
 		h.writeErr(w, "AdminUpdateBeverage", err)
@@ -267,6 +308,7 @@ func (h *Handler) createBeverageTx(ctx context.Context, adminID, categoryID stri
 		CategoryID:     categoryID,
 		Name:           body.NameI18n,
 		Subcategory:    body.SubcategoryI18n,
+		SubcategoryID:  body.SubcategoryID,
 		ABV:            body.ABV,
 		PolishingRatio: body.PolishingRatio,
 		FlavorProfile:  body.FlavorProfile,
@@ -302,6 +344,7 @@ func (h *Handler) updateBeverageTx(ctx context.Context, adminID, id string, cate
 		CategoryID:     categoryID,
 		Name:           body.NameI18n,
 		Subcategory:    body.SubcategoryI18n,
+		SubcategoryID:  body.SubcategoryID,
 		ABV:            body.ABV,
 		PolishingRatio: body.PolishingRatio,
 		FlavorProfile:  body.FlavorProfile,
@@ -422,4 +465,19 @@ func (h *Handler) writeCategoryErr(w http.ResponseWriter, op string, err error) 
 		return
 	}
 	h.writeErr(w, op, err)
+}
+
+// writeSubcategoryErr maps VerifyForCategory failures to stable 422 codes.
+// ErrNotFound → INVALID_SUBCATEGORY_ID, ErrValidation → SUBCATEGORY_CATEGORY_MISMATCH.
+func (h *Handler) writeSubcategoryErr(w http.ResponseWriter, op string, err error) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "INVALID_SUBCATEGORY_ID",
+			"subcategory_id does not match any live row")
+	case errors.Is(err, domain.ErrValidation):
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "SUBCATEGORY_CATEGORY_MISMATCH",
+			"subcategory belongs to a different category than the beverage")
+	default:
+		h.writeErr(w, op, err)
+	}
 }
