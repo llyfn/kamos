@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/i18n/beverage_name.dart';
-import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/photo_ref.dart';
 import '../../../l10n/app_localizations.dart';
@@ -64,27 +63,20 @@ class _Body extends ConsumerWidget {
     final b = detail.beverage;
     final name = resolveI18n(b.name, locale);
     final producer = resolveI18n(b.producer.name, locale);
-    // Migration 016: per-beverage prefecture/region are gone; derive from the
-    // nested producer.prefecture. Display the prefecture name (most specific).
     final region = b.producer.prefecture == null
         ? ''
         : resolveI18n(b.producer.prefecture!.name, locale);
-    final slug = categorySlugFromString(b.category.slug);
-    final categoryLabelText = slug == null
-        ? resolveI18n(b.category.labelI18n, locale)
-        : categoryLabel(context, slug);
     final sub = b.subcategory == null
         ? ''
         : resolveI18n(b.subcategory!.name, locale);
 
     return SingleChildScrollView(
-      // Always-scrollable physics so the surrounding RefreshIndicator can fire
-      // even when the rendered detail is shorter than the viewport.
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const SizedBox(height: 16),
           Center(
             child: KamosLabel(
               width: 140,
@@ -93,21 +85,7 @@ class _Body extends ConsumerWidget {
               imageUrl: b.labelImageUrl,
             ),
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              '$categoryLabelText${sub.isNotEmpty ? ' · $sub' : ''}'
-                  .toUpperCase(),
-              style: TextStyle(
-                fontFamily: 'NotoSansJP',
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.3,
-                color: t.fg3,
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 20),
           Text(
             name,
             textAlign: TextAlign.center,
@@ -119,17 +97,17 @@ class _Body extends ConsumerWidget {
               height: 1.15,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Center(
             child: GestureDetector(
               onTap: () => context.push('/producers/${b.producer.id}'),
               child: Text(
-                [producer, if (region.isNotEmpty) region].join(' · '),
+                producer,
                 style: TextStyle(color: t.fgLink, fontSize: 14),
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -178,6 +156,7 @@ class _Body extends ConsumerWidget {
           ),
           const SizedBox(height: 22),
           Wrap(
+            alignment: WrapAlignment.center,
             spacing: 12,
             runSpacing: 12,
             children: [
@@ -249,10 +228,11 @@ class _Stat extends StatelessWidget {
     return SizedBox(
       width: 140,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label.toUpperCase(),
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'NotoSansJP',
               fontSize: 11,
@@ -264,6 +244,7 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'JetBrainsMono',
               fontSize: 15,
