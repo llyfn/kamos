@@ -1,17 +1,19 @@
--- 002_seed_taxonomy.sql
+-- 002_seeding.sql
 -- Seed the admin-curated taxonomy and locality reference data that the SPEC
 -- (and the post-MVP roadmap) fix as part of the contract:
---   - beverage_categories: the three canonical SPEC §2.1 rows.
---   - flavor_tags:         the SPEC §4.3 taxonomy in en/ja/ko.
---   - regions:             Japan's 8 traditional regions (i18n).
---   - prefectures:         Japan's 47 prefectures (i18n), FK'd to a region.
+--   - beverage_categories:    the three canonical SPEC §2.1 rows.
+--   - beverage_subcategories: 18 seeded subtypes (Nihonshu × 8, Shochu × 7,
+--                             Liqueur × 3, including a per-category "Other").
+--   - flavor_tags:            the SPEC §4.3 taxonomy in en/ja/ko.
+--   - regions:                Japan's 8 traditional regions (i18n).
+--   - prefectures:            Japan's 47 prefectures (i18n), FK'd to a region.
 --
 -- These rows are referenced by FK from beverages, check_in_flavor_tags, and
 -- producers.prefecture_id, so they must exist before any catalog data loads.
 --
--- This is the consolidated seed baseline: the original 002 seeded only
--- categories + flavor_tags; the regions/prefectures rows were added later and
--- are folded in here so a fresh DB reaches production parity from 001 + 002.
+-- This is the consolidated seed baseline. The original sequence had
+-- regions / prefectures / subcategories added in later migrations; they're
+-- folded in here so a fresh DB reaches production parity from 001 + 002.
 
 BEGIN;
 
@@ -34,6 +36,45 @@ INSERT INTO beverage_categories (slug, name_i18n, sort_order) VALUES
   '{"en":"Liqueur","ja":"リキュール","ko":"리큐어"}'::jsonb,
   30
 );
+
+-- ---------------------------------------------------------------------------
+-- Beverage subcategories — admin-editable but seeded with the canonical
+-- Nihonshu / Shochu / Liqueur subtypes plus a per-category "Other" row.
+-- sort_order in multiples of 10 leaves room for future inserts between
+-- seeded values; "Other" sits at 990 so it sorts to the bottom. Category
+-- FK is resolved by slug so we don't hardcode UUIDs.
+-- ---------------------------------------------------------------------------
+INSERT INTO beverage_subcategories (category_id, slug, name_i18n, sort_order)
+SELECT
+  bc.id,
+  v.slug,
+  v.name_i18n::jsonb,
+  v.sort_order
+FROM (
+  VALUES
+  -- Nihonshu
+  ('nihonshu', 'junmai', '{"en":"Junmai","ja":"純米","ko":"준마이"}', 10),
+  ('nihonshu', 'honjozo', '{"en":"Honjozo","ja":"本醸造","ko":"혼조조"}', 20),
+  ('nihonshu', 'ginjo', '{"en":"Ginjo","ja":"吟醸","ko":"긴조"}', 30),
+  ('nihonshu', 'daiginjo', '{"en":"Daiginjo","ja":"大吟醸","ko":"다이긴조"}', 40),
+  ('nihonshu', 'junmai_ginjo', '{"en":"Junmai Ginjo","ja":"純米吟醸","ko":"준마이 긴조"}', 50),
+  ('nihonshu', 'junmai_daiginjo', '{"en":"Junmai Daiginjo","ja":"純米大吟醸","ko":"준마이 다이긴조"}', 60),
+  ('nihonshu', 'nigori', '{"en":"Nigori","ja":"にごり","ko":"니고리"}', 70),
+  ('nihonshu', 'nihonshu_other', '{"en":"Other","ja":"その他","ko":"기타"}', 990),
+  -- Shochu
+  ('shochu', 'imo', '{"en":"Imo (Sweet Potato)","ja":"芋焼酎","ko":"이모 (고구마)"}', 10),
+  ('shochu', 'mugi', '{"en":"Mugi (Barley)","ja":"麦焼酎","ko":"무기 (보리)"}', 20),
+  ('shochu', 'kome', '{"en":"Kome (Rice)","ja":"米焼酎","ko":"코메 (쌀)"}', 30),
+  ('shochu', 'soba', '{"en":"Soba (Buckwheat)","ja":"そば焼酎","ko":"소바 (메밀)"}', 40),
+  ('shochu', 'kokuto', '{"en":"Kokuto (Brown Sugar)","ja":"黒糖焼酎","ko":"코쿠토 (흑설탕)"}', 50),
+  ('shochu', 'awamori', '{"en":"Awamori","ja":"泡盛","ko":"아와모리"}', 60),
+  ('shochu', 'shochu_other', '{"en":"Other","ja":"その他","ko":"기타"}', 990),
+  -- Liqueur
+  ('liqueur', 'umeshu', '{"en":"Umeshu","ja":"梅酒","ko":"우메슈"}', 10),
+  ('liqueur', 'yuzushu', '{"en":"Yuzushu","ja":"柚子酒","ko":"유즈슈"}', 20),
+  ('liqueur', 'liqueur_other', '{"en":"Other","ja":"その他","ko":"기타"}', 990)
+) AS v (category_slug, slug, name_i18n, sort_order)
+INNER JOIN beverage_categories AS bc ON v.category_slug = bc.slug;
 
 -- ---------------------------------------------------------------------------
 -- Flavor tags — SPEC §4.3 taxonomy.

@@ -1,18 +1,22 @@
 -- 001_initial.sql
--- KAMOS — consolidated baseline schema (post-020 final state).
+-- KAMOS — consolidated baseline schema (post-MVP polish state).
 --
--- This file is a SQUASH of the original 001..020 migration history into a
--- single DDL baseline that reproduces the exact production schema. It carries
--- no seed data — taxonomy/reference rows live in 002_seed_taxonomy.sql.
+-- This file is a SQUASH of the entire pre-1.0 migration history (the
+-- original 001..020 sequence and the post-MVP polish arc 003..007) into a
+-- single DDL baseline that reproduces the exact production schema. It
+-- carries no seed data — taxonomy / reference rows live in 002_seeding.sql.
 --
--- It is recorded in schema_migrations as `001_initial.sql` (unchanged filename)
--- so production, which already has 001..020 applied, never re-runs it. A fresh
--- environment applies 001 + 002 and is then at parity with production.
+-- It is recorded in schema_migrations as `001_initial.sql` (unchanged
+-- filename) so production, which already has the full history applied,
+-- never re-runs it. A fresh environment applies 001 + 002 and is then at
+-- parity with production.
 --
--- One transaction. Append-only: future changes go in a new file (021_…).
+-- One transaction. Append-only: future changes go in a new file (003_…).
 -- Traces: SPEC.md §2-§8 plus the post-MVP roadmap (refresh tokens, photo
--- uploads, venues, RBAC + moderation log, public collections, flat comments,
--- regions/prefectures, producer rename, notifications).
+-- uploads, venues, RBAC + moderation log, public collections, flat
+-- comments, regions/prefectures, producer rename, notifications,
+-- post-create editability, producer images, 0.25-step ratings, single
+-- photo cap, subcategory taxonomy, flavor-tag soft-delete).
 --
 -- A NOTE ON CONSTRAINT NAMES: several objects retain identifiers from the
 -- pre-rename era because PostgreSQL's ALTER … RENAME does not rewrite the
@@ -53,7 +57,8 @@ CREATE TYPE moderation_action_type AS ENUM (
 -- 'brewery' was then renamed to 'producer' (so it sorts in the appended slot,
 -- not alphabetically).
 CREATE TYPE moderation_target_type AS ENUM (
-  'check_in', 'comment', 'user', 'beverage_request', 'beverage', 'producer'
+  'check_in', 'comment', 'user', 'beverage_request', 'beverage', 'producer',
+  'subcategory', 'flavor_tag'
 );
 
 -- photo_upload_status: 'uploaded' is reserved for a future server-side
@@ -250,6 +255,76 @@ CREATE TRIGGER trg_beverage_categories_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ===========================================================================
+-- BEVERAGE SUBCATEGORIES  (joinable, admin-managed)
+-- ===========================================================================
+-- One row per (category, slug). Each row carries `name_i18n` with required
+-- en + ja + ko keys and a stable `sort_order`. Soft-delete via `deleted_at`
+-- (admin "delete" sets this; the application layer blocks the soft-delete
+-- when any non-soft-deleted beverage still references the subcategory). The
+-- FK on `beverages.subcategory_id` is ON DELETE SET NULL as a backstop for
+-- the admin-recovery path. Seed lives in `002_seeding.sql`.
+--
+-- `category_slug` is denormalized from `beverage_categories.slug` via the
+-- trigger below — keeps query paths (admin filtering, public catalog
+-- grouping) row-local without an extra JOIN.
+CREATE TABLE beverage_subcategories (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id   UUID NOT NULL REFERENCES beverage_categories(id) ON DELETE RESTRICT,
+  category_slug TEXT NOT NULL,   -- denormalized; synced via trigger
+  slug          TEXT NOT NULL,   -- lowercase + underscores, unique per category
+  name_i18n     JSONB NOT NULL,  -- {en, ja, ko} all required + non-empty
+  sort_order    SMALLINT NOT NULL DEFAULT 0,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT beverage_subcategories_category_slug_unique
+    UNIQUE (category_id, slug),
+
+  -- All three locales required AND non-empty. Subcategories are admin-
+  -- editable so a stricter DB-level backstop is appropriate (categories
+  -- rely on the application-level seed to enforce non-emptiness).
+  CONSTRAINT beverage_subcategories_name_complete
+    CHECK (
+      name_i18n ? 'en' AND name_i18n ? 'ja' AND name_i18n ? 'ko'
+      AND char_length(name_i18n ->> 'en') > 0
+      AND char_length(name_i18n ->> 'ja') > 0
+      AND char_length(name_i18n ->> 'ko') > 0
+    ),
+
+  CONSTRAINT beverage_subcategories_slug_format
+    CHECK (slug ~ '^[a-z0-9_]{1,64}$'),
+
+  -- Defense-in-depth: the trigger below keeps category_slug in sync with
+  -- the parent row; this CHECK is the floor of the controlled vocabulary.
+  CONSTRAINT beverage_subcategories_category_slug_allowed
+    CHECK (category_slug IN ('nihonshu', 'shochu', 'liqueur'))
+);
+
+CREATE TRIGGER trg_beverage_subcategories_updated_at
+  BEFORE UPDATE ON beverage_subcategories
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Mirror of sync_beverage_category_slug() (defined below) — defined under
+-- a distinct name so the two triggers stay independent on future changes.
+CREATE OR REPLACE FUNCTION sync_beverage_subcategory_category_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+  SELECT slug INTO NEW.category_slug
+  FROM beverage_categories
+  WHERE id = NEW.category_id;
+  IF NEW.category_slug IS NULL THEN
+    RAISE EXCEPTION 'beverage_categories row not found for id %', NEW.category_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_beverage_subcategories_sync_category_slug
+  BEFORE INSERT OR UPDATE OF category_id ON beverage_subcategories
+  FOR EACH ROW EXECUTE FUNCTION sync_beverage_subcategory_category_slug();
+
+-- ===========================================================================
 -- REGIONS + PREFECTURES  (Japan locality reference, i18n)
 -- ===========================================================================
 -- Controlled vocabulary backing producer locality, replacing the old free-text
@@ -322,6 +397,11 @@ CREATE TABLE producers (
   deleted_at          TIMESTAMPTZ,
   prefecture_id       UUID
     CONSTRAINT breweries_prefecture_id_fkey REFERENCES prefectures(id) ON DELETE RESTRICT,
+  -- Optional admin-uploaded image (logo / brewery photo / label collage),
+  -- surfaced on the Flutter producer detail hero. Uploaded via the existing
+  -- R2 presign flow with `purpose: "producer"`. Never filtered / sorted
+  -- server-side, so no index. NULL means no image.
+  image_url           TEXT,
 
   CONSTRAINT breweries_name_has_en_ja
     CHECK (name_i18n ? 'en' AND name_i18n ? 'ja'),
@@ -384,7 +464,12 @@ CREATE TABLE beverages (
   category_id         UUID NOT NULL REFERENCES beverage_categories(id) ON DELETE RESTRICT,
   category_slug       TEXT NOT NULL,   -- denormalized for the polishing-ratio CHECK
   name_i18n           JSONB NOT NULL,
-  subcategory_i18n    JSONB,            -- e.g. {en:'Junmai Daiginjo', ja:'純米大吟醸', ko:'…'}
+  -- Subcategory: the FK below is the source of truth on writes. The legacy
+  -- `subcategory_i18n` JSONB column is kept for the dual-source rendering
+  -- window — the Go repo falls back to it when subcategory_id is NULL but
+  -- the JSONB is present. Slated for removal in a follow-up.
+  subcategory_id      UUID REFERENCES beverage_subcategories(id) ON DELETE SET NULL,
+  subcategory_i18n    JSONB,            -- legacy, dual-source fallback
   abv                 NUMERIC(4,1),
   polishing_ratio     SMALLINT,         -- nihonshu only
   flavor_profile      TEXT[] NOT NULL DEFAULT '{}',  -- aggregate tag slugs
@@ -482,6 +567,13 @@ CREATE INDEX idx_beverages_deleted_at
   ON beverages (deleted_at)
   WHERE deleted_at IS NOT NULL;
 
+-- Catalog views filter beverages by subcategory and only ever read live
+-- rows. Soft-deleted beverages don't appear in the public catalog and
+-- aren't useful to scan here.
+CREATE INDEX beverages_subcategory_id_idx
+  ON beverages (subcategory_id)
+  WHERE deleted_at IS NULL;
+
 -- ===========================================================================
 -- FLAVOR TAGS  (SPEC §4.3)
 -- ===========================================================================
@@ -491,6 +583,12 @@ CREATE TABLE flavor_tags (
   dimension   TEXT NOT NULL,
   name_i18n   JSONB NOT NULL,
   sort_order  SMALLINT NOT NULL DEFAULT 0,
+  -- Admin soft-delete for unused tags. The application layer blocks the
+  -- soft-delete when `check_in_flavor_tags` or `beverages.flavor_profile`
+  -- still reference the tag, so this is a polish primitive, not a
+  -- cascading destructive op. The public taxonomy filter is `deleted_at
+  -- IS NULL` (see `idx_flavor_tags_active`).
+  deleted_at  TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -506,6 +604,11 @@ CREATE UNIQUE INDEX idx_flavor_tags_slug
 
 CREATE INDEX idx_flavor_tags_dimension
   ON flavor_tags (dimension, sort_order);
+
+-- Public reads filter live tags; partial keeps the hot path lean.
+CREATE INDEX idx_flavor_tags_active
+  ON flavor_tags (dimension, sort_order)
+  WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_flavor_tags_updated_at
   BEFORE UPDATE ON flavor_tags
@@ -584,7 +687,7 @@ CREATE TABLE check_ins (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   beverage_id         UUID NOT NULL REFERENCES beverages(id) ON DELETE RESTRICT,
-  rating              NUMERIC(3,1),
+  rating              NUMERIC(3,2),
   review_text         TEXT,
   price_amount        NUMERIC(10,2),
   price_currency      CHAR(3),
@@ -593,17 +696,22 @@ CREATE TABLE check_ins (
   deleted_at          TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Set when a tracked field changes on a PATCH (SPEC §4.4 author-edit
+  -- on own check-in); surfaces the "edited" marker next to the timestamp.
+  -- Never sorted / filtered server-side; no index. NULL means untouched
+  -- since creation.
+  edited_at           TIMESTAMPTZ,
   venue_id            UUID REFERENCES venues(id) ON DELETE SET NULL,
   toast_count         INTEGER NOT NULL DEFAULT 0,
   comment_count       INTEGER NOT NULL DEFAULT 0,
 
-  -- SPEC §4.2 / §6.2: 0.5..5.0 in 0.5 steps, optional (NULL allowed).
-  -- (rating * 10)::int % 5 = 0 enforces the half-step grid.
+  -- SPEC §4.2: 0.5..5.0 in 0.25 steps (19 levels), optional (NULL allowed).
+  -- (rating * 100)::int % 25 = 0 enforces the quarter-step grid.
   CONSTRAINT check_ins_rating_valid
     CHECK (
       rating IS NULL OR (
         rating >= 0.5 AND rating <= 5.0
-        AND (rating * 10)::int % 5 = 0
+        AND (rating * 100)::int % 25 = 0
       )
     ),
 
@@ -653,10 +761,20 @@ CREATE INDEX idx_check_ins_venue
   ON check_ins (venue_id)
   WHERE venue_id IS NOT NULL;
 
+-- Distinct-beverage aggregation page (GET /v1/users/{username}/beverages).
+-- The query is `WHERE user_id = $1 AND deleted_at IS NULL GROUP BY
+-- beverage_id`; this composite lets the planner index-scan straight into
+-- the grouped projection instead of hash-aggregating post-scan.
+CREATE INDEX idx_check_ins_user_beverage
+  ON check_ins (user_id, beverage_id)
+  WHERE deleted_at IS NULL;
+
 -- Check-in photos (SPEC §4.1 / §6.7).
--- The 4-photo cap is enforced via `sort_order BETWEEN 0 AND 3` + UNIQUE on
--- (check_in_id, sort_order). With sort_order constrained to 4 discrete values
--- and a uniqueness guarantee, there can be at most 4 rows per check_in.
+-- SPEC §4.1 caps submissions to 1 photo per check-in (enforced in the Go
+-- domain validator + service layer). The schema-level guard remains
+-- `sort_order BETWEEN 0 AND 3` + UNIQUE on (check_in_id, sort_order) so
+-- existing multi-photo rows from before the SPEC tightening remain
+-- readable; new submissions only ever write sort_order = 0.
 -- The application is responsible for assigning the next free sort_order.
 CREATE TABLE check_in_photos (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -917,6 +1035,10 @@ CREATE TABLE comments (
   user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
   body            TEXT NOT NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- SPEC §5.4 flat-comments author-edit marker. Set when body changes
+  -- on a PATCH. Never sorted / filtered server-side; no index. NULL
+  -- means untouched since creation.
+  edited_at       TIMESTAMPTZ,
   deleted_at      TIMESTAMPTZ,
 
   CONSTRAINT comments_body_length

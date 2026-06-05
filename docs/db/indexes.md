@@ -1,6 +1,6 @@
 # KAMOS — Index Strategy
 
-This document explains every index in `migrations/001_initial.sql` and `migrations/002_seed_taxonomy.sql`, why it exists, which query pattern it serves, and which SPEC clause it supports. New indexes go in a **new** migration — never edit a deployed file. Parenthetical migration numbers below (e.g. `014`, `017`) are historical: the pre-1.0 migrations were squashed into `001_initial.sql`.
+This document explains every index in `migrations/001_initial.sql` and the seed inserts in `migrations/002_seeding.sql`, why each index exists, which query pattern it serves, and which SPEC clause it supports. New indexes go in a **new** migration — never edit a deployed file. Parenthetical migration numbers below (e.g. `014`, `017`) are squash-internal historical context, kept to make the design rationale readable.
 
 ## Principles
 
@@ -147,9 +147,9 @@ The feed query is the hottest path on the API. Two indexes cover it:
 | `idx_check_ins_user_created` (partial) | Tuple keyset cursor for feed and profile recent-check-ins. Composite `(user_id, created_at DESC, id DESC)` matches the planner's tuple comparison `(created_at, id) < ($cursor_ts, $cursor_id)` so it scans backwards along the index. `WHERE deleted_at IS NULL` keeps the index dense. | §5.2, §6.6 |
 | `idx_check_ins_beverage_created` (partial) | BeverageScreen "recent check-ins" list, cursor-paginated. | §7 |
 | `idx_check_ins_created_global` (partial) | "Public timeline" capability — not in MVP, but cheap and useful for QA. We may drop this if it adds write cost without a reader. **Decision: include for MVP**, since admin tooling will use it. | — |
-| `idx_check_ins_user_beverage` (partial, 007) | Distinct-beverage aggregation page (`GET /v1/users/{username}/beverages`, Slice D). The query is `WHERE user_id = $1 AND deleted_at IS NULL GROUP BY beverage_id` — this composite lets the planner index-scan straight into the grouped projection instead of hash-aggregating post-scan. `WHERE deleted_at IS NULL` keeps the index dense. | — |
+| `idx_check_ins_user_beverage` (partial) | Distinct-beverage aggregation page (`GET /v1/users/{username}/beverages`). The query is `WHERE user_id = $1 AND deleted_at IS NULL GROUP BY beverage_id` — this composite lets the planner index-scan straight into the grouped projection instead of hash-aggregating post-scan. `WHERE deleted_at IS NULL` keeps the index dense. | — |
 
-Definitions added in `001_initial.sql` (`idx_check_ins_user_beverage` in `007_user_beverages_indexes.sql`):
+Definitions live in `001_initial.sql`:
 
 ```sql
 CREATE INDEX idx_check_ins_user_created

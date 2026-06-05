@@ -111,11 +111,11 @@ For Android emulator, replace `localhost` with `10.0.2.2`. For iOS simulator, `l
 Migrations are plain SQL files in `migrations/`, applied in lexicographic order:
 
 ```
-001_initial.sql                              full schema — all 23 tables, enums, CHECKs, triggers, indexes
-002_seed_taxonomy.sql                        SPEC §2.1 categories + §4.3 flavor tags + region/prefecture reference data
+001_initial.sql                              full schema — every table, enum, CHECK, trigger, and index
+002_seeding.sql                              SPEC §2.1 categories + §4.3 flavor tags + region/prefecture reference data + subcategory taxonomy
 ```
 
-The pre-1.0 development history (originally 20 per-phase migrations) was consolidated into the two baseline files above. New schema changes append as `003_*.sql` onward.
+The pre-1.0 development history (the original 20 per-phase migrations plus the post-MVP polish arc) was consolidated into the two baseline files above. New schema changes append as `003_*.sql` onward.
 
 Apply:
 
