@@ -688,11 +688,17 @@ abstract class AppLocalizations {
   /// **'Private'**
   String get profilePrivate;
 
-  /// No description provided for @profileChangeAvatar.
+  /// No description provided for @profileAvatarPickGallery.
   ///
   /// In en, this message translates to:
-  /// **'Change avatar'**
-  String get profileChangeAvatar;
+  /// **'Choose from gallery'**
+  String get profileAvatarPickGallery;
+
+  /// No description provided for @profileAvatarPickCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get profileAvatarPickCamera;
 
   /// No description provided for @profileDisplayName.
   ///
@@ -705,12 +711,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bio'**
   String get profileBioLabel;
-
-  /// No description provided for @profileUsernameLocked.
-  ///
-  /// In en, this message translates to:
-  /// **'Cannot be changed.'**
-  String get profileUsernameLocked;
 
   /// No description provided for @profileStatCheckins.
   ///

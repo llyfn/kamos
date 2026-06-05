@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_toast.dart';
+import '../core/i18n/locale_provider.dart';
 import '../features/auth/providers/auth_state.dart';
 import '../features/notifications/providers/notification_providers.dart';
 import '../l10n/app_localizations.dart';
@@ -20,10 +21,12 @@ class KamosApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final locale = ref.watch(appLocaleProvider);
     return MaterialApp.router(
       title: 'KAMOS',
       debugShowCheckedModeBanner: false,
       theme: buildKamosTheme(),
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       scaffoldMessengerKey: kamosMessengerKey,

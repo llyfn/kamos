@@ -325,16 +325,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profilePrivate => 'Private';
 
   @override
-  String get profileChangeAvatar => 'Change avatar';
+  String get profileAvatarPickGallery => 'Choose from gallery';
+
+  @override
+  String get profileAvatarPickCamera => 'Take a photo';
 
   @override
   String get profileDisplayName => 'Display name';
 
   @override
   String get profileBioLabel => 'Bio';
-
-  @override
-  String get profileUsernameLocked => 'Cannot be changed.';
 
   @override
   String get profileStatCheckins => 'Check-ins';

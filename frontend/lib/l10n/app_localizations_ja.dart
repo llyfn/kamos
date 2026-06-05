@@ -317,16 +317,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profilePrivate => '非公開';
 
   @override
-  String get profileChangeAvatar => 'アバターを変更';
+  String get profileAvatarPickGallery => 'ギャラリーから選択';
+
+  @override
+  String get profileAvatarPickCamera => '写真を撮る';
 
   @override
   String get profileDisplayName => '表示名';
 
   @override
   String get profileBioLabel => '自己紹介';
-
-  @override
-  String get profileUsernameLocked => '変更できません。';
 
   @override
   String get profileStatCheckins => 'チェックイン';

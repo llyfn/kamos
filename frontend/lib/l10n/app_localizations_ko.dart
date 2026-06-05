@@ -317,16 +317,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get profilePrivate => '비공개';
 
   @override
-  String get profileChangeAvatar => '아바타 변경';
+  String get profileAvatarPickGallery => '갤러리에서 선택';
+
+  @override
+  String get profileAvatarPickCamera => '사진 촬영';
 
   @override
   String get profileDisplayName => '표시 이름';
 
   @override
   String get profileBioLabel => '소개';
-
-  @override
-  String get profileUsernameLocked => '변경할 수 없습니다.';
 
   @override
   String get profileStatCheckins => '체크인';

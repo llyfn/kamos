@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/i18n/locale_provider.dart';
 import '../../../core/models/user.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -211,6 +212,11 @@ class _LanguageTile extends ConsumerWidget {
           ),
         );
         if (picked != null) {
+          // Flip locally first so the UI re-renders before the network call
+          // round-trips. `meProvider` invalidation refreshes the canonical
+          // value from the server and the watcher in `appLocaleProvider`
+          // reconciles to it.
+          ref.read(appLocaleProvider.notifier).setLocale(picked);
           await ref.read(profileRepositoryProvider).updateMe(locale: picked);
           ref.invalidate(meProvider);
         }
