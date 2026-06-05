@@ -147,8 +147,9 @@ The feed query is the hottest path on the API. Two indexes cover it:
 | `idx_check_ins_user_created` (partial) | Tuple keyset cursor for feed and profile recent-check-ins. Composite `(user_id, created_at DESC, id DESC)` matches the planner's tuple comparison `(created_at, id) < ($cursor_ts, $cursor_id)` so it scans backwards along the index. `WHERE deleted_at IS NULL` keeps the index dense. | §5.2, §6.6 |
 | `idx_check_ins_beverage_created` (partial) | BeverageScreen "recent check-ins" list, cursor-paginated. | §7 |
 | `idx_check_ins_created_global` (partial) | "Public timeline" capability — not in MVP, but cheap and useful for QA. We may drop this if it adds write cost without a reader. **Decision: include for MVP**, since admin tooling will use it. | — |
+| `idx_check_ins_user_beverage` (partial, 007) | Distinct-beverage aggregation page (`GET /v1/users/{username}/beverages`, Slice D). The query is `WHERE user_id = $1 AND deleted_at IS NULL GROUP BY beverage_id` — this composite lets the planner index-scan straight into the grouped projection instead of hash-aggregating post-scan. `WHERE deleted_at IS NULL` keeps the index dense. | — |
 
-Definitions added in `001_initial.sql`:
+Definitions added in `001_initial.sql` (`idx_check_ins_user_beverage` in `007_user_beverages_indexes.sql`):
 
 ```sql
 CREATE INDEX idx_check_ins_user_created
@@ -162,7 +163,44 @@ CREATE INDEX idx_check_ins_beverage_created
 CREATE INDEX idx_check_ins_created_global
   ON check_ins (created_at DESC, id DESC)
   WHERE deleted_at IS NULL;
+
+-- Migration 004:
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_check_ins_user_beverage
+  ON check_ins (user_id, beverage_id)
+  WHERE deleted_at IS NULL;
 ```
+
+#### User-beverages query pattern
+
+`GET /v1/users/{username}/beverages` is the only caller. Single
+SQL statement (no N+1), expressed as a CTE that aggregates the
+user's check-ins per beverage and JOINs the result back against
+the beverages + producers + categories rows:
+
+```sql
+WITH u AS (
+  SELECT
+    beverage_id,
+    AVG(rating) FILTER (WHERE rating IS NOT NULL) AS user_avg,
+    COUNT(*)                                       AS user_count,
+    MAX(created_at)                                AS last_at
+  FROM check_ins
+  WHERE user_id = $1 AND deleted_at IS NULL
+  GROUP BY beverage_id
+)
+SELECT b.id, b.name_i18n, ...
+FROM u
+JOIN beverages b           ON b.id = u.beverage_id AND b.deleted_at IS NULL
+JOIN producers br          ON br.id = b.producer_id AND br.deleted_at IS NULL
+JOIN beverage_categories cat ON cat.id = b.category_id
+WHERE (filters)
+ORDER BY (sort axis)
+LIMIT $N + 1;
+```
+
+The CTE uses `idx_check_ins_user_beverage` for the GROUP BY; the
+outer JOINs use the existing partial indexes on `beverages.deleted_at`
+and the JOIN-target primary keys.
 
 ### check_in_photos / check_in_flavor_tags
 

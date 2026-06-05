@@ -36,6 +36,7 @@ type Repos struct {
 	ModerationLog *ModerationLogRepo
 	Geo           *GeoRepo
 	Notifications *NotificationRepo
+	UserBeverages *UserBeverageRepo
 }
 
 // New wires the bundle.
@@ -61,6 +62,7 @@ func New(db *pgxpool.Pool) *Repos {
 		ModerationLog: &ModerationLogRepo{db: db},
 		Geo:           &GeoRepo{db: db},
 		Notifications: &NotificationRepo{db: db},
+		UserBeverages: &UserBeverageRepo{db: db},
 	}
 }
 

@@ -67,6 +67,12 @@ class ApiPaths {
       '/v1/users/$username/check-ins';
   static String userCollections(String username) =>
       '/v1/users/$username/collections';
+  static String userBeverages(String username) =>
+      '/v1/users/$username/beverages';
+  static String userFollowers(String username) =>
+      '/v1/users/$username/followers';
+  static String userFollowing(String username) =>
+      '/v1/users/$username/following';
 
   // beverages
   static const beverages = '/v1/beverages';
@@ -376,6 +382,76 @@ class KamosUsersApi {
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
         'limit': limit,
       },
+    );
+    return _asMap(res.data);
+  }
+
+  /// Distinct-beverage aggregation for the named user. Filters
+  /// (`category`, `producerId`, `minRating`) and sort axis are all
+  /// optional. Cursor pagination, page size 20 (SPEC §6.6).
+  Future<Map<String, dynamic>> getUserBeverages(
+    String username, {
+    String? cursor,
+    String? category,
+    String? producerId,
+    double? minRating,
+    String sort = 'rating',
+    String? sortDir,
+    int limit = 20,
+  }) async {
+    final res = await _dio.get<dynamic>(
+      ApiPaths.userBeverages(username),
+      queryParameters: _compact({
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (category != null && category.isNotEmpty) 'category': category,
+        if (producerId != null && producerId.isNotEmpty) 'producer_id': producerId,
+        'min_rating': ?minRating,
+        'sort': sort,
+        if (sortDir != null && sortDir.isNotEmpty) 'sort_dir': sortDir,
+        'limit': limit,
+      }),
+    );
+    return _asMap(res.data);
+  }
+
+  /// Cursor-paginated followers list. `q` is the optional case-insensitive
+  /// prefix filter against `username` + `display_name`; empty / whitespace
+  /// values are stripped before sending so the server never receives a
+  /// no-op filter.
+  Future<Map<String, dynamic>> getUserFollowers(
+    String username, {
+    String? cursor,
+    String? q,
+    int limit = 20,
+  }) async {
+    final trimmed = q?.trim();
+    final res = await _dio.get<dynamic>(
+      ApiPaths.userFollowers(username),
+      queryParameters: _compact({
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (trimmed != null && trimmed.isNotEmpty) 'q': trimmed,
+        'limit': limit,
+      }),
+    );
+    return _asMap(res.data);
+  }
+
+  /// Cursor-paginated following list. See [getUserFollowers] for `q`
+  /// semantics.
+  Future<Map<String, dynamic>> getUserFollowing(
+    String username, {
+    String? cursor,
+    String? q,
+    int limit = 20,
+  }) async {
+    final trimmed = q?.trim();
+    final res = await _dio.get<dynamic>(
+      ApiPaths.userFollowing(username),
+      queryParameters: _compact({
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (trimmed != null && trimmed.isNotEmpty) 'q': trimmed,
+        'limit': limit,
+      }),
     );
     return _asMap(res.data);
   }

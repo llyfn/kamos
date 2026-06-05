@@ -301,5 +301,26 @@
   "profileRecentEmptyMeTitle": "No check-ins yet",
   "profileRecentEmptyMeBody": "Log your first bottle to see it here.",
   "profileRecentEmptyOtherTitle": "No check-ins yet",
-  "profileRecentEmptyOtherBody": "When they log a bottle, it will show up here."
+  "profileRecentEmptyOtherBody": "When they log a bottle, it will show up here.",
+
+  "userBeveragesTitle": "Beverages",
+  "userBeveragesEmpty": "No check-ins yet — try one!",
+  "userBeveragesYourAvg": "Your avg",
+  "userBeveragesGlobalAvg": "Global avg",
+  "userBeveragesCheckinCount": "{count} check-ins",
+  "@userBeveragesCheckinCount": { "placeholders": { "count": { "type": "int" } } },
+  "userBeveragesSort": "Sort",
+  "userBeveragesSortRating": "Rating",
+  "userBeveragesSortLastCheckin": "Last check-in",
+  "userBeveragesSortProducer": "Producer",
+  "userBeveragesSortCategory": "Category",
+  "userBeveragesMinRating": "Min rating",
+  "userBeveragesAllCategories": "All",
+
+  "socialFollowersTitle": "Followers",
+  "socialFollowingTitle": "Following",
+  "socialSearchHint": "Search by username or name",
+  "socialEmptyFollowers": "No followers yet",
+  "socialEmptyFollowing": "Not following anyone yet",
+  "socialSearchNoMatch": "No matches"
 }

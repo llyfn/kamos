@@ -226,10 +226,34 @@ class _ProfileBody extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _StatTile(l.profileStatCheckins, stats.checkins),
-                _StatTile(l.profileStatUnique, stats.unique),
-                _StatTile(l.profileStatFollowers, stats.followers),
-                _StatTile(l.profileStatFollowing, stats.following),
+                // CHECK-INS + UNIQUES both land on the user-beverages page —
+                // the screen lists distinct beverages (matches UNIQUES); the
+                // CHECK-INS affordance opens the same surface since seeing
+                // "which bottles" is the useful next step from either count.
+                _StatTile(
+                  l.profileStatCheckins,
+                  stats.checkins,
+                  onTap: () =>
+                      context.push('/users/${user.username}/beverages'),
+                ),
+                _StatTile(
+                  l.profileStatUnique,
+                  stats.unique,
+                  onTap: () =>
+                      context.push('/users/${user.username}/beverages'),
+                ),
+                _StatTile(
+                  l.profileStatFollowers,
+                  stats.followers,
+                  onTap: () =>
+                      context.push('/users/${user.username}/followers'),
+                ),
+                _StatTile(
+                  l.profileStatFollowing,
+                  stats.following,
+                  onTap: () =>
+                      context.push('/users/${user.username}/following'),
+                ),
               ],
             ),
           ),
@@ -343,53 +367,64 @@ FeedItem _checkinToFeedItem(Checkin c) => FeedItem(
 );
 
 class _StatTile extends StatelessWidget {
-  const _StatTile(this.label, this.value);
+  const _StatTile(this.label, this.value, {this.onTap});
   final String label;
   final int value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-        child: Column(
-          // Center single-line content within IntrinsicHeight-driven
-          // tile height so short and longer-label tiles balance.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '$value',
+    // Slice A stripped the warm-container chrome from the tile; Slice D
+    // wraps the tile body in an InkWell when tappable so the full tile
+    // area registers taps and the ink-ripple decorates the chrome-less
+    // surface.
+    final body = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      child: Column(
+        // Center single-line content within IntrinsicHeight-driven
+        // tile height so short and longer-label tiles balance.
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+              fontFamily: 'ShipporiMincho',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: t.fg1,
+            ),
+          ),
+          // FittedBox(scaleDown) + maxLines:1 keeps "FOLLOWERS"/
+          // "FOLLOWING" (and ja/ko equivalents) on a single line at
+          // narrow tile widths instead of wrapping to two lines and
+          // breaking row height parity with the other tiles.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Text(
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'ShipporiMincho',
-                fontSize: 18,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: t.fg1,
+                letterSpacing: 1.0,
+                color: t.fg3,
               ),
             ),
-            // FittedBox(scaleDown) + maxLines:1 keeps "FOLLOWERS"/
-            // "FOLLOWING" (and ja/ko equivalents) on a single line at
-            // narrow tile widths instead of wrapping to two lines and
-            // breaking row height parity with the other tiles.
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: Text(
-                label.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.visible,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.0,
-                  color: t.fg3,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+    return Expanded(
+      child: onTap == null
+          ? body
+          : InkWell(
+              onTap: onTap,
+              child: body,
+            ),
     );
   }
 }

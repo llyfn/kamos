@@ -12,6 +12,8 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/collection.dart';
 import '../../../core/models/page.dart';
+import '../../../core/models/social.dart';
+import '../../../core/models/user_beverage.dart';
 import '../models/public_user.dart';
 
 class UsersRepository {
@@ -54,6 +56,74 @@ class UsersRepository {
     return Page.fromJson(
       data,
       (raw) => Collection.fromJson(raw as Map<String, dynamic>),
+    );
+  }
+
+  /// Distinct-beverage aggregation for the named user. `categorySlug`,
+  /// `producerId`, and `minRating` are server-side filters; `sort`
+  /// defaults to `rating` (DESC NULLS LAST per the OpenAPI spec).
+  Future<Page<UserBeverageRow>> getUserBeverages(
+    String username, {
+    String? cursor,
+    String? categorySlug,
+    String? producerId,
+    double? minRating,
+    String sort = 'rating',
+    String? sortDir,
+    int limit = 20,
+  }) async {
+    final data = await _api.users.getUserBeverages(
+      username,
+      cursor: cursor,
+      category: categorySlug,
+      producerId: producerId,
+      minRating: minRating,
+      sort: sort,
+      sortDir: sortDir,
+      limit: limit,
+    );
+    return Page.fromJson(
+      data,
+      (raw) => UserBeverageRow.fromJson(raw as Map<String, dynamic>),
+    );
+  }
+
+  /// Followers list with optional case-insensitive prefix filter on
+  /// `username` + `display_name`. The server enforces 1 ≤ q ≤ 30.
+  Future<Page<SocialUser>> getFollowers(
+    String username, {
+    String? cursor,
+    String? q,
+    int limit = 20,
+  }) async {
+    final data = await _api.users.getUserFollowers(
+      username,
+      cursor: cursor,
+      q: q,
+      limit: limit,
+    );
+    return Page.fromJson(
+      data,
+      (raw) => SocialUser.fromJson(raw as Map<String, dynamic>),
+    );
+  }
+
+  /// Following list with optional prefix filter. See [getFollowers].
+  Future<Page<SocialUser>> getFollowing(
+    String username, {
+    String? cursor,
+    String? q,
+    int limit = 20,
+  }) async {
+    final data = await _api.users.getUserFollowing(
+      username,
+      cursor: cursor,
+      q: q,
+      limit: limit,
+    );
+    return Page.fromJson(
+      data,
+      (raw) => SocialUser.fromJson(raw as Map<String, dynamic>),
     );
   }
 }

@@ -53,7 +53,10 @@ import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/profile/screens/settings_screen.dart';
 import '../features/search/screens/search_screen.dart';
+import '../features/users/screens/followers_screen.dart';
+import '../features/users/screens/following_screen.dart';
 import '../features/users/screens/other_user_collections_screen.dart';
+import '../features/users/screens/user_beverages_screen.dart';
 import '../features/users/screens/user_search_screen.dart';
 import '../shared/widgets/kamos_tab_bar.dart';
 
@@ -123,6 +126,37 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/me',
             pageBuilder: (_, state) =>
                 _noTransition(state, const MeProfileScreen()),
+          ),
+          // Slice D — user-beverages + followers/following pages keep the
+          // bottom tab bar visible per the brief; they live inside the
+          // ShellRoute even though the parent `/users/:username` profile
+          // sits outside it.
+          GoRoute(
+            path: '/users/:username/beverages',
+            pageBuilder: (_, state) => _noTransition(
+              state,
+              UserBeveragesScreen(
+                username: state.pathParameters['username']!,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/users/:username/followers',
+            pageBuilder: (_, state) => _noTransition(
+              state,
+              FollowersScreen(
+                username: state.pathParameters['username']!,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/users/:username/following',
+            pageBuilder: (_, state) => _noTransition(
+              state,
+              FollowingScreen(
+                username: state.pathParameters['username']!,
+              ),
+            ),
           ),
         ],
       ),
