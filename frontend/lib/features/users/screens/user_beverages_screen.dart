@@ -1,13 +1,4 @@
-// KAMOS — User beverages screen (slice D).
-//
-// Distinct-beverage aggregation for the named user. Filter chips
-// (category + min-rating) and a sort dropdown spin a fresh
-// `userBeveragesProvider(args)` family key whenever the user toggles a
-// chip — first-page fetch from scratch is exactly the behaviour we
-// want; `loadMore` paginates within a given key.
-//
-// Producer filter is intentionally deferred for the first cut — the
-// brief allows skipping it; flagged in the PR description.
+// KAMOS — User beverages screen.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +17,13 @@ import '../../../shared/widgets/stars_display.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/user_beverages_provider.dart';
 
+const _defaultDirByAxis = <String, String>{
+  'rating': 'desc',
+  'last_checkin': 'desc',
+  'producer': 'asc',
+  'category': 'asc',
+};
+
 class UserBeveragesScreen extends ConsumerStatefulWidget {
   const UserBeveragesScreen({super.key, required this.username});
 
@@ -42,7 +40,7 @@ class _UserBeveragesScreenState extends ConsumerState<UserBeveragesScreen> {
   CategorySlug? _category;
   double? _minRating;
   String _sort = 'rating';
-  String? _sortDir; // null → server's default for that sort axis
+  String _sortDir = 'desc';
 
   @override
   void initState() {
@@ -74,6 +72,11 @@ class _UserBeveragesScreenState extends ConsumerState<UserBeveragesScreen> {
     }
   }
 
+  void _resetScroll() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.jumpTo(0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -90,15 +93,27 @@ class _UserBeveragesScreenState extends ConsumerState<UserBeveragesScreen> {
             color: t.fg1,
           ),
         ),
-        actions: [_SortMenu(sort: _sort, onSelected: _onSortSelected)],
+        actions: [
+          _SortMenu(
+            sort: _sort,
+            sortDir: _sortDir,
+            onSelected: _onSortSelected,
+          ),
+        ],
       ),
       body: Column(
         children: [
           _FilterBar(
             category: _category,
             minRating: _minRating,
-            onCategoryChanged: (slug) => setState(() => _category = slug),
-            onMinRatingChanged: (v) => setState(() => _minRating = v),
+            onCategoryChanged: (slug) {
+              setState(() => _category = slug);
+              _resetScroll();
+            },
+            onMinRatingChanged: (v) {
+              setState(() => _minRating = v);
+              _resetScroll();
+            },
           ),
           Expanded(
             child: AsyncWidget(
@@ -116,10 +131,6 @@ class _UserBeveragesScreenState extends ConsumerState<UserBeveragesScreen> {
                         EmptyView(
                           glyph: '酒',
                           title: l.userBeveragesEmpty,
-                          action: TextButton(
-                            onPressed: () => context.go('/'),
-                            child: Text(l.tabFeed),
-                          ),
                         ),
                       ],
                     ),
@@ -160,17 +171,16 @@ class _UserBeveragesScreenState extends ConsumerState<UserBeveragesScreen> {
 
   void _onSortSelected(String sort) {
     setState(() {
-      _sort = sort;
-      // Server-side default direction picks the user-friendly default for
-      // each axis (rating + last_checkin DESC; producer + category ASC), so
-      // we leave `_sortDir` null and let the server pick.
-      _sortDir = null;
+      if (sort == _sort) {
+        _sortDir = _sortDir == 'asc' ? 'desc' : 'asc';
+      } else {
+        _sort = sort;
+        _sortDir = _defaultDirByAxis[sort] ?? 'desc';
+      }
     });
+    _resetScroll();
   }
 }
-
-// ---------------------------------------------------------------------------
-// Filter bar
 
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
@@ -270,13 +280,15 @@ class _FilterBar extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sort menu
-
 class _SortMenu extends StatelessWidget {
-  const _SortMenu({required this.sort, required this.onSelected});
+  const _SortMenu({
+    required this.sort,
+    required this.sortDir,
+    required this.onSelected,
+  });
 
   final String sort;
+  final String sortDir;
   final ValueChanged<String> onSelected;
 
   @override
@@ -320,14 +332,19 @@ class _SortMenu extends StatelessWidget {
               color: t.fg1,
             ),
           ),
+          if (active) ...[
+            const SizedBox(width: 6),
+            Icon(
+              sortDir == 'asc' ? Icons.arrow_upward : Icons.arrow_downward,
+              size: 14,
+              color: t.ai,
+            ),
+          ],
         ],
       ),
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Row card
 
 class _UserBeverageRowCard extends StatelessWidget {
   const _UserBeverageRowCard({required this.row});
@@ -381,7 +398,6 @@ class _UserBeverageRowCard extends StatelessWidget {
                   userAvg: row.userAvgRating,
                   userCount: row.userCheckinCount,
                   globalAvg: row.globalAvgRating,
-                  globalCount: row.globalCheckinCount,
                   l: l,
                 ),
               ],
@@ -399,14 +415,12 @@ class _RatingsRow extends StatelessWidget {
     required this.userAvg,
     required this.userCount,
     required this.globalAvg,
-    required this.globalCount,
     required this.l,
   });
 
   final double? userAvg;
   final int userCount;
   final double? globalAvg;
-  final int globalCount;
   final AppLocalizations l;
 
   @override
@@ -443,11 +457,15 @@ class _RatingsRow extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 2),
-        Text(
-          '${l.userBeveragesGlobalAvg} '
-          '${globalAvg == null ? '—' : l.ratingValue(globalAvg!.toStringAsFixed(1))}'
-          ' · ${l.userBeveragesCheckinCount(globalCount)}',
-          style: mutedStyle,
+        Row(
+          children: [
+            StarsDisplay(value: globalAvg, size: 12),
+            const SizedBox(width: 6),
+            Text(
+              l.userBeveragesGlobalAvg,
+              style: mutedStyle,
+            ),
+          ],
         ),
         const SizedBox(height: 2),
         Text(

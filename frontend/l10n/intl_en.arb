@@ -311,7 +311,7 @@
   "@userBeveragesCheckinCount": { "placeholders": { "count": { "type": "int" } } },
   "userBeveragesSort": "Sort",
   "userBeveragesSortRating": "Rating",
-  "userBeveragesSortLastCheckin": "Last check-in",
+  "userBeveragesSortLastCheckin": "Date",
   "userBeveragesSortProducer": "Producer",
   "userBeveragesSortCategory": "Category",
   "userBeveragesMinRating": "Min rating",

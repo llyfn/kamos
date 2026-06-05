@@ -309,7 +309,7 @@
   "@userBeveragesCheckinCount": { "placeholders": { "count": { "type": "int" } } },
   "userBeveragesSort": "정렬",
   "userBeveragesSortRating": "평점",
-  "userBeveragesSortLastCheckin": "최근",
+  "userBeveragesSortLastCheckin": "날짜",
   "userBeveragesSortProducer": "생산자",
   "userBeveragesSortCategory": "카테고리",
   "userBeveragesMinRating": "최소 평점",
