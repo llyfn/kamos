@@ -1,10 +1,10 @@
 // /subcategories — admin CRUD page for beverage_subcategories.
 //
-// Slice C. Mirrors the existing /beverages and /producers pages: list
-// table with inline edit + soft-delete / restore actions, a header
-// "New subcategory" button that opens the create dialog, and an
-// include-deleted toggle. Soft-delete surfaces the 409 IN_USE response
-// when the row is still attached to live beverages.
+// Mirrors the /beverages and /producers pages: list table with inline
+// edit + soft-delete / restore actions, a header "New subcategory"
+// button that opens the create dialog, and an include-deleted toggle.
+// Soft-delete surfaces the 409 IN_USE response when the row is still
+// attached to live beverages.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';

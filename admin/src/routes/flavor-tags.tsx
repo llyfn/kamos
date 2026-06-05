@@ -1,5 +1,5 @@
 // /flavor-tags — admin CRUD page for the flavor_tags taxonomy table.
-// Slice C. Same shape as /subcategories — list + dialog edit pattern.
+// Same shape as /subcategories — list + dialog edit pattern.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';

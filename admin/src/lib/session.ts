@@ -1,6 +1,6 @@
-// Stage 4 — admin session helpers. Replaces tokens.ts (which used
-// localStorage). The browser holds the auth state in three HttpOnly
-// cookies set by the server; JS only ever reads the CSRF token cookie.
+// Admin session helpers. The browser holds the auth state in three
+// HttpOnly cookies set by the server; JS only ever reads the CSRF
+// token cookie.
 //
 // Every fetch under /v1/admin must include `credentials: 'include'` so
 // the browser attaches the kamos_admin_* cookies, plus an

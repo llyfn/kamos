@@ -1,6 +1,6 @@
-// Subcategory admin API helpers. Slice C. Thin wrappers over the
-// typed openapi-fetch client so the route components stay readable and
-// share the CSRF + cookie pattern with the rest of the admin client.
+// Subcategory admin API helpers. Thin wrappers over the typed
+// openapi-fetch client so the route components stay readable and share
+// the CSRF + cookie pattern with the rest of the admin client.
 
 import { api } from '@/lib/api';
 import type { components } from '@/types/api';

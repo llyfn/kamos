@@ -1,11 +1,11 @@
-// Typed Fetch wrapper around openapi-fetch. Stage 4 — drops localStorage
-// + Bearer in favor of HttpOnly cookies. The browser auto-attaches the
+// Typed Fetch wrapper around openapi-fetch. Auth is HttpOnly cookies
+// (no localStorage, no Bearer): the browser auto-attaches the
 // kamos_admin_* cookies when `credentials: 'include'` is set, and the
 // CSRF middleware demands an X-CSRF-Token header that mirrors the
 // kamos_admin_csrf cookie value (double-submit pattern).
 //
 // On 401 we attempt one /v1/auth/admin-refresh round-trip (cookies-only,
-// no body) and retry. On second failure we redirect to /login —
+// no body) and retry. On second failure we redirect to /login — the
 // session is gone.
 
 import createClient, { type Middleware } from 'openapi-fetch';
