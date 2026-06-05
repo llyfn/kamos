@@ -128,7 +128,7 @@ These are non-negotiable across every layer. Violating any of these is a QA bloc
 
 Never abbreviate, never substitute "Sake" alone in `en`.
 
-**Rating scale** — `0.5–5.0` in `0.25` steps (19 levels). Optional per check-in. Stored in PostgreSQL as `NUMERIC(3,1)`. In Go and Dart, use a type that preserves one decimal (`float64` / `double` is acceptable; integer is not). API responses emit it as a number, never a string.
+**Rating scale** — `0.5–5.0` in `0.25` steps (19 levels). Optional per check-in. Stored in PostgreSQL as `NUMERIC(3,2)` (migration 004). In Go and Dart, use a type that preserves two decimals (`float64` / `double` is acceptable; integer is not). API responses emit it as a number, never a string.
 
 **Username** — case-insensitive, stored lowercase, displayed as entered at registration. `3–30` chars, alphanumeric + underscore.
 

@@ -953,7 +953,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: photo cap (4) exceeded
+          description: photo cap (1) exceeded
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
