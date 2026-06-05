@@ -184,6 +184,7 @@
   "collectionsCreateNew": "Create new collection",
   "collectionsNamePlaceholder": "Collection name",
   "collectionsPrivate": "Private",
+  "collectionsPublic": "Public",
   "collectionsBottleCountOne": "{count} bottle",
   "@collectionsBottleCountOne": { "placeholders": { "count": { "type": "int" } } },
   "collectionsBottleCountOther": "{count} bottles",

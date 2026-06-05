@@ -182,6 +182,7 @@
   "collectionsCreateNew": "새 리스트 만들기",
   "collectionsNamePlaceholder": "리스트 이름",
   "collectionsPrivate": "비공개",
+  "collectionsPublic": "공개",
   "collectionsBottleCountOne": "{count}병",
   "@collectionsBottleCountOne": { "placeholders": { "count": { "type": "int" } } },
   "collectionsBottleCountOther": "{count}병",

@@ -182,6 +182,7 @@
   "collectionsCreateNew": "新しいコレクション",
   "collectionsNamePlaceholder": "コレクション名",
   "collectionsPrivate": "非公開",
+  "collectionsPublic": "公開",
   "collectionsBottleCountOne": "{count}本",
   "@collectionsBottleCountOne": { "placeholders": { "count": { "type": "int" } } },
   "collectionsBottleCountOther": "{count}本",

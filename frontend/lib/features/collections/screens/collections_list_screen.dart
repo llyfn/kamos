@@ -1,10 +1,11 @@
-// KAMOS — Collections list (SPEC §6).
+// KAMOS — Collections list.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/models/collection.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
@@ -47,7 +48,8 @@ class CollectionsListScreen extends ConsumerWidget {
                       color: t.fg1,
                     ),
                   ),
-                  OutlinedButton.icon(
+                  _NewCollectionButton(
+                    semanticLabel: l.collectionsNewList,
                     onPressed: () async {
                       final name = await _newCollectionName(context, l);
                       if (name != null && name.isNotEmpty) {
@@ -57,8 +59,6 @@ class CollectionsListScreen extends ConsumerWidget {
                         ref.invalidate(collectionsProvider);
                       }
                     },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: Text(l.collectionsNewList),
                   ),
                 ],
               ),
@@ -109,7 +109,7 @@ class CollectionsListScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  '${c.entryCount == 1 ? l.collectionsBottleCountOne(c.entryCount) : l.collectionsBottleCountOther(c.entryCount)} · ${l.collectionsPrivate}',
+                                  '${c.entryCount == 1 ? l.collectionsBottleCountOne(c.entryCount) : l.collectionsBottleCountOther(c.entryCount)} · ${c.visibility == CollectionVisibility.public ? l.collectionsPublic : l.collectionsPrivate}',
                                   style: TextStyle(fontSize: 12, color: t.fg2),
                                 ),
                               ],
@@ -125,6 +125,38 @@ class CollectionsListScreen extends ConsumerWidget {
           ),
           );
         },
+        ),
+      ),
+    );
+  }
+}
+
+class _NewCollectionButton extends StatelessWidget {
+  const _NewCollectionButton({
+    required this.semanticLabel,
+    required this.onPressed,
+  });
+
+  final String semanticLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Material(
+        color: t.bgPage,
+        shape: CircleBorder(side: BorderSide(color: t.border2)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(Icons.add, size: 20, color: t.fg1),
+          ),
         ),
       ),
     );

@@ -471,6 +471,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get collectionsPrivate => 'Private';
 
   @override
+  String get collectionsPublic => 'Public';
+
+  @override
   String collectionsBottleCountOne(int count) {
     return '$count bottle';
   }

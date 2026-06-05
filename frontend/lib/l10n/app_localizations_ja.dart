@@ -460,6 +460,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get collectionsPrivate => '非公開';
 
   @override
+  String get collectionsPublic => '公開';
+
+  @override
   String collectionsBottleCountOne(int count) {
     return '$count本';
   }

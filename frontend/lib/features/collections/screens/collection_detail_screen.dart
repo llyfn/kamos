@@ -1,5 +1,4 @@
-// KAMOS — Collection detail (SPEC §6). Contents + rename + delete with
-// confirmation.
+// KAMOS — Collection detail.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -132,7 +131,7 @@ class CollectionDetailScreen extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          '${collection.entryCount} · ${l.collectionsPrivate}',
+                          '${collection.entryCount} · ${collection.visibility == CollectionVisibility.public ? l.collectionsPublic : l.collectionsPrivate}',
                           style: TextStyle(
                             fontFamily: 'JetBrainsMono',
                             fontSize: 12,
