@@ -12,9 +12,9 @@ import (
 
 // Register implements POST /v1/auth/register.
 //
-// Stage 3: the orchestration (availability + email-uniqueness + insert +
-// default-collections + verify-token + verify-mail + auth-pair issue) lives
-// in AuthService.Register.
+// Orchestration (availability + email-uniqueness + insert + default-
+// collections + verify-token + verify-mail + auth-pair issue) lives in
+// AuthService.Register.
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req domain.RegisterRequest
 	if err := decodeJSON(r, &req); err != nil {

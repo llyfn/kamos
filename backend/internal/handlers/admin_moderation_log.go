@@ -1,8 +1,7 @@
-// admin_moderation_log.go — Stage 7 (item M-8.1) read endpoint for the
-// moderator audit trail. The write path is co-located with each admin
-// action (approve/reject/moderate/suspend/role-change); this handler is
-// the read counterpart so the React admin UI can render history without
-// dropping into psql.
+// admin_moderation_log.go — read endpoint for the moderator audit trail.
+// The write path is co-located with each admin action (approve / reject /
+// moderate / suspend / role-change); this handler is the read counterpart
+// so the React admin UI can render history without dropping into psql.
 package handlers
 
 import (

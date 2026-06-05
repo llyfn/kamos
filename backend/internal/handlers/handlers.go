@@ -30,16 +30,10 @@ import (
 
 // Handler is the bundle every route handler shares.
 //
-// Stage 3 (architectural refactor): the orchestration logic for the write
-// paths is being lifted into `internal/service.Bundle`. Handlers still hold
-// the legacy direct-repo fields below (`Repos`, `Signer`, `Mailer`, etc.)
-// for the read-path code that hasn't been service-ified yet, but every
-// multi-write flow flows through `h.Services.<X>.<Method>(ctx, …)`.
-//
-// The plan is to retire the legacy direct-repo fields once every endpoint
-// has been migrated; that's why `Services` is the only field added in
-// Stage 3 — the old fields remain for binary compatibility with the test
-// suite during the migration window.
+// Multi-write flows orchestrate through `h.Services.<X>.<Method>(ctx, …)`.
+// The legacy direct-repo fields (`Repos`, `Signer`, `Mailer`, etc.) remain
+// for read-path code and for tests that haven't been migrated to the
+// service path.
 type Handler struct {
 	Cfg        *config.Config
 	Log        *slog.Logger
@@ -59,14 +53,13 @@ type Handler struct {
 	// that don't care about caching pass nil and the path falls through to
 	// the DB on every call.
 	Caches *cache.Caches
-	// Services hosts the orchestration layer (Stage 3 refactor). Nil-safe:
-	// handlers that pre-date the migration fall back to the legacy
-	// direct-repo path when Services is nil.
+	// Services hosts the orchestration layer. Nil-safe: handlers fall
+	// back to the legacy direct-repo path when Services is nil.
 	Services *service.Bundle
-	// DB is the raw pgx pool (Stage 4). Wired so services can fan out
-	// pg_notify writes to the cache-invalidation bus on the same
-	// transaction-local connection that just committed. Nil-safe — the
-	// notify path is fire-and-forget and silently skips when DB is nil.
+	// DB is the raw pgx pool. Wired so services can fan out pg_notify
+	// writes to the cache-invalidation bus on the same transaction-local
+	// connection that just committed. Nil-safe — the notify path is
+	// fire-and-forget and silently skips when DB is nil.
 	DB *pgxpool.Pool
 }
 
@@ -119,8 +112,8 @@ func (h *Handler) WithCaches(c *cache.Caches) *Handler {
 	return h
 }
 
-// WithServices wires the orchestration bundle (Stage 3 refactor). Nil-safe
-// at runtime; tests that haven't been migrated continue to work because the
+// WithServices wires the orchestration bundle. Nil-safe at runtime;
+// tests that haven't been migrated continue to work because the
 // handlers fall back to the legacy direct-repo path when Services is nil.
 func (h *Handler) WithServices(s *service.Bundle) *Handler {
 	h.Services = s
@@ -128,8 +121,7 @@ func (h *Handler) WithServices(s *service.Bundle) *Handler {
 }
 
 // WithDB wires the raw pgx pool used for cross-replica cache-invalidation
-// NOTIFY writes (Stage 4). Optional; tests pass nil and the notify path
-// silently skips.
+// NOTIFY writes. Optional; tests pass nil and the notify path silently skips.
 func (h *Handler) WithDB(db *pgxpool.Pool) *Handler {
 	h.DB = db
 	return h

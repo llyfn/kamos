@@ -1,4 +1,4 @@
-// External-package tests for the Stage 8 admin catalog HTTP boundary.
+// External-package tests for the admin catalog HTTP boundary.
 // Internal-package unit tests for the request validators live in
 // admin_catalog_internal_test.go (so they can call the package-private
 // AdminBeverageCreate.Validate etc. directly without a server).

@@ -1,16 +1,12 @@
 // admin request bodies + validators.
 //
-// Stage 3 split: the actual HTTP handlers now live in:
-//   - admin_beverage_requests.go (list, approve, reject)
-//   - admin_users.go             (list, role update, suspend)
-//   - admin_comments.go          (list, moderate)
-//   - admin_checkins.go          (moderate)
-//
-// This file keeps only the wire-body types + per-body Validate methods +
-// the shared `wrapV` validation-error helper, all referenced from the four
-// split files above. We keep them in the handlers package so they can share
-// `*Handler` without a constructor explosion (the route-mounting in
-// server/router.go decides which role each endpoint requires).
+// HTTP handlers live in admin_beverage_requests.go, admin_users.go,
+// admin_comments.go, and admin_checkins.go. This file keeps only the
+// wire-body types + per-body Validate methods + the shared `wrapV`
+// validation-error helper, all referenced from the split files above.
+// They live in the handlers package so they can share `*Handler` without
+// a constructor explosion (server/router.go decides which role each
+// endpoint requires).
 package handlers
 
 import (
@@ -29,10 +25,9 @@ import (
 // `category_slug` is required; the handler resolves slug → UUID before
 // the INSERT runs.
 //
-// Migration 016 dropped beverages.prefecture / beverages.region — the
-// row's locality is now derived through the producer's prefecture_id, so
-// per-beverage geo fields are no longer accepted. Re-curate the producer
-// via PATCH /v1/admin/producers/{id} if needed before approving.
+// Locality is derived through the producer's prefecture_id, so per-beverage
+// geo fields are not accepted here. Re-curate the producer via PATCH
+// /v1/admin/producers/{id} if needed before approving.
 type AdminApproveBeverageRequest struct {
 	ProducerID      string           `json:"producer_id"`
 	CategoryID      *string          `json:"category_id,omitempty"`
@@ -96,7 +91,7 @@ func (r *AdminUpdateRoleRequest) Validate() error {
 }
 
 // ============================================================================
-// Stage 8 — admin catalog CRUD request bodies
+// Admin catalog CRUD request bodies
 // ============================================================================
 //
 // Both beverage + producer use the same validation strategy: every text
@@ -120,12 +115,12 @@ type AdminBeverageCreate struct {
 	ProducerID   string  `json:"producer_id"`
 	CategoryID   *string `json:"category_id,omitempty"`
 	CategorySlug *string `json:"category_slug,omitempty"`
-	// SubcategoryID is the Slice C canonical FK into beverage_subcategories.
+	// SubcategoryID is the canonical FK into beverage_subcategories.
 	// nil means "no subcategory". The handler validates that the row
 	// exists and belongs to the same category as this beverage.
 	SubcategoryID   *string          `json:"subcategory_id,omitempty"`
 	NameI18n        domain.I18nText  `json:"name_i18n"`
-	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"` // legacy free-text, one-release backwards-compat
+	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"` // legacy free-text
 	ABV             *float64         `json:"abv,omitempty"`
 	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
 	FlavorProfile   []string         `json:"flavor_profile,omitempty"`
@@ -165,7 +160,7 @@ type AdminBeverageUpdate struct {
 	ProducerID   *string `json:"producer_id,omitempty"`
 	CategoryID   *string `json:"category_id,omitempty"`
 	CategorySlug *string `json:"category_slug,omitempty"`
-	// SubcategoryID pointer semantics (Slice C):
+	// SubcategoryID pointer semantics:
 	//   nil       → leave subcategory_id unchanged.
 	//   ptr to "" → clear subcategory_id to NULL.
 	//   ptr to UUID → set subcategory_id to that value.
@@ -173,7 +168,7 @@ type AdminBeverageUpdate struct {
 	// row under the beverage's (possibly-just-changed) category.
 	SubcategoryID   *string          `json:"subcategory_id,omitempty"`
 	NameI18n        *domain.I18nText `json:"name_i18n,omitempty"`
-	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"` // legacy free-text, one-release backwards-compat
+	SubcategoryI18n *domain.I18nText `json:"subcategory_i18n,omitempty"` // legacy free-text
 	ABV             *float64         `json:"abv,omitempty"`
 	PolishingRatio  *int             `json:"polishing_ratio,omitempty"`
 	FlavorProfile   *[]string        `json:"flavor_profile,omitempty"`
@@ -229,12 +224,11 @@ func validateBeverageFields(
 
 // AdminProducerCreate is the body for POST /v1/admin/producers.
 //
-// Migration 016 replaced the free-text `prefecture` / `region` columns
-// with `prefecture_id`. The admin SPA works in slugs (GET
-// /v1/reference/regions returns slug + i18n labels), so we mirror the
-// `category_slug` pattern: clients send `prefecture_slug` and the handler
-// resolves it to a UUID before the INSERT. Region is derived from the
-// prefecture (no separate input). Unknown slug → 422
+// Producer locality is `prefecture_id`. The admin SPA works in slugs
+// (GET /v1/reference/regions returns slug + i18n labels), so we mirror
+// the `category_slug` pattern: clients send `prefecture_slug` and the
+// handler resolves it to a UUID before the INSERT. Region is derived
+// from the prefecture (no separate input). Unknown slug → 422
 // INVALID_PREFECTURE_SLUG.
 type AdminProducerCreate struct {
 	NameI18n        domain.I18nText  `json:"name_i18n"`

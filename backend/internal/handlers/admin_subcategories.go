@@ -1,14 +1,5 @@
 // admin_subcategories.go — admin CRUD over beverage_subcategories.
 //
-// Slice C (migration 005). Five endpoints, admin-only, mounted under
-// /v1/admin and gated by AdminAuth + CSRF in router.go:
-//
-//	GET    /v1/admin/subcategories
-//	POST   /v1/admin/subcategories
-//	PATCH  /v1/admin/subcategories/{id}
-//	DELETE /v1/admin/subcategories/{id}
-//	POST   /v1/admin/subcategories/{id}/restore
-//
 // Every mutation bundles a moderation_log row into the same pgx.Tx so the
 // change + audit commit atomically. After commit the handler emits
 // pg_notify('kamos_cache_invalidate', 'subcategories') so every replica

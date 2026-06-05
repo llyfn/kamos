@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-// Phase 7a MINOR-2: localeKey must whitelist en/ja/ko and map everything
-// else to the EN fallback bucket so the cache-key axis stays bounded.
+// localeKey must whitelist en/ja/ko and map everything else to the EN
+// fallback bucket so the cache-key axis stays bounded.
 func TestLocaleKey(t *testing.T) {
 	cases := []struct {
 		name   string

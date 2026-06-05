@@ -1,5 +1,4 @@
-// admin_users.go — admin user management (list, role updates,
-// suspend). Split out of admin.go in Stage 3.
+// admin_users.go — admin user management (list, role updates, suspend).
 package handlers
 
 import (
@@ -24,11 +23,11 @@ import (
 // - cursor: opaque cursor token
 // - limit: 1..50, default 20
 //
-// Stage 8 (admin catalog + search): when any of `username`, `email`, `id`
-// is set, the query collapses to a single indexed lookup and the cursor
-// is ignored (has_more = false). Only one exact-match field may be set
-// at a time; if multiple are supplied, the precedence is id > username
-// > email (matches the repo's fast-path order).
+// When any of `username`, `email`, `id` is set, the query collapses to a
+// single indexed lookup and the cursor is ignored (has_more = false).
+// Only one exact-match field may be set at a time; if multiple are
+// supplied, the precedence is id > username > email (matches the repo's
+// fast-path order).
 func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r, 20, 50)
 	c, err := parseCursor(r)

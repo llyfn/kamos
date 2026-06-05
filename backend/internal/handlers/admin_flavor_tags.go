@@ -1,14 +1,5 @@
 // admin_flavor_tags.go — admin CRUD over the flavor_tags taxonomy.
 //
-// Slice C (migration 006 added flavor_tags.deleted_at and the
-// 'flavor_tag' moderation target). Five endpoints, admin-only:
-//
-//	GET    /v1/admin/flavor-tags
-//	POST   /v1/admin/flavor-tags
-//	PATCH  /v1/admin/flavor-tags/{id}
-//	DELETE /v1/admin/flavor-tags/{id}
-//	POST   /v1/admin/flavor-tags/{id}/restore
-//
 // Every mutation bundles a moderation_log row into the same pgx.Tx so the
 // change + audit commit atomically. After commit the handler emits
 // pg_notify('kamos_cache_invalidate', 'flavor-tags') so every replica

@@ -32,11 +32,10 @@ func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 	if cat != "" {
 		catPtr = &cat
 	}
-	// Popularity cursor uses (CheckInCount, CreatedAt, ID) triple after
-	// Stage 5 (PERF-003). Legacy cursors emitted before this commit only
-	// carry Score+ID; we still honor them — the missing timestamp keeps
-	// the keyset at a 2-tuple, which simply walks a slightly larger
-	// page boundary on the upgrade transition.
+	// Popularity cursor uses the (CheckInCount, CreatedAt, ID) triple.
+	// Legacy cursors that only carry Score+ID are still honored — the
+	// missing timestamp keeps the keyset at a 2-tuple, which simply walks
+	// a slightly larger page boundary on the upgrade transition.
 	cnt := c.Score
 	ts := optTimestamp(c)
 	idPtr := optString(c.ID)

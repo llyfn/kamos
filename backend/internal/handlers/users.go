@@ -320,10 +320,10 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 		h.writeErr(w, "listSocial cursor", err)
 		return
 	}
-	// Slice D: optional `?q=` prefix search across (username,
-	// display_name). Empty / whitespace-only `q` is treated as
-	// "no filter" — no error, the full list returns. Length cap
-	// matches SPEC §3.2 username + display-name caps.
+	// Optional `?q=` prefix search across (username, display_name).
+	// Empty / whitespace-only `q` is treated as "no filter" — no error,
+	// the full list returns. Length cap matches SPEC §3.2 username +
+	// display-name caps.
 	var qPrefix *string
 	if raw := strings.TrimSpace(r.URL.Query().Get("q")); raw != "" {
 		clean, err := domain.SanitizeText("q", raw, false, 50)

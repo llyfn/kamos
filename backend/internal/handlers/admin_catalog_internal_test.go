@@ -1,6 +1,6 @@
-// Internal-package unit tests for the Stage 8 admin catalog request
-// validators. These exercise the Validate methods directly without an
-// HTTP transport, so we don't have to mock the role-gate DB lookup.
+// Internal-package unit tests for the admin catalog request validators.
+// These exercise the Validate methods directly without an HTTP transport,
+// so we don't have to mock the role-gate DB lookup.
 package handlers
 
 import (
