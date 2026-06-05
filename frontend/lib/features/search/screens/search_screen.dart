@@ -19,6 +19,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/kamos_card.dart';
 import '../../../shared/widgets/kamos_chip.dart';
 import '../../../shared/widgets/kamos_label.dart';
+import '../../../shared/widgets/kamos_page_title.dart';
 import '../../../shared/widgets/stars_display.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../../beverages/providers/beverage_providers.dart';
@@ -69,18 +70,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  l.searchHeader,
-                  style: TextStyle(
-                    fontFamily: 'ShipporiMincho',
-                    fontSize: 26,
-                    fontWeight: FontWeight.w600,
-                    color: t.fg1,
-                  ),
-                ),
-              ),
+              child: KamosPageTitle(l.searchHeader),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),

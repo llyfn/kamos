@@ -9,6 +9,7 @@ import '../../../core/models/collection.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
+import '../../../shared/widgets/kamos_page_title.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../providers/collection_providers.dart';
 import '../repository/collection_repository.dart';
@@ -36,31 +37,20 @@ class CollectionsListScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l.collectionsHeader,
-                    style: TextStyle(
-                      fontFamily: 'ShipporiMincho',
-                      fontSize: 26,
-                      fontWeight: FontWeight.w600,
-                      color: t.fg1,
-                    ),
-                  ),
-                  _NewCollectionButton(
-                    semanticLabel: l.collectionsNewList,
-                    onPressed: () async {
-                      final name = await _newCollectionName(context, l);
-                      if (name != null && name.isNotEmpty) {
-                        await ref
-                            .read(collectionRepositoryProvider)
-                            .create(name);
-                        ref.invalidate(collectionsProvider);
-                      }
-                    },
-                  ),
-                ],
+              KamosPageTitle(
+                l.collectionsHeader,
+                trailing: _NewCollectionButton(
+                  semanticLabel: l.collectionsNewList,
+                  onPressed: () async {
+                    final name = await _newCollectionName(context, l);
+                    if (name != null && name.isNotEmpty) {
+                      await ref
+                          .read(collectionRepositoryProvider)
+                          .create(name);
+                      ref.invalidate(collectionsProvider);
+                    }
+                  },
+                ),
               ),
               const SizedBox(height: 12),
               if (page.items.isEmpty)
