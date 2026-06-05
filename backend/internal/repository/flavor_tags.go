@@ -1,9 +1,9 @@
 // flavor_tags.go — admin CRUD over the flavor_tags taxonomy table.
 //
-// Slice C (migration 006 adds flavor_tags.deleted_at). The public
-// /v1/flavor-tags endpoint stays cached + read-only via TaxonomyRepo;
-// the admin CRUD here is mounted under /v1/admin/flavor-tags and goes
-// through the same moderator-cookie + CSRF gate as the rest of /admin.
+// The public /v1/flavor-tags endpoint stays cached + read-only via
+// TaxonomyRepo; the admin CRUD here is mounted under /v1/admin/flavor-tags
+// and goes through the same moderator-cookie + CSRF gate as the rest of
+// /admin.
 //
 // Delete is soft (sets deleted_at) and is blocked by an in-use guard
 // against check_in_flavor_tags so a tag with check-in history cannot

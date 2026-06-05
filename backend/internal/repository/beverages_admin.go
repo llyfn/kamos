@@ -1,4 +1,4 @@
-// beverages_admin.go — admin catalog write paths (Stage 8, migration 014).
+// beverages_admin.go — admin catalog write paths.
 //
 // Direct admin CRUD for producers + beverages plus admin-only listings
 // that can include soft-deleted rows. Every method here is mounted under
@@ -7,15 +7,15 @@
 // audit row commits atomically with the change — the handler owns the
 // Begin/Commit and threads the *pgx.Tx into each method's `tx` parameter.
 //
-// Public read paths in beverages.go now filter `deleted_at IS NULL` on
-// both `beverages` and `producers`; the admin variants here either
-// short-circuit to a specific row by id or honor an `IncludeDeleted`
-// flag so the admin "trash" view can resurface tombstones for restore.
+// Public read paths in beverages.go filter `deleted_at IS NULL` on both
+// `beverages` and `producers`; the admin variants here either short-circuit
+// to a specific row by id or honor an `IncludeDeleted` flag so the admin
+// "trash" view can resurface tombstones for restore.
 //
 // FTS uses `websearch_to_tsquery('simple', $1)` to hit the partial GIN
-// indexes built in migration 014. Plain text typed in the admin search
-// box becomes a sensible tsquery (quoted phrases, OR operators) without
-// the admin having to learn ::tsquery syntax.
+// indexes. Plain text typed in the admin search box becomes a sensible
+// tsquery (quoted phrases, OR operators) without the admin having to
+// learn ::tsquery syntax.
 
 package repository
 
@@ -394,14 +394,13 @@ RETURNING id;`
 // CategoryID drives the category_slug via the existing
 // sync_beverage_category_slug trigger — we do NOT set slug here.
 //
-// Migration 016 dropped beverages.prefecture / beverages.region; locality
-// is now derived through the producer's prefecture_id.
+// Locality is derived through the producer's prefecture_id.
 //
-// Slice C: SubcategoryID is the FK into beverage_subcategories. nil means
-// "no subcategory" (column NULL). The legacy `Subcategory` (free-text
-// JSONB) is still accepted for one release window; the handler ignores it
-// when SubcategoryID is non-nil, and the dual-source toBeverage fallback
-// only kicks in when both the legacy and FK columns are NULL.
+// SubcategoryID is the FK into beverage_subcategories. nil means "no
+// subcategory" (column NULL). The legacy `Subcategory` (free-text JSONB)
+// is still accepted; the handler ignores it when SubcategoryID is
+// non-nil, and the dual-source toBeverage fallback only kicks in when
+// both the legacy and FK columns are NULL.
 type BeverageCreateInput struct {
 	ProducerID     string
 	CategoryID     string
@@ -417,7 +416,7 @@ type BeverageCreateInput struct {
 
 // BeverageUpdateInput carries the partial-update fields.
 //
-// SubcategoryID pointer semantics (Slice C):
+// SubcategoryID pointer semantics:
 //   - nil pointer → leave subcategory_id unchanged.
 //   - ptr to ""   → clear subcategory_id to NULL.
 //   - ptr to UUID → set subcategory_id to that value (the handler must
@@ -459,14 +458,12 @@ type AdminBeverageRow struct {
 // adminBeverageSelect is the full projection used by the admin GET +
 // admin list, including subcategory_i18n + description_i18n so the
 // edit modal can pre-fill every field, plus deleted_at for the tombstone
-// badge.
-// adminBeverageSelect is the full admin projection. Migration 016
-// dropped beverages.prefecture/region; the row's locality comes from
-// the producer's joined prefecture chain via producerPrefectureSelectCols.
+// badge. Locality comes from the producer's joined prefecture chain via
+// producerPrefectureSelectCols.
 //
-// Slice C: LEFT JOIN beverage_subcategories so the admin edit modal
-// pre-fills the canonical subcategory ref. Legacy b.subcategory_i18n
-// is retained for the dual-source fallback (see toBeverage).
+// LEFT JOIN beverage_subcategories so the admin edit modal pre-fills
+// the canonical subcategory ref. Legacy b.subcategory_i18n is retained
+// for the dual-source fallback (see toBeverage).
 const adminBeverageSelect = `
 SELECT
   b.id,
@@ -625,12 +622,11 @@ func (r *BeverageRepo) Create(ctx context.Context, tx pgx.Tx, in BeverageCreateI
 	// row passes the CHECK before the trigger fires; the trigger then
 	// rewrites it to the correct value.
 	//
-	// Migration 016 dropped beverages.prefecture / beverages.region — the
-	// locality is derived through the producer's prefecture_id, not stored
+	// Locality is derived through the producer's prefecture_id, not stored
 	// on the beverage row.
 	//
-	// Slice C: subcategory_id is the FK; the legacy subcategory_i18n is
-	// still written when supplied (admin requests that opt to send the
+	// subcategory_id is the FK; the legacy subcategory_i18n is still
+	// written when supplied (for admin requests that opt to send the
 	// legacy field for backwards-compat). New admin payloads send only
 	// subcategory_id.
 	const q = `

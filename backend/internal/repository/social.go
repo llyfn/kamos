@@ -140,11 +140,11 @@ type SocialUser struct {
 // (CHECK on the follows table in 001), so the previous
 // "NULLS LAST" qualifier is no longer needed.
 //
-// Slice D (post-MVP): optional `qPrefix` does a case-insensitive
-// LIKE prefix match against EITHER username OR display_name. The
-// caller is expected to pre-escape LIKE metacharacters (`%`, `_`,
-// `\`) via repository.LikeEscape so a user-supplied "al%" doesn't
-// turn into a wildcard. An empty / nil pointer is a wildcard.
+// Optional `qPrefix` does a case-insensitive LIKE prefix match against
+// EITHER username OR display_name. The caller is expected to pre-escape
+// LIKE metacharacters (`%`, `_`, `\`) via repository.LikeEscape so a
+// user-supplied "al%" doesn't turn into a wildcard. An empty / nil
+// pointer is a wildcard.
 func (r *SocialRepo) Followers(ctx context.Context, userID string, qPrefix *string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
 	prefix := socialPrefixPattern(qPrefix)
 	const q = `

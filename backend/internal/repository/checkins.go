@@ -67,11 +67,10 @@ RETURNING id, created_at;`
 		return "", time.Time{}, fmt.Errorf("CheckinRepo.Create insert: %w", err)
 	}
 
-	// Stage 5 (PERF-009): one multi-row INSERT for all photos instead
-	// of N round-trips. unnest($2, $3) zips the URL array with a
-	// generated sort_order series. Slice B / SPEC §4.1: submission is
-	// capped at 1 photo (enforced both by
-	// domain.CreateCheckinRequest.Validate at the handler edge and
+	// One multi-row INSERT for all photos instead of N round-trips.
+	// unnest($2, $3) zips the URL array with a generated sort_order
+	// series. SPEC §4.1: submission is capped at 1 photo (enforced both
+	// by domain.CreateCheckinRequest.Validate at the handler edge and
 	// here as defense-in-depth). The DB's check_in_photos_sort_order
 	// CHECK still tolerates the historical 0..3 range so existing
 	// multi-photo check-ins remain readable.
@@ -362,11 +361,11 @@ func (r *CheckinRepo) applyPhotoEdits(ctx context.Context, tx pgx.Tx, p UpdateCh
 	}
 	sortOrders := make([]int32, len(p.AddPhotoURLs))
 	for i := range p.AddPhotoURLs {
-		// Submission cap (Slice B / SPEC §4.1) is enforced upstream at
-		// 1 photo; the storage-side sort_order range remains 0..3 so
-		// existing multi-photo rows stay readable. int32 conversion of
-		// these small bounded values is safe. Explicit conversion
-		// silences the gosec G115 warning for this loop.
+		// Submission cap (SPEC §4.1) is enforced upstream at 1 photo;
+		// the storage-side sort_order range remains 0..3 so existing
+		// multi-photo rows stay readable. int32 conversion of these
+		// small bounded values is safe. Explicit conversion silences
+		// the gosec G115 warning for this loop.
 		sortOrders[i] = int32(next + i) //nolint:gosec
 	}
 	const insPh = `
@@ -428,14 +427,12 @@ RETURNING id;`
 // ErrForbidden if the check-in isn't owned by userID, and ErrNotFound
 // if it doesn't exist or is soft-deleted.
 //
-// Stage 5 (PERF-008): collapsed from a four-statement tx (lock +
-// count + max + insert) into a single INSERT … SELECT … HAVING
-// statement. The HAVING < 1 clause is what enforces the SPEC §4.1
-// 1-photo submission cap (Slice B) without needing a separate count
-// round-trip; ownership + liveness are baked into the inner JOIN's
-// WHERE. Existing multi-photo check-ins remain readable; only new
-// attaches are blocked once any photo exists. On NoRows we issue a
-// cheap discriminator query (one extra round-trip on the error
+// Single INSERT … SELECT … HAVING statement. The HAVING < 1 clause
+// enforces the SPEC §4.1 1-photo submission cap without needing a
+// separate count round-trip; ownership + liveness are baked into the
+// inner JOIN's WHERE. Existing multi-photo check-ins remain readable;
+// only new attaches are blocked once any photo exists. On NoRows we
+// issue a cheap discriminator query (one extra round-trip on the error
 // path only) to map to NotFound / Forbidden / PhotoCapExceeded.
 func (r *CheckinRepo) AddPhoto(ctx context.Context, checkinID, userID, photoURL string) (domain.PhotoRef, error) {
 	const q = `
@@ -576,10 +573,8 @@ LIMIT 1;`
 // the same privacy gate as the feed. `viewerID` may be empty for unauthed
 // reads (only public profiles will return rows).
 //
-// Stage 3 (STYLE-035 / STYLE-040) refactor: the body uses the shared
-// scanCheckinRow + hydrateCheckinTagsAndPhotos helpers below so the same
-// column order is honored across UserCheckins / Get / any future check-in
-// listing path.
+// Uses the shared scanCheckinRow + hydrateCheckinTagsAndPhotos helpers so
+// the same column order is honored across every check-in listing path.
 func (r *CheckinRepo) UserCheckins(ctx context.Context, viewerID, targetID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Checkin, error) {
 	const q = `
 SELECT
@@ -780,12 +775,12 @@ func isAcceptedFollower(ctx context.Context, db *pgxpool.Pool, viewerID, ownerID
 // a hidden check-in would remain world-readable, defeating the
 // moderation action.
 func (r *CheckinRepo) AssertViewerCanSeeCheckin(ctx context.Context, checkInID, viewerID string) error {
-	// Stage 5 (PERF-007): single-query shape per docs/db/query_patterns.md §4.
-	// The OR-tree inside the WHERE encodes the visibility rule in one
-	// round trip instead of the two-step "lookup-then-maybe-followers"
-	// dance. NULLIF($2,'') maps the empty viewerID (unauthenticated)
-	// to NULL so the comparisons against u.id / f.follower_id resolve
-	// to false instead of throwing on cast.
+	// Single-query shape per docs/db/query_patterns.md §4. The OR-tree
+	// inside the WHERE encodes the visibility rule in one round trip
+	// instead of the two-step "lookup-then-maybe-followers" dance.
+	// NULLIF($2,'') maps the empty viewerID (unauthenticated) to NULL so
+	// the comparisons against u.id / f.follower_id resolve to false
+	// instead of throwing on cast.
 	const q = `
 SELECT 1
 FROM check_ins ci

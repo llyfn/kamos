@@ -25,8 +25,7 @@ func (r *SearchRepo) SearchBeverages(ctx context.Context, q string, cursorID *st
 	if limit <= 0 {
 		limit = 20
 	}
-	// Stage 8 (admin catalog soft-delete): exclude tombstoned rows from
-	// /v1/search the same way List/Detail do.
+	// Exclude tombstoned rows from /v1/search the same way List/Detail do.
 	const bq = beverageListSelect + `
 WHERE b.deleted_at IS NULL
   AND br.deleted_at IS NULL
@@ -64,9 +63,9 @@ func (r *SearchRepo) SearchProducers(ctx context.Context, q string, cursorID *st
 	if limit <= 0 {
 		limit = 20
 	}
-	// Stage 8: exclude tombstoned rows from public search.
-	// Migration 016: prefecture is nested via the LEFT JOIN to
-	// prefectures + regions (producer.prefecture_id is nullable).
+	// Exclude tombstoned rows from public search. Prefecture is nested
+	// via the LEFT JOIN to prefectures + regions
+	// (producer.prefecture_id is nullable).
 	const brq = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `

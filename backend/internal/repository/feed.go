@@ -18,16 +18,14 @@ type FeedRepo struct{ db *pgxpool.Pool }
 //
 //nolint:funlen // single keyset-pagination query + scan loop; splitting the SQL builder from the scan would hurt readability.
 func (r *FeedRepo) Page(ctx context.Context, viewerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.FeedItem, error) {
-	// Stage 5 (PERF-001/002/024): toast_count + comment_count come from
-	// denormalized counter columns on check_ins (migration 011). Photos
-	// are batch-hydrated after the rows.Next() loop via PhotosFor so the
-	// feed ships actual photo URLs (not just a count). The only
-	// remaining per-viewer correlated lookup is `you_toasted` — it
-	// can't be denormalized because the answer is per-requesting-user.
-	// Migration 016: producer.region is replaced by the nested
-	// prefecture (via the LEFT JOIN on prefectures + regions). The
-	// ProducerRef embedding in the feed item exposes a *Prefecture so
-	// the feed card can render locality without a second fetch.
+	// toast_count + comment_count are denormalized counter columns on
+	// check_ins. Photos are batch-hydrated after the rows.Next() loop
+	// via PhotosFor so the feed ships actual photo URLs (not just a
+	// count). The only remaining per-viewer correlated lookup is
+	// `you_toasted` — it can't be denormalized because the answer is
+	// per-requesting-user. The ProducerRef embedding exposes a
+	// *Prefecture (via the LEFT JOIN on prefectures + regions) so the
+	// feed card can render locality without a second fetch.
 	const q = `
 SELECT
   ci.id,
@@ -147,8 +145,7 @@ LIMIT $4;`
 	}
 
 	// Hydrate tags + photos in two batch queries (one round trip each).
-	// Photos pre-Stage 5 only shipped a count on the feed — the new
-	// PhotoRef slice lets the Flutter card render the actual grid.
+	// The PhotoRef slice lets the Flutter card render the actual grid.
 	ck := CheckinRepo{db: r.db}
 	tags, err := ck.TagsFor(ctx, ids)
 	if err != nil {

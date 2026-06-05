@@ -27,11 +27,10 @@ import (
 type AdminRepo struct{ db *pgxpool.Pool }
 
 // LogAction writes a single moderation_log audit row inside the supplied tx.
-// Exported so the Stage 8 admin catalog handlers can stamp their mutations
-// without going through a service shim. Existing package-internal write
-// paths use insertModerationLog (a thin wrapper that drops the receiver) so
-// the per-aggregate helpers in this file don't need a *AdminRepo just to
-// audit.
+// Exported so admin catalog handlers can stamp their mutations without
+// going through a service shim. Existing package-internal write paths use
+// insertModerationLog (a thin wrapper that drops the receiver) so the
+// per-aggregate helpers in this file don't need a *AdminRepo just to audit.
 func (r *AdminRepo) LogAction(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -385,12 +384,11 @@ type AdminUserRow struct {
 // ListUsersParams supports cursor pagination on (created_at, id) plus
 // filters for role and "include soft-deleted".
 //
-// Stage 8 (admin catalog CRUD): three exact-match fields short-circuit
-// the cursor to a single indexed lookup. UsernameExact and EmailExact
-// case-fold to LOWER() to hit idx_users_username_live /
-// idx_users_email_live; IDExact walks the PK. When any of the three is
-// set, the rest of the filter set is ignored and at most one row comes
-// back (has_more = false at the handler).
+// Three exact-match fields short-circuit the cursor to a single indexed
+// lookup. UsernameExact and EmailExact case-fold to LOWER() to hit
+// idx_users_username_live / idx_users_email_live; IDExact walks the PK.
+// When any of the three is set, the rest of the filter set is ignored
+// and at most one row comes back (has_more = false at the handler).
 type ListUsersParams struct {
 	RoleFilter     string
 	IncludeDeleted bool
@@ -538,8 +536,8 @@ func (r *AdminRepo) UpdateUserRole(ctx context.Context, userID, moderatorID stri
 // same transaction with metadata {"username_release_at": "..."} for
 // post-hoc audit.
 func (r *AdminRepo) SuspendUser(ctx context.Context, userID, moderatorID string) error {
-	// Role is reset to 'user' BEFORE soft-deleting so that future un-suspend
-	// tooling (post-MVP) cannot auto-restore admin/moderator privileges. The
+	// Role is reset to 'user' BEFORE soft-deleting so any future un-suspend
+	// tooling cannot auto-restore admin/moderator privileges. The
 	// deleted_at + username_release_at pair handles the 30-day username hold
 	// per SPEC §3.4; the role reset is the security half of the same action.
 	tx, err := r.db.Begin(ctx)

@@ -35,13 +35,13 @@ type UpsertVenueInput struct {
 // UpsertByFoursquareID inserts on miss; on a `foursquare_id` conflict it
 // touches `updated_at` only and returns the existing id (first-writer-wins).
 //
-// SECURITY (SEC-002): the previous last-writer-wins behavior — re-writing
-// every mutable column from the incoming payload — let any authed client
+// SECURITY (SEC-002): a last-writer-wins behavior — re-writing every
+// mutable column from the incoming payload — would let any authed client
 // silently overwrite the shared venue row's name/address/coords with
 // whatever they claimed about that foursquare_id. We trust the first
 // inserter as ground truth until a backend-side Foursquare refresh job
-// exists (post-MVP). The `RETURNING id` clause works on the touch-only
-// branch because PostgreSQL still emits the row.
+// exists. The `RETURNING id` clause works on the touch-only branch
+// because PostgreSQL still emits the row.
 func (r *VenueRepo) UpsertByFoursquareID(ctx context.Context, in UpsertVenueInput) (string, error) {
 	if in.FoursquareID == "" {
 		return "", errors.New("UpsertByFoursquareID: foursquare_id is required")
