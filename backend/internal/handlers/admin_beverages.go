@@ -114,6 +114,19 @@ func (h *Handler) AdminCreateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeCategoryErr(w, "AdminCreateBeverage", err)
 		return
 	}
+	// Slice C: empty subcategory_id on POST means "no subcategory" —
+	// the repo expects nil, not a ptr to empty string (the UUID cast
+	// would otherwise raise).
+	if body.SubcategoryID != nil && *body.SubcategoryID == "" {
+		body.SubcategoryID = nil
+	}
+	// Validate (if supplied) that the row exists under the same category.
+	if body.SubcategoryID != nil {
+		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, categoryID); err != nil {
+			h.writeSubcategoryErr(w, "AdminCreateBeverage", err)
+			return
+		}
+	}
 	bevID, err := h.createBeverageTx(r.Context(), uid, categoryID, body)
 	if err != nil {
 		h.writeErr(w, "AdminCreateBeverage", err)
@@ -168,6 +181,9 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 	prev, err := h.Repos.Beverages.AdminDetail(r.Context(), id)
 	if err != nil {
 		h.writeErr(w, "AdminUpdateBeverage prefetch", err)
+		return
+	}
+	if h.resolveSubcategoryForBeverageUpdate(w, r, &body, prev, resolved) {
 		return
 	}
 	if err := h.updateBeverageTx(r.Context(), uid, id, resolved, body); err != nil {
@@ -267,6 +283,7 @@ func (h *Handler) createBeverageTx(ctx context.Context, adminID, categoryID stri
 		CategoryID:     categoryID,
 		Name:           body.NameI18n,
 		Subcategory:    body.SubcategoryI18n,
+		SubcategoryID:  body.SubcategoryID,
 		ABV:            body.ABV,
 		PolishingRatio: body.PolishingRatio,
 		FlavorProfile:  body.FlavorProfile,
@@ -302,6 +319,7 @@ func (h *Handler) updateBeverageTx(ctx context.Context, adminID, id string, cate
 		CategoryID:     categoryID,
 		Name:           body.NameI18n,
 		Subcategory:    body.SubcategoryI18n,
+		SubcategoryID:  body.SubcategoryID,
 		ABV:            body.ABV,
 		PolishingRatio: body.PolishingRatio,
 		FlavorProfile:  body.FlavorProfile,
@@ -422,4 +440,60 @@ func (h *Handler) writeCategoryErr(w http.ResponseWriter, op string, err error) 
 		return
 	}
 	h.writeErr(w, op, err)
+}
+
+// writeSubcategoryErr maps VerifyForCategory failures to stable 422 codes.
+// ErrNotFound → INVALID_SUBCATEGORY_ID, ErrValidation → SUBCATEGORY_CATEGORY_MISMATCH.
+func (h *Handler) writeSubcategoryErr(w http.ResponseWriter, op string, err error) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "INVALID_SUBCATEGORY_ID",
+			"subcategory_id does not match any live row")
+	case errors.Is(err, domain.ErrValidation):
+		httperr.WriteError(w, http.StatusUnprocessableEntity, "SUBCATEGORY_CATEGORY_MISMATCH",
+			"subcategory belongs to a different category than the beverage")
+	default:
+		h.writeErr(w, op, err)
+	}
+}
+
+// resolveSubcategoryForBeverageUpdate validates body.SubcategoryID against
+// the effective post-update category and applies the auto-clear rule when
+// the category changes without an explicit subcategory_id. Returns true
+// when an error response has already been written to w; the caller must
+// then return without further work.
+//
+// Effective category: the new category if the PATCH is changing it
+// (`resolved != nil`), otherwise prev.Category resolved by slug. The
+// extra lookup-by-slug exists because AdminBeverageRow embeds the public
+// Beverage shape, which carries Category.Slug but not the UUID needed for
+// the FK check.
+func (h *Handler) resolveSubcategoryForBeverageUpdate(
+	w http.ResponseWriter, r *http.Request,
+	body *AdminBeverageUpdate, prev *repository.AdminBeverageRow, resolved *string,
+) bool {
+	if body.SubcategoryID != nil && *body.SubcategoryID != "" {
+		var effectiveCategoryID string
+		if resolved != nil {
+			effectiveCategoryID = *resolved
+		} else {
+			catID, err := h.Repos.Beverages.CategoryIDForSlug(r.Context(), prev.Category.Slug)
+			if err != nil {
+				h.writeErr(w, "AdminUpdateBeverage category lookup", err)
+				return true
+			}
+			effectiveCategoryID = catID
+		}
+		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, effectiveCategoryID); err != nil {
+			h.writeSubcategoryErr(w, "AdminUpdateBeverage", err)
+			return true
+		}
+	}
+	// Category-change without an explicit subcategory_id clears the
+	// existing link so the FK doesn't dangle across the change.
+	if resolved != nil && body.SubcategoryID == nil && prev.Subcategory != nil && prev.Subcategory.ID != "" {
+		empty := ""
+		body.SubcategoryID = &empty
+	}
+	return false
 }

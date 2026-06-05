@@ -52,6 +52,20 @@ function RootLayout() {
                     Producers
                   </Link>
                   <Link
+                    to="/subcategories"
+                    className="hover:underline"
+                    activeProps={{ className: 'underline' }}
+                  >
+                    Subcategories
+                  </Link>
+                  <Link
+                    to="/flavor-tags"
+                    className="hover:underline"
+                    activeProps={{ className: 'underline' }}
+                  >
+                    Flavor tags
+                  </Link>
+                  <Link
                     to="/users"
                     className="hover:underline"
                     activeProps={{ className: 'underline' }}

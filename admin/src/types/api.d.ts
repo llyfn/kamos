@@ -1055,6 +1055,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subcategories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Slice C — beverage subcategory taxonomy. Returns the live
+         *     (deleted_at IS NULL) rows from `beverage_subcategories` ordered
+         *     by (category_slug, sort_order, slug). Optionally filtered to a
+         *     single category by `?category=<slug>` where slug is one of
+         *     `nihonshu` / `shochu` / `liqueur`.
+         *
+         *     Cached per (category, locale) tuple. Admin mutations on
+         *     `/v1/admin/subcategories` emit a NOTIFY that drops the slot on
+         *     every replica.
+         */
+        get: operations["getSubcategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reference/regions": {
         parameters: {
             query?: never;
@@ -1487,6 +1514,124 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/subcategories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List subcategories incl. soft-deleted (the admin trash view).
+         *     Optional `category` filter (slug). Each row carries a usage
+         *     count of live beverages so the UI can render "in use by N".
+         */
+        get: operations["adminListSubcategories"];
+        put?: never;
+        /**
+         * @description Insert a new beverage_subcategories row. Exactly one of
+         *     `category_id` / `category_slug` is required.
+         */
+        post: operations["adminCreateSubcategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/subcategories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Soft-delete a subcategory. Returns 409 IN_USE when at least one
+         *     live beverage still references it.
+         */
+        delete: operations["adminSoftDeleteSubcategory"];
+        options?: never;
+        head?: never;
+        patch: operations["adminUpdateSubcategory"];
+        trace?: never;
+    };
+    "/v1/admin/subcategories/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRestoreSubcategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/flavor-tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List flavor tags incl. soft-deleted. Optional `dimension` filter.
+         *     Each row carries `usage_count` from check_in_flavor_tags.
+         */
+        get: operations["adminListFlavorTags"];
+        put?: never;
+        post: operations["adminCreateFlavorTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/flavor-tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Soft-delete a flavor tag. Returns 409 IN_USE when the tag is
+         *     still referenced by check_in_flavor_tags or by any live
+         *     beverages.flavor_profile.
+         */
+        delete: operations["adminSoftDeleteFlavorTag"];
+        options?: never;
+        head?: never;
+        patch: operations["adminUpdateFlavorTag"];
+        trace?: never;
+    };
+    "/v1/admin/flavor-tags/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRestoreFlavorTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1765,6 +1910,29 @@ export interface components {
             created_at: string;
         };
         /**
+         * @description Slice C — slim reference shape carried inline on every Beverage.
+         *     Sourced from the `beverage_subcategories` table via FK; admin
+         *     manages the rows under `/v1/admin/subcategories`. Public read
+         *     endpoint: `/v1/subcategories`.
+         *
+         *     Dual-source window (one release): if a beverage row has
+         *     `subcategory_id` NULL but a legacy `subcategory_i18n` JSONB blob,
+         *     the server still ships a Subcategory but only `name` is
+         *     populated (id/slug/category_slug come back as empty strings).
+         *     Clients should treat id/slug as optional during this window.
+         */
+        Subcategory: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            category_id: string;
+            /** @enum {string} */
+            category_slug: "nihonshu" | "shochu" | "liqueur";
+            slug: string;
+            name: components["schemas"]["I18nText"];
+            sort_order: number;
+        };
+        /**
          * @description Optional fields (`subcategory`, `abv`, `polishing_ratio`,
          *     `description`, `label_image_url`) use the **absent-when-unknown**
          *     convention: the Go server emits them with `omitempty`, so the
@@ -1776,13 +1944,20 @@ export interface components {
          *     free-text columns. A beverage's locality is now derived through
          *     its `producer.prefecture` (which itself nests `region`).
          *
+         *     Slice C promoted the `subcategory` field from a bare I18nText
+         *     blob to the slim `Subcategory` ref (id + slug + category_slug +
+         *     name + sort_order). List endpoints still emit the same shape;
+         *     only the type changed. During the one-release dual-source window
+         *     a beverage that wasn't backfilled may surface a Subcategory whose
+         *     id/slug are empty (name only).
+         *
          *     List endpoints (`GET /v1/beverages`, `GET /v1/producers/{id}` inline
          *     beverages page, `GET /v1/search` beverage results) ship a slim
-         *     projection that **omits the i18n JSONB fields `subcategory` and
-         *     `description`** on every row to cut payload size by ~30%. Both
-         *     fields are always present on `BeverageDetail` (the single-item
-         *     detail response). Clients should treat the fields as optional on
-         *     the wire and re-fetch detail when the user opens a beverage.
+         *     projection that **omits the i18n JSONB `description`** on every
+         *     row to cut payload size by ~30%. `description` is always present
+         *     on `BeverageDetail` (the single-item detail response). Clients
+         *     should treat the field as optional on the wire and re-fetch
+         *     detail when the user opens a beverage.
          */
         Beverage: {
             /** Format: uuid */
@@ -1790,7 +1965,7 @@ export interface components {
             name: components["schemas"]["I18nText"];
             producer: components["schemas"]["Producer"];
             category: components["schemas"]["CategoryLabel"];
-            subcategory?: components["schemas"]["I18nText"];
+            subcategory?: components["schemas"]["Subcategory"];
             abv?: number;
             /** @description Nihonshu only */
             polishing_ratio?: number;
@@ -2392,6 +2567,19 @@ export interface components {
              */
             category_slug?: "nihonshu" | "shochu" | "liqueur";
             name_i18n: components["schemas"]["I18nText"];
+            /**
+             * Format: uuid
+             * @description Slice C — FK into `beverage_subcategories`. The handler
+             *     validates that the row exists, is not soft-deleted, and
+             *     belongs to the same category as the beverage (else 422
+             *     INVALID_SUBCATEGORY_ID / SUBCATEGORY_CATEGORY_MISMATCH).
+             */
+            subcategory_id?: string | null;
+            /**
+             * @description DEPRECATED legacy free-text field; accepted for one release
+             *     window and ignored when `subcategory_id` is supplied.
+             *     Removed in a follow-up migration.
+             */
             subcategory_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: float */
             abv?: number | null;
@@ -2427,6 +2615,16 @@ export interface components {
              */
             category_slug?: "nihonshu" | "shochu" | "liqueur";
             name_i18n?: components["schemas"]["I18nText"];
+            /**
+             * Format: uuid
+             * @description Slice C — partial update of `beverage_subcategories` FK.
+             *     Omit to leave unchanged. Empty string clears to NULL. A
+             *     non-empty value must reference a live row under the
+             *     effective category (the one being set on this PATCH or, if
+             *     no category change, the existing category).
+             */
+            subcategory_id?: string | null;
+            /** @description DEPRECATED — see AdminBeverageCreate. */
             subcategory_i18n?: components["schemas"]["I18nText"] | null;
             /** Format: float */
             abv?: number | null;
@@ -2524,6 +2722,78 @@ export interface components {
             has_more: boolean;
         };
         /**
+         * @description Admin variant of Subcategory. Same fields plus deleted_at + audit
+         *     timestamps + a live-beverage usage count so the admin list page
+         *     can surface "in use by N beverages" without an N+1.
+         */
+        AdminSubcategory: components["schemas"]["Subcategory"] & {
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @description number of live beverages referencing this subcategory */
+            beverage_count: number;
+        };
+        /**
+         * @description Payload for POST /v1/admin/subcategories. Exactly one of
+         *     `category_id` (UUID) or `category_slug` (one of `nihonshu` /
+         *     `shochu` / `liqueur`) is required. `name_i18n` must carry all
+         *     three locales (en/ja/ko) — the DB CHECK enforces this.
+         *     `sort_order` defaults to 0 if omitted.
+         */
+        AdminSubcategoryCreate: {
+            /** Format: uuid */
+            category_id?: string;
+            /** @enum {string} */
+            category_slug?: "nihonshu" | "shochu" | "liqueur";
+            slug: string;
+            name_i18n: components["schemas"]["I18nText"];
+            /** @default 0 */
+            sort_order: number;
+        };
+        /**
+         * @description Partial-update body. category_id cannot be changed (moving a
+         *     subcategory across categories would orphan every beverage that
+         *     references it; soft-delete + recreate instead).
+         */
+        AdminSubcategoryUpdate: {
+            slug?: string;
+            name_i18n?: components["schemas"]["I18nText"];
+            sort_order?: number;
+        };
+        /**
+         * @description Admin variant of FlavorTag. Adds deleted_at + timestamps +
+         *     sort_order + a usage count joined from check_in_flavor_tags.
+         */
+        AdminFlavorTag: components["schemas"]["FlavorTag"] & {
+            sort_order: number;
+            /** Format: date-time */
+            deleted_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @description number of check_in_flavor_tags rows referencing this tag */
+            usage_count: number;
+        };
+        AdminFlavorTagCreate: {
+            slug: string;
+            /** @enum {string} */
+            dimension: "sweetness" | "body" | "acidity" | "character" | "finish";
+            name_i18n: components["schemas"]["I18nText"];
+            /** @default 0 */
+            sort_order: number;
+        };
+        AdminFlavorTagUpdate: {
+            slug?: string;
+            /** @enum {string} */
+            dimension?: "sweetness" | "body" | "acidity" | "character" | "finish";
+            name_i18n?: components["schemas"]["I18nText"];
+            sort_order?: number;
+        };
+        /**
          * @description Stage 7 (M-8.1). One row of the audit trail for an admin action.
          *     Mirrors migration 008's `moderation_log` columns. `notes` is the
          *     free-form moderator reason (may be null); `metadata` is JSONB
@@ -2541,7 +2811,7 @@ export interface components {
             /** @enum {string} */
             action: "soft_delete" | "role_change" | "suspend" | "approve" | "reject" | "create" | "update" | "restore";
             /** @enum {string} */
-            target_type: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "producer";
+            target_type: "check_in" | "comment" | "user" | "beverage_request" | "beverage" | "producer" | "subcategory" | "flavor_tag";
             /** Format: uuid */
             target_id: string;
             notes?: string | null;
@@ -4351,6 +4621,34 @@ export interface operations {
             };
         };
     };
+    getSubcategories: {
+        parameters: {
+            query?: {
+                /** @description optional filter; omit to return every category */
+                category?: "nihonshu" | "shochu" | "liqueur";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description list of subcategories */
+            200: {
+                headers: {
+                    /**
+                     * @description `public, max-age=3600, stale-while-revalidate=86400`
+                     *     emitted by middleware.
+                     */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subcategory"][];
+                };
+            };
+        };
+    };
     getRegions: {
         parameters: {
             query?: never;
@@ -5074,6 +5372,284 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminProducer"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminListSubcategories: {
+        parameters: {
+            query?: {
+                category?: "nihonshu" | "shochu" | "liqueur";
+                include_deleted?: "0" | "1";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description list of subcategories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubcategory"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminSubcategoryCreate"];
+            };
+        };
+        responses: {
+            /** @description created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubcategory"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminSoftDeleteSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description soft-deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description subcategory still has live beverages (code IN_USE) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    adminUpdateSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminSubcategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubcategory"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminRestoreSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description restored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubcategory"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    adminListFlavorTags: {
+        parameters: {
+            query?: {
+                dimension?: "sweetness" | "body" | "acidity" | "character" | "finish";
+                include_deleted?: "0" | "1";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description list of flavor tags */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFlavorTag"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    adminCreateFlavorTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminFlavorTagCreate"];
+            };
+        };
+        responses: {
+            /** @description created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFlavorTag"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminSoftDeleteFlavorTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description soft-deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description flavor tag still has usages (code IN_USE) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    adminUpdateFlavorTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminFlavorTagUpdate"];
+            };
+        };
+        responses: {
+            /** @description updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFlavorTag"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
+        };
+    };
+    adminRestoreFlavorTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description restored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFlavorTag"];
                 };
             };
             401: components["responses"]["Unauthorized"];

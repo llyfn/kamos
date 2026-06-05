@@ -396,11 +396,18 @@ RETURNING id;`
 //
 // Migration 016 dropped beverages.prefecture / beverages.region; locality
 // is now derived through the producer's prefecture_id.
+//
+// Slice C: SubcategoryID is the FK into beverage_subcategories. nil means
+// "no subcategory" (column NULL). The legacy `Subcategory` (free-text
+// JSONB) is still accepted for one release window; the handler ignores it
+// when SubcategoryID is non-nil, and the dual-source toBeverage fallback
+// only kicks in when both the legacy and FK columns are NULL.
 type BeverageCreateInput struct {
 	ProducerID     string
 	CategoryID     string
 	Name           domain.I18nText
 	Subcategory    *domain.I18nText
+	SubcategoryID  *string
 	ABV            *float64
 	PolishingRatio *int
 	FlavorProfile  []string
@@ -409,11 +416,18 @@ type BeverageCreateInput struct {
 }
 
 // BeverageUpdateInput carries the partial-update fields.
+//
+// SubcategoryID pointer semantics (Slice C):
+//   - nil pointer → leave subcategory_id unchanged.
+//   - ptr to ""   → clear subcategory_id to NULL.
+//   - ptr to UUID → set subcategory_id to that value (the handler must
+//     have validated it points to a row under the beverage's category).
 type BeverageUpdateInput struct {
 	ProducerID     *string
 	CategoryID     *string
 	Name           *domain.I18nText
 	Subcategory    *domain.I18nText
+	SubcategoryID  *string
 	ABV            *float64
 	PolishingRatio *int
 	FlavorProfile  *[]string
@@ -449,6 +463,10 @@ type AdminBeverageRow struct {
 // adminBeverageSelect is the full admin projection. Migration 016
 // dropped beverages.prefecture/region; the row's locality comes from
 // the producer's joined prefecture chain via producerPrefectureSelectCols.
+//
+// Slice C: LEFT JOIN beverage_subcategories so the admin edit modal
+// pre-fills the canonical subcategory ref. Legacy b.subcategory_i18n
+// is retained for the dual-source fallback (see toBeverage).
 const adminBeverageSelect = `
 SELECT
   b.id,
@@ -466,17 +484,18 @@ SELECT
   b.flavor_profile,
   b.created_at,
   br.id          AS producer_id,
-  br.name_i18n   AS producer_name_i18n,` + producerPrefectureSelectCols + `,
+  br.name_i18n   AS producer_name_i18n,` + producerPrefectureSelectCols + subcategoryJoinCols + `,
   b.deleted_at
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
-JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause
+JOIN beverage_categories cat ON cat.id = b.category_id` + producerPrefectureJoinClause + subcategoryJoinClause
 
 func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 	var b beverageRow
 	var deletedAt *time.Time
 	prefArgs := b.producerPref.scanArgs()
-	args := make([]any, 0, 16+len(prefArgs)+1)
+	subArgs := b.subcategoryScanArgs()
+	args := make([]any, 0, 16+len(prefArgs)+len(subArgs)+1)
 	args = append(args,
 		&b.id,
 		&b.nameJSON,
@@ -496,6 +515,7 @@ func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 		&b.producerNameRaw,
 	)
 	args = append(args, prefArgs...)
+	args = append(args, subArgs...)
 	args = append(args, &deletedAt)
 	if err := row.Scan(args...); err != nil {
 		return nil, err
@@ -608,16 +628,21 @@ func (r *BeverageRepo) Create(ctx context.Context, tx pgx.Tx, in BeverageCreateI
 	// Migration 016 dropped beverages.prefecture / beverages.region — the
 	// locality is derived through the producer's prefecture_id, not stored
 	// on the beverage row.
+	//
+	// Slice C: subcategory_id is the FK; the legacy subcategory_i18n is
+	// still written when supplied (admin requests that opt to send the
+	// legacy field for backwards-compat). New admin payloads send only
+	// subcategory_id.
 	const q = `
 INSERT INTO beverages (producer_id, category_id, category_slug, name_i18n,
-                       subcategory_i18n, abv, polishing_ratio,
+                       subcategory_i18n, subcategory_id, abv, polishing_ratio,
                        description_i18n, label_image_url, flavor_profile)
-VALUES ($1::uuid, $2::uuid, 'nihonshu', $3::jsonb, $4::jsonb, $5, $6,
-        $7::jsonb, $8, COALESCE($9, '{}'::text[]))
+VALUES ($1::uuid, $2::uuid, 'nihonshu', $3::jsonb, $4::jsonb, $5, $6, $7,
+        $8::jsonb, $9, COALESCE($10, '{}'::text[]))
 RETURNING id;`
 	var id string
 	if err := tx.QueryRow(ctx, q,
-		in.ProducerID, in.CategoryID, string(nameJSON), subArg,
+		in.ProducerID, in.CategoryID, string(nameJSON), subArg, in.SubcategoryID,
 		in.ABV, in.PolishingRatio,
 		descArg, in.LabelImageURL, in.FlavorProfile,
 	).Scan(&id); err != nil {
@@ -697,6 +722,16 @@ func buildBeverageUpdateSets(in BeverageUpdateInput) ([]string, []any, error) {
 	if in.Subcategory != nil {
 		if err := addI18n("subcategory_i18n", in.Subcategory); err != nil {
 			return nil, nil, err
+		}
+	}
+	if in.SubcategoryID != nil {
+		// Empty string clears the FK; non-empty assigns it. The handler
+		// validates that the new id belongs to the same category as the
+		// beverage (or that the category isn't changing on this PATCH).
+		if *in.SubcategoryID == "" {
+			add("subcategory_id", nil)
+		} else {
+			add("subcategory_id", *in.SubcategoryID)
 		}
 	}
 	if in.ABV != nil {

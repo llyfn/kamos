@@ -58,4 +58,8 @@ var (
 	// /v1/producers lookups. The admin must soft-delete or reassign the
 	// dependent beverages first. Maps to 409 PRODUCER_HAS_LIVE_BEVERAGES.
 	ErrProducerHasLiveBeverages = errors.New("producer_has_live_beverages")
+	// ErrInUse is returned by Subcategory.Delete / FlavorTag.Delete when
+	// the row is still referenced by a live beverage (or, for flavor
+	// tags, by a check_in_flavor_tags row). Maps to 409 IN_USE.
+	ErrInUse = errors.New("in_use")
 )

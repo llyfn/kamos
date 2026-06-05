@@ -21,7 +21,7 @@ abstract class Beverage with _$Beverage {
     required I18nText name,
     required Producer producer,
     required CategoryLabel category,
-    I18nText? subcategory,
+    Subcategory? subcategory,
     double? abv,
     int? polishingRatio,
     @Default(<String>[]) List<String> flavorProfile,
@@ -44,7 +44,7 @@ abstract class Beverage with _$Beverage {
       (json['category'] as Map<String, dynamic>?) ?? const {},
     ),
     subcategory: json['subcategory'] is Map<String, dynamic>
-        ? I18nText.fromJson(json['subcategory'] as Map<String, dynamic>)
+        ? Subcategory.fromJson(json['subcategory'] as Map<String, dynamic>)
         : null,
     abv: (json['abv'] as num?)?.toDouble(),
     polishingRatio: (json['polishing_ratio'] as num?)?.toInt(),
@@ -58,6 +58,35 @@ abstract class Beverage with _$Beverage {
     avgRating: (json['avg_rating'] as num?)?.toDouble(),
     checkInCount: (json['check_in_count'] as int?) ?? 0,
     createdAt: (json['created_at'] as String?) ?? '',
+  );
+}
+
+// Slice C — `beverages.subcategory` is now a slim FK reference to the
+// `beverage_subcategories` table (see migration 005 + OpenAPI `Subcategory`).
+// During the dual-source release window the server may emit a Subcategory
+// where only `name` is populated (id/categoryId/categorySlug/slug fall back
+// to empty strings) for legacy rows that still carry the old
+// `subcategory_i18n` JSONB. Treat id/slug as optional during that window.
+@Freezed(fromJson: false, toJson: false)
+abstract class Subcategory with _$Subcategory {
+  const factory Subcategory({
+    required String id,
+    required String categoryId,
+    required String categorySlug,
+    required String slug,
+    required I18nText name,
+    @Default(0) int sortOrder,
+  }) = _Subcategory;
+
+  factory Subcategory.fromJson(Map<String, dynamic> json) => Subcategory(
+    id: (json['id'] as String?) ?? '',
+    categoryId: (json['category_id'] as String?) ?? '',
+    categorySlug: (json['category_slug'] as String?) ?? '',
+    slug: (json['slug'] as String?) ?? '',
+    name: I18nText.fromJson(
+      (json['name'] as Map<String, dynamic>?) ?? const {'en': ''},
+    ),
+    sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
   );
 }
 

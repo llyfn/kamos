@@ -45,6 +45,8 @@ const TARGET_LABELS: Record<Entry['target_type'], string> = {
   beverage_request: 'beverage request',
   beverage: 'beverage',
   producer: 'producer',
+  subcategory: 'subcategory',
+  flavor_tag: 'flavor tag',
 };
 const ACTION_BADGE_TONE: Record<Entry['action'], string> = {
   soft_delete: 'bg-red-100 text-red-800',

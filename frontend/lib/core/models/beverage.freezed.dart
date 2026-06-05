@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Beverage {
 
- String get id; I18nText get name; Producer get producer; CategoryLabel get category; I18nText? get subcategory; double? get abv; int? get polishingRatio; List<String> get flavorProfile; I18nText? get description; String? get labelImageUrl; double? get avgRating; int get checkInCount; String get createdAt;
+ String get id; I18nText get name; Producer get producer; CategoryLabel get category; Subcategory? get subcategory; double? get abv; int? get polishingRatio; List<String> get flavorProfile; I18nText? get description; String? get labelImageUrl; double? get avgRating; int get checkInCount; String get createdAt;
 /// Create a copy of Beverage
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,11 +45,11 @@ abstract mixin class $BeverageCopyWith<$Res>  {
   factory $BeverageCopyWith(Beverage value, $Res Function(Beverage) _then) = _$BeverageCopyWithImpl;
 @useResult
 $Res call({
- String id, I18nText name, Producer producer, CategoryLabel category, I18nText? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
+ String id, I18nText name, Producer producer, CategoryLabel category, Subcategory? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
 });
 
 
-$I18nTextCopyWith<$Res> get name;$ProducerCopyWith<$Res> get producer;$CategoryLabelCopyWith<$Res> get category;$I18nTextCopyWith<$Res>? get subcategory;$I18nTextCopyWith<$Res>? get description;
+$I18nTextCopyWith<$Res> get name;$ProducerCopyWith<$Res> get producer;$CategoryLabelCopyWith<$Res> get category;$SubcategoryCopyWith<$Res>? get subcategory;$I18nTextCopyWith<$Res>? get description;
 
 }
 /// @nodoc
@@ -69,7 +69,7 @@ as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non
 as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
 as Producer,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as CategoryLabel,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
-as I18nText?,abv: freezed == abv ? _self.abv : abv // ignore: cast_nullable_to_non_nullable
+as Subcategory?,abv: freezed == abv ? _self.abv : abv // ignore: cast_nullable_to_non_nullable
 as double?,polishingRatio: freezed == polishingRatio ? _self.polishingRatio : polishingRatio // ignore: cast_nullable_to_non_nullable
 as int?,flavorProfile: null == flavorProfile ? _self.flavorProfile : flavorProfile // ignore: cast_nullable_to_non_nullable
 as List<String>,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -111,12 +111,12 @@ $CategoryLabelCopyWith<$Res> get category {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$I18nTextCopyWith<$Res>? get subcategory {
+$SubcategoryCopyWith<$Res>? get subcategory {
     if (_self.subcategory == null) {
     return null;
   }
 
-  return $I18nTextCopyWith<$Res>(_self.subcategory!, (value) {
+  return $SubcategoryCopyWith<$Res>(_self.subcategory!, (value) {
     return _then(_self.copyWith(subcategory: value));
   });
 }/// Create a copy of Beverage
@@ -213,7 +213,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  Subcategory? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Beverage() when $default != null:
 return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
@@ -234,7 +234,7 @@ return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcateg
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  Subcategory? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _Beverage():
 return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
@@ -254,7 +254,7 @@ return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcateg
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  I18nText? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  I18nText name,  Producer producer,  CategoryLabel category,  Subcategory? subcategory,  double? abv,  int? polishingRatio,  List<String> flavorProfile,  I18nText? description,  String? labelImageUrl,  double? avgRating,  int checkInCount,  String createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Beverage() when $default != null:
 return $default(_that.id,_that.name,_that.producer,_that.category,_that.subcategory,_that.abv,_that.polishingRatio,_that.flavorProfile,_that.description,_that.labelImageUrl,_that.avgRating,_that.checkInCount,_that.createdAt);case _:
@@ -276,7 +276,7 @@ class _Beverage implements Beverage {
 @override final  I18nText name;
 @override final  Producer producer;
 @override final  CategoryLabel category;
-@override final  I18nText? subcategory;
+@override final  Subcategory? subcategory;
 @override final  double? abv;
 @override final  int? polishingRatio;
  final  List<String> _flavorProfile;
@@ -322,11 +322,11 @@ abstract mixin class _$BeverageCopyWith<$Res> implements $BeverageCopyWith<$Res>
   factory _$BeverageCopyWith(_Beverage value, $Res Function(_Beverage) _then) = __$BeverageCopyWithImpl;
 @override @useResult
 $Res call({
- String id, I18nText name, Producer producer, CategoryLabel category, I18nText? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
+ String id, I18nText name, Producer producer, CategoryLabel category, Subcategory? subcategory, double? abv, int? polishingRatio, List<String> flavorProfile, I18nText? description, String? labelImageUrl, double? avgRating, int checkInCount, String createdAt
 });
 
 
-@override $I18nTextCopyWith<$Res> get name;@override $ProducerCopyWith<$Res> get producer;@override $CategoryLabelCopyWith<$Res> get category;@override $I18nTextCopyWith<$Res>? get subcategory;@override $I18nTextCopyWith<$Res>? get description;
+@override $I18nTextCopyWith<$Res> get name;@override $ProducerCopyWith<$Res> get producer;@override $CategoryLabelCopyWith<$Res> get category;@override $SubcategoryCopyWith<$Res>? get subcategory;@override $I18nTextCopyWith<$Res>? get description;
 
 }
 /// @nodoc
@@ -346,7 +346,7 @@ as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non
 as I18nText,producer: null == producer ? _self.producer : producer // ignore: cast_nullable_to_non_nullable
 as Producer,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as CategoryLabel,subcategory: freezed == subcategory ? _self.subcategory : subcategory // ignore: cast_nullable_to_non_nullable
-as I18nText?,abv: freezed == abv ? _self.abv : abv // ignore: cast_nullable_to_non_nullable
+as Subcategory?,abv: freezed == abv ? _self.abv : abv // ignore: cast_nullable_to_non_nullable
 as double?,polishingRatio: freezed == polishingRatio ? _self.polishingRatio : polishingRatio // ignore: cast_nullable_to_non_nullable
 as int?,flavorProfile: null == flavorProfile ? _self._flavorProfile : flavorProfile // ignore: cast_nullable_to_non_nullable
 as List<String>,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -389,12 +389,12 @@ $CategoryLabelCopyWith<$Res> get category {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$I18nTextCopyWith<$Res>? get subcategory {
+$SubcategoryCopyWith<$Res>? get subcategory {
     if (_self.subcategory == null) {
     return null;
   }
 
-  return $I18nTextCopyWith<$Res>(_self.subcategory!, (value) {
+  return $SubcategoryCopyWith<$Res>(_self.subcategory!, (value) {
     return _then(_self.copyWith(subcategory: value));
   });
 }/// Create a copy of Beverage
@@ -408,6 +408,296 @@ $I18nTextCopyWith<$Res>? get description {
 
   return $I18nTextCopyWith<$Res>(_self.description!, (value) {
     return _then(_self.copyWith(description: value));
+  });
+}
+}
+
+/// @nodoc
+mixin _$Subcategory {
+
+ String get id; String get categoryId; String get categorySlug; String get slug; I18nText get name; int get sortOrder;
+/// Create a copy of Subcategory
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SubcategoryCopyWith<Subcategory> get copyWith => _$SubcategoryCopyWithImpl<Subcategory>(this as Subcategory, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Subcategory&&(identical(other.id, id) || other.id == id)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.categorySlug, categorySlug) || other.categorySlug == categorySlug)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,categoryId,categorySlug,slug,name,sortOrder);
+
+@override
+String toString() {
+  return 'Subcategory(id: $id, categoryId: $categoryId, categorySlug: $categorySlug, slug: $slug, name: $name, sortOrder: $sortOrder)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SubcategoryCopyWith<$Res>  {
+  factory $SubcategoryCopyWith(Subcategory value, $Res Function(Subcategory) _then) = _$SubcategoryCopyWithImpl;
+@useResult
+$Res call({
+ String id, String categoryId, String categorySlug, String slug, I18nText name, int sortOrder
+});
+
+
+$I18nTextCopyWith<$Res> get name;
+
+}
+/// @nodoc
+class _$SubcategoryCopyWithImpl<$Res>
+    implements $SubcategoryCopyWith<$Res> {
+  _$SubcategoryCopyWithImpl(this._self, this._then);
+
+  final Subcategory _self;
+  final $Res Function(Subcategory) _then;
+
+/// Create a copy of Subcategory
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? categoryId = null,Object? categorySlug = null,Object? slug = null,Object? name = null,Object? sortOrder = null,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,categoryId: null == categoryId ? _self.categoryId : categoryId // ignore: cast_nullable_to_non_nullable
+as String,categorySlug: null == categorySlug ? _self.categorySlug : categorySlug // ignore: cast_nullable_to_non_nullable
+as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as I18nText,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+/// Create a copy of Subcategory
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$I18nTextCopyWith<$Res> get name {
+  
+  return $I18nTextCopyWith<$Res>(_self.name, (value) {
+    return _then(_self.copyWith(name: value));
+  });
+}
+}
+
+
+/// Adds pattern-matching-related methods to [Subcategory].
+extension SubcategoryPatterns on Subcategory {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Subcategory value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Subcategory() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Subcategory value)  $default,){
+final _that = this;
+switch (_that) {
+case _Subcategory():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Subcategory value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Subcategory() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String categoryId,  String categorySlug,  String slug,  I18nText name,  int sortOrder)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Subcategory() when $default != null:
+return $default(_that.id,_that.categoryId,_that.categorySlug,_that.slug,_that.name,_that.sortOrder);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String categoryId,  String categorySlug,  String slug,  I18nText name,  int sortOrder)  $default,) {final _that = this;
+switch (_that) {
+case _Subcategory():
+return $default(_that.id,_that.categoryId,_that.categorySlug,_that.slug,_that.name,_that.sortOrder);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String categoryId,  String categorySlug,  String slug,  I18nText name,  int sortOrder)?  $default,) {final _that = this;
+switch (_that) {
+case _Subcategory() when $default != null:
+return $default(_that.id,_that.categoryId,_that.categorySlug,_that.slug,_that.name,_that.sortOrder);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _Subcategory implements Subcategory {
+  const _Subcategory({required this.id, required this.categoryId, required this.categorySlug, required this.slug, required this.name, this.sortOrder = 0});
+  
+
+@override final  String id;
+@override final  String categoryId;
+@override final  String categorySlug;
+@override final  String slug;
+@override final  I18nText name;
+@override@JsonKey() final  int sortOrder;
+
+/// Create a copy of Subcategory
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SubcategoryCopyWith<_Subcategory> get copyWith => __$SubcategoryCopyWithImpl<_Subcategory>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Subcategory&&(identical(other.id, id) || other.id == id)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.categorySlug, categorySlug) || other.categorySlug == categorySlug)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,categoryId,categorySlug,slug,name,sortOrder);
+
+@override
+String toString() {
+  return 'Subcategory(id: $id, categoryId: $categoryId, categorySlug: $categorySlug, slug: $slug, name: $name, sortOrder: $sortOrder)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SubcategoryCopyWith<$Res> implements $SubcategoryCopyWith<$Res> {
+  factory _$SubcategoryCopyWith(_Subcategory value, $Res Function(_Subcategory) _then) = __$SubcategoryCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String categoryId, String categorySlug, String slug, I18nText name, int sortOrder
+});
+
+
+@override $I18nTextCopyWith<$Res> get name;
+
+}
+/// @nodoc
+class __$SubcategoryCopyWithImpl<$Res>
+    implements _$SubcategoryCopyWith<$Res> {
+  __$SubcategoryCopyWithImpl(this._self, this._then);
+
+  final _Subcategory _self;
+  final $Res Function(_Subcategory) _then;
+
+/// Create a copy of Subcategory
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? categoryId = null,Object? categorySlug = null,Object? slug = null,Object? name = null,Object? sortOrder = null,}) {
+  return _then(_Subcategory(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,categoryId: null == categoryId ? _self.categoryId : categoryId // ignore: cast_nullable_to_non_nullable
+as String,categorySlug: null == categorySlug ? _self.categorySlug : categorySlug // ignore: cast_nullable_to_non_nullable
+as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as I18nText,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+/// Create a copy of Subcategory
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$I18nTextCopyWith<$Res> get name {
+  
+  return $I18nTextCopyWith<$Res>(_self.name, (value) {
+    return _then(_self.copyWith(name: value));
   });
 }
 }

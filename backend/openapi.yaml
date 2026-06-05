@@ -1566,6 +1566,42 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/FlavorTag" }
 
+  /v1/subcategories:
+    get:
+      tags: [taxonomy]
+      operationId: getSubcategories
+      description: |
+        Slice C — beverage subcategory taxonomy. Returns the live
+        (deleted_at IS NULL) rows from `beverage_subcategories` ordered
+        by (category_slug, sort_order, slug). Optionally filtered to a
+        single category by `?category=<slug>` where slug is one of
+        `nihonshu` / `shochu` / `liqueur`.
+
+        Cached per (category, locale) tuple. Admin mutations on
+        `/v1/admin/subcategories` emit a NOTIFY that drops the slot on
+        every replica.
+      security: []
+      parameters:
+        - in: query
+          name: category
+          required: false
+          schema: { type: string, enum: [nihonshu, shochu, liqueur] }
+          description: optional filter; omit to return every category
+      responses:
+        "200":
+          description: list of subcategories
+          headers:
+            Cache-Control:
+              description: |
+                `public, max-age=3600, stale-while-revalidate=86400`
+                emitted by middleware.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Subcategory" }
+
   /v1/reference/regions:
     get:
       tags: [taxonomy]
@@ -2342,6 +2378,236 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # ==========================================================================
+  # Slice C — admin CRUD on subcategories + flavor_tags. AdminAuth + CSRF;
+  # admin-role required (the same gate as the catalog CRUD).
+  # ==========================================================================
+
+  /v1/admin/subcategories:
+    get:
+      tags: [admin]
+      operationId: adminListSubcategories
+      description: |
+        List subcategories incl. soft-deleted (the admin trash view).
+        Optional `category` filter (slug). Each row carries a usage
+        count of live beverages so the UI can render "in use by N".
+      parameters:
+        - in: query
+          name: category
+          required: false
+          schema: { type: string, enum: [nihonshu, shochu, liqueur] }
+        - in: query
+          name: include_deleted
+          required: false
+          schema: { type: string, enum: ["0", "1"] }
+      responses:
+        "200":
+          description: list of subcategories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminSubcategory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: adminCreateSubcategory
+      description: |
+        Insert a new beverage_subcategories row. Exactly one of
+        `category_id` / `category_slug` is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSubcategoryCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSubcategory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/subcategories/{id}:
+    patch:
+      tags: [admin]
+      operationId: adminUpdateSubcategory
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSubcategoryUpdate" }
+      responses:
+        "200":
+          description: updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSubcategory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
+    delete:
+      tags: [admin]
+      operationId: adminSoftDeleteSubcategory
+      description: |
+        Soft-delete a subcategory. Returns 409 IN_USE when at least one
+        live beverage still references it.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: soft-deleted
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: subcategory still has live beverages (code IN_USE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/admin/subcategories/{id}/restore:
+    post:
+      tags: [admin]
+      operationId: adminRestoreSubcategory
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSubcategory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/admin/flavor-tags:
+    get:
+      tags: [admin]
+      operationId: adminListFlavorTags
+      description: |
+        List flavor tags incl. soft-deleted. Optional `dimension` filter.
+        Each row carries `usage_count` from check_in_flavor_tags.
+      parameters:
+        - in: query
+          name: dimension
+          required: false
+          schema: { type: string, enum: [sweetness, body, acidity, character, finish] }
+        - in: query
+          name: include_deleted
+          required: false
+          schema: { type: string, enum: ["0", "1"] }
+      responses:
+        "200":
+          description: list of flavor tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminFlavorTag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin]
+      operationId: adminCreateFlavorTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminFlavorTagCreate" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFlavorTag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Validation" }
+
+  /v1/admin/flavor-tags/{id}:
+    patch:
+      tags: [admin]
+      operationId: adminUpdateFlavorTag
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminFlavorTagUpdate" }
+      responses:
+        "200":
+          description: updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFlavorTag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
+    delete:
+      tags: [admin]
+      operationId: adminSoftDeleteFlavorTag
+      description: |
+        Soft-delete a flavor tag. Returns 409 IN_USE when the tag is
+        still referenced by check_in_flavor_tags or by any live
+        beverages.flavor_profile.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: soft-deleted
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: flavor tag still has usages (code IN_USE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/admin/flavor-tags/{id}/restore:
+    post:
+      tags: [admin]
+      operationId: adminRestoreFlavorTag
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFlavorTag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2711,6 +2977,28 @@ components:
             embeddings and in `/v1/search` producer results.
         created_at: { type: string, format: date-time }
 
+    Subcategory:
+      type: object
+      description: |
+        Slice C — slim reference shape carried inline on every Beverage.
+        Sourced from the `beverage_subcategories` table via FK; admin
+        manages the rows under `/v1/admin/subcategories`. Public read
+        endpoint: `/v1/subcategories`.
+
+        Dual-source window (one release): if a beverage row has
+        `subcategory_id` NULL but a legacy `subcategory_i18n` JSONB blob,
+        the server still ships a Subcategory but only `name` is
+        populated (id/slug/category_slug come back as empty strings).
+        Clients should treat id/slug as optional during this window.
+      required: [id, category_id, category_slug, slug, name, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid }
+        category_slug: { type: string, enum: [nihonshu, shochu, liqueur] }
+        slug: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        name: { $ref: "#/components/schemas/I18nText" }
+        sort_order: { type: integer, minimum: 0 }
+
     Beverage:
       type: object
       description: |
@@ -2725,20 +3013,27 @@ components:
         free-text columns. A beverage's locality is now derived through
         its `producer.prefecture` (which itself nests `region`).
 
+        Slice C promoted the `subcategory` field from a bare I18nText
+        blob to the slim `Subcategory` ref (id + slug + category_slug +
+        name + sort_order). List endpoints still emit the same shape;
+        only the type changed. During the one-release dual-source window
+        a beverage that wasn't backfilled may surface a Subcategory whose
+        id/slug are empty (name only).
+
         List endpoints (`GET /v1/beverages`, `GET /v1/producers/{id}` inline
         beverages page, `GET /v1/search` beverage results) ship a slim
-        projection that **omits the i18n JSONB fields `subcategory` and
-        `description`** on every row to cut payload size by ~30%. Both
-        fields are always present on `BeverageDetail` (the single-item
-        detail response). Clients should treat the fields as optional on
-        the wire and re-fetch detail when the user opens a beverage.
+        projection that **omits the i18n JSONB `description`** on every
+        row to cut payload size by ~30%. `description` is always present
+        on `BeverageDetail` (the single-item detail response). Clients
+        should treat the field as optional on the wire and re-fetch
+        detail when the user opens a beverage.
       required: [id, name, producer, category, flavor_profile, avg_rating, check_in_count, created_at]
       properties:
         id: { type: string, format: uuid }
         name: { $ref: "#/components/schemas/I18nText" }
         producer: { $ref: "#/components/schemas/Producer" }
         category: { $ref: "#/components/schemas/CategoryLabel" }
-        subcategory: { $ref: "#/components/schemas/I18nText" }
+        subcategory: { $ref: "#/components/schemas/Subcategory" }
         abv: { type: number }
         polishing_ratio: { type: integer, description: "Nihonshu only" }
         flavor_profile:
@@ -3561,10 +3856,23 @@ components:
           enum: [nihonshu, shochu, liqueur]
           description: required if category_id is not supplied
         name_i18n: { $ref: "#/components/schemas/I18nText" }
+        subcategory_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Slice C — FK into `beverage_subcategories`. The handler
+            validates that the row exists, is not soft-deleted, and
+            belongs to the same category as the beverage (else 422
+            INVALID_SUBCATEGORY_ID / SUBCATEGORY_CATEGORY_MISMATCH).
         subcategory_i18n:
           allOf:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
+          description: |
+            DEPRECATED legacy free-text field; accepted for one release
+            window and ignored when `subcategory_id` is supplied.
+            Removed in a follow-up migration.
         abv:
           type: number
           format: float
@@ -3611,10 +3919,22 @@ components:
           enum: [nihonshu, shochu, liqueur]
           description: alternative to category_id; resolved server-side
         name_i18n: { $ref: "#/components/schemas/I18nText" }
+        subcategory_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Slice C — partial update of `beverage_subcategories` FK.
+            Omit to leave unchanged. Empty string clears to NULL. A
+            non-empty value must reference a live row under the
+            effective category (the one being set on this PATCH or, if
+            no category change, the existing category).
         subcategory_i18n:
           allOf:
             - $ref: "#/components/schemas/I18nText"
           nullable: true
+          description: |
+            DEPRECATED — see AdminBeverageCreate.
         abv:
           type: number
           format: float
@@ -3775,6 +4095,90 @@ components:
         next_cursor: { type: string, nullable: true }
         has_more: { type: boolean }
 
+    # =======================================================================
+    # Slice C — admin CRUD on subcategories + flavor_tags
+    # =======================================================================
+
+    AdminSubcategory:
+      description: |
+        Admin variant of Subcategory. Same fields plus deleted_at + audit
+        timestamps + a live-beverage usage count so the admin list page
+        can surface "in use by N beverages" without an N+1.
+      allOf:
+        - $ref: "#/components/schemas/Subcategory"
+        - type: object
+          required: [deleted_at, created_at, updated_at, beverage_count]
+          properties:
+            deleted_at: { type: string, format: date-time, nullable: true }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            beverage_count:
+              type: integer
+              minimum: 0
+              description: number of live beverages referencing this subcategory
+
+    AdminSubcategoryCreate:
+      type: object
+      description: |
+        Payload for POST /v1/admin/subcategories. Exactly one of
+        `category_id` (UUID) or `category_slug` (one of `nihonshu` /
+        `shochu` / `liqueur`) is required. `name_i18n` must carry all
+        three locales (en/ja/ko) — the DB CHECK enforces this.
+        `sort_order` defaults to 0 if omitted.
+      required: [slug, name_i18n]
+      properties:
+        category_id: { type: string, format: uuid }
+        category_slug: { type: string, enum: [nihonshu, shochu, liqueur] }
+        slug: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        sort_order: { type: integer, default: 0 }
+
+    AdminSubcategoryUpdate:
+      type: object
+      description: |
+        Partial-update body. category_id cannot be changed (moving a
+        subcategory across categories would orphan every beverage that
+        references it; soft-delete + recreate instead).
+      properties:
+        slug: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        sort_order: { type: integer }
+
+    AdminFlavorTag:
+      description: |
+        Admin variant of FlavorTag. Adds deleted_at + timestamps +
+        sort_order + a usage count joined from check_in_flavor_tags.
+      allOf:
+        - $ref: "#/components/schemas/FlavorTag"
+        - type: object
+          required: [sort_order, deleted_at, created_at, updated_at, usage_count]
+          properties:
+            sort_order: { type: integer }
+            deleted_at: { type: string, format: date-time, nullable: true }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            usage_count:
+              type: integer
+              minimum: 0
+              description: number of check_in_flavor_tags rows referencing this tag
+
+    AdminFlavorTagCreate:
+      type: object
+      required: [slug, dimension, name_i18n]
+      properties:
+        slug: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        dimension: { type: string, enum: [sweetness, body, acidity, character, finish] }
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        sort_order: { type: integer, default: 0 }
+
+    AdminFlavorTagUpdate:
+      type: object
+      properties:
+        slug: { type: string, pattern: "^[a-z0-9_]{1,64}$" }
+        dimension: { type: string, enum: [sweetness, body, acidity, character, finish] }
+        name_i18n: { $ref: "#/components/schemas/I18nText" }
+        sort_order: { type: integer }
+
     ModerationLogEntry:
       type: object
       description: |
@@ -3792,7 +4196,7 @@ components:
           nullable: true
           description: null when the moderator was hard-purged
         action: { type: string, enum: [soft_delete, role_change, suspend, approve, reject, create, update, restore] }
-        target_type: { type: string, enum: [check_in, comment, user, beverage_request, beverage, producer] }
+        target_type: { type: string, enum: [check_in, comment, user, beverage_request, beverage, producer, subcategory, flavor_tag] }
         target_id: { type: string, format: uuid }
         notes:
           type: string

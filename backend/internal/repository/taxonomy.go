@@ -32,9 +32,12 @@ func (r *TaxonomyRepo) Categories(ctx context.Context) ([]domain.CategoryLabel, 
 	return out, rows.Err()
 }
 
-// FlavorTags returns all flavor tags grouped by dimension.
+// FlavorTags returns all flavor tags grouped by dimension. Slice C
+// (migration 006) added deleted_at; the public read path filters
+// tombstones out so admin-only "trash" entries don't leak into the
+// taxonomy endpoint that Flutter / public clients hit.
 func (r *TaxonomyRepo) FlavorTags(ctx context.Context) ([]domain.FlavorTag, error) {
-	const q = `SELECT id, slug, dimension, name_i18n FROM flavor_tags ORDER BY dimension, sort_order;`
+	const q = `SELECT id, slug, dimension, name_i18n FROM flavor_tags WHERE deleted_at IS NULL ORDER BY dimension, sort_order;`
 	rows, err := r.db.Query(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("FlavorTags: %w", err)

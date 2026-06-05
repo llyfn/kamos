@@ -168,6 +168,11 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			Get("/categories", h.Categories)
 		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
 			Get("/flavor-tags", h.FlavorTags)
+		// Slice C — public subcategories list. Cached for an hour like the
+		// other taxonomy endpoints; admin mutations bust the cache via
+		// pg_notify('kamos_cache_invalidate', 'subcategories').
+		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
+			Get("/subcategories", h.ListSubcategories)
 		// Reference data (migration 016): regions + prefectures. Public,
 		// same TTL bucket as the taxonomy endpoints above. Pinned under
 		// /v1/reference/ to keep the URL space tidy for future seed
@@ -404,6 +409,24 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			} else {
 				r.With(adminOnly).Post("/uploads/photo-presign", h.AdminPhotoPresign)
 			}
+
+			// Slice C — admin CRUD on beverage_subcategories. Admin-only:
+			// these rows back catalog dropdowns and need the same gate as
+			// direct beverage edits.
+			r.With(adminOnly).Get("/subcategories", h.AdminListSubcategories)
+			r.With(adminOnly).Post("/subcategories", h.AdminCreateSubcategory)
+			r.With(adminOnly).Patch("/subcategories/{id}", h.AdminUpdateSubcategory)
+			r.With(adminOnly).Delete("/subcategories/{id}", h.AdminSoftDeleteSubcategory)
+			r.With(adminOnly).Post("/subcategories/{id}/restore", h.AdminRestoreSubcategory)
+
+			// Slice C — admin CRUD on flavor_tags. Admin-only for the same
+			// reason as subcategories: shipping a misnamed tag would ripple
+			// through aggregated-flavor renders across every beverage.
+			r.With(adminOnly).Get("/flavor-tags", h.AdminListFlavorTags)
+			r.With(adminOnly).Post("/flavor-tags", h.AdminCreateFlavorTag)
+			r.With(adminOnly).Patch("/flavor-tags/{id}", h.AdminUpdateFlavorTag)
+			r.With(adminOnly).Delete("/flavor-tags/{id}", h.AdminSoftDeleteFlavorTag)
+			r.With(adminOnly).Post("/flavor-tags/{id}/restore", h.AdminRestoreFlavorTag)
 		})
 	})
 
