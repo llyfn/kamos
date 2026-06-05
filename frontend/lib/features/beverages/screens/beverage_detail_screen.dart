@@ -75,7 +75,7 @@ class _Body extends ConsumerWidget {
         : categoryLabel(context, slug);
     final sub = b.subcategory == null
         ? ''
-        : resolveI18n(b.subcategory!, locale);
+        : resolveI18n(b.subcategory!.name, locale);
 
     return SingleChildScrollView(
       // Always-scrollable physics so the surrounding RefreshIndicator can fire
