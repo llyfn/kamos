@@ -111,10 +111,10 @@ A check-in is a user's log entry for a specific beverage at a specific moment.
 | Field | Required | Notes |
 |-------|----------|-------|
 | Beverage | Yes | Selected from the catalog via search |
-| Rating | No | 0.5–5.0 in **0.5 steps** (→ §4.2) |
+| Rating | No | 0.5–5.0 in **0.25 steps** (→ §4.2) |
 | Review text | No | Up to 500 chars |
 | Flavor tags | No | Multi-select from predefined taxonomy (→ §4.3) |
-| Photos | No | Up to **4 photos** per check-in |
+| Photos | No | Up to **1 photo** per check-in on submission. Existing multi-photo check-ins remain readable (the API still serves their full photo arrays). |
 | Price | No | Numeric amount + currency; per-serving or per-bottle toggle |
 | Purchase type | No | `on-premise` / `retail` / `gift` / `other` |
 
@@ -122,9 +122,7 @@ Venue is not included in MVP. See §9.
 
 ### 4.2 Rating Scale
 
-0.5–5.0 in 0.5-step increments (10 levels). Rating is optional; a check-in without a rating is valid ("I tried this").
-
-> **Rationale for 0.5 steps over Untappd's 0.25:** Simpler UI (fewer tap targets on mobile), less false precision, easier to explain. Can be refined post-launch if users request finer granularity.
+0.5–5.0 in 0.25-step increments (19 levels). Optional per check-in; a check-in without a rating is valid ("I tried this").
 
 Beverage average rating is computed as a running average and updated on every check-in. Displayed as `X.X / 5.0`.
 
