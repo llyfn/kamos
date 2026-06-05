@@ -566,6 +566,80 @@ paths:
               schema: { $ref: "#/components/schemas/PageOfSocialUser" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /v1/users/{username}/beverages:
+    parameters:
+      - in: path
+        name: username
+        required: true
+        schema: { type: string }
+      - in: query
+        name: category
+        description: |
+          Restrict the result set to a single beverage category. One of
+          the canonical slugs (SPEC §2.1). Unknown slugs return 422
+          VALIDATION.
+        schema: { type: string, enum: [nihonshu, shochu, liqueur] }
+      - in: query
+        name: producer_id
+        description: Restrict the result set to a single producer.
+        schema: { type: string, format: uuid }
+      - in: query
+        name: min_rating
+        description: |
+          Drop rows where the user's average rating is below this value
+          (or absent, since "I tried it but did not rate it" never passes
+          a min-rating filter).
+        schema: { type: number, minimum: 0.5, maximum: 5.0 }
+      - in: query
+        name: sort
+        description: |
+          Sort axis. Default `rating` (DESC NULLS LAST). The other axes
+          use the user-friendly default direction (`last_checkin` DESC,
+          `producer` / `category` ASC) unless `sort_dir` overrides.
+        schema:
+          type: string
+          enum: [rating, producer, category, last_checkin]
+          default: rating
+      - in: query
+        name: sort_dir
+        schema: { type: string, enum: [asc, desc] }
+      - in: query
+        name: cursor
+        schema: { type: string }
+      - in: query
+        name: limit
+        schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    get:
+      tags: [users, beverages]
+      operationId: getUserBeverages
+      description: |
+        Page of distinct beverages the named user has checked in to,
+        deduped across multiple check-ins on the same beverage. Each
+        row carries the user's average rating + check-in count and the
+        beverage's global aggregates so the client can render the
+        "you 4.5 / global 4.2" comparison without a second fetch.
+
+        Privacy: public profiles are listable by anyone (no auth
+        required); private profiles return 403 PRIVATE_PROFILE for
+        every viewer that is neither the user themselves nor an
+        accepted follower.
+
+        Filters and sort are validated server-side; an invalid value
+        returns 422 VALIDATION. Cursor pagination per SPEC §6.6.
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: page of UserBeverageRow
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PageOfUserBeverageRow" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Validation" }
+
   # ----- BEVERAGES / PRODUCERS -----
   /v1/beverages:
     get:
@@ -3100,6 +3174,39 @@ components:
         category: { $ref: "#/components/schemas/CategoryLabel" }
         label_image_url: { type: string, format: uri }
 
+    UserBeverageRow:
+      type: object
+      description: |
+        One row of GET /v1/users/{username}/beverages — the distinct-
+        beverage aggregation across a single user's check-ins. The
+        beverage is the row identity; `user_avg_rating` averages the
+        user's non-null ratings across multiple check-ins on the same
+        beverage and is null when every check-in was rating-less;
+        `user_checkin_count` counts ALL of the user's live check-ins
+        on this beverage. `global_avg_rating` / `global_check_in_count`
+        are read off the beverages.avg_rating + check_in_count
+        aggregates the rating trigger maintains.
+      required: [beverage, user_checkin_count, last_checkin_at, global_check_in_count]
+      properties:
+        beverage: { $ref: "#/components/schemas/BeverageRef" }
+        user_avg_rating:
+          type: number
+          nullable: true
+          minimum: 0.5
+          maximum: 5.0
+          description: |
+            User's mean rating across their non-null check-ins for this
+            beverage. Null when every one of their check-ins was rating-
+            less.
+        user_checkin_count: { type: integer, minimum: 1 }
+        last_checkin_at: { type: string, format: date-time }
+        global_avg_rating:
+          type: number
+          nullable: true
+          minimum: 0.5
+          maximum: 5.0
+        global_check_in_count: { type: integer, minimum: 0 }
+
     ProducerRef:
       type: object
       description: |
@@ -3657,6 +3764,14 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/SocialUser" }
+    PageOfUserBeverageRow:
+      allOf:
+        - $ref: "#/components/schemas/PageBase"
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/UserBeverageRow" }
     PageOfPublicUser:
       allOf:
         - $ref: "#/components/schemas/PageBase"
