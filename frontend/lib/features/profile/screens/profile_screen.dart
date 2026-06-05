@@ -280,6 +280,7 @@ class _ProfileBody extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: KamosSpacing.md),
           _RecentCheckins(username: user.username, isMe: isMe),
         ],
       ),
