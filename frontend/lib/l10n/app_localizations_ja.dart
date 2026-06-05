@@ -84,6 +84,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ratingLabel => '評価';
 
   @override
+  String get ratingClear => 'クリア';
+
+  @override
   String get checkInTitle => 'チェックイン';
 
   @override
@@ -105,13 +108,22 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInReviewLabel => 'レビュー';
 
   @override
-  String get checkInReviewPlaceholder => '梨、柔らかな米、クリアな余韻…';
+  String get checkInReviewPlaceholder => 'メモを残す';
 
   @override
   String get checkInReviewTooLong => 'レビューが長すぎます';
 
   @override
   String get checkInFlavorTags => 'フレーバータグ';
+
+  @override
+  String get checkInFlavorBrowse => '+ 一覧';
+
+  @override
+  String get checkInFlavorSheetSearch => 'タグを検索';
+
+  @override
+  String get checkInFlavorSheetEmpty => '該当するタグがありません。';
 
   @override
   String get checkInPhotosLabel => '写真 · 4枚まで';
@@ -158,7 +170,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get photoUploadDisabled => '写真のアップロードは利用できません — 写真なしで保存しました。';
 
   @override
-  String get checkInWhereLabel => 'どこで？';
+  String get checkInWhereLabel => '場所';
 
   @override
   String get checkInWhereCta => '場所を追加';

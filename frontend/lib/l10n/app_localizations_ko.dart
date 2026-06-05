@@ -84,6 +84,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ratingLabel => '평점';
 
   @override
+  String get ratingClear => '지우기';
+
+  @override
   String get checkInTitle => '체크인';
 
   @override
@@ -105,13 +108,22 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInReviewLabel => '리뷰';
 
   @override
-  String get checkInReviewPlaceholder => '배, 부드러운 쌀, 깔끔한 여운…';
+  String get checkInReviewPlaceholder => '메모 남기기';
 
   @override
   String get checkInReviewTooLong => '리뷰가 너무 깁니다';
 
   @override
   String get checkInFlavorTags => '풍미 태그';
+
+  @override
+  String get checkInFlavorBrowse => '+ 둘러보기';
+
+  @override
+  String get checkInFlavorSheetSearch => '태그 검색';
+
+  @override
+  String get checkInFlavorSheetEmpty => '일치하는 태그가 없습니다.';
 
   @override
   String get checkInPhotosLabel => '사진 · 최대 4장';
@@ -158,7 +170,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get photoUploadDisabled => '사진 업로드를 사용할 수 없습니다 — 사진 없이 저장했습니다.';
 
   @override
-  String get checkInWhereLabel => '어디서?';
+  String get checkInWhereLabel => '위치';
 
   @override
   String get checkInWhereCta => '장소 추가';
