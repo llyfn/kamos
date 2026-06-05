@@ -513,6 +513,14 @@ paths:
         required: true
         schema: { type: string }
       - in: query
+        name: q
+        description: |
+          Optional case-insensitive prefix filter against the follower's
+          `username` and `display_name` (either match is enough). LIKE
+          metacharacters (`%`, `_`, `\`) are escaped server-side. Empty
+          / whitespace-only `q` is silently ignored.
+        schema: { type: string, minLength: 1, maxLength: 30 }
+      - in: query
         name: cursor
         schema: { type: string }
       - in: query
@@ -522,9 +530,10 @@ paths:
       tags: [users, social]
       operationId: getUserFollowers
       description: |
-        Status: scaffold-for-Phase6 — pre-wired for the followers list screen
-        in a future profile iteration. No Flutter caller in MVP.
-      x-internal: true
+        Cursor-paginated page of accepted followers for the named user.
+        Public profiles are listable by anyone (no auth required); private
+        profiles return only when the viewer is the user themselves or
+        an accepted follower (404 / 403 otherwise).
       security:
         - bearerAuth: []
         - {}
@@ -534,6 +543,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PageOfSocialUser" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /v1/users/{username}/following:
@@ -542,6 +552,14 @@ paths:
         name: username
         required: true
         schema: { type: string }
+      - in: query
+        name: q
+        description: |
+          Optional case-insensitive prefix filter against the followee's
+          `username` and `display_name` (either match is enough). LIKE
+          metacharacters (`%`, `_`, `\`) are escaped server-side. Empty
+          / whitespace-only `q` is silently ignored.
+        schema: { type: string, minLength: 1, maxLength: 30 }
       - in: query
         name: cursor
         schema: { type: string }
@@ -552,9 +570,8 @@ paths:
       tags: [users, social]
       operationId: getUserFollowing
       description: |
-        Status: scaffold-for-Phase6 — pre-wired for the following list screen
-        in a future profile iteration. No Flutter caller in MVP.
-      x-internal: true
+        Cursor-paginated page of users that the named user follows.
+        Same visibility rules as `/followers`.
       security:
         - bearerAuth: []
         - {}
@@ -564,6 +581,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PageOfSocialUser" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /v1/users/{username}/beverages:

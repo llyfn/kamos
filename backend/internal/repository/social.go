@@ -139,16 +139,24 @@ type SocialUser struct {
 // (migration 012). All accepted rows have accepted_at NOT NULL
 // (CHECK on the follows table in 001), so the previous
 // "NULLS LAST" qualifier is no longer needed.
-func (r *SocialRepo) Followers(ctx context.Context, userID string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
+//
+// Slice D (post-MVP): optional `qPrefix` does a case-insensitive
+// LIKE prefix match against EITHER username OR display_name. The
+// caller is expected to pre-escape LIKE metacharacters (`%`, `_`,
+// `\`) via repository.LikeEscape so a user-supplied "al%" doesn't
+// turn into a wildcard. An empty / nil pointer is a wildcard.
+func (r *SocialRepo) Followers(ctx context.Context, userID string, qPrefix *string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
+	prefix := socialPrefixPattern(qPrefix)
 	const q = `
 SELECT u.id, u.username, u.display_username, u.display_name, u.avatar_url, f.accepted_at
 FROM follows f
 JOIN users u ON u.id = f.follower_id AND u.deleted_at IS NULL
 WHERE f.followed_id = $1 AND f.status = 'accepted'
+  AND ($5::text IS NULL OR u.username ILIKE $5 ESCAPE '\' OR u.display_name ILIKE $5 ESCAPE '\')
   AND ($2::timestamptz IS NULL OR (f.accepted_at, f.follower_id) < ($2::timestamptz, $3::uuid))
 ORDER BY f.accepted_at DESC, f.follower_id DESC
 LIMIT $4;`
-	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorUserID, limit+1)
+	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorUserID, limit+1, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("Followers: %w", err)
 	}
@@ -156,21 +164,37 @@ LIMIT $4;`
 	return scanSocialUsers(rows)
 }
 
-func (r *SocialRepo) Following(ctx context.Context, userID string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
+func (r *SocialRepo) Following(ctx context.Context, userID string, qPrefix *string, cursorTs *time.Time, cursorUserID *string, limit int) ([]SocialUser, error) {
+	prefix := socialPrefixPattern(qPrefix)
 	const q = `
 SELECT u.id, u.username, u.display_username, u.display_name, u.avatar_url, f.accepted_at
 FROM follows f
 JOIN users u ON u.id = f.followed_id AND u.deleted_at IS NULL
 WHERE f.follower_id = $1 AND f.status = 'accepted'
+  AND ($5::text IS NULL OR u.username ILIKE $5 ESCAPE '\' OR u.display_name ILIKE $5 ESCAPE '\')
   AND ($2::timestamptz IS NULL OR (f.accepted_at, f.followed_id) < ($2::timestamptz, $3::uuid))
 ORDER BY f.accepted_at DESC, f.followed_id DESC
 LIMIT $4;`
-	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorUserID, limit+1)
+	rows, err := r.db.Query(ctx, q, userID, cursorTs, cursorUserID, limit+1, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("Following: %w", err)
 	}
 	defer rows.Close()
 	return scanSocialUsers(rows)
+}
+
+// socialPrefixPattern converts a caller-supplied prefix string into
+// the LIKE pattern fed to the followers/following queries. Returns
+// nil when the input is nil or empty so the SQL guard turns into a
+// wildcard. Escapes the three LIKE metacharacters (`\`, `%`, `_`)
+// via the package-shared likeEscaper so a user-supplied "al%" can't
+// poison the match.
+func socialPrefixPattern(qPrefix *string) *string {
+	if qPrefix == nil || *qPrefix == "" {
+		return nil
+	}
+	escaped := likeEscaper.Replace(*qPrefix) + "%"
+	return &escaped
 }
 
 func scanSocialUsers(rows pgx.Rows) ([]SocialUser, error) {
