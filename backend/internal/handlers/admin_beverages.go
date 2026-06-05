@@ -183,38 +183,8 @@ func (h *Handler) AdminUpdateBeverage(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, "AdminUpdateBeverage prefetch", err)
 		return
 	}
-	// Slice C: validate subcategory_id against the effective category.
-	// If the category is changing on this PATCH, the subcategory must
-	// belong to the new category. If the category is unchanged, validate
-	// against prev.Category.
-	if body.SubcategoryID != nil && *body.SubcategoryID != "" {
-		effectiveCategoryID := prev.Category.Slug // placeholder; we need the UUID
-		if resolved != nil {
-			effectiveCategoryID = *resolved
-		} else {
-			// AdminBeverageRow embeds Beverage which has Category.Slug but
-			// not Category.ID. We need the UUID for the FK check — read it
-			// from the row via the categoryID we stashed in prev. Pull it
-			// from the producer's join by re-resolving the slug.
-			catID, err := h.Repos.Beverages.CategoryIDForSlug(r.Context(), prev.Category.Slug)
-			if err != nil {
-				h.writeErr(w, "AdminUpdateBeverage category lookup", err)
-				return
-			}
-			effectiveCategoryID = catID
-		}
-		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, effectiveCategoryID); err != nil {
-			h.writeSubcategoryErr(w, "AdminUpdateBeverage", err)
-			return
-		}
-	}
-	// If the category is changing AND no explicit subcategory_id was
-	// supplied, clear the existing subcategory_id so the FK doesn't
-	// dangle across the category change. (The DB FK is ON DELETE SET
-	// NULL, but a category change is a different kind of mutation.)
-	if resolved != nil && body.SubcategoryID == nil && prev.Subcategory != nil && prev.Subcategory.ID != "" {
-		empty := ""
-		body.SubcategoryID = &empty
+	if h.resolveSubcategoryForBeverageUpdate(w, r, &body, prev, resolved) {
+		return
 	}
 	if err := h.updateBeverageTx(r.Context(), uid, id, resolved, body); err != nil {
 		h.writeErr(w, "AdminUpdateBeverage", err)
@@ -485,4 +455,45 @@ func (h *Handler) writeSubcategoryErr(w http.ResponseWriter, op string, err erro
 	default:
 		h.writeErr(w, op, err)
 	}
+}
+
+// resolveSubcategoryForBeverageUpdate validates body.SubcategoryID against
+// the effective post-update category and applies the auto-clear rule when
+// the category changes without an explicit subcategory_id. Returns true
+// when an error response has already been written to w; the caller must
+// then return without further work.
+//
+// Effective category: the new category if the PATCH is changing it
+// (`resolved != nil`), otherwise prev.Category resolved by slug. The
+// extra lookup-by-slug exists because AdminBeverageRow embeds the public
+// Beverage shape, which carries Category.Slug but not the UUID needed for
+// the FK check.
+func (h *Handler) resolveSubcategoryForBeverageUpdate(
+	w http.ResponseWriter, r *http.Request,
+	body *AdminBeverageUpdate, prev *repository.AdminBeverageRow, resolved *string,
+) bool {
+	if body.SubcategoryID != nil && *body.SubcategoryID != "" {
+		var effectiveCategoryID string
+		if resolved != nil {
+			effectiveCategoryID = *resolved
+		} else {
+			catID, err := h.Repos.Beverages.CategoryIDForSlug(r.Context(), prev.Category.Slug)
+			if err != nil {
+				h.writeErr(w, "AdminUpdateBeverage category lookup", err)
+				return true
+			}
+			effectiveCategoryID = catID
+		}
+		if err := h.Repos.Subcategories.VerifyForCategory(r.Context(), *body.SubcategoryID, effectiveCategoryID); err != nil {
+			h.writeSubcategoryErr(w, "AdminUpdateBeverage", err)
+			return true
+		}
+	}
+	// Category-change without an explicit subcategory_id clears the
+	// existing link so the FK doesn't dangle across the change.
+	if resolved != nil && body.SubcategoryID == nil && prev.Subcategory != nil && prev.Subcategory.ID != "" {
+		empty := ""
+		body.SubcategoryID = &empty
+	}
+	return false
 }
