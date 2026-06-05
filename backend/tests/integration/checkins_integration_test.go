@@ -44,11 +44,59 @@ func TestCreateCheckinRatingPrecision(t *testing.T) {
 	}
 }
 
+// SPEC §4.2 (Slice B): the grid is 0.25 steps. Migration 004 widens
+// check_ins.rating from NUMERIC(3,1) to NUMERIC(3,2) so the quarter-step
+// values survive the round-trip. Pre-004 this test fails because PG
+// silently rounds 4.25 → 4.3 / 0.75 → 0.8 on insert.
+func TestCreateCheckinRatingQuarterStepRoundTrip(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	tok, _ := mustRegister(t, srv, "quarter", "quarter@example.com", "password11")
+	bevID := seedBeverage(t, "QuarterRatingTest")
+
+	cases := []struct {
+		name string
+		in   float64
+		wire string // exact substring expected in the JSON body
+	}{
+		{"4.25 upper quarter", 4.25, `"rating":4.25`},
+		{"0.75 lower quarter", 0.75, `"rating":0.75`},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			code, body := doReq(t, srv, http.MethodPost, "/v1/check-ins", tok, map[string]any{
+				"beverage_id": bevID,
+				"rating":      tc.in,
+			})
+			if code != http.StatusCreated {
+				t.Fatalf("status=%d body=%s", code, body)
+			}
+			if !strings.Contains(string(body), tc.wire) {
+				t.Errorf("rating round-trip wrong; want %q in body, got %s", tc.wire, body)
+			}
+			var ci map[string]any
+			if err := json.Unmarshal(body, &ci); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			r, ok := ci["rating"].(float64)
+			if !ok {
+				t.Fatalf("rating type: %T", ci["rating"])
+			}
+			if r != tc.in {
+				t.Errorf("rating: got %v want %v", r, tc.in)
+			}
+		})
+	}
+}
+
 // Creating a check-in with 2 photos inline is rejected at the validation
 // layer (handler returns 422 before the DB sees it). Slice B / SPEC §4.1
 // dropped the submission cap from 4 to 1; the legacy upload endpoint
-// (POST /v1/check-ins/{id}/photos) keeps its storage-side cap and is
-// covered by TestAttachUploadedPhotoToCheckin in photos_integration_test.go.
+// (POST /v1/check-ins/{id}/photos) is covered by
+// TestAttachUploadedPhotoToCheckin in photos_integration_test.go.
 func TestCheckinTwoPhotosInlineRejected(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
