@@ -234,6 +234,25 @@ Triggers were rejected: review surface gets harder, the `follows`-side `INSERT` 
 
 **Read-state.** `read_at TIMESTAMPTZ NULL` — set on (a) row scrolls into view, (b) row tapped, (c) "Mark all read". The partial index `idx_notifications_recipient_unread WHERE read_at IS NULL` keeps the badge-dot lookup index-only and the unread-count aggregate cheap; in a healthy inbox where most rows are read it stays tiny.
 
+### 9d. Subcategory table (005, Slice C)
+
+Slice C of the post-MVP polish batch promotes `beverages.subcategory_i18n` (free-text JSONB) to a proper joinable table `beverage_subcategories` with admin-managed CRUD. Motivation: the free-text shape drifted (case + whitespace variants of the same Junmai value would not group together on the catalog), and there was no admin surface to curate the canonical list.
+
+**Shape.** Mirrors `beverage_categories`: per-row `name_i18n` requiring non-empty en + ja + ko (CHECK), a `slug` (lowercase + underscores, regex-checked), and a `sort_order SMALLINT` for stable display. Unique scope is `(category_id, slug)` so the same bare slug can repeat across categories — we don't exercise that in seed (the three "Other" rows use category-prefixed slugs `nihonshu_other` / `shochu_other` / `liqueur_other`), but the FK boundary stays clean. `category_slug` is denormalized from the parent and kept in sync by a trigger (`sync_beverage_subcategory_category_slug`) — same pattern as `sync_beverage_category_slug` on beverages, which keeps the column readable from query paths without an extra JOIN.
+
+**FK shape.** `beverage_subcategories.category_id → beverage_categories(id) ON DELETE RESTRICT` (subcategories cannot orphan). `beverages.subcategory_id → beverage_subcategories(id) ON DELETE SET NULL` — admin "delete" is soft-delete at the application layer (with a "row in use" preflight blocking it when any live beverage references the row); the FK action is the backstop for the hard-delete admin-recovery path. Soft-delete uses the existing `deleted_at TIMESTAMPTZ` convention and every list query must filter `WHERE deleted_at IS NULL`.
+
+**Seed.** 18 rows total, brief-confirmed: Nihonshu × 8 (Junmai, Honjozo, Ginjo, Daiginjo, Junmai Ginjo, Junmai Daiginjo, Nigori, Other), Shochu × 7 (Imo, Mugi, Kome, Soba, Kokuto, Awamori, Other), Liqueur × 3 (Umeshu, Yuzushu, Other). `sort_order` uses multiples of 10 for curated rows so future inserts can slot between; "Other" rows sit at 990 so they always sort last.
+
+**Legacy column window.** `beverages.subcategory_i18n` stays in place for one release window of dual-source rendering. From migration 005 onwards the FK is the source of truth on writes; the old JSONB column is ignored on writes and rendered only as a fallback by clients that haven't shipped the new model yet. A follow-up migration drops the column.
+
+**Backfill.** Migration 005 ends with an idempotent two-phase backfill from `beverages.subcategory_i18n`:
+
+1. *Match by canonical en text.* For every non-soft-deleted beverage with a non-null `subcategory_i18n`, the en value is normalized (`LOWER(TRIM(...))`) and looked up under the matching `category_id`. Matches link directly via `beverages.subcategory_id = sc.id`.
+2. *Create rows for unmatched values.* En values that don't match any seeded subcategory under the same category produce new rows at `sort_order = 500` (between seeds and "Other") with a derived slug (`lower(en)`, non-alnum → `_`, runs collapsed, trim). Missing ja / ko locales fall back to en (SPEC §6.5 rule). The insert is guarded by `ON CONFLICT (category_id, slug) DO NOTHING`, so a re-run of the migration cannot duplicate rows; the subsequent UPDATE finds the row whether it was just created or already existed.
+
+Soft-deleted beverages are skipped (the backfill is for live data only; admin recuration handles trash rows). Beverages whose `subcategory_i18n` is NULL or has no en key get no link — the new column is nullable.
+
 ### 10. UUID, not bigint, primary keys
 
 `pgcrypto.gen_random_uuid()` everywhere. Trade-offs:
@@ -254,7 +273,8 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
 | `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL` (003 post-MVP squash): admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. |
-| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. |
+| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. `subcategory_id UUID NULL` FK → `beverage_subcategories(id) ON DELETE SET NULL` (005, Slice C): source of truth for the beverage's subcategory after Slice C ships. Partial index `beverages_subcategory_id_idx (subcategory_id) WHERE deleted_at IS NULL` drives catalog "filter by subcategory" queries. The legacy free-text `subcategory_i18n JSONB` column stays for one release window of dual-source rendering and is dropped in a follow-up migration. |
+| `beverage_subcategories` | Subcategory taxonomy (005, Slice C). | `deleted_at` (admin soft-delete) | One row per (category, slug); UNIQUE `(category_id, slug)` so the same bare slug can repeat across categories (we keep "Other" per-category via `nihonshu_other` / `shochu_other` / `liqueur_other`, but the scope honors the FK boundary). `name_i18n` requires non-empty en + ja + ko (CHECK). Slug format `^[a-z0-9_]{1,64}$`. `category_slug` denormalized + synced from `beverage_categories.slug` via `sync_beverage_subcategory_category_slug` trigger (same shape as `sync_beverage_category_slug` on beverages). `sort_order SMALLINT` for stable display (seeds at 10/20/.../990; backfill-created rows at 500). FK `category_id` is `ON DELETE RESTRICT` — subcategories cannot orphan. Admin "delete" is soft-delete (`deleted_at = NOW()`); the application blocks soft-delete if any live beverage still references the row. |
 | `regions` | Japan's 8 traditional regions (seed). | — | `name_i18n` requires en+ja+ko. 8 seeded rows (016). |
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
 | `flavor_tags` | Admin taxonomy (SPEC §4.3). | — | 5 fixed dimensions. |
@@ -305,6 +325,7 @@ Every CHECK constraint and column traces to a SPEC clause:
 | Default `Inventory` + `Wishlist` (app-layer) | §6.1, §6.8 |
 | `regions` / `prefectures` (i18n reference) | §2.3 (producer prefecture display); 016 |
 | `producers.prefecture_id` FK (replaces free-text) | §2.3; 016 + 017 |
+| `beverage_subcategories` table + `beverages.subcategory_id` FK (005, Slice C) | §2.2 (subcategory under category); brief 04 |
 
 ---
 
@@ -318,7 +339,7 @@ Every CHECK constraint and column traces to a SPEC clause:
 
 2. **`accepted_at` on legacy/public follows**. SPEC §5.1 implies public follows are "instant"; we set `accepted_at = created_at` on insert. There's no SPEC text saying these are conceptually different from approved private follows, so they share the same column.
 
-3. **Subcategory i18n**. SPEC §2.2 calls the subcategory "Text · Free from predefined list" but doesn't explicitly say it is i18n. The JSX kit treats it as i18n (`{en:'Junmai Daiginjo', ja:'純米大吟醸', ko:'준마이 다이긴조'}`). We follow the JSX (JSONB column).
+3. **Subcategory i18n**. SPEC §2.2 calls the subcategory "Text · Free from predefined list" but doesn't explicitly say it is i18n. The JSX kit treats it as i18n (`{en:'Junmai Daiginjo', ja:'純米大吟醸', ko:'준마이 다이긴조'}`). MVP modeled it as a JSONB column (`beverages.subcategory_i18n`). Slice C (migration 005) promotes the field to a proper `beverage_subcategories` table with admin CRUD; see §9d. The legacy column stays for one release window of dual-source rendering and is dropped in a follow-up migration.
 
 4. **Beverage `flavor_profile` array vs `beverage_flavor_tags` junction**. The JSX has a flat array of tag labels per beverage; we maintain **both** a `flavor_profile TEXT[]` of tag slugs (cheap to render) and the `beverage_flavor_tags` junction (clean joins for filtering). Admin tooling is responsible for keeping them in sync; we did not add a trigger to enforce this because admin writes happen offline.
 

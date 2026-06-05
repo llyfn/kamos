@@ -431,7 +431,15 @@ A scheduled job (out of scope for this migration) eventually hard-purges users w
 
 ```sql
 SELECT
-  b.id, b.name_i18n, b.category_slug, b.subcategory_i18n,
+  b.id, b.name_i18n, b.category_slug,
+  -- Slice C (005): subcategory is a FK ref. The legacy free-text JSONB
+  -- column `b.subcategory_i18n` is still selected so clients that haven't
+  -- shipped the new model fall back to it during the dual-source render
+  -- window; new clients render from sc.* and ignore b.subcategory_i18n.
+  b.subcategory_i18n,
+  sc.id        AS subcategory_id,
+  sc.slug      AS subcategory_slug,
+  sc.name_i18n AS subcategory_name_i18n,
   b.abv, b.polishing_ratio,
   b.description_i18n, b.label_image_url,
   b.avg_rating, b.check_in_count,
@@ -441,9 +449,69 @@ SELECT
   rg.name_i18n AS region_name_i18n
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
+LEFT JOIN beverage_subcategories sc
+  ON sc.id = b.subcategory_id
+  AND sc.deleted_at IS NULL              -- skip soft-deleted subcategories
 LEFT JOIN prefectures pf ON pf.id = br.prefecture_id
 LEFT JOIN regions rg ON rg.id = pf.region_id
 WHERE b.id = $1;
+```
+
+The subcategory JOIN is `LEFT JOIN` (subcategory is nullable on `beverages` and may be soft-deleted under the row's feet — the rendering layer simply omits the subcategory chip when `sc.id IS NULL`). The `AND sc.deleted_at IS NULL` predicate stays on the join condition, not in `WHERE`, so a soft-deleted subcategory drops to `NULL` instead of removing the parent beverage row. Mirrors the LEFT JOIN pattern from notifications §16a and comments §17.
+
+The same JOIN shape applies to the catalog list query (`GET /v1/beverages?category=&subcategory=...`):
+
+```sql
+SELECT
+  b.id, b.name_i18n, b.category_slug,
+  sc.slug AS subcategory_slug, sc.name_i18n AS subcategory_name_i18n,
+  b.avg_rating, b.check_in_count,
+  br.name_i18n AS producer_name_i18n
+FROM beverages b
+JOIN producers br ON br.id = b.producer_id
+LEFT JOIN beverage_subcategories sc
+  ON sc.id = b.subcategory_id
+  AND sc.deleted_at IS NULL
+WHERE b.deleted_at IS NULL
+  AND ($1::text IS NULL OR b.category_slug = $1)
+  AND ($2::uuid IS NULL OR b.subcategory_id = $2)     -- catalog subcategory chip
+  AND ($3::int IS NULL OR (b.check_in_count, b.id::text) < ($3, $4))
+ORDER BY b.check_in_count DESC, b.id DESC
+LIMIT 21;
+```
+
+The `b.subcategory_id = $2` predicate is served by `beverages_subcategory_id_idx (subcategory_id) WHERE deleted_at IS NULL`. The projection emits `subcategory_name_i18n` as the canonical i18n object; the Go layer applies the SPEC §6.5 fallback (`ko → en`, `ja → en`) when serializing to a locale-specific scalar.
+
+### Subcategory list / admin CRUD (005, Slice C)
+
+Public list ("show me all subcategories under nihonshu"):
+
+```sql
+SELECT sc.id, sc.category_slug, sc.slug, sc.name_i18n, sc.sort_order
+FROM beverage_subcategories sc
+WHERE sc.deleted_at IS NULL
+  AND ($1::text IS NULL OR sc.category_slug = $1)
+ORDER BY sc.category_slug, sc.sort_order, sc.slug;
+```
+
+Uses `beverage_subcategories_category_slug_unique`'s leading column for the equality filter; the per-category result set is small enough (≤ ~15 rows) that the trailing in-memory sort on `sort_order` is free.
+
+Admin soft-delete guard — block when any live beverage still references the row (matches the `producers` soft-delete preflight in schema.md §8):
+
+```sql
+-- Preflight: returns the count of live beverages referencing this subcategory.
+-- The handler returns 409 SUBCATEGORY_HAS_LIVE_BEVERAGES if the count > 0.
+SELECT COUNT(*)::int AS live_beverage_count
+FROM beverages b
+WHERE b.subcategory_id = $1 AND b.deleted_at IS NULL;
+```
+
+```sql
+-- Soft-delete itself (only after preflight passes).
+UPDATE beverage_subcategories
+SET deleted_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id;
 ```
 
 Aggregated flavor profile (the "風味プロフィール" block):

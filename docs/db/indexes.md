@@ -91,6 +91,33 @@ CREATE INDEX idx_beverages_deleted_at
 
 > Note: 014 DROPs the original (non-partial) indexes and recreates them with the `WHERE deleted_at IS NULL` predicate. During apply there is a brief window where these indexes are absent and public reads may seq-scan; acceptable for the current single-region hosted env per `docs/runbooks/deploy.md`.
 
+### beverages (subcategory FK — 005, Slice C)
+
+Migration 005 adds `beverages.subcategory_id UUID NULL` (FK → `beverage_subcategories(id) ON DELETE SET NULL`) and one partial index. The new join target is `beverage_subcategories`, documented in its own section below.
+
+| Index | Purpose | Trace |
+|---|---|---|
+| `beverages_subcategory_id_idx` (partial) | "Filter beverages by subcategory in catalog views" — public catalog grouping/filter-chip path and the admin catalog filter on the beverage list. `WHERE deleted_at IS NULL` keeps the index dense since soft-deleted beverages are excluded from every catalog read. | brief 04, §2.2 |
+
+```sql
+CREATE INDEX beverages_subcategory_id_idx
+  ON beverages (subcategory_id)
+  WHERE deleted_at IS NULL;
+```
+
+### beverage_subcategories (005, Slice C)
+
+A small, admin-curated taxonomy table (18 seeded rows + a handful of backfilled free-text rows). Read paths are exclusively "list rows under a category, ordered by sort_order" and "look up by `(category_id, slug)` for admin edit". The UNIQUE composite already covers both; no extra index is needed.
+
+| Index | Purpose |
+|---|---|
+| `beverage_subcategories_pkey` (implicit) | Point lookup by id from the `beverages.subcategory_id` JOIN and the admin edit endpoint. |
+| `beverage_subcategories_category_slug_unique` (UNIQUE, composite on `(category_id, slug)`) | Doubles as the read-path index for "list a category's subcategories ordered by sort_order" — Postgres uses the composite's leading column for the equality predicate, then sorts the small per-category set in memory. Acceptable: 8 rows under nihonshu, 7 under shochu, 3 under liqueur plus a small free-text tail. |
+
+Intentionally NOT created:
+- `(category_id, sort_order)` — would speed up the list query above by one sort step, but the per-category cardinality is in the single-digit-to-low-teens range. Add only if backfill grows the table by orders of magnitude (no evidence today).
+- An index on `deleted_at` — soft-delete rows are exception cases; admin reads use `deleted_at IS NOT NULL` over a tiny set and a partial helper is overkill at this cardinality.
+
 ### producers (search)
 
 After 014 the producer FTS index is also partial; renamed in 017:
@@ -266,7 +293,7 @@ No index for `comment` or `follow_request` dedupe — both are intentionally non
 
 - `users.LOWER(display_username)` — never queried. Login uses `LOWER(?)` against `username`, never `display_username`.
 - `check_ins.deleted_at` — we use partial-index predicates everywhere instead of a separate index on the column.
-- `beverages.subcategory` — subcategory is admin free-text from a predefined list. Filtering by subcategory is a post-MVP feature.
+- `beverages.subcategory_i18n` — the legacy free-text JSONB column kept through the Slice C release window. Never indexed; reads after Slice C use the `subcategory_id` FK path documented above. The column is dropped in a follow-up migration after dual-source rendering ends.
 - Any index on `producers.region`/`beverages.region` — these free-text columns were removed in 016. Locality is now derived through `producers.prefecture_id → prefectures.region_id`; add a covering index on `(region_id, …)` of `prefectures` only if the producer-list-by-region query becomes a hotspot (it does not today).
 
 ## Future migrations to consider
