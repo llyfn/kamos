@@ -1,6 +1,8 @@
-// KAMOS — Widget test for the flavor-tag chip picker on CheckInScreen.
-// Asserts that tags from `flavorTagsProvider` render with locale-resolved
-// labels (en in this test) instead of the previously-hardcoded English strings.
+// KAMOS — Widget test for the flavor-tag browse sheet opened from
+// CheckInScreen. Asserts that tags from `flavorTagsProvider` render inside
+// the browse sheet with locale-resolved labels (en in this test) — the
+// inline compose row only renders the currently-selected tags now, so this
+// test drives the "+ Browse" affordance to surface the full catalog.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,7 +57,7 @@ Widget _wrap(Widget child) {
 
 void main() {
   testWidgets(
-      'flavor-tag chips render with locale-resolved labels from the provider',
+      'flavor-tag browse sheet renders all tags with locale-resolved labels',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -70,7 +72,16 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    // Both tag labels appear (en locale resolves `name.en`).
+    // The inline compose row only renders currently-selected tags (none
+    // selected at this point) so the catalog should not appear yet.
+    expect(find.text('Dry'), findsNothing);
+    expect(find.text('Fruity'), findsNothing);
+
+    // Open the browse sheet via the "+ Browse" pill.
+    await tester.tap(find.text('+ Browse'));
+    await tester.pumpAndSettle();
+
+    // Both tag labels appear inside the sheet (en locale resolves `name.en`).
     expect(find.text('Dry'), findsOneWidget);
     expect(find.text('Fruity'), findsOneWidget);
   });

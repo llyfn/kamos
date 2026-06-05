@@ -136,7 +136,7 @@ void main() {
   });
 
   testWidgets(
-      'screen mounts with pre-seeded photos and renders camera tiles',
+      'screen mounts with the lone pre-seeded photo (Slice B 1-photo cap)',
       (tester) async {
     final repo = _FakeRepo();
 
@@ -149,6 +149,8 @@ void main() {
         child: _wrap(
           CheckInScreen(
             beverage: _beverage,
+            // SPEC §4.1 — only the first seeded photo is kept; the second
+            // is dropped to match the picker's clamp-to-1 behaviour.
             initialPhotos: [XFile(_f1.path), XFile(_f2.path)],
             onSubmitted: (_) {},
           ),
@@ -157,9 +159,9 @@ void main() {
     );
     await tester.pump();
 
-    // Smoke: screen mounts, both seeded photo tiles render the camera icon
-    // (idle state), plus two more empty slots = 4 total tiles.
-    expect(find.byIcon(Icons.photo_camera_outlined), findsAtLeastNWidgets(2));
+    // Only one photo tile renders now (Slice B cap). Pre-Slice-B the grid
+    // had 4 slots; this assertion locks the cap at the widget level.
+    expect(find.byIcon(Icons.photo_camera_outlined), findsOneWidget);
   });
 
   testWidgets(
@@ -195,8 +197,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap the "Post" action button to fire `_submit`.
-    await tester.tap(find.text('Post'));
+    // Tap the full-width "Post" pill at the bottom of the scroll body. With
+    // the AppBar action removed in Slice B, the button sits below the
+    // viewport on the default 800×600 test surface, so scroll it into view
+    // before tapping.
+    final postFinder = find.text('Post');
+    await tester.ensureVisible(postFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(postFinder);
     await tester.pumpAndSettle();
 
     expect(repo.createCalls, 1);
