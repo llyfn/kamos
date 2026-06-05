@@ -183,9 +183,9 @@ func Auth(s *auth.Signer, softDelete *auth.SoftDeleteCache) func(http.Handler) h
 // abusive client doesn't pipeline more giant requests on the same TCP
 // session.
 //
-// SEC-003 (Stage 0): mount globally with 1 MiB under /v1 and override to
-// 64 KiB under /v1/auth. Photos go through R2 presigned PUT, not the API,
-// so 1 MiB is generous.
+// SEC-003: mount globally with 1 MiB under /v1 and override to 64 KiB
+// under /v1/auth. Photos go through R2 presigned PUT, not the API, so
+// 1 MiB is generous.
 func MaxBytes(n int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

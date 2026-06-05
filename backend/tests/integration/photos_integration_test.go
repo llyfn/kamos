@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// Phase 3 photo upload — Disabled-storage path.
+// Photo upload — Disabled-storage path.
 //
 // We're running with the default test harness (no R2_* envs set), so the
 // server boots with storage.Disabled. Two contracts:
@@ -79,8 +79,8 @@ func TestPhotoPresignContentTypeValidation(t *testing.T) {
 
 // Attach a synthetic 'pending' photo_uploads row to a check-in. Because
 // storage is Disabled, the resulting check_in_photos.photo_url is "". The
-// SPEC §4.1 1-photo submission cap (Slice B) is enforced on the 2nd
-// attempt by the repository.
+// SPEC §4.1 1-photo submission cap is enforced on the 2nd attempt by the
+// repository.
 func TestAttachUploadedPhotoToCheckin(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -101,7 +101,7 @@ func TestAttachUploadedPhotoToCheckin(t *testing.T) {
 	_ = json.Unmarshal(raw, &ci)
 
 	// Plant two 'pending' rows directly. The 1st attach succeeds; the
-	// 2nd returns the SPEC PHOTO_CAP_EXCEEDED (Slice B / SPEC §4.1).
+	// 2nd returns the SPEC PHOTO_CAP_EXCEEDED (SPEC §4.1).
 	p := getPool(t)
 	for i := 0; i < 2; i++ {
 		uploadID := mustInsertPendingUpload(t, p, uid, fmt.Sprintf("checkins/%s/p%d.jpg", uid, i))

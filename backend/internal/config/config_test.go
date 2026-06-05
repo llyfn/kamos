@@ -136,7 +136,7 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Env != "dev" {
 		t.Errorf("Env: %q", c.Env)
 	}
-	// Phase 2: access-token default lowered to 15m; refresh default 720h.
+	// Access-token default 15m; refresh default 720h.
 	if c.JWTTTL != 15*time.Minute {
 		t.Errorf("JWTTTL: %v", c.JWTTTL)
 	}

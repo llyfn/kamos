@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Phase 5a admin endpoints — RBAC + beverage-request moderation +
+// Admin endpoints — RBAC + beverage-request moderation +
 // check-in moderation + user role / suspension.
 package integration
 

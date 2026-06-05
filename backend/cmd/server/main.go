@@ -121,7 +121,7 @@ func main() {
 	defer softDeleteCancel()
 	go softDelete.Run(softDeleteCtx, log)
 
-	// Phase 3 — blob storage. Two cases:
+	// Blob storage. Two cases:
 	//   (a) R2_ACCESS_KEY_ID + R2_BUCKET set → real Cloudflare R2 backend.
 	//   (b) Either empty → Disabled (the presign endpoint returns 503,
 	//       the orphan-cleanup job no-ops the Delete call). The API process
@@ -141,8 +141,8 @@ func main() {
 		log.Info("storage disabled (R2_BUCKET unset)")
 	}
 
-	// Phase 3 — outbound mail. RESEND_API_KEY + EMAIL_FROM both required
-	// for real send; otherwise we log the verification link (dev default).
+	// Outbound mail. RESEND_API_KEY + EMAIL_FROM both required for real
+	// send; otherwise we log the verification link (dev default).
 	mailer := email.NewMailer(cfg, log)
 	if cfg.ResendAPIKey != "" && cfg.EmailFrom != "" {
 		log.Info("mailer enabled", "provider", "resend", "from", cfg.EmailFrom)
@@ -150,8 +150,8 @@ func main() {
 		log.Info("mailer disabled (RESEND_API_KEY or EMAIL_FROM unset) — using LogMailer")
 	}
 
-	// Phase 4 — Foursquare Places client. Empty FOURSQUARE_API_KEY puts the
-	// client in Disabled mode; GET /v1/venues/search returns 503
+	// Foursquare Places client. Empty FOURSQUARE_API_KEY puts the client
+	// in Disabled mode; GET /v1/venues/search returns 503
 	// VENUE_SEARCH_DISABLED in that case. The check-in venue.foursquare_id
 	// upsert path is independent of this client and still works.
 	fsq := foursquare.New(cfg.FoursquareAPIKey)
@@ -161,15 +161,15 @@ func main() {
 		log.Info("foursquare enabled")
 	}
 
-	// Phase 7 — in-process LRU bundle for taxonomy/beverage/producer hot
-	// rows. Default sizing + TTLs live in cache.NewCaches. Each named
-	// cache emits hit/miss into the Prometheus cache_requests_total
-	// counter via the observer hooks — see observability.RecordCacheHit.
+	// In-process LRU bundle for taxonomy / beverage / producer hot rows.
+	// Default sizing + TTLs live in cache.NewCaches. Each named cache
+	// emits hit/miss into the Prometheus cache_requests_total counter
+	// via the observer hooks — see observability.RecordCacheHit.
 	caches := cache.NewCaches()
 	caches.SetObservers(observability.RecordCacheHit, observability.RecordCacheMiss)
 
-	// Stage 4 — cross-replica cache invalidation bus. Every write path
-	// that calls caches.X.InvalidatePrefix(...) also fires
+	// Cross-replica cache invalidation bus. Every write path that calls
+	// caches.X.InvalidatePrefix(...) also fires
 	// cache.NotifyInvalidation(...). Each replica runs an Invalidator
 	// listening on the shared kamos_cache_invalidate channel; arriving
 	// payloads route through caches.InvalidatePrefix on the peer's L1.
@@ -188,11 +188,11 @@ func main() {
 		EnsureServices()
 	mux := server.New(log, signer, softDelete, h)
 
-	// Stage 4 — the in-process scheduler used to register four maintenance
-	// jobs here. It now lives in cmd/worker so the API process is fully
-	// stateless and horizontally scalable. The worker is a single replica;
-	// jobs are additionally guarded by pg_try_advisory_lock as a
-	// belt-and-suspenders safety net against a misconfigured deploy.
+	// The scheduler that registers maintenance jobs lives in cmd/worker
+	// so the API process is fully stateless and horizontally scalable.
+	// The worker is a single replica; jobs are additionally guarded by
+	// pg_try_advisory_lock as a belt-and-suspenders safety net against a
+	// misconfigured deploy.
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

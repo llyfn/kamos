@@ -24,9 +24,8 @@ import (
 )
 
 // newServerWithCache builds the same router shape as newServer but wires
-// the Phase 7 LRU bundle so we can observe hit/miss counters and
-// invalidation behavior. Rate limiting stays OFF (same justification as
-// newServer).
+// the LRU bundle so we can observe hit/miss counters and invalidation
+// behavior. Rate limiting stays OFF (same justification as newServer).
 func newServerWithCache(t *testing.T) (*httptest.Server, *cache.Caches) {
 	t.Helper()
 	p := getPool(t)
@@ -203,9 +202,9 @@ func TestBeverageDetailCacheInvalidatesOnDelete(t *testing.T) {
 	}
 }
 
-// TestAdminModerateCheckinInvalidatesBeverageDetailCache — Phase 7a BLOCKER-1
-// regression. A moderator soft-deletes a check-in via the admin surface; the
-// public beverage page must reflect the action immediately (avg_rating and
+// TestAdminModerateCheckinInvalidatesBeverageDetailCache — when a
+// moderator soft-deletes a check-in via the admin surface, the public
+// beverage page must reflect the action immediately (avg_rating and
 // check_in_count recomputed by the trigger, cache busted by the handler).
 func TestAdminModerateCheckinInvalidatesBeverageDetailCache(t *testing.T) {
 	truncateAll(t)
@@ -283,8 +282,8 @@ func TestAdminModerateCheckinInvalidatesBeverageDetailCache(t *testing.T) {
 	}
 }
 
-// TestCacheControlPresentOnAllGetRoutes — Phase 7a BLOCKER-2 contract.
-// Every GET route under /v1 must declare freshness explicitly: either via
+// TestCacheControlPresentOnAllGetRoutes — every GET route under /v1 must
+// declare freshness explicitly: either via
 // a CacheControl(...) wrapper (the 5 documented cacheable routes) OR via
 // the group-level NoStore default. The assertion is: GET each registered
 // route, regardless of status code, the response carries a Cache-Control

@@ -1,9 +1,9 @@
 //go:build integration
 // +build integration
 
-// Stage 4 — admin cookie auth + CSRF + logout. These tests need
-// AuthService wired (the admin-login handler requires h.Services.Auth)
-// so they construct a server via newServerWithServices.
+// Admin cookie auth + CSRF + logout. These tests need AuthService wired
+// (the admin-login handler requires h.Services.Auth) so they construct
+// a server via newServerWithServices.
 package integration
 
 import (

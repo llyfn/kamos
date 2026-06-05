@@ -143,8 +143,7 @@ func TestCodeOfDefault(t *testing.T) {
 	}
 }
 
-// New helpers introduced in Stage 3: cover each of the four convenience
-// shortcuts.
+// Cover each of the four convenience-shortcut helpers.
 func TestWriteHelpersShape(t *testing.T) {
 	cases := []struct {
 		name string

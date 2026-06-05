@@ -27,15 +27,13 @@ type CategoryLabel struct {
 	LabelI18n I18nText `json:"label_i18n"` // SPEC §2.1 canonical strings
 }
 
-// Subcategory is the slim reference shape carried on Beverage. Slice C
-// (migration 005) promoted the free-text `beverages.subcategory_i18n`
-// JSONB blob to a proper joinable `beverage_subcategories` row. The
-// admin manages these rows via /v1/admin/subcategories; the public read
-// path resolves them through the FK and ships the slim shape below on
-// every beverage response.
+// Subcategory is the slim reference shape carried on Beverage. The
+// canonical source is the `beverage_subcategories` row joined via
+// `beverages.subcategory_id`; admin manages these via
+// /v1/admin/subcategories.
 //
-// During the one-release dual-source window the API may still surface a
-// legacy free-text subcategory (no id/slug/category_slug) for rows whose
+// As a dual-source fallback the API may still surface a legacy free-text
+// subcategory (no id/slug/category_slug) for rows whose
 // `beverages.subcategory_id` is NULL but whose legacy `subcategory_i18n`
 // JSONB is set. Clients should treat id/slug as optional during that
 // window; a follow-up migration drops the legacy column once every

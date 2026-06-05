@@ -1,12 +1,8 @@
 // Package domain — sentinel errors.
 //
-// Stage 3 split: previously every sentinel lived in `internal/apierror` and
-// imported `net/http` transitively into every repository file. That
-// architectural inversion (data-access layer transitively depending on
-// HTTP) made it harder to share repositories with non-HTTP entry points
-// (a future worker / CLI / batch job). The fix is to keep sentinels in
-// the domain package (no `net/http` dependency) and route HTTP coupling
-// through internal/httperr.
+// Sentinels live in the domain package (no `net/http` dependency) so the
+// data-access layer doesn't transitively pull HTTP into every repository
+// file. HTTP coupling is routed through internal/httperr.
 //
 // All sentinels formerly in `apierror` now live here. The `apierror` shim
 // re-exports them for backward compatibility — new code should reach for

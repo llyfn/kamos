@@ -1,7 +1,7 @@
 // Package cursor encodes opaque keyset cursors for list endpoints.
 // Every list endpoint in the API uses cursor pagination per SPEC §6.6.
 //
-// SEC-005 / Stage 0: cursors are HMAC-SHA256-signed using a process-wide
+// SEC-005: cursors are HMAC-SHA256-signed using a process-wide
 // key set via SetSigningKey at startup. The wire format is
 //
 //	base64(json) || "." || base64(hmac_sha256(json, key))
@@ -33,12 +33,11 @@ import (
 // (`beverage` while draining beverages, `producer` once the cursor has
 // crossed into producers).
 //
-// Stage 5 (PERF-003): popularity cursors carry a triple
-// (CheckInCount, CreatedAt, ID) so the keyset stays stable across the
-// mutating check_in_count column. `CheckInCount` is encoded under the
-// short `k` key (the byte budget on a base64 cursor is tight); legacy
-// cursors without `k` still decode — handlers that need the full
-// triple fall back to a single-key keyset.
+// Popularity cursors carry a triple (CheckInCount, CreatedAt, ID) so the
+// keyset stays stable across the mutating check_in_count column.
+// `CheckInCount` is encoded under the short `k` key (the byte budget on
+// a base64 cursor is tight); legacy cursors without `k` still decode —
+// handlers that need the full triple fall back to a single-key keyset.
 type Cursor struct {
 	CreatedAt    time.Time `json:"c,omitempty"`
 	ID           string    `json:"i,omitempty"`

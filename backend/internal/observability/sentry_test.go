@@ -7,8 +7,8 @@ import (
 )
 
 // scrubEvent must redact Authorization + Cookie headers and the entire
-// request body on the documented auth paths. Regression guard against the
-// /v1/auth/refresh refresh-secret leak the Phase 2 QA report flagged.
+// request body on the documented auth paths. Regression guard against
+// the /v1/auth/refresh refresh-secret leak.
 func TestScrubEventRedactsAuthBodyAndHeaders(t *testing.T) {
 	ev := &sentry.Event{
 		Request: &sentry.Request{

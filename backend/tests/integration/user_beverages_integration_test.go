@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Slice D — GET /v1/users/{username}/beverages. Distinct-beverage
+// GET /v1/users/{username}/beverages. Distinct-beverage
 // aggregation page across a single user's check-ins. Coverage focuses
 // on the aggregation correctness, the filter axes, sort default, the
 // cursor stability, and the privacy gate.

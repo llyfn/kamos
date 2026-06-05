@@ -1,9 +1,8 @@
 //go:build integration
 // +build integration
 
-// Slice D — followers / following ?q= prefix search. Promoted the
-// two endpoints from `x-internal: true` and layered an optional
-// case-insensitive prefix filter against (username, display_name).
+// followers / following ?q= prefix search. Optional case-insensitive
+// prefix filter against (username, display_name).
 
 package integration
 

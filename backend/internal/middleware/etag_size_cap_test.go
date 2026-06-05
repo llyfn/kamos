@@ -7,10 +7,9 @@ import (
 	"testing"
 )
 
-// TestETagSkipsWhenBodyOverSizeCap — Phase 7a MAJOR-2 regression. The ETag
-// middleware must NOT compute a hash for responses larger than
-// etagMaxBufBytes. The body must still flush normally; only the ETag
-// header is omitted.
+// TestETagSkipsWhenBodyOverSizeCap — the ETag middleware must NOT
+// compute a hash for responses larger than etagMaxBufBytes. The body
+// must still flush normally; only the ETag header is omitted.
 func TestETagSkipsWhenBodyOverSizeCap(t *testing.T) {
 	// Build a payload one byte over the cap to land on the > branch.
 	payload := bytes.Repeat([]byte("x"), etagMaxBufBytes+1)

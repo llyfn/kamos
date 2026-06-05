@@ -2,15 +2,13 @@
 // validators shared between handler-side request validation and the
 // repository's pre-write defense-in-depth checks.
 //
-// Stage 3 split: previously the helpers lived inline in domain/types.go
-// (SanitizeText, ValidRating, venueValidateString). They've been moved here
-// so the validation primitives don't bake the domain package's import set
-// (in particular, the apierror sentinel coupling) into every consumer.
+// These primitives are kept in their own package so they don't bake the
+// domain package's import set (in particular, the apierror sentinel
+// coupling) into every consumer.
 //
-// The domain-package wrappers in types.go and types_venue.go remain so
-// existing callers (`domain.SanitizeText`, `domain.ValidRating`) keep
-// working. They delegate to this package and add the sentinel-error
-// wrapping that the handler layer's writeErr inspects.
+// The domain-package wrappers in types.go and types_venue.go delegate to
+// this package and add the sentinel-error wrapping that the handler
+// layer's writeErr inspects.
 package validate
 
 import (

@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Slice C — admin CRUD + public read for beverage_subcategories.
+// Admin CRUD + public read for beverage_subcategories.
 package integration
 
 import (

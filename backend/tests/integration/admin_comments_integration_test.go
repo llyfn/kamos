@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Phase 6a — admin comment moderation surface.
+// Admin comment moderation surface.
 package integration
 
 import (

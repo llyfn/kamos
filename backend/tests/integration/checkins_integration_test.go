@@ -44,10 +44,10 @@ func TestCreateCheckinRatingPrecision(t *testing.T) {
 	}
 }
 
-// SPEC §4.2 (Slice B): the grid is 0.25 steps. Migration 004 widens
-// check_ins.rating from NUMERIC(3,1) to NUMERIC(3,2) so the quarter-step
-// values survive the round-trip. Pre-004 this test fails because PG
-// silently rounds 4.25 → 4.3 / 0.75 → 0.8 on insert.
+// SPEC §4.2: the rating grid is 0.25 steps. check_ins.rating is
+// NUMERIC(3,2) so the quarter-step values survive the round-trip; an
+// older NUMERIC(3,1) shape silently rounds 4.25 → 4.3 / 0.75 → 0.8 on
+// insert.
 func TestCreateCheckinRatingQuarterStepRoundTrip(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -93,8 +93,8 @@ func TestCreateCheckinRatingQuarterStepRoundTrip(t *testing.T) {
 }
 
 // Creating a check-in with 2 photos inline is rejected at the validation
-// layer (handler returns 422 before the DB sees it). Slice B / SPEC §4.1
-// dropped the submission cap from 4 to 1; the legacy upload endpoint
+// layer (handler returns 422 before the DB sees it). SPEC §4.1 caps
+// submission at 1 photo; the upload endpoint
 // (POST /v1/check-ins/{id}/photos) is covered by
 // TestAttachUploadedPhotoToCheckin in photos_integration_test.go.
 func TestCheckinTwoPhotosInlineRejected(t *testing.T) {

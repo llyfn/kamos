@@ -105,12 +105,12 @@ func ETag(next http.Handler) http.Handler {
 			_, _ = w.Write(buf.body.Bytes())
 			return
 		}
-		// Stage 5 (PERF-019): skip the hash entirely on responses the
-		// inner handler has already marked Cache-Control: no-store.
-		// A no-store response is never re-read from cache, so a 304
-		// roundtrip-save is impossible by construction. The SHA-256
-		// + ETag header would be pure waste; bypassing matches the
-		// short-circuit semantics of the empty-body and oversize paths.
+		// Skip the hash entirely on responses the inner handler has
+		// already marked Cache-Control: no-store. A no-store response is
+		// never re-read from cache, so a 304 roundtrip-save is impossible
+		// by construction. The SHA-256 + ETag header would be pure waste;
+		// bypassing matches the short-circuit semantics of the empty-body
+		// and oversize paths.
 		if cc := w.Header().Get("Cache-Control"); cc != "" && containsNoStore(cc) {
 			w.WriteHeader(buf.status)
 			_, _ = w.Write(buf.body.Bytes())

@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Phase 8 (M-5.3) — central RBAC default-deny matrix.
+// Central RBAC default-deny matrix.
 //
 // Every admin endpoint mounted under /v1/admin/* MUST require either
 // `moderator` or `admin` role. The existing TestAdmin_RoleGate covers

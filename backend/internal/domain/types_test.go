@@ -407,10 +407,10 @@ func TestSanitizeTextRejectsControl(t *testing.T) {
 	}
 }
 
-// Stage 7 (M-11.5 / SEC-024) — the public submission body must reject
-// payloads that omit required keys, use a non-enum category_slug, exceed
-// the 4 KiB JSON cap, smuggle bidi/control bytes, or stuff a non-string
-// into one of the typed string fields.
+// BeverageRequest must reject payloads that omit required keys, use a
+// non-enum category_slug, exceed the 4 KiB JSON cap, smuggle bidi /
+// control bytes, or stuff a non-string into one of the typed string
+// fields.
 func TestBeverageRequestValidate(t *testing.T) {
 	valid := func() map[string]any {
 		return map[string]any{

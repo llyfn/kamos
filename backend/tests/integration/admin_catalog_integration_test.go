@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-// Stage 8 — admin catalog CRUD (POST/PATCH/DELETE/restore for both
+// Admin catalog CRUD (POST/PATCH/DELETE/restore for both
 // /v1/admin/beverages and /v1/admin/producers) + admin user exact-match
 // search.
 //

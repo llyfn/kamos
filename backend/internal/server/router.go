@@ -151,10 +151,10 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(middleware.Auth(signer, softDelete)).Post("/email-change", h.EmailChange)
 			r.With(middleware.Auth(signer, softDelete)).Post("/logout", h.Logout)
 
-			// Stage 4 — admin cookie auth surface. admin-login + admin-
-			// refresh are public (refresh reads its own cookie; possession
-			// of the raw secret IS the credential). admin-logout requires
-			// AdminAuth so we can identify the user for refresh revocation.
+			// Admin cookie auth surface. admin-login + admin-refresh are
+			// public (refresh reads its own cookie; possession of the raw
+			// secret IS the credential). admin-logout requires AdminAuth
+			// so we can identify the user for refresh revocation.
 			r.Post("/admin-login", h.AdminLogin)
 			r.Post("/admin-refresh", h.AdminRefresh)
 			r.With(middleware.AdminAuth(signer, softDelete)).Post("/admin-logout", h.AdminLogout)
@@ -168,15 +168,15 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			Get("/categories", h.Categories)
 		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
 			Get("/flavor-tags", h.FlavorTags)
-		// Slice C — public subcategories list. Cached for an hour like the
-		// other taxonomy endpoints; admin mutations bust the cache via
+		// Public subcategories list. Cached for an hour like the other
+		// taxonomy endpoints; admin mutations bust the cache via
 		// pg_notify('kamos_cache_invalidate', 'subcategories').
 		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
 			Get("/subcategories", h.ListSubcategories)
-		// Reference data (migration 016): regions + prefectures. Public,
-		// same TTL bucket as the taxonomy endpoints above. Pinned under
-		// /v1/reference/ to keep the URL space tidy for future seed
-		// reference tables (countries, currencies, …).
+		// Reference data: regions + prefectures. Public, same TTL bucket
+		// as the taxonomy endpoints above. Pinned under /v1/reference/ to
+		// keep the URL space tidy for future seed reference tables
+		// (countries, currencies, …).
 		r.With(middleware.CacheControl("public, max-age=3600, stale-while-revalidate=86400")).
 			Get("/reference/regions", h.Regions)
 
@@ -287,9 +287,9 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			// Social.
 			r.Post("/users/{username}/follow", h.Follow)
 			r.Delete("/users/{username}/follow", h.Unfollow)
-			// GET /v1/follow-requests was retired in Phase 4 — the
-			// notifications inbox subsumed the list. Inline Approve /
-			// Decline actions still post against the rows below.
+			// The notifications inbox subsumes the legacy
+			// GET /v1/follow-requests list; inline Approve / Decline
+			// actions still post against the rows below.
 			r.Post("/follow-requests/{id}/approve", h.ApproveFollowRequest)
 			r.Post("/follow-requests/{id}/decline", h.DeclineFollowRequest)
 
@@ -335,13 +335,13 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.Delete("/comments/{id}", h.DeleteComment)
 		})
 
-		// admin surface. Authed + role-gated per-route. Generous
-		// per-user rate limit (30/60) — admin tooling fires bursts of
-		// reads during triage but doesn't need the 60/120 of the regular
-		// authed surface. Stage 4: AdminAuth replaces Auth so the React
-		// admin client can authenticate via HttpOnly cookies (SEC-001);
-		// RequireCSRF enforces the double-submit pattern on mutating
-		// requests (GET / HEAD / OPTIONS skip internally).
+		// admin surface. Authed + role-gated per-route. Generous per-user
+		// rate limit (30/60) — admin tooling fires bursts of reads during
+		// triage but doesn't need the 60/120 of the regular authed
+		// surface. AdminAuth authenticates the React admin client via
+		// HttpOnly cookies (SEC-001); RequireCSRF enforces the double-
+		// submit pattern on mutating requests (GET / HEAD / OPTIONS skip
+		// internally).
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.AdminAuth(signer, softDelete))
 			r.Use(middleware.RequireCSRF)
@@ -363,10 +363,9 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(modOrAdmin).Post("/check-ins/{id}/moderate", h.AdminModerateCheckin)
 			r.With(modOrAdmin).Get("/users", h.AdminListUsers)
 
-			// Stage 7 (M-8.1) — moderator audit trail (read only).
-			// Moderator-or-admin: it's a read, both roles should see
-			// history. Write happens inside each admin action's
-			// transaction (see admin.go::insertModerationLog).
+			// Moderator audit trail (read only). Moderator-or-admin:
+			// both roles should see history. Write happens inside each
+			// admin action's transaction (see admin.go::insertModerationLog).
 			r.With(modOrAdmin).Get("/moderation-log", h.AdminListModerationLog)
 
 			// comment moderation surface. Both endpoints
@@ -380,11 +379,9 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(adminOnly).Post("/users/{id}/suspend", h.AdminSuspendUser)
 			r.With(adminOnly).Post("/users/{id}/role", h.AdminUpdateUserRole)
 
-			// Stage 8 — direct catalog CRUD. Admin-only (stronger
-			// privilege than moderating user submissions): a moderator
-			// can triage the beverage-request queue but cannot write
-			// canonical entries. Tighten now; product can relax GET to
-			// modOrAdmin later if needed.
+			// Direct catalog CRUD. Admin-only (stronger privilege than
+			// moderating user submissions): a moderator can triage the
+			// beverage-request queue but cannot write canonical entries.
 			r.With(adminOnly).Get("/beverages", h.AdminListBeverages)
 			r.With(adminOnly).Get("/beverages/{id}", h.AdminGetBeverage)
 			r.With(adminOnly).Post("/beverages", h.AdminCreateBeverage)
@@ -411,8 +408,8 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 				r.With(adminOnly).Post("/uploads/photo-presign", h.AdminPhotoPresign)
 			}
 
-			// Slice C — admin CRUD on beverage_subcategories. Admin-only:
-			// these rows back catalog dropdowns and need the same gate as
+			// Admin CRUD on beverage_subcategories. Admin-only: these
+			// rows back catalog dropdowns and need the same gate as
 			// direct beverage edits.
 			r.With(adminOnly).Get("/subcategories", h.AdminListSubcategories)
 			r.With(adminOnly).Post("/subcategories", h.AdminCreateSubcategory)
@@ -420,8 +417,8 @@ func New(log *slog.Logger, signer *auth.Signer, softDelete *auth.SoftDeleteCache
 			r.With(adminOnly).Delete("/subcategories/{id}", h.AdminSoftDeleteSubcategory)
 			r.With(adminOnly).Post("/subcategories/{id}/restore", h.AdminRestoreSubcategory)
 
-			// Slice C — admin CRUD on flavor_tags. Admin-only for the same
-			// reason as subcategories: shipping a misnamed tag would ripple
+			// Admin CRUD on flavor_tags. Admin-only for the same reason
+			// as subcategories: shipping a misnamed tag would ripple
 			// through aggregated-flavor renders across every beverage.
 			r.With(adminOnly).Get("/flavor-tags", h.AdminListFlavorTags)
 			r.With(adminOnly).Post("/flavor-tags", h.AdminCreateFlavorTag)

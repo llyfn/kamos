@@ -1,8 +1,7 @@
 //go:build integration
 // +build integration
 
-// Phase 8 (M-9.1) — drift check between backend/openapi.yaml and the
-// chi router.
+// Drift check between backend/openapi.yaml and the chi router.
 //
 // The Flutter typed client and the React admin client are both code-
 // generated from openapi.yaml; if a backend endpoint is removed but the

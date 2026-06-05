@@ -1,12 +1,8 @@
 //go:build integration
 // +build integration
 
-// Phase 6a — collection visibility (PATCH /v1/collections/{id}) and the
-// per-user public listing surface (GET /v1/users/{username}/collections).
-// The Phase 6a discover-feed endpoint (GET /v1/collections/public) was
-// removed during the profile-social-ux expansion in favor of per-user
-// browsing; this file inherits the original suite minus the discover
-// tests, plus replacement coverage on the new endpoint.
+// Collection visibility (PATCH /v1/collections/{id}) and the per-user
+// public listing surface (GET /v1/users/{username}/collections).
 package integration
 
 import (

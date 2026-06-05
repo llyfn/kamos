@@ -16,8 +16,8 @@ import (
 	"github.com/kamos/api/internal/jobs"
 )
 
-// TestAdvisoryLockHeldByOne — Stage 4 belt-and-suspenders guard. Two
-// scheduler instances pointing at the same DB register the same-named
+// TestAdvisoryLockHeldByOne — belt-and-suspenders guard. Two scheduler
+// instances pointing at the same DB register the same-named
 // job. Only one tick should fire the job body in any given window: the
 // other tick acquires a fresh connection, fails pg_try_advisory_lock,
 // and skips silently.

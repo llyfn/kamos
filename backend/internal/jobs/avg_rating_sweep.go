@@ -15,13 +15,12 @@ import (
 // cases (manual DB edits, trigger gaps during long migrations, etc.) per
 // the roadmap §1.
 //
-// Stage 5 (PERF-025): the sweep is now scoped to beverages with
-// check-in activity in the last hour via a CTE on
-// check_ins.updated_at instead of running the AVG()-over-the-world
-// join over the entire catalog every tick. The trigger path already
-// handles 100% of the normal case; this job only ever fires for the
-// rare drift window, so we don't need to recompute beverages that
-// haven't been touched.
+// The sweep is scoped to beverages with check-in activity in the last
+// hour via a CTE on check_ins.updated_at, rather than running an
+// AVG()-over-the-world join across the whole catalog every tick. The
+// trigger path already handles 100% of the normal case; this job only
+// ever fires for the rare drift window, so we don't need to recompute
+// beverages that haven't been touched.
 func JobAvgRatingSweep(log *slog.Logger) JobFn {
 	return func(ctx context.Context, db *pgxpool.Pool) error {
 		// Matches recompute_beverage_rating() in 001_initial.sql exactly:

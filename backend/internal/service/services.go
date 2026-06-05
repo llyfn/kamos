@@ -48,10 +48,10 @@ type Deps struct {
 	Mailer     email.Mailer
 	Caches     *cache.Caches
 	SoftDelete *auth.SoftDeleteCache
-	// DB is the raw pgx pool used by cacheAdapter to publish
-	// pg_notify cache-bust signals to peer replicas (Stage 4). Nil-safe;
-	// when nil, services still invalidate their local L1 cache but skip
-	// the cross-replica fan-out.
+	// DB is the raw pgx pool used by cacheAdapter to publish pg_notify
+	// cache-bust signals to peer replicas. Nil-safe; when nil, services
+	// still invalidate their local L1 cache but skip the cross-replica
+	// fan-out.
 	DB *pgxpool.Pool
 }
 
