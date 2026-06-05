@@ -97,6 +97,7 @@ abstract class BeverageRef with _$BeverageRef {
     required I18nText name,
     required ProducerRef producer,
     required CategoryLabel category,
+    Subcategory? subcategory,
     String? labelImageUrl,
   }) = _BeverageRef;
 
@@ -111,6 +112,9 @@ abstract class BeverageRef with _$BeverageRef {
     category: CategoryLabel.fromJson(
       (json['category'] as Map<String, dynamic>?) ?? const {},
     ),
+    subcategory: json['subcategory'] is Map<String, dynamic>
+        ? Subcategory.fromJson(json['subcategory'] as Map<String, dynamic>)
+        : null,
     labelImageUrl: json['label_image_url'] as String?,
   );
 }
