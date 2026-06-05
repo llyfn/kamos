@@ -482,8 +482,11 @@ class KamosBeveragesApi {
     return _asMap(res.data);
   }
 
-  Future<Map<String, dynamic>> get(String id) async {
-    final res = await _dio.get<dynamic>(ApiPaths.beverage(id));
+  Future<Map<String, dynamic>> get(String id, {bool forceRefresh = false}) async {
+    final res = await _dio.get<dynamic>(
+      ApiPaths.beverage(id),
+      options: forceRefresh ? Options(extra: {...kBypassCache}) : null,
+    );
     return _asMap(res.data);
   }
 }

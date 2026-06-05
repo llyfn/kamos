@@ -7,9 +7,14 @@ import '../../../core/models/collection.dart';
 import '../../collections/repository/collection_repository.dart';
 import '../repository/beverage_repository.dart';
 
+// The backend serves /v1/beverages/{id} with Cache-Control: public, max-age=300
+// (router.go:190); without forceRefresh, dio_cache_interceptor would serve a
+// stale body for up to 5 minutes after a check-in, even though Riverpod just
+// invalidated us. Bypass the Dio cache and rely on Riverpod for in-session
+// memoisation instead.
 final beverageDetailProvider = FutureProvider.autoDispose
     .family<BeverageDetail, String>((ref, id) async {
-      return ref.read(beverageRepositoryProvider).get(id);
+      return ref.read(beverageRepositoryProvider).get(id, forceRefresh: true);
     });
 
 /// Resolved state for the beverage-detail "Add to list" bottom sheet.
