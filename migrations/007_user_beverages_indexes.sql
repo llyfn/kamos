@@ -1,4 +1,4 @@
--- 004_user_beverages_indexes.sql
+-- 007_user_beverages_indexes.sql
 -- KAMOS — index audit for Slice D (user-beverages aggregation).
 --
 -- The new GET /v1/users/{username}/beverages endpoint aggregates a
