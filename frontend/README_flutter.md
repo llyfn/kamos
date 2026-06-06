@@ -126,9 +126,9 @@ Upstream 429s from Foursquare bubble out as `503 { code: VENUE_RATE_LIMITED }`; 
 ## SPEC invariants the code enforces
 
 - **Category strings** — `lib/core/i18n/category_labels.dart` hardcodes the SPEC §2.1 strings character-for-character; `test/category_strings_test.dart` enforces parity.
-- **Rating** — 0.5–5.0 in 0.5 steps. `lib/shared/widgets/stars_input.dart` produces nullable `double?` values; null is a valid rating ("I tried this").
+- **Rating** — 0.5–5.0 in 0.25 steps (19 levels). Compose uses the custom `lib/features/check_in/widgets/rating_slider.dart` (continuous drag, snaps to 0.25); read surfaces render `lib/shared/widgets/stars_display.dart` (0.5-step glyph fidelity is sufficient for display). Both produce nullable `double?` values; null is a valid rating ("I tried this").
 - **Review ≤ 500 chars** — `TextField.maxLength: 500` with `MaxLengthEnforcement.enforced` in the check-in screen.
-- **Photos ≤ 4** — UI cap in `lib/features/check_in/screens/check_in_screen.dart`; server is the backstop.
+- **Photos ≤ 1 on submission** — UI cap in `lib/features/check_in/screens/check_in_screen.dart`; server is the backstop. Existing multi-photo rows remain readable end-to-end.
 - **Cursor pagination** — every list provider holds `(items, nextCursor, hasMore)` and never sends an offset. Page size 20 on the feed.
 - **JWT storage** — both the access token and the rotating refresh token live in `flutter_secure_storage` only, via `lib/core/storage/secure_storage.dart`. No `SharedPreferences` token usage anywhere in the tree (see verification command above). The Dio interceptor (`lib/core/api/auth_interceptor.dart`) auto-exchanges the refresh token on 401 with single-flight semantics.
 - **i18n fallback** — `lib/core/i18n/beverage_name.dart` falls back to `en` for missing `ja` / `ko` beverage names per SPEC §6.5.

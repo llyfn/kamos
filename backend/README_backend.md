@@ -31,7 +31,7 @@ internal/
   server/                   chi router wiring
 openapi.yaml                OpenAPI 3.1 contract
 .env.example
-(migrations live at repo root: 001_initial.sql + 002_seed_taxonomy.sql)
+(migrations live at repo root: 001_initial.sql + 002_seeding.sql)
 ```
 
 ## Endpoint surface (counts)

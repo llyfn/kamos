@@ -141,11 +141,8 @@ class CheckInRepository {
 
   /// Two-step pre-attach upload: presign → PUT. Returns the resulting
   /// `upload_id` so the caller can splice it into a PATCH `add_photos`
-  /// payload. Used by `EditCheckInScreen` where the attach happens inside
-  /// the PATCH transaction (server-side) rather than as a follow-up POST.
-  ///
-  /// Throws the same exceptions as [uploadPhotoAndAttach]'s presign + put
-  /// stages.
+  /// payload — the attach happens inside the PATCH transaction
+  /// (server-side) rather than as a follow-up POST.
   Future<String> uploadPhotoOnly({
     required File file,
     required void Function(double pct) onProgress,

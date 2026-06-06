@@ -85,7 +85,7 @@ openssl rand -base64 48
 make up
 
 # 2. wait for healthy, then in another shell:
-make db-migrate         # applies 001_initial.sql + 002_seed_taxonomy.sql
+make db-migrate         # applies 001_initial.sql + 002_seeding.sql
 
 # 3. flutter app — runs against http://localhost:8080
 cd frontend

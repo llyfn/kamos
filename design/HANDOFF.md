@@ -27,7 +27,7 @@ The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This d
 | Discover (formerly Search; full-text + category filter chips) | `components/SearchScreen.jsx` |
 | Beverage detail (catalog, avg rating, flavor aggregate, recent check-ins) | `components/BeverageScreen.jsx` |
 | Producer detail (i18n name, region, founded, website, beverage list) | `components/ProducerScreen.jsx` |
-| Check-in (rating, review, tags, photos, price, purchase type) | `components/CheckInScreen.jsx` |
+| Check-in (rating slider, review beside a 1-photo square, flavor profiles, Location, price + currency, per-serving / per-bottle) | `components/CheckInScreen.jsx` |
 | Profile (Me): stats, locale toggle, recent check-ins | `components/ProfileLists.jsx::ProfileScreen` |
 | Edit profile: display name, bio, avatar | `components/EditProfileScreen.jsx` |
 | Settings: email, password, privacy, locale, soft-delete | `components/SettingsScreen.jsx` |
@@ -45,7 +45,7 @@ The API contract (`backend/openapi.yaml`) is owned by `backend-engineer`. This d
 - **User actions** — `POST /me/email`, `POST /me/password`, `DELETE /me` (soft-delete, 30-day username hold).
 - **Beverage catalog** — `GET /beverages?q=&category=&cursor=`, `GET /beverages/:id`. Shape includes `{ id, name: {en, ja, ko?}, producer: {id, name: {...}}, region: {...}, category, subcategory: {...}, abv, seimai?, flavor: [...], rating: number, checkins: number, description: {...}, recent: [...] }`. Category is one of `'nihonshu' | 'shochu' | 'liqueur'` (stable keys); display strings come from the locale-aware UI table (SPEC §2.1).
 - **Producer** — `GET /producers/:id`. Shape `{ id, name: {...}, region: {...}, founded?, website?, description?: {...}, beverages: [{id, name, ...}] }`.
-- **Check-in** — `POST /checkins`, `PATCH /checkins/:id`, `DELETE /checkins/:id` (soft-delete). Body: `{ beverage_id, rating?: 0.5..5.0 step 0.5 | null, review?: string (≤500), tags?: [string], photos?: [url] (≤4), price?: { amount: number, currency: 'JPY'|'KRW'|'USD', mode: 'serving'|'bottle' }, purchase_type?: 'on-premise'|'retail'|'gift'|'other' }`. Rating is **optional**; a check-in with `rating === null` is valid (SPEC §4.2).
+- **Check-in** — `POST /checkins`, `PATCH /checkins/:id`, `DELETE /checkins/:id` (soft-delete). Body: `{ beverage_id, rating?: 0.5..5.0 step 0.25 | null, review?: string (≤500), tags?: [string], photos?: [url] (≤1 on submission; existing rows with up to 4 stay readable), price?: { amount: number, currency: 'JPY'|'KRW'|'USD', mode: 'serving'|'bottle' } }`. Rating is **optional**; a check-in with `rating === null` is valid (SPEC §4.2). `purchase_type` is no longer collected by the mobile UI; the API still accepts the field and the DB column stays for legacy rows.
 - **Feed** — `GET /feed?cursor=&limit=20`. Reverse-chronological. Response `{ items: [feedItem], next_cursor: string|null, has_more: bool }`. Each `feedItem` includes `{ id, user: {handle, display_name, avatar}, beverage: {id, name, kanji, producer, region}, rating?, review?, tags, toasts: count, you_toasted: bool, photo_count, created_at }`. Exclude the requester's own check-ins (SPEC §5.2).
 - **Toast** — `POST /checkins/:id/toast`, `DELETE /checkins/:id/toast`. Idempotent. One per user per check-in (SPEC §5.3). Returns the new `{ toasts, you_toasted }`.
 - **Follow** — `POST /follow/:user_id`, `DELETE /follow/:user_id`. For private targets, `POST` creates a request; for public targets it's instant.
@@ -90,7 +90,7 @@ Shipped: PATCH /v1/check-ins/{id} (caller-owned tri-state body), new PATCH /v1/c
 
 ### Screen ↔ data-shape mapping
 
-- **EditCheckInScreen** — reuses the `CheckInScreen.jsx` form layout verbatim (0.5-step rating, ≤500-char review counter, 4-photo grid, price + currency + serving/bottle, purchase type). Pre-fills from `GET /v1/check-ins/{id}` (`checkInDetailProvider`). On save, calls `PATCH /v1/check-ins/{id}` with `{rating?, review?, tags?, price?, purchase_type?, add_photos?, remove_photos?}` and expects the existing `CheckinResponse` shape plus one new field: `edited_at: string | null` (ISO timestamp, nullable). `beverage_id` is immutable per SPEC §4.4 — the beverage row in the form renders read-only.
+- **Edit check-in** — the compose screen runs in a `mode: edit` variant of the same widget tree (no separate `EditCheckInScreen`): same 0.25-step rating slider, ≤500-char review beside a single photo square, flavor profiles row, Location row, price + currency + serving/bottle. Pre-fills from `GET /v1/check-ins/{id}` (`checkInDetailProvider`); the beverage row renders read-only (`beverage_id` immutable per SPEC §4.4). On save, calls `PATCH /v1/check-ins/{id}` with `{rating?, review?, tags?, price?, add_photos?, remove_photos?}` and expects the existing `CheckinResponse` shape plus `edited_at: string | null` (ISO timestamp, nullable). Submit-button label switches to `Save` / `Saving…`.
 - **Inline comment edit** — reuses `CommentTile`. Calls `PATCH /v1/comments/{id}` with `{body}`. Response mirrors the create response plus `edited_at: string | null`.
 - **FeedItem / CheckinResponse / Comment** all gain `edited_at: string | null`. No other shape changes; existing fields untouched.
 
