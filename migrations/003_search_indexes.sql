@@ -52,7 +52,7 @@ $$ LANGUAGE plpgsql;
 
 -- Beverage self-trigger: recompute on INSERT or on UPDATE of the inputs.
 CREATE OR REPLACE FUNCTION kamos_trg_beverages_search_tsv()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 BEGIN
   PERFORM kamos_compute_beverage_search_tsv(NEW.id);
   RETURN NEW;
@@ -60,12 +60,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_beverages_search_tsv
-  AFTER INSERT OR UPDATE OF name_i18n, producer_id ON beverages
-  FOR EACH ROW EXECUTE FUNCTION kamos_trg_beverages_search_tsv();
+AFTER INSERT OR UPDATE OF name_i18n, producer_id ON beverages
+FOR EACH ROW EXECUTE FUNCTION kamos_trg_beverages_search_tsv();
 
 -- Producer self-trigger + sweep of dependent beverages.
 CREATE OR REPLACE FUNCTION kamos_trg_producers_search_tsv()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 DECLARE
   bid uuid;
 BEGIN
@@ -78,12 +78,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_producers_search_tsv
-  AFTER INSERT OR UPDATE OF name_i18n, prefecture_id ON producers
-  FOR EACH ROW EXECUTE FUNCTION kamos_trg_producers_search_tsv();
+AFTER INSERT OR UPDATE OF name_i18n, prefecture_id ON producers
+FOR EACH ROW EXECUTE FUNCTION kamos_trg_producers_search_tsv();
 
 -- Prefecture rename: sweep every producer + transitive beverage.
 CREATE OR REPLACE FUNCTION kamos_trg_prefectures_search_tsv()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 DECLARE
   pid uuid;
   bid uuid;
@@ -99,31 +99,60 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_prefectures_search_tsv
-  AFTER UPDATE OF name_i18n ON prefectures
-  FOR EACH ROW EXECUTE FUNCTION kamos_trg_prefectures_search_tsv();
+AFTER UPDATE OF name_i18n ON prefectures
+FOR EACH ROW EXECUTE FUNCTION kamos_trg_prefectures_search_tsv();
 
 -- Backfill. Producers first so the table read in the beverage backfill sees
 -- current producer rows; the beverage helper reads producer.name_i18n
 -- directly (not producer.search_tsv) so ordering is for readability.
-UPDATE producers SET search_tsv = to_tsvector('simple',
-  coalesce(name_i18n ->> 'en', '') || ' ' ||
-  coalesce(name_i18n ->> 'ja', '') || ' ' ||
-  coalesce(name_i18n ->> 'ko', '') || ' ' ||
-  coalesce((SELECT pf.name_i18n ->> 'en' FROM prefectures pf WHERE pf.id = producers.prefecture_id), '') || ' ' ||
-  coalesce((SELECT pf.name_i18n ->> 'ja' FROM prefectures pf WHERE pf.id = producers.prefecture_id), '') || ' ' ||
-  coalesce((SELECT pf.name_i18n ->> 'ko' FROM prefectures pf WHERE pf.id = producers.prefecture_id), '')
+UPDATE producers SET search_tsv = to_tsvector(
+  'simple',
+  coalesce(name_i18n ->> 'en', '') || ' '
+  || coalesce(name_i18n ->> 'ja', '') || ' '
+  || coalesce(name_i18n ->> 'ko', '') || ' '
+  || coalesce((
+    SELECT pf.name_i18n ->> 'en' FROM prefectures AS pf
+    WHERE pf.id = producers.prefecture_id
+  ), '') || ' '
+  || coalesce((
+    SELECT pf.name_i18n ->> 'ja' FROM prefectures AS pf
+    WHERE pf.id = producers.prefecture_id
+  ), '') || ' '
+  || coalesce((
+    SELECT pf.name_i18n ->> 'ko' FROM prefectures AS pf
+    WHERE pf.id = producers.prefecture_id
+  ), '')
 );
 
-UPDATE beverages SET search_tsv = to_tsvector('simple',
-  coalesce(name_i18n ->> 'en', '') || ' ' ||
-  coalesce(name_i18n ->> 'ja', '') || ' ' ||
-  coalesce(name_i18n ->> 'ko', '') || ' ' ||
-  coalesce((SELECT p.name_i18n ->> 'en' FROM producers p WHERE p.id = beverages.producer_id), '') || ' ' ||
-  coalesce((SELECT p.name_i18n ->> 'ja' FROM producers p WHERE p.id = beverages.producer_id), '') || ' ' ||
-  coalesce((SELECT p.name_i18n ->> 'ko' FROM producers p WHERE p.id = beverages.producer_id), '') || ' ' ||
-  coalesce((SELECT pf.name_i18n ->> 'en' FROM prefectures pf JOIN producers p ON p.prefecture_id = pf.id WHERE p.id = beverages.producer_id), '') || ' ' ||
-  coalesce((SELECT pf.name_i18n ->> 'ja' FROM prefectures pf JOIN producers p ON p.prefecture_id = pf.id WHERE p.id = beverages.producer_id), '') || ' ' ||
-  coalesce((SELECT pf.name_i18n ->> 'ko' FROM prefectures pf JOIN producers p ON p.prefecture_id = pf.id WHERE p.id = beverages.producer_id), '')
+UPDATE beverages SET search_tsv = to_tsvector(
+  'simple',
+  coalesce(name_i18n ->> 'en', '') || ' '
+  || coalesce(name_i18n ->> 'ja', '') || ' '
+  || coalesce(name_i18n ->> 'ko', '') || ' '
+  || coalesce((
+    SELECT p.name_i18n ->> 'en' FROM producers AS p
+    WHERE p.id = beverages.producer_id
+  ), '') || ' '
+  || coalesce((
+    SELECT p.name_i18n ->> 'ja' FROM producers AS p
+    WHERE p.id = beverages.producer_id
+  ), '') || ' '
+  || coalesce((
+    SELECT p.name_i18n ->> 'ko' FROM producers AS p
+    WHERE p.id = beverages.producer_id
+  ), '') || ' '
+  || coalesce((
+    SELECT pf.name_i18n ->> 'en' FROM prefectures AS pf INNER JOIN producers AS p ON pf.id = p.prefecture_id
+    WHERE p.id = beverages.producer_id
+  ), '') || ' '
+  || coalesce((
+    SELECT pf.name_i18n ->> 'ja' FROM prefectures AS pf INNER JOIN producers AS p ON pf.id = p.prefecture_id
+    WHERE p.id = beverages.producer_id
+  ), '') || ' '
+  || coalesce((
+    SELECT pf.name_i18n ->> 'ko' FROM prefectures AS pf INNER JOIN producers AS p ON pf.id = p.prefecture_id
+    WHERE p.id = beverages.producer_id
+  ), '')
 );
 
 COMMIT;

@@ -9,10 +9,10 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pg_bigm;
 
 ALTER TABLE beverages DROP COLUMN search_tsv;
-ALTER TABLE beverages ADD COLUMN search_text TEXT;
+ALTER TABLE beverages ADD COLUMN search_text text;
 
 ALTER TABLE producers DROP COLUMN search_tsv;
-ALTER TABLE producers ADD COLUMN search_text TEXT;
+ALTER TABLE producers ADD COLUMN search_text text;
 
 -- WHY: 003's helpers built a tsvector; 004 swaps to a lowercased plain
 -- string so the query side is `search_text LIKE '%' || lower($1) || '%'`
@@ -60,7 +60,7 @@ $$ LANGUAGE plpgsql;
 -- FUNCTION at the bottom removes them so a stale call from a future write
 -- path raises immediately instead of silently writing the wrong shape.
 CREATE OR REPLACE FUNCTION kamos_trg_beverages_search_tsv()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 BEGIN
   PERFORM kamos_compute_beverage_search_text(NEW.id);
   RETURN NEW;
@@ -68,7 +68,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION kamos_trg_producers_search_tsv()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 DECLARE
   bid uuid;
 BEGIN
@@ -81,7 +81,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION kamos_trg_prefectures_search_tsv()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 DECLARE
   pid uuid;
   bid uuid;
@@ -102,25 +102,54 @@ DROP FUNCTION IF EXISTS kamos_compute_producer_search_tsv(uuid);
 -- Backfill. Producers first (the beverage backfill reads producer.name_i18n
 -- directly, not producer.search_text, so the ordering is for readability
 -- and to keep both tables consistent if a reader looks mid-migration).
-UPDATE producers SET search_text = lower(concat_ws(' ',
+UPDATE producers SET search_text = lower(concat_ws(
+  ' ',
   name_i18n ->> 'en',
   name_i18n ->> 'ja',
   name_i18n ->> 'ko',
-  (SELECT pf.name_i18n ->> 'en' FROM prefectures pf WHERE pf.id = producers.prefecture_id),
-  (SELECT pf.name_i18n ->> 'ja' FROM prefectures pf WHERE pf.id = producers.prefecture_id),
-  (SELECT pf.name_i18n ->> 'ko' FROM prefectures pf WHERE pf.id = producers.prefecture_id)
+  (
+    SELECT pf.name_i18n ->> 'en' FROM prefectures AS pf
+    WHERE pf.id = producers.prefecture_id
+  ),
+  (
+    SELECT pf.name_i18n ->> 'ja' FROM prefectures AS pf
+    WHERE pf.id = producers.prefecture_id
+  ),
+  (
+    SELECT pf.name_i18n ->> 'ko' FROM prefectures AS pf
+    WHERE pf.id = producers.prefecture_id
+  )
 ));
 
-UPDATE beverages SET search_text = lower(concat_ws(' ',
+UPDATE beverages SET search_text = lower(concat_ws(
+  ' ',
   name_i18n ->> 'en',
   name_i18n ->> 'ja',
   name_i18n ->> 'ko',
-  (SELECT p.name_i18n ->> 'en' FROM producers p WHERE p.id = beverages.producer_id),
-  (SELECT p.name_i18n ->> 'ja' FROM producers p WHERE p.id = beverages.producer_id),
-  (SELECT p.name_i18n ->> 'ko' FROM producers p WHERE p.id = beverages.producer_id),
-  (SELECT pf.name_i18n ->> 'en' FROM prefectures pf JOIN producers p ON p.prefecture_id = pf.id WHERE p.id = beverages.producer_id),
-  (SELECT pf.name_i18n ->> 'ja' FROM prefectures pf JOIN producers p ON p.prefecture_id = pf.id WHERE p.id = beverages.producer_id),
-  (SELECT pf.name_i18n ->> 'ko' FROM prefectures pf JOIN producers p ON p.prefecture_id = pf.id WHERE p.id = beverages.producer_id)
+  (
+    SELECT p.name_i18n ->> 'en' FROM producers AS p
+    WHERE p.id = beverages.producer_id
+  ),
+  (
+    SELECT p.name_i18n ->> 'ja' FROM producers AS p
+    WHERE p.id = beverages.producer_id
+  ),
+  (
+    SELECT p.name_i18n ->> 'ko' FROM producers AS p
+    WHERE p.id = beverages.producer_id
+  ),
+  (
+    SELECT pf.name_i18n ->> 'en' FROM prefectures AS pf INNER JOIN producers AS p ON pf.id = p.prefecture_id
+    WHERE p.id = beverages.producer_id
+  ),
+  (
+    SELECT pf.name_i18n ->> 'ja' FROM prefectures AS pf INNER JOIN producers AS p ON pf.id = p.prefecture_id
+    WHERE p.id = beverages.producer_id
+  ),
+  (
+    SELECT pf.name_i18n ->> 'ko' FROM prefectures AS pf INNER JOIN producers AS p ON pf.id = p.prefecture_id
+    WHERE p.id = beverages.producer_id
+  )
 ));
 
 COMMIT;
