@@ -24,7 +24,7 @@ import (
 // AdminListBeverages — GET /v1/admin/beverages
 //
 // Query params:
-//   - q: optional websearch query (FTS via idx_beverages_name_tsv)
+//   - q: optional substring search (via idx_beverages_search_bigm)
 //   - producer_id, category_id, category_slug: optional filters
 //   - id: optional UUID exact-match (short-circuits cursor)
 //   - include_deleted=1: include soft-deleted rows

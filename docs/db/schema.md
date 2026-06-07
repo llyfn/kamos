@@ -67,7 +67,7 @@ Migrations live in `migrations/`. **Append-only**: never edit a deployed migrati
 
 ### 1. i18n storage: JSONB, not separate columns
 
-For `producers`, `beverages`, `beverage_categories`, `flavor_tags`, and certain user-facing free-text fields on `beverages` (`subcategory_i18n`, `description_i18n`), names are stored as a JSONB object `{"en": "...", "ja": "...", "ko": "..."}`. This matches the JSX kit's data shape (`data.jsx::CATALOG`), enables a single GIN FTS index that covers all three locales at once, and means adding a fourth locale post-MVP is a data migration rather than a schema migration.
+For `producers`, `beverages`, `beverage_categories`, `flavor_tags`, and certain user-facing free-text fields on `beverages` (`subcategory_i18n`, `description_i18n`), names are stored as a JSONB object `{"en": "...", "ja": "...", "ko": "..."}`. This matches the JSX kit's data shape (`data.jsx::CATALOG`), keeps locale fields physically adjacent (a single materialized concat across all three feeds the bigm search index — see §9e), and means adding a fourth locale post-MVP is a data migration rather than a schema migration.
 
 Rejected alternative: three `name_en`/`name_ja`/`name_ko` columns. Forces three indexes for cross-locale search, and the schema balloons when more i18n fields are added.
 

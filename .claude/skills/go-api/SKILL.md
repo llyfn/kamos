@@ -122,6 +122,8 @@ func (r *CheckinRepo) GetByID(ctx context.Context, id string) (*model.Checkin, e
 
 Use the SQL from `docs/db/query_patterns.md` directly — db-architect tunes those queries; do not rewrite them.
 
+**Substring search — `LIKE` metacharacter escape is mandatory.** Project invariant per `.claude/CLAUDE.md` "Search invariants": any user-supplied query string flowing into a `LIKE` clause must pass through `repository.bigmLikeArg(q)` (lowercases + escapes `\`, `%`, `_`) before binding. Skipping this is a correctness bug — a query containing `%` would otherwise match everything. The canonical shape is `search_text LIKE '%' || $1 || '%'` with `$1 = bigmLikeArg(rawQuery)`. One query plan per endpoint; no FTS-or-trigram fallback orchestration. User search uses the 3-tier ranking (exact / prefix / substring) packed into the existing HMAC cursor envelope — see `repository.SearchUsers` for the template.
+
 ## Cursor pagination helper
 
 Encapsulate the cursor logic so every list handler uses it identically:

@@ -41,7 +41,7 @@ var errEmptyPrefectureSlugOnCreate = errors.New("empty prefecture_slug on create
 // AdminListProducers — GET /v1/admin/producers
 //
 // Query params:
-//   - q: optional websearch query (FTS via idx_producers_name_tsv)
+//   - q: optional substring search (via idx_producers_search_bigm)
 //   - id: optional UUID exact-match (short-circuits cursor)
 //   - include_deleted=1: include soft-deleted rows (admin "trash" view)
 //   - cursor: opaque cursor
