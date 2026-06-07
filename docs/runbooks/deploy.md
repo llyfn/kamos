@@ -71,6 +71,48 @@ Cross-references:
    doesn't touch the DB (migrations are manual, §2). The admin CD builds
    `admin/` and uploads `dist/` to Pages with Wrangler.
 
+## 1a. Custom DB image (pg_bigm)
+
+`kamos-db` runs a forked `flyio/postgres-flex:18` image with `pg_bigm`
+baked in. The CJK substring search path (migration 004) depends on the
+extension being present on every Postgres machine in the cluster.
+
+Source: `db/Dockerfile` (extends `flyio/postgres-flex:18`, installs
+`pg_bigm` from upstream source at the pinned tag, then strips the build
+toolchain). `db/fly.toml` exists only so `flyctl deploy` picks up the
+Dockerfile — Fly Postgres's own machinery still owns the cluster's
+process model, HA, sizing, and volumes.
+
+**Build + roll out** (do this whenever the Dockerfile changes, or to pick
+up a postgres-flex security patch):
+
+```sh
+flyctl auth login                       # if not already
+cd db/
+flyctl deploy -a kamos-db --remote-only
+```
+
+`flyctl deploy` on the Postgres app builds the image on Fly's remote
+builder, pushes to `registry.fly.io/kamos-db:<deployment_id>`, and rolls
+the cluster machines one at a time. Each machine restarts in turn — the
+HA failover takes a few seconds per machine; client connections (from the
+`kamos` app) retry through the connection pool. Plan for a brief elevated
+error-rate window on the API during the rollout.
+
+**Verify after rollout**:
+
+```sh
+flyctl proxy 15432:5432 -a kamos-db &
+psql 'postgres://kamos:<pass>@127.0.0.1:15432/kamos?sslmode=disable' \
+  -c "SELECT name, default_version FROM pg_available_extensions WHERE name='pg_bigm';"
+# expect one row with default_version 1.2 or later
+```
+
+**Patching the base**: bump the pinned `PG_BIGM_TAG` ARG (or change the
+`FROM` line if Fly publishes a `flyio/postgres-flex:18.x.y`) and repeat
+the build+rollout above. The pin avoids surprise upgrades — security
+patches are an explicit action.
+
 ## 2. Initial schema + secrets
 
 The DB (`kamos-db`) sits on Fly's private network, so reach it through a
@@ -104,6 +146,15 @@ take several minutes on a populated DB). Allow extra time, watch
 `flyctl logs -a kamos` for elevated query latency during the backfill
 window, and apply `003` and `003a` in order (003a depends on the columns +
 data 003 writes).
+
+Migration **004** (`pg_bigm` substring search) replaces the
+`search_tsv` columns and the 003-era trigram indexes with a single
+`search_text` + bigm GIN index per table. It is also heavy on first
+apply (full backfill of `search_text` on beverages + producers; four
+`CREATE INDEX CONCURRENTLY` in `004a`). **Prereq: the custom DB image
+from §1a must already be live on every cluster machine** — `CREATE
+EXTENSION pg_bigm` in 004 will hard-fail otherwise. Apply order is `003`
+→ `003a` → custom-image rollout (§1a) → `004` → `004a`.
 
 ```sh
 flyctl secrets set -a kamos \

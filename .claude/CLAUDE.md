@@ -74,6 +74,7 @@ frontend/                    # Flutter mobile app
   lib/app/                   #   theme.dart (KamosTokens + KamosSpacing), router, app
 admin/                       # React admin web client (HttpOnly cookie auth + CSRF)
 migrations/                  # PostgreSQL migration SQL (append-only)
+db/                          # Custom Postgres image (flyio/postgres-flex:18 + pg_bigm)
 design/                      # Design system: tokens.json (source of truth), brand doc, UI kit
 docs/                        # Long-form documentation
   db/                        #   schema.md, indexes.md, query_patterns.md
