@@ -324,12 +324,7 @@ func (r *BeverageRepo) List(ctx context.Context, p BeverageListParams) ([]domain
 WHERE TRUE
   AND b.deleted_at IS NULL
   AND br.deleted_at IS NULL
-  AND ($1::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ plainto_tsquery('simple', $1))
+  AND ($1::text IS NULL OR b.search_tsv @@ websearch_to_tsquery('simple', $1))
   AND ($2::text IS NULL OR b.category_slug = $2)
   AND ($3::bigint IS NULL OR
        (b.check_in_count, b.created_at, b.id) <
@@ -346,6 +341,50 @@ LIMIT $6;`
 		bv, err := scanBeverageList(rows)
 		if err != nil {
 			return nil, fmt.Errorf("BeverageRepo.List scan: %w", err)
+		}
+		d, err := r.toBeverage(bv)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// WHY: trigram rescue only on the first page of a search that hit
+	// nothing. Returns at most p.Limit rows so SliceAndCursor emits
+	// has_more=false; deep-scroll on fuzzy matches isn't a useful UX.
+	if p.Q != nil && len(out) == 0 && p.CursorCount == nil {
+		return r.listFuzzy(ctx, p)
+	}
+	return out, nil
+}
+
+func (r *BeverageRepo) listFuzzy(ctx context.Context, p BeverageListParams) ([]domain.Beverage, error) {
+	// WHY <% (word_similarity) instead of % (similarity): search_tsv::text
+	// is a long, position-annotated string spanning name + producer +
+	// prefecture across en/ja/ko; plain similarity() divides shared trigrams
+	// by total trigrams so a short query never clears the 0.3 default
+	// threshold. word_similarity scores the query against the closest word
+	// boundary, which is what "did you mean" needs. The gin_trgm_ops index
+	// idx_beverages_search_trgm satisfies both operators.
+	q := beverageListSelect + `
+WHERE b.deleted_at IS NULL
+  AND br.deleted_at IS NULL
+  AND $1 <% b.search_tsv::text
+  AND ($2::text IS NULL OR b.category_slug = $2)
+ORDER BY word_similarity($1, b.search_tsv::text) DESC, b.created_at DESC, b.id DESC
+LIMIT $3;`
+	rows, err := r.db.Query(ctx, q, p.Q, p.CategorySlug, p.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("BeverageRepo.listFuzzy: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.Beverage, 0, p.Limit)
+	for rows.Next() {
+		bv, err := scanBeverageList(rows)
+		if err != nil {
+			return nil, fmt.Errorf("BeverageRepo.listFuzzy scan: %w", err)
 		}
 		d, err := r.toBeverage(bv)
 		if err != nil {
@@ -545,12 +584,7 @@ SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image
        b.beverage_count,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
-  AND ($1::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ plainto_tsquery('simple', $1))
+  AND ($1::text IS NULL OR b.search_tsv @@ websearch_to_tsquery('simple', $1))
   AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
 ORDER BY b.created_at DESC, b.id DESC
 LIMIT $4;`

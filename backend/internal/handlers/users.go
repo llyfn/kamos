@@ -100,11 +100,18 @@ type publicProfile struct {
 	Restricted  bool             `json:"restricted"`             // private + caller not approved
 }
 
+// userSearchScoreScale packs the pg_trgm float similarity (0.0–1.0)
+// into the int64 Cursor.Score slot without losing meaningful precision
+// at the score-equality tie-break. 1e6 gives ~6 decimal digits, well
+// under int64 range and finer than pg_trgm's effective resolution.
+const userSearchScoreScale = 1e6
+
 // SearchUsers — GET /v1/users/search?q=...&cursor=...&limit=...
 //
 // OptionalAuth. Returns a page of PublicUser rows matching `q`:
-//   - username prefix > display_name prefix > contains-either (ranked at
-//     the SQL level so cursor pagination stays stable).
+//   - pg_trgm similarity against (username, LOWER(display_name)),
+//     ordered by the leading similarity DESC and (created_at, id) DESC
+//     as a deterministic tie-break.
 //   - Soft-deleted users excluded.
 //   - No follower counts or private fields leak — the username is
 //     inherently public (it's the canonical key for the profile route).
@@ -113,11 +120,10 @@ type publicProfile struct {
 // trimmed, and must be ≥ 2 chars; shorter queries return
 // 400 INVALID_QUERY. Empty `q` returns the same.
 //
-// The opaque cursor carries (rank, created_at, id). Rank lives in the
-// Cursor.Score slot — keyset pagination must order by rank first to
-// keep results stable across the (rank ASC, created_at DESC, id DESC)
-// outer sort. A 2-tuple of (created_at, id) would re-emit rows from
-// earlier rank tiers on page 2+ and skip newer rows in later tiers.
+// The opaque cursor carries (score, created_at, id). Score lives in the
+// Cursor.Score int64 slot scaled by userSearchScoreScale — keyset
+// pagination must order by score first to stay stable across the
+// (score DESC, ts DESC, id DESC) outer sort.
 func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("q"))
 	q, err := domain.SanitizeText("q", raw, false, 100)
@@ -139,7 +145,7 @@ func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	var sc *repository.SearchCursor
 	if c.Score != nil && !c.CreatedAt.IsZero() && c.ID != "" {
 		sc = &repository.SearchCursor{
-			Rank:      int(*c.Score),
+			Score:     float64(*c.Score) / userSearchScoreScale,
 			CreatedAt: c.CreatedAt,
 			ID:        c.ID,
 		}
@@ -150,7 +156,7 @@ func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(row repository.SearchRow) cursor.Cursor {
-		score := int64(row.Rank)
+		score := int64(row.Score * userSearchScoreScale)
 		return cursor.Cursor{
 			Score:     &score,
 			CreatedAt: row.User.CreatedAt,

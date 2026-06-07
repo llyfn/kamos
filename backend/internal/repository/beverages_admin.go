@@ -12,10 +12,11 @@
 // to a specific row by id or honor an `IncludeDeleted` flag so the admin
 // "trash" view can resurface tombstones for restore.
 //
-// FTS uses `websearch_to_tsquery('simple', $1)` to hit the partial GIN
-// indexes. Plain text typed in the admin search box becomes a sensible
-// tsquery (quoted phrases, OR operators) without the admin having to
-// learn ::tsquery syntax.
+// FTS reads the materialized `search_tsv` column (beverage + producer +
+// prefecture names, en/ja/ko) via `websearch_to_tsquery('simple', $1)`,
+// hitting the partial GIN indexes. Plain text typed in the admin search
+// box becomes a sensible tsquery (quoted phrases, OR operators) without
+// the admin having to learn ::tsquery syntax.
 
 package repository
 
@@ -161,12 +162,7 @@ func (r *ProducerRepo) AdminList(ctx context.Context, p AdminProducerListParams)
 	sql := adminProducerSelect + `
 WHERE TRUE
   AND ($1::boolean OR b.deleted_at IS NULL)
-  AND ($2::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ websearch_to_tsquery('simple', $2))
+  AND ($2::text IS NULL OR b.search_tsv @@ websearch_to_tsquery('simple', $2))
   AND ($3::timestamptz IS NULL OR (b.created_at, b.id) < ($3::timestamptz, $4::uuid))
 ORDER BY b.created_at DESC, b.id DESC
 LIMIT $5;`
@@ -557,12 +553,7 @@ func (r *BeverageRepo) AdminList(ctx context.Context, p AdminBeverageListParams)
 	sql := adminBeverageSelect + `
 WHERE TRUE
   AND ($1::boolean OR b.deleted_at IS NULL)
-  AND ($2::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ websearch_to_tsquery('simple', $2))
+  AND ($2::text IS NULL OR b.search_tsv @@ websearch_to_tsquery('simple', $2))
   AND ($3::text IS NULL OR b.producer_id = $3::uuid)
   AND ($4::text IS NULL OR b.category_id = $4::uuid)
   AND ($5::text IS NULL OR b.category_slug = $5)

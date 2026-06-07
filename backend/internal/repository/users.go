@@ -261,55 +261,43 @@ LIMIT 1;`
 	return &u, nil
 }
 
-// SearchCursor carries the three values the SearchUsers keyset needs:
-// the match rank tier, the row created_at, and the row id. The tier is
-// part of the cursor because results are ordered by (rank ASC,
-// created_at DESC, id DESC) and a 2-tuple keyset of just (created_at,
-// id) misorders pages whenever a later page's leading row sits in a
-// later tier than the previous page's trailing row (it would re-emit
-// rows from earlier tiers and skip the new tier's older rows). The
-// handler bundles this into the opaque cursor envelope; clients never
-// see the rank.
+// likeEscaper escapes the three PostgreSQL LIKE metacharacters so
+// callers can use a user-supplied query as a literal substring inside
+// an ILIKE pattern. Used by social.go's q-prefix path (kept here as a
+// package-shared helper).
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// SearchCursor carries the keyset values the SearchUsers cursor needs.
+//
+// pg_trgm similarity orders results by
+// GREATEST(similarity(username, q), similarity(LOWER(display_name), q))
+// DESC, then (created_at, id) DESC as a deterministic tie-break. Score
+// is part of the cursor so the walk continues past rows of equal score
+// instead of duplicating or skipping at score boundaries. The handler
+// stuffs this into the opaque cursor envelope; clients never see it.
 type SearchCursor struct {
-	Rank      int
+	Score     float64
 	CreatedAt time.Time
 	ID        string
 }
 
-// SearchRow pairs the projected user with the rank tier it matched in
-// so the handler can re-emit that rank into the next cursor.
+// SearchRow pairs the projected user with the similarity score that
+// drove its placement so the handler can re-emit it into the next cursor.
 type SearchRow struct {
-	User domain.PublicUser
-	Rank int
+	User  domain.PublicUser
+	Score float64
 }
 
-// likeEscaper escapes the three PostgreSQL LIKE metacharacters so the
-// user-supplied query is interpreted literally. Without this, a query
-// like "a%" matches every username starting with "a"; "_" matches any
-// single character; "\" pairs with the next character. The default
-// LIKE escape is "\", which our patterns rely on.
-var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-
 // SearchUsers returns a page of live users matching `query`, ranked by
-// match quality:
+// pg_trgm similarity against `username` and `LOWER(display_name)`.
+// Indexes used: idx_users_username_trgm and idx_users_display_name_trgm
+// (BitmapOr of the two GINs satisfies the % predicates; the ORDER BY
+// similarity expressions filter the candidate set).
 //
-//	rank 1 — username has the query as a case-insensitive prefix
-//	rank 2 — display_name has the query as a case-insensitive prefix
-//	rank 3 — username OR display_name contains the query
-//
-// Within a rank, results are sorted by (created_at, id) DESC so the
-// keyset cursor stays stable. The handler validates query length;
-// repository assumes a non-empty trimmed string.
-//
-// `cursor` is the SearchCursor from the previously-returned next-page
-// token (nil for the first page). The keyset predicate is
-// (rank > $score OR (rank = $score AND (created_at, id) < ($ts, $id)))
-// so the walk advances through the rank tiers without duplicating or
-// skipping rows at tier boundaries.
-//
-// At KAMOS' current scale (users table is small) the ILIKE scan is
-// fine; a trigram or pg_trgm index can be layered on later if scan
-// time becomes meaningful.
+// Case handling: `users.username` is stored lowercase by schema
+// invariant; pg_trgm is case-sensitive, so the query is lowercased
+// before the comparison and `display_name` is folded with LOWER() in
+// SQL so display-name matches stay locale-insensitive.
 func (r *UserRepo) SearchUsers(
 	ctx context.Context,
 	query string,
@@ -319,58 +307,43 @@ func (r *UserRepo) SearchUsers(
 	if limit <= 0 {
 		limit = 20
 	}
-	// Escape LIKE wildcards in the user-supplied query so `%` and `_`
-	// match literally instead of as metacharacters. Apply this before
-	// building the prefix/contains patterns so only our own surrounding
-	// `%` carries metacharacter meaning.
-	escaped := likeEscaper.Replace(query)
-	prefix := escaped + "%"
-	contains := "%" + escaped + "%"
+	q := strings.ToLower(query)
 
-	// $5/$6/$7 carry the cursor triple; nil means "first page" and the
-	// SQL guard short-circuits the keyset predicate.
 	var (
-		curRank *int
-		curTs   *time.Time
-		curID   *string
+		curScore *float64
+		curTs    *time.Time
+		curID    *string
 	)
 	if cur != nil {
-		curRank = &cur.Rank
+		s := cur.Score
+		curScore = &s
 		ts := cur.CreatedAt
 		curTs = &ts
 		id := cur.ID
 		curID = &id
 	}
-	const q = `
+
+	const sql = `
 SELECT id, username, display_username, display_name, avatar_url, bio,
        locale, privacy_mode, created_at,
-       CASE
-         WHEN username ILIKE $1     THEN 1
-         WHEN display_name ILIKE $1 THEN 2
-         ELSE 3
-       END AS rank
+       GREATEST(similarity(username, $1),
+                COALESCE(similarity(LOWER(display_name), $1), 0)) AS score
 FROM users
 WHERE deleted_at IS NULL
-  AND (username ILIKE $2 OR display_name ILIKE $2)
+  AND (username % $1 OR LOWER(display_name) % $1)
   AND (
-    $4::int IS NULL
-    OR (CASE
-          WHEN username ILIKE $1     THEN 1
-          WHEN display_name ILIKE $1 THEN 2
-          ELSE 3
-        END) > $4::int
-    OR ((CASE
-          WHEN username ILIKE $1     THEN 1
-          WHEN display_name ILIKE $1 THEN 2
-          ELSE 3
-        END) = $4::int
-        AND (created_at, id) < ($5::timestamptz, $6::uuid))
+    $3::float8 IS NULL
+    OR GREATEST(similarity(username, $1),
+                COALESCE(similarity(LOWER(display_name), $1), 0)) < $3::float8
+    OR (GREATEST(similarity(username, $1),
+                 COALESCE(similarity(LOWER(display_name), $1), 0)) = $3::float8
+        AND (created_at, id) < ($4::timestamptz, $5::uuid))
   )
-ORDER BY rank ASC, created_at DESC, id DESC
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q,
-		prefix, contains, limit+1,
-		curRank, curTs, curID,
+ORDER BY score DESC, created_at DESC, id DESC
+LIMIT $2;`
+	rows, err := r.db.Query(ctx, sql,
+		q, limit+1,
+		curScore, curTs, curID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("UserRepo.SearchUsers: %w", err)
@@ -379,13 +352,15 @@ LIMIT $3;`
 	out := make([]SearchRow, 0, limit+1)
 	for rows.Next() {
 		var row SearchRow
+		var score float32
 		if err := rows.Scan(
 			&row.User.ID, &row.User.Username, &row.User.DisplayUsername, &row.User.DisplayName,
 			&row.User.AvatarURL, &row.User.Bio, &row.User.Locale, &row.User.PrivacyMode, &row.User.CreatedAt,
-			&row.Rank,
+			&score,
 		); err != nil {
 			return nil, fmt.Errorf("UserRepo.SearchUsers scan: %w", err)
 		}
+		row.Score = float64(score)
 		out = append(out, row)
 	}
 	return out, rows.Err()

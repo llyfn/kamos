@@ -1,12 +1,10 @@
 //go:build integration
 // +build integration
 
-// Integration coverage for GET /v1/users/search. The previous round
-// shipped the endpoint with no integration tests, then QA caught a
-// keyset-pagination bug that crossed rank tiers incorrectly. This
-// suite locks in the fix plus the surrounding contract — validation,
-// soft-delete filtering, LIKE wildcard escaping, and case-insensitive
-// matching on both username and display_name.
+// Integration coverage for GET /v1/users/search. Covers the
+// pg_trgm-similarity contract: validation, soft-delete filtering,
+// case-insensitive matching on both username and display_name, and
+// similarity-ordered keyset pagination.
 package integration
 
 import (
@@ -219,42 +217,34 @@ func TestSearchUsers_SoftDeletedExcluded(t *testing.T) {
 	}
 }
 
-// TestSearchUsers_PaginationAcrossRankTiers — the regression QA caught.
-// Three users, three rank tiers, three pages of limit=1. The buggy
-// 2-tuple keyset would either skip the rank-3 user or duplicate the
-// rank-1 user; the fix walks all three exactly once in (rank, ts DESC)
-// order.
-func TestSearchUsers_PaginationAcrossRankTiers(t *testing.T) {
+// TestSearchUsers_PaginationBySimilarity — three users with stepped
+// similarities for the query "bobby"; page-by-page keyset must walk
+// all three in descending similarity exactly once.
+func TestSearchUsers_PaginationBySimilarity(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	// Rank 1 (username prefix "bob") with the OLDEST created_at — so
-	// (created_at, id) DESC would visit it last and the old code would
-	// re-emit it on page 2 once the keyset crossed into rank-2 territory.
-	_, bobby := mustRegister(t, srv, "bobby", "bobby@example.com", "password-123")
-	setUserDisplayName(t, bobby, "Bobby Tables")
-	setUserCreatedAt(t, bobby, time.Now().Add(-3*time.Hour))
+	// Exact username match → highest similarity (1.0).
+	_, exact := mustRegister(t, srv, "bobby", "bobby@example.com", "password-123")
+	setUserDisplayName(t, exact, "Exact Bobby")
+	setUserCreatedAt(t, exact, time.Now().Add(-3*time.Hour))
 
-	// Rank 2 (display_name prefix "bob"), middle timestamp. Username
-	// "johnny" so it doesn't hit rank 1.
-	_, johnny := mustRegister(t, srv, "johnny", "johnny@example.com", "password-123")
-	setUserDisplayName(t, johnny, "Bob Johnson")
-	setUserCreatedAt(t, johnny, time.Now().Add(-2*time.Hour))
+	// Closely related username → mid similarity.
+	_, near := mustRegister(t, srv, "bobbyx", "bobbyx@example.com", "password-123")
+	setUserDisplayName(t, near, "Near Bobby")
+	setUserCreatedAt(t, near, time.Now().Add(-2*time.Hour))
 
-	// Rank 3 (contains "bob" in display_name only), newest timestamp.
-	// Username "xyzed" so it doesn't hit rank 1; display_name "Rob Bobson"
-	// matches the contains pattern but not the prefix.
-	_, xyzed := mustRegister(t, srv, "xyzed", "xyzed@example.com", "password-123")
-	setUserDisplayName(t, xyzed, "Rob Bobson")
-	setUserCreatedAt(t, xyzed, time.Now().Add(-1*time.Hour))
+	// display_name match only → lower (still trigram-overlapping).
+	_, displ := mustRegister(t, srv, "tableguy", "tableguy@example.com", "password-123")
+	setUserDisplayName(t, displ, "Bobby Tables")
+	setUserCreatedAt(t, displ, time.Now().Add(-1*time.Hour))
 
-	// Walk three pages, limit=1.
 	seen := map[string]int{}
 	order := []string{}
 	cur := ""
-	for i := 0; i < 5; i++ { // upper bound; we expect to finish in 3.
-		code, page, raw := doSearch(t, srv, "", "bob", cur, 1)
+	for i := 0; i < 5; i++ {
+		code, page, raw := doSearch(t, srv, "", "bobby", cur, 1)
 		if code != http.StatusOK {
 			t.Fatalf("page %d: status=%d body=%s", i, code, raw)
 		}
@@ -274,76 +264,47 @@ func TestSearchUsers_PaginationAcrossRankTiers(t *testing.T) {
 		cur = page.NextCursor
 	}
 
-	// Every user surfaced exactly once.
-	if seen[bobby] != 1 || seen[johnny] != 1 || seen[xyzed] != 1 {
-		t.Errorf("counts: bobby=%d johnny=%d xyzed=%d (each want 1) — order=%v",
-			seen[bobby], seen[johnny], seen[xyzed], order)
+	if seen[exact] != 1 || seen[near] != 1 || seen[displ] != 1 {
+		t.Errorf("counts: exact=%d near=%d displ=%d (each want 1) — order=%v",
+			seen[exact], seen[near], seen[displ], order)
 	}
-
-	// Rank order: bobby (rank 1) → johnny (rank 2) → xyzed (rank 3).
-	want := []string{bobby, johnny, xyzed}
 	if len(order) != 3 {
 		t.Fatalf("emitted %d rows, want 3 — order=%v", len(order), order)
 	}
-	for i, id := range want {
-		if order[i] != id {
-			t.Errorf("position %d: got %s want %s — full order=%v", i, order[i], id, order)
-		}
+	// Exact match dominates; tableguy (display-name match) must come
+	// after the username matches because GREATEST() picks the username
+	// score path for exact + near.
+	if order[0] != exact {
+		t.Errorf("position 0: got %s want exact=%s (full=%v)", order[0], exact, order)
+	}
+	if order[2] != displ {
+		t.Errorf("position 2: got %s want displ=%s (full=%v)", order[2], displ, order)
 	}
 }
 
-// TestSearchUsers_LikeWildcardEscape — `%` and `_` are literal in the
-// query, not wildcards. Without escaping, q="a%" matches every user
-// whose username starts with "a"; with escaping it matches only users
-// whose username literally contains "a%".
-func TestSearchUsers_LikeWildcardEscape(t *testing.T) {
+// TestSearchUsers_TypoTolerance — a single-character typo still hits
+// the target via pg_trgm similarity (the previous ILIKE contract
+// would have returned zero results here).
+func TestSearchUsers_TypoTolerance(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	_, alice := mustRegister(t, srv, "alice", "alice@example.com", "password-123")
-	_, _ = mustRegister(t, srv, "bob", "bob@example.com", "password-123")
+	_, target := mustRegister(t, srv, "dassai", "dassai@example.com", "password-123")
+	setUserDisplayName(t, target, "Dassai User")
 
-	// Sanity check: bare "a" prefix would hit alice (and possibly anyone
-	// starting with 'a'); we don't assert on this. The point of this
-	// test is that "a%" should NOT match alice because alice's username
-	// has no literal "%" in it.
-	code, page, raw := doSearch(t, srv, "", "a%", "", 0)
+	code, page, raw := doSearch(t, srv, "", "dasai", "", 0)
 	if code != http.StatusOK {
-		t.Fatalf("search a%%: %d body=%s", code, raw)
+		t.Fatalf("typo search: %d body=%s", code, raw)
 	}
+	found := false
 	for _, it := range page.Items {
-		if it.ID == alice {
-			t.Errorf("alice surfaced for q=%q — %% was treated as wildcard. body=%s", "a%", raw)
-		}
-	}
-
-	// Underscore is also a SQL LIKE wildcard ("any single char"). Same
-	// test: "ali_e" must not match "alice".
-	code, page, raw = doSearch(t, srv, "", "ali_e", "", 0)
-	if code != http.StatusOK {
-		t.Fatalf("search ali_e: %d body=%s", code, raw)
-	}
-	for _, it := range page.Items {
-		if it.ID == alice {
-			t.Errorf("alice surfaced for q=%q — _ was treated as wildcard. body=%s", "ali_e", raw)
-		}
-	}
-
-	// Positive control: searching the literal "alice" still works
-	// (confirms the escape doesn't break ordinary substring matches).
-	code, page, raw = doSearch(t, srv, "", "alice", "", 0)
-	if code != http.StatusOK {
-		t.Fatalf("search alice: %d body=%s", code, raw)
-	}
-	hit := false
-	for _, it := range page.Items {
-		if it.ID == alice {
-			hit = true
+		if it.ID == target {
+			found = true
 			break
 		}
 	}
-	if !hit {
-		t.Errorf("alice missing from positive-control search: body=%s", raw)
+	if !found {
+		t.Errorf("dassai missing from typo q=dasai: body=%s", raw)
 	}
 }
