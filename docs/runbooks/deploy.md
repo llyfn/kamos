@@ -96,6 +96,15 @@ off the private network. Apply any new migration with the tunnel command
 above **before merging** the schema change. Append-only + idempotent means
 a deploy that lands before/after the migration is safe either way.
 
+Migration **003** (wider search indexes) is heavy on first apply: the
+backfill `UPDATE` on `producers` and `beverages` briefly takes row locks on
+the entire catalog, and the GIN index builds in `003a` are
+`CREATE INDEX CONCURRENTLY` (safe to run against live traffic but they
+take several minutes on a populated DB). Allow extra time, watch
+`flyctl logs -a kamos` for elevated query latency during the backfill
+window, and apply `003` and `003a` in order (003a depends on the columns +
+data 003 writes).
+
 ```sh
 flyctl secrets set -a kamos \
   APP_ENV=production \

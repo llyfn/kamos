@@ -253,6 +253,28 @@ Slice C of the post-MVP polish batch promotes `beverages.subcategory_i18n` (free
 
 Soft-deleted beverages are skipped (the backfill is for live data only; admin recuration handles trash rows). Beverages whose `subcategory_i18n` is NULL or has no en key get no link — the new column is nullable.
 
+### 9e. Search materialization (003)
+
+Migration 003 promotes the inline `to_tsvector(coalesce(name_i18n->>'en','')||' '||…)` expression — previously recomputed on every search query and indexed as a functional GIN — to a materialized `search_tsv tsvector` column on both `beverages` and `producers`. The vector now spans the entity's own multi-locale name **plus its producer's name (for beverages) plus the prefecture's localized name**. This is what the Discover placeholder (`Search producers, beverages, prefectures`) has always promised; the implementation finally catches up.
+
+**Why materialize.** The MVP `idx_beverages_name_tsv` (functional GIN on the en+ja+ko name concatenation) only covered beverage names. Extending it to also include producer + prefecture inline would mean a multi-JOIN expression inside the index definition, which Postgres cannot index directly (functional GIN inputs must be single-row expressions). A materialized column sidesteps the limitation, and pairing it with a `pg_trgm` GIN on the cast-to-text projection of the vector gives free typo tolerance via `similarity()` / `%`.
+
+**Maintenance contract.** Two helper functions — `kamos_compute_beverage_search_tsv(uuid)` and `kamos_compute_producer_search_tsv(uuid)` — recompute one row's vector from current data. Three triggers call them:
+
+| Source mutation | Effect |
+|---|---|
+| INSERT / UPDATE OF `name_i18n` or `producer_id` on `beverages` | Recompute that beverage's `search_tsv`. |
+| INSERT / UPDATE OF `name_i18n` or `prefecture_id` on `producers` | Recompute that producer's `search_tsv` AND every beverage row with the matching `producer_id`. |
+| UPDATE OF `name_i18n` on `prefectures` | Recompute every producer with the matching `prefecture_id` AND every beverage transitively under those producers. |
+
+The beverage helper LEFT JOINs producer + prefecture, so a missing producer or missing prefecture degrades gracefully to a vector covering just the beverage's own name (instead of failing the write). Prefecture renames are expensive (full sweep of dependent producers + beverages), but prefectures are seed-only — the 47 reference rows do not change in production.
+
+`search_tsv` is intentionally nullable (no `NOT NULL` constraint): a row inserted by a path that somehow bypassed the trigger still succeeds, and the next `search_tsv IS NULL` row simply doesn't match search queries — a bad data row never crashes an INSERT. The triggers cover every normal mutation path.
+
+The two pre-existing functional GIN indexes (`idx_beverages_name_tsv`, `idx_producers_name_tsv`) are dropped in the companion file `003a_search_indexes_concurrent.sql`. `idx_beverages_name_gin` (JSONB `jsonb_path_ops`) is preserved — it serves a different query path (containment lookup, not FTS).
+
+**User search.** SPEC user-search shifts from `ILIKE '%q%'` (sequential scan or LIKE-prefix index, untolerant) to indexed `username % $1 OR display_name % $1` via two `pg_trgm` GIN indexes on `users.username` and `users.display_name`. Min-2-char rule, case-insensitive matching, and `deleted_at IS NULL` filter are all preserved at the query layer.
+
 ### 10. UUID, not bigint, primary keys
 
 `pgcrypto.gen_random_uuid()` everywhere. Trade-offs:
@@ -272,8 +294,8 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `users` | Accounts. | `deleted_at` + `username_release_at` | Lowercase username regex, en/ja/ko locale, public/private privacy, at least one auth method present. |
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
-| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL`: admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. |
-| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. `subcategory_id UUID NULL` FK → `beverage_subcategories(id) ON DELETE SET NULL`: source of truth for the beverage's subcategory. Partial index `beverages_subcategory_id_idx (subcategory_id) WHERE deleted_at IS NULL` drives catalog "filter by subcategory" queries. The legacy free-text `subcategory_i18n JSONB` column stays for one release window of dual-source rendering and is dropped in a follow-up migration. |
+| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL`: admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. `search_tsv tsvector NULL` (003): materialized FTS vector over the producer's own en/ja/ko name plus its prefecture's en/ja/ko name; maintained by `trg_producers_search_tsv` (self) and `trg_prefectures_search_tsv` (prefecture renames sweep dependent producers). Indexed by `idx_producers_search_tsv` (GIN) and `idx_producers_search_trgm` (pg_trgm). |
+| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. `subcategory_id UUID NULL` FK → `beverage_subcategories(id) ON DELETE SET NULL`: source of truth for the beverage's subcategory. Partial index `beverages_subcategory_id_idx (subcategory_id) WHERE deleted_at IS NULL` drives catalog "filter by subcategory" queries. The legacy free-text `subcategory_i18n JSONB` column stays for one release window of dual-source rendering and is dropped in a follow-up migration. `search_tsv tsvector NULL` (003): materialized FTS vector over the beverage's own en/ja/ko name plus its producer's en/ja/ko name plus the producer's prefecture's en/ja/ko name; maintained by `trg_beverages_search_tsv` (self) and the producer + prefecture triggers (cascade through producer_id). Indexed by `idx_beverages_search_tsv` (GIN) and `idx_beverages_search_trgm` (pg_trgm). |
 | `beverage_subcategories` | Subcategory taxonomy. | `deleted_at` (admin soft-delete) | One row per (category, slug); UNIQUE `(category_id, slug)` so the same bare slug can repeat across categories (we keep "Other" per-category via `nihonshu_other` / `shochu_other` / `liqueur_other`, but the scope honors the FK boundary). `name_i18n` requires non-empty en + ja + ko (CHECK). Slug format `^[a-z0-9_]{1,64}$`. `category_slug` denormalized + synced from `beverage_categories.slug` via `sync_beverage_subcategory_category_slug` trigger (same shape as `sync_beverage_category_slug` on beverages). `sort_order SMALLINT` for stable display (seeds at 10/20/.../990; backfill-created rows at 500). FK `category_id` is `ON DELETE RESTRICT` — subcategories cannot orphan. Admin "delete" is soft-delete (`deleted_at = NOW()`); the application blocks soft-delete if any live beverage still references the row. |
 | `regions` | Japan's 8 traditional regions (seed). | — | `name_i18n` requires en+ja+ko. 8 seeded rows (016). |
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
@@ -326,6 +348,7 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `regions` / `prefectures` (i18n reference) | §2.3 (producer prefecture display); 016 |
 | `producers.prefecture_id` FK (replaces free-text) | §2.3; 016 + 017 |
 | `beverage_subcategories` table + `beverages.subcategory_id` FK (005, Slice C) | §2.2 (subcategory under category); brief 04 |
+| `beverages.search_tsv` + `producers.search_tsv` + `pg_trgm` user indexes (003) | §7 (wider search: beverage name, producer name, prefecture; user search with typo tolerance) |
 
 ---
 
@@ -356,7 +379,11 @@ Every CHECK constraint and column traces to a SPEC clause:
 ```bash
 psql "$DATABASE_URL" -f migrations/001_initial.sql
 psql "$DATABASE_URL" -f migrations/002_seeding.sql
+psql "$DATABASE_URL" -f migrations/003_search_indexes.sql
+psql "$DATABASE_URL" -f migrations/003a_search_indexes_concurrent.sql
 ```
+
+> Migration 003 carries the transactional pieces (column adds, helper functions, triggers, full-table backfill). 003a carries the bare-statement `CREATE INDEX CONCURRENTLY` + `DROP INDEX` swap — `CONCURRENTLY` cannot run inside a transaction, so it is in a separate file with no `BEGIN/COMMIT`. Apply 003 then 003a, in that order.
 
 ### Verifying
 
