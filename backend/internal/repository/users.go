@@ -267,37 +267,67 @@ LIMIT 1;`
 // package-shared helper).
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
-// SearchCursor carries the keyset values the SearchUsers cursor needs.
+// bigmLikeArg lowers + LIKE-escapes a caller-supplied search string for
+// the bigm `search_text LIKE '%' || $N || '%'` pattern. nil pointer
+// returns nil so the SQL guard ($N::text IS NULL) keeps acting as a
+// wildcard.
 //
-// pg_trgm similarity orders results by
-// GREATEST(similarity(username, q), similarity(LOWER(display_name), q))
-// DESC, then (created_at, id) DESC as a deterministic tie-break. Score
-// is part of the cursor so the walk continues past rows of equal score
-// instead of duplicating or skipping at score boundaries. The handler
-// stuffs this into the opaque cursor envelope; clients never see it.
+// WHY this lives at the repo layer: domain.SanitizeText only filters
+// control + bidi codepoints; the three LIKE metacharacters (`\`, `%`,
+// `_`) would otherwise turn a query of `%` into a match-all pattern.
+func bigmLikeArg(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	v := likeEscaper.Replace(strings.ToLower(*s))
+	return &v
+}
+
+// SearchCursor packs the user-search keyset: (tier, length, created_at, id).
+// Order within a tier is (length ASC, created_at DESC, id DESC).
 type SearchCursor struct {
-	Score     float64
-	CreatedAt time.Time
-	ID        string
+	MatchTier  int
+	NameLength int
+	CreatedAt  time.Time
+	ID         string
 }
 
-// SearchRow pairs the projected user with the similarity score that
-// drove its placement so the handler can re-emit it into the next cursor.
+// SearchRow pairs the projected user with the rank values that drove its
+// placement so the handler can re-emit them into the next cursor.
 type SearchRow struct {
-	User  domain.PublicUser
-	Score float64
+	User       domain.PublicUser
+	MatchTier  int
+	NameLength int
 }
 
-// SearchUsers returns a page of live users matching `query`, ranked by
-// pg_trgm similarity against `username` and `LOWER(display_name)`.
-// Indexes used: idx_users_username_trgm and idx_users_display_name_trgm
-// (BitmapOr of the two GINs satisfies the % predicates; the ORDER BY
-// similarity expressions filter the candidate set).
+// SearchUsers returns a page of live users matching `query`, ranked into
+// three tiers and ordered (tier ASC, length ASC, created_at DESC, id DESC).
 //
-// Case handling: `users.username` is stored lowercase by schema
-// invariant; pg_trgm is case-sensitive, so the query is lowercased
-// before the comparison and `display_name` is folded with LOWER() in
-// SQL so display-name matches stay locale-insensitive.
+// Tiers:
+//   - 0 exact: lower(username) = lower(q)
+//   - 1 prefix: username or lower(display_name) starts with lower(q)
+//   - 2 substring: bigm substring match
+//
+// Indexes used: idx_users_username_bigm + idx_users_display_name_bigm
+// via BitmapOr of the two GINs.
+//
+// WHY lower(u.username) on the left of the comparison even though
+// usernames are stored lowercase per SPEC §3.2: defensive against future
+// column drift; the planner folds the constant for free on a known-
+// lowercase column.
+//
+// WHY two bound params for the query string: $1 carries the raw lowered
+// query for the tier-0 equality compare, $3 carries the LIKE-escaped
+// form so a query of `%` cannot turn the substring predicate into a
+// match-all pattern. domain.SanitizeText filters control + bidi
+// codepoints only; LIKE metacharacters escape lives at the repo layer.
+//
+// WHY the keyset predicate is OR-chained rather than a tuple comparator:
+// Postgres row-constructor `>` requires a single direction across the
+// tuple; tier+length are ASC while created_at+id are DESC. The CASE
+// expression is duplicated at each rung so the planner sees a stable
+// derived tier value — matches the canonical shape in
+// docs/db/query_patterns.md §11b.
 func (r *UserRepo) SearchUsers(
 	ctx context.Context,
 	query string,
@@ -308,15 +338,19 @@ func (r *UserRepo) SearchUsers(
 		limit = 20
 	}
 	q := strings.ToLower(query)
+	qLike := likeEscaper.Replace(q)
 
 	var (
-		curScore *float64
-		curTs    *time.Time
-		curID    *string
+		curTier   *int
+		curLength *int
+		curTs     *time.Time
+		curID     *string
 	)
 	if cur != nil {
-		s := cur.Score
-		curScore = &s
+		t := cur.MatchTier
+		curTier = &t
+		l := cur.NameLength
+		curLength = &l
 		ts := cur.CreatedAt
 		curTs = &ts
 		id := cur.ID
@@ -324,26 +358,56 @@ func (r *UserRepo) SearchUsers(
 	}
 
 	const sql = `
-SELECT id, username, display_username, display_name, avatar_url, bio,
-       locale, privacy_mode, created_at,
-       GREATEST(similarity(username, $1),
-                COALESCE(similarity(LOWER(display_name), $1), 0)) AS score
-FROM users
-WHERE deleted_at IS NULL
-  AND (username % $1 OR LOWER(display_name) % $1)
-  AND (
-    $3::float8 IS NULL
-    OR GREATEST(similarity(username, $1),
-                COALESCE(similarity(LOWER(display_name), $1), 0)) < $3::float8
-    OR (GREATEST(similarity(username, $1),
-                 COALESCE(similarity(LOWER(display_name), $1), 0)) = $3::float8
-        AND (created_at, id) < ($4::timestamptz, $5::uuid))
-  )
-ORDER BY score DESC, created_at DESC, id DESC
+SELECT u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.bio,
+       u.locale, u.privacy_mode, u.created_at,
+       CASE
+         WHEN lower(u.username) = $1                              THEN 0
+         WHEN lower(u.username) LIKE $3 || '%'
+           OR lower(u.display_name) LIKE $3 || '%'                THEN 1
+         ELSE 2
+       END AS match_tier,
+       char_length(u.username) AS name_length
+FROM users u
+WHERE u.deleted_at IS NULL
+  AND (u.username LIKE '%' || $3 || '%'
+       OR lower(u.display_name) LIKE '%' || $3 || '%')
+  AND ($4::int IS NULL OR (
+    CASE
+      WHEN lower(u.username) = $1 THEN 0
+      WHEN lower(u.username) LIKE $3 || '%'
+        OR lower(u.display_name) LIKE $3 || '%' THEN 1
+      ELSE 2
+    END > $4
+    OR (CASE
+          WHEN lower(u.username) = $1 THEN 0
+          WHEN lower(u.username) LIKE $3 || '%'
+            OR lower(u.display_name) LIKE $3 || '%' THEN 1
+          ELSE 2
+        END = $4
+        AND char_length(u.username) > $5)
+    OR (CASE
+          WHEN lower(u.username) = $1 THEN 0
+          WHEN lower(u.username) LIKE $3 || '%'
+            OR lower(u.display_name) LIKE $3 || '%' THEN 1
+          ELSE 2
+        END = $4
+        AND char_length(u.username) = $5
+        AND u.created_at < $6)
+    OR (CASE
+          WHEN lower(u.username) = $1 THEN 0
+          WHEN lower(u.username) LIKE $3 || '%'
+            OR lower(u.display_name) LIKE $3 || '%' THEN 1
+          ELSE 2
+        END = $4
+        AND char_length(u.username) = $5
+        AND u.created_at = $6
+        AND u.id < $7::uuid)
+  ))
+ORDER BY match_tier ASC, char_length(u.username) ASC, u.created_at DESC, u.id DESC
 LIMIT $2;`
 	rows, err := r.db.Query(ctx, sql,
-		q, limit+1,
-		curScore, curTs, curID,
+		q, limit+1, qLike,
+		curTier, curLength, curTs, curID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("UserRepo.SearchUsers: %w", err)
@@ -352,15 +416,13 @@ LIMIT $2;`
 	out := make([]SearchRow, 0, limit+1)
 	for rows.Next() {
 		var row SearchRow
-		var score float32
 		if err := rows.Scan(
 			&row.User.ID, &row.User.Username, &row.User.DisplayUsername, &row.User.DisplayName,
 			&row.User.AvatarURL, &row.User.Bio, &row.User.Locale, &row.User.PrivacyMode, &row.User.CreatedAt,
-			&score,
+			&row.MatchTier, &row.NameLength,
 		); err != nil {
 			return nil, fmt.Errorf("UserRepo.SearchUsers scan: %w", err)
 		}
-		row.Score = float64(score)
 		out = append(out, row)
 	}
 	return out, rows.Err()

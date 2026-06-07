@@ -1,13 +1,16 @@
 //go:build integration
 // +build integration
 
-// Integration coverage for the wider-search backend slice (migration
-// 003). Verifies:
-//   - GET /v1/beverages?q= matches producer names and prefecture names.
-//   - GET /v1/search?q= mirrors the same expansion across beverage and
-//     producer branches.
-//   - Misspelled queries hit the pg_trgm fallback.
-//   - The maintenance triggers refresh dependent beverage search_tsv
+// Integration coverage for the bigm-backed search slice (migration 004).
+// Verifies:
+//   - GET /v1/beverages?q= matches beverage, producer, and prefecture
+//     names (the wider-vector capability the 003 slice introduced is
+//     preserved end-to-end).
+//   - GET /v1/search?q= mirrors the same expansion on the producer branch.
+//   - CJK substring queries (Korean + Japanese) hit the bigm index for
+//     short, intra-token matches that FTS cannot segment.
+//   - Soft-deleted rows stay out of results.
+//   - The maintenance triggers re-sweep dependent beverage search_text
 //     rows when a producer is renamed.
 
 package integration
@@ -46,12 +49,29 @@ func doBeverageSearch(t *testing.T, srv *httptest.Server, q string) (int, bevSea
 	return code, page, raw
 }
 
-// seedNamedProducerBeverage inserts one producer with the given names
-// + prefecture slug and one beverage attached to it. Returns
-// (producerID, beverageID).
+// seedNamedProducerBeverage inserts one producer + one attached beverage,
+// reusing the supplied EN string across all three locales for the simple
+// cases. Returns (producerID, beverageID).
 func seedNamedProducerBeverage(
 	t *testing.T,
 	producerEN, beverageEN, prefectureSlug string,
+) (string, string) {
+	t.Helper()
+	return seedNamedProducerBeverageI18n(t,
+		producerEN, producerEN, producerEN,
+		beverageEN, beverageEN, beverageEN,
+		prefectureSlug,
+	)
+}
+
+// seedNamedProducerBeverageI18n accepts distinct en/ja/ko names. Used by
+// the CJK substring tests where the JA + KO strings carry the codepoints
+// being searched.
+func seedNamedProducerBeverageI18n(
+	t *testing.T,
+	producerEN, producerJA, producerKO string,
+	beverageEN, beverageJA, beverageKO string,
+	prefectureSlug string,
 ) (string, string) {
 	t.Helper()
 	p := getPool(t)
@@ -74,10 +94,10 @@ func seedNamedProducerBeverage(
 	}
 
 	producerJSON, _ := json.Marshal(map[string]string{
-		"en": producerEN, "ja": producerEN, "ko": producerEN,
+		"en": producerEN, "ja": producerJA, "ko": producerKO,
 	})
 	beverageJSON, _ := json.Marshal(map[string]string{
-		"en": beverageEN, "ja": beverageEN, "ko": beverageEN,
+		"en": beverageEN, "ja": beverageJA, "ko": beverageKO,
 	})
 
 	var producerID string
@@ -153,24 +173,23 @@ func TestBeverages_QHitsPrefectureName(t *testing.T) {
 	}
 }
 
-// TestBeverages_FuzzyFallback — a misspelled query that misses FTS
-// falls back to trigram. WHY shorter names: search_tsv concatenates
-// name + producer + prefecture across en/ja/ko, so similarity() is
-// diluted by haystack length. The fallback works reliably when the
-// query is a meaningful share of the full text, which is the realistic
-// "did you mean" scenario.
-func TestBeverages_FuzzyFallback(t *testing.T) {
+// TestBeverages_KoreanCJKSubstring — `사이` (2-char CJK substring) finds
+// `닷사이 39` even though `사이` sits inside an unwhite-spaced Korean
+// token. FTS could not segment this; bigm can.
+func TestBeverages_KoreanCJKSubstring(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	_, bevID := seedNamedProducerBeverage(t, "Dassai", "Dassai", "")
+	_, bevID := seedNamedProducerBeverageI18n(t,
+		"Asahi Shuzo", "旭酒造", "아사히 슈조",
+		"Dassai 39", "獺祭50", "닷사이 39",
+		"yamaguchi",
+	)
 
-	// "Dasai" misspells "Dassai" — websearch_to_tsquery won't find it
-	// (the lexeme differs), so the fallback must kick in.
-	code, page, raw := doBeverageSearch(t, srv, "Dasai")
+	code, page, raw := doBeverageSearch(t, srv, "사이")
 	if code != http.StatusOK {
-		t.Fatalf("fuzzy search: %d body=%s", code, raw)
+		t.Fatalf("search: %d body=%s", code, raw)
 	}
 	found := false
 	for _, it := range page.Items {
@@ -180,18 +199,98 @@ func TestBeverages_FuzzyFallback(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("beverage missing from fuzzy q=Dasai (want %s): body=%s", bevID, raw)
-	}
-	if page.HasMore {
-		t.Errorf("fuzzy fallback returned has_more=true; expected one-shot: body=%s", raw)
-	}
-	if page.NextCursor != "" {
-		t.Errorf("fuzzy fallback returned next_cursor=%q; expected empty", page.NextCursor)
+		t.Errorf("beverage %s missing for CJK substring q=사이: body=%s", bevID, raw)
 	}
 }
 
-// TestBeverages_SoftDeletedExcluded — soft-deleted beverages stay
-// out of search results.
+// TestBeverages_JapaneseCJKSubstring — `祭` (1-char Japanese substring)
+// finds `獺祭50` within an unwhite-spaced Japanese token.
+func TestBeverages_JapaneseCJKSubstring(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	_, bevID := seedNamedProducerBeverageI18n(t,
+		"Asahi Shuzo", "旭酒造", "아사히 슈조",
+		"Dassai 50", "獺祭50", "닷사이 50",
+		"yamaguchi",
+	)
+
+	code, page, raw := doBeverageSearch(t, srv, "祭")
+	if code != http.StatusOK {
+		t.Fatalf("search: %d body=%s", code, raw)
+	}
+	found := false
+	for _, it := range page.Items {
+		if it.ID == bevID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("beverage %s missing for Japanese substring q=祭: body=%s", bevID, raw)
+	}
+}
+
+// TestSearch_ProducerCJKSubstring — /v1/search?type=producer with `富士`
+// (cross-token Japanese substring) finds producers whose name contains
+// the substring, and excludes unrelated rows.
+func TestSearch_ProducerCJKSubstring(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	producerID, _ := seedNamedProducerBeverageI18n(t,
+		"Fujimi Brewery", "富士見酒造", "후지미 슈조",
+		"House Sake", "House Sake", "House Sake",
+		"shizuoka",
+	)
+	otherID, _ := seedNamedProducerBeverageI18n(t,
+		"Unrelated Brewery", "無関係酒造", "무관계 슈조",
+		"Some Sake", "Some Sake", "Some Sake",
+		"hokkaido",
+	)
+
+	v := url.Values{}
+	v.Set("q", "富士")
+	v.Set("type", "producer")
+	code, raw := doReq(t, srv, http.MethodGet, "/v1/search?"+v.Encode(), "", nil)
+	if code != http.StatusOK {
+		t.Fatalf("search producers: %d body=%s", code, raw)
+	}
+	var page struct {
+		Items []struct {
+			Type     string `json:"type"`
+			Producer struct {
+				ID string `json:"id"`
+			} `json:"producer"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(raw, &page); err != nil {
+		t.Fatalf("decode: %v body=%s", err, raw)
+	}
+	gotTarget, gotOther := false, false
+	for _, it := range page.Items {
+		if it.Type != "producer" {
+			continue
+		}
+		if it.Producer.ID == producerID {
+			gotTarget = true
+		}
+		if it.Producer.ID == otherID {
+			gotOther = true
+		}
+	}
+	if !gotTarget {
+		t.Errorf("producer %s missing for /v1/search?type=producer q=富士: body=%s", producerID, raw)
+	}
+	if gotOther {
+		t.Errorf("unrelated producer %s surfaced for q=富士: body=%s", otherID, raw)
+	}
+}
+
+// TestBeverages_SoftDeletedExcluded — soft-deleted beverages stay out
+// of search results.
 func TestBeverages_SoftDeletedExcluded(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -225,7 +324,7 @@ func TestBeverages_SoftDeletedExcluded(t *testing.T) {
 }
 
 // TestBeverages_ProducerRenameSweep — renaming a producer must
-// re-sweep dependent beverages' search_tsv (003 trigger contract).
+// re-sweep dependent beverages' search_text via the maintenance trigger.
 func TestBeverages_ProducerRenameSweep(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
@@ -233,13 +332,11 @@ func TestBeverages_ProducerRenameSweep(t *testing.T) {
 
 	producerID, bevID := seedNamedProducerBeverage(t, "OldName Brewery", "Plain Sake", "yamaguchi")
 
-	// Sanity: pre-rename, searching the old name finds the beverage.
 	code, page, raw := doBeverageSearch(t, srv, "OldName")
 	if code != http.StatusOK || len(page.Items) == 0 {
 		t.Fatalf("pre-rename: expected hit, body=%s", raw)
 	}
 
-	// Rename the producer; trigger sweeps the beverage row.
 	p := getPool(t)
 	newJSON, _ := json.Marshal(map[string]string{
 		"en": "RenamedBrewery", "ja": "RenamedBrewery", "ko": "RenamedBrewery",
@@ -266,9 +363,32 @@ func TestBeverages_ProducerRenameSweep(t *testing.T) {
 	}
 }
 
+// TestBeverages_LikeMetacharEscaped — a query of `%` or `_` must NOT
+// match every row. The repo escapes LIKE metachars before binding so
+// user-supplied wildcards stay literal substrings.
+func TestBeverages_LikeMetacharEscaped(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	_, _ = seedNamedProducerBeverage(t, "Asahi Shuzo", "Junmai Daiginjo", "yamaguchi")
+	_, _ = seedNamedProducerBeverage(t, "Other Brewery", "Some Other Sake", "hokkaido")
+
+	for _, q := range []string{"%", "_", "%%"} {
+		code, page, raw := doBeverageSearch(t, srv, q)
+		if code != http.StatusOK {
+			t.Fatalf("q=%q: status=%d body=%s", q, code, raw)
+		}
+		if len(page.Items) != 0 {
+			t.Errorf("q=%q: got %d items, want 0 (metachars must not match-all): body=%s",
+				q, len(page.Items), raw)
+		}
+	}
+}
+
 // TestSearch_ProducerBranch — /v1/search?type=producer matches a
-// producer by prefecture-name token (the FTS expansion picks up the
-// joined prefecture).
+// producer by prefecture-name token (the bigm-backed search_text picks
+// up the joined prefecture name).
 func TestSearch_ProducerBranch(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)

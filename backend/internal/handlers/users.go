@@ -100,18 +100,12 @@ type publicProfile struct {
 	Restricted  bool             `json:"restricted"`             // private + caller not approved
 }
 
-// userSearchScoreScale packs the pg_trgm float similarity (0.0–1.0)
-// into the int64 Cursor.Score slot without losing meaningful precision
-// at the score-equality tie-break. 1e6 gives ~6 decimal digits, well
-// under int64 range and finer than pg_trgm's effective resolution.
-const userSearchScoreScale = 1e6
-
 // SearchUsers — GET /v1/users/search?q=...&cursor=...&limit=...
 //
 // OptionalAuth. Returns a page of PublicUser rows matching `q`:
-//   - pg_trgm similarity against (username, LOWER(display_name)),
-//     ordered by the leading similarity DESC and (created_at, id) DESC
-//     as a deterministic tie-break.
+//   - Three-tier ranking on bigm-backed substring (exact / prefix /
+//     substring), then char_length(username) ASC, then (created_at,
+//     id) DESC.
 //   - Soft-deleted users excluded.
 //   - No follower counts or private fields leak — the username is
 //     inherently public (it's the canonical key for the profile route).
@@ -120,10 +114,9 @@ const userSearchScoreScale = 1e6
 // trimmed, and must be ≥ 2 chars; shorter queries return
 // 400 INVALID_QUERY. Empty `q` returns the same.
 //
-// The opaque cursor carries (score, created_at, id). Score lives in the
-// Cursor.Score int64 slot scaled by userSearchScoreScale — keyset
-// pagination must order by score first to stay stable across the
-// (score DESC, ts DESC, id DESC) outer sort.
+// The opaque cursor carries (match_tier, name_length, created_at, id).
+// Older cursors that lack the tier/length keys decode to nil and the
+// page restarts from the first tier.
 func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("q"))
 	q, err := domain.SanitizeText("q", raw, false, 100)
@@ -143,11 +136,12 @@ func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var sc *repository.SearchCursor
-	if c.Score != nil && !c.CreatedAt.IsZero() && c.ID != "" {
+	if c.MatchTier != nil && c.NameLength != nil && !c.CreatedAt.IsZero() && c.ID != "" {
 		sc = &repository.SearchCursor{
-			Score:     float64(*c.Score) / userSearchScoreScale,
-			CreatedAt: c.CreatedAt,
-			ID:        c.ID,
+			MatchTier:  *c.MatchTier,
+			NameLength: *c.NameLength,
+			CreatedAt:  c.CreatedAt,
+			ID:         c.ID,
 		}
 	}
 	rows, err := h.Repos.Users.SearchUsers(r.Context(), q, sc, limit)
@@ -156,11 +150,13 @@ func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items, next, hasMore := cursor.SliceAndCursor(rows, limit, func(row repository.SearchRow) cursor.Cursor {
-		score := int64(row.Score * userSearchScoreScale)
+		tier := row.MatchTier
+		length := row.NameLength
 		return cursor.Cursor{
-			Score:     &score,
-			CreatedAt: row.User.CreatedAt,
-			ID:        row.User.ID,
+			MatchTier:  &tier,
+			NameLength: &length,
+			CreatedAt:  row.User.CreatedAt,
+			ID:         row.User.ID,
 		}
 	})
 	users := make([]domain.PublicUser, 0, len(items))
