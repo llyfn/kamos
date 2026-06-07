@@ -23,6 +23,7 @@ admin/                        React admin web client
 design/                       Design system (tokens, kit)
 docs/                         Long-form docs (db/, history/, runbooks)
 scripts/                      Operational scripts (smoke, e2e)
+db/                           Custom Postgres image (flyio/postgres-flex:18 + pg_bigm). Hosted Fly Postgres runs this image; build + rollout per `docs/runbooks/deploy.md §1a`.
 docker-compose.yml            Postgres + API for local dev
 Makefile                      One-line dev tasks
 ```

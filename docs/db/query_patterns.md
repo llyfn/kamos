@@ -547,30 +547,111 @@ Uses `idx_check_ins_beverage_created`.
 
 ## 11. Search beverages
 
-**Endpoint**: `GET /search?q=&category=&cursor=`.
+**Endpoint**: `GET /search?q=&category=&cursor=`, `GET /v1/beverages?q=…`.
 **SPEC**: §7.
 
-Cross-locale lexeme matching via the GIN tsvector index. Cursor is `(checkins, id)` for relevance proxy, or `(avg_rating, id)` for top-rated. For MVP we use a single ordering: `ts_rank` desc, then `check_in_count` desc as a popularity tiebreak.
+Substring match against the materialized `search_text` column (003) — covers beverage name + producer name + prefecture name in en/ja/ko, pre-lowercased on write. `idx_beverages_search_bigm` (GIN with `gin_bigm_ops`) serves the `LIKE '%…%'` pattern; the bigm operator class accelerates 2-gram lookups so CJK substring queries like `祭` against `獺祭50` hit the index instead of seq-scanning.
 
 ```sql
 SELECT b.id, b.name_i18n, b.category_slug, b.avg_rating, b.check_in_count,
        br.name_i18n AS producer_name_i18n
 FROM beverages b
 JOIN producers br ON br.id = b.producer_id
-WHERE
-  ($1::text IS NULL OR
-   to_tsvector('simple',
-     coalesce(b.name_i18n->>'en','') || ' ' ||
-     coalesce(b.name_i18n->>'ja','') || ' ' ||
-     coalesce(b.name_i18n->>'ko','')
-   ) @@ plainto_tsquery('simple', $1))
+WHERE b.deleted_at IS NULL
+  AND ($1::text IS NULL OR b.search_text LIKE '%' || lower($1) || '%')
   AND ($2::text IS NULL OR b.category_slug = $2)
   AND ($3::int IS NULL OR (b.check_in_count, b.id::text) < ($3, $4))
 ORDER BY b.check_in_count DESC, b.id DESC
 LIMIT 21;
 ```
 
-Note: the cursor here uses `(check_in_count, id)` because we sort by popularity. For ordering by rating, swap to `(avg_rating, id)` and re-pick the cursor encoding accordingly. The cursor format must include which sort order it belongs to so Go can dispatch.
+One query plan, one branch. Cursor / response shape unchanged: `{items, next_cursor, has_more}` with cursors HMAC-signed by `CURSOR_SECRET` and encoding `(check_in_count, id)`.
+
+## 11a. Search producers
+
+Same shape against the producers' materialized `search_text`. Used by `GET /v1/search?type=producer` and the producer-typeahead path.
+
+```sql
+SELECT p.id, p.name_i18n, p.beverage_count,
+       pf.name_i18n AS prefecture_name_i18n
+FROM producers p
+LEFT JOIN prefectures pf ON pf.id = p.prefecture_id
+WHERE p.deleted_at IS NULL
+  AND ($1::text IS NULL OR p.search_text LIKE '%' || lower($1) || '%')
+ORDER BY p.beverage_count DESC, p.id DESC
+LIMIT 21;
+```
+
+Index used: `idx_producers_search_bigm`.
+
+## 11b. Search users
+
+User search uses bigm substring matching on `username` (stored lowercase per SPEC §3.2 / §6.3) and `lower(display_name)`. The Go layer ranks results into three tiers before applying the natural order; the SQL emits the tier as a derived column so the cursor can stably pack `(tier, length, created_at, id)`.
+
+- Tier 0 — exact: `lower(username) = lower($1)`.
+- Tier 1 — prefix: `lower(username) LIKE lower($1) || '%' OR lower(display_name) LIKE lower($1) || '%'`.
+- Tier 2 — substring: otherwise (the bigm indexes serve this branch).
+
+Within each tier the natural order is `char_length(username) ASC, created_at DESC, id DESC` (shorter handles surface first; ties break by recency). Min-2-char rule preserved in Go before the query issues — bigm degrades to a seq-scan on 1-character queries and the SPEC ergonomic doesn't need it.
+
+```sql
+-- $1 query string (already at least 2 chars, Go-enforced).
+-- $2..$5 cursor fields (NULL on first page): tier, length, created_at, id.
+SELECT
+  u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.bio,
+  u.created_at,
+  CASE
+    WHEN u.username = lower($1)                                   THEN 0
+    WHEN u.username LIKE lower($1) || '%'
+      OR lower(u.display_name) LIKE lower($1) || '%'              THEN 1
+    ELSE 2
+  END AS tier
+FROM users u
+WHERE u.deleted_at IS NULL
+  AND (u.username LIKE '%' || lower($1) || '%'
+       OR lower(u.display_name) LIKE '%' || lower($1) || '%')
+  AND ($2::int IS NULL OR (
+    -- Mixed-direction keyset: tier ASC, length ASC, created_at DESC, id DESC.
+    -- Expressed as nested OR rather than a tuple comparator because Postgres
+    -- row-constructor `>` requires a single direction across the tuple.
+    CASE
+      WHEN u.username = lower($1) THEN 0
+      WHEN u.username LIKE lower($1) || '%'
+        OR lower(u.display_name) LIKE lower($1) || '%' THEN 1
+      ELSE 2
+    END > $2
+    OR (CASE
+          WHEN u.username = lower($1) THEN 0
+          WHEN u.username LIKE lower($1) || '%'
+            OR lower(u.display_name) LIKE lower($1) || '%' THEN 1
+          ELSE 2
+        END = $2
+        AND char_length(u.username) > $3)
+    OR (CASE
+          WHEN u.username = lower($1) THEN 0
+          WHEN u.username LIKE lower($1) || '%'
+            OR lower(u.display_name) LIKE lower($1) || '%' THEN 1
+          ELSE 2
+        END = $2
+        AND char_length(u.username) = $3
+        AND u.created_at < $4)
+    OR (CASE
+          WHEN u.username = lower($1) THEN 0
+          WHEN u.username LIKE lower($1) || '%'
+            OR lower(u.display_name) LIKE lower($1) || '%' THEN 1
+          ELSE 2
+        END = $2
+        AND char_length(u.username) = $3
+        AND u.created_at = $4
+        AND u.id < $5)
+  ))
+ORDER BY tier ASC, char_length(u.username) ASC, u.created_at DESC, u.id DESC
+LIMIT 21;
+```
+
+Indexes used: `idx_users_username_bigm` and `idx_users_display_name_bigm`. The planner picks the OR branch via a BitmapOr of the two GINs.
+
+Cursor packs `(tier, length, created_at, id)` and stays HMAC-signed through the existing `internal/cursor` pipeline. Each page emits its last row's tuple as the next cursor; the OR-chain above is the "next page strictly after cursor" predicate in mixed-direction keyset form. Backend may also push the CASE expression into a sub-SELECT once for readability if pgx parameter reuse becomes awkward — schema doesn't require it either way.
 
 ---
 

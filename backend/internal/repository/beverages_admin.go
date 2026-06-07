@@ -1,21 +1,14 @@
 // beverages_admin.go — admin catalog write paths.
 //
-// Direct admin CRUD for producers + beverages plus admin-only listings
-// that can include soft-deleted rows. Every method here is mounted under
-// `/v1/admin` with `RoleAdmin` required in router.go. The mutators are
-// designed to run inside the same `pgx.Tx` as `AdminRepo.LogAction` so the
-// audit row commits atomically with the change — the handler owns the
-// Begin/Commit and threads the *pgx.Tx into each method's `tx` parameter.
-//
-// Public read paths in beverages.go filter `deleted_at IS NULL` on both
-// `beverages` and `producers`; the admin variants here either short-circuit
-// to a specific row by id or honor an `IncludeDeleted` flag so the admin
-// "trash" view can resurface tombstones for restore.
-//
-// FTS uses `websearch_to_tsquery('simple', $1)` to hit the partial GIN
-// indexes. Plain text typed in the admin search box becomes a sensible
-// tsquery (quoted phrases, OR operators) without the admin having to
-// learn ::tsquery syntax.
+// Admin CRUD for producers + beverages plus admin-only listings that can
+// include soft-deleted rows. Mutators run inside the caller-supplied tx so
+// the moderation_log row commits atomically with the change. Public read
+// paths in beverages.go filter `deleted_at IS NULL` on both `beverages`
+// and `producers`; admin variants either short-circuit by id or honor
+// `IncludeDeleted` to surface tombstones for restore. Search uses the
+// bigm-backed `search_text LIKE '%' || $N || '%'` pattern against
+// idx_{beverages,producers}_search_bigm; the bound arg is lowered +
+// LIKE-escaped at the repo layer via bigmLikeArg.
 
 package repository
 
@@ -74,9 +67,9 @@ type ProducerUpdateInput struct {
 
 // AdminProducerListParams scopes the admin producer search.
 //
-//   - Q (when set) drives FTS via websearch_to_tsquery('simple', $1)
-//     against idx_producers_name_tsv.
-//   - IDExact short-circuits the cursor and FTS to a single PK lookup.
+//   - Q (when set) is a case-insensitive substring served by
+//     idx_producers_search_bigm.
+//   - IDExact short-circuits the cursor and Q to a single PK lookup.
 //   - IncludeDeleted = true surfaces soft-deleted rows (admin "trash").
 type AdminProducerListParams struct {
 	Q              *string
@@ -130,15 +123,14 @@ func scanAdminProducer(row pgx.Row) (*AdminProducerRow, error) {
 	return &out, nil
 }
 
-// AdminList pages through producers with optional FTS + id + soft-delete
-// inclusion. IDExact short-circuits to a single-row lookup and ignores
-// the cursor (admin "find by UUID").
+// AdminList pages through producers with optional substring + id +
+// soft-delete inclusion. IDExact short-circuits to a single-row lookup
+// and ignores the cursor (admin "find by UUID").
 func (r *ProducerRepo) AdminList(ctx context.Context, p AdminProducerListParams) ([]AdminProducerRow, error) {
 	if p.Limit <= 0 {
 		p.Limit = 20
 	}
 
-	// Fast path: exact id lookup. Skips FTS + cursor entirely.
 	if p.IDExact != nil && *p.IDExact != "" {
 		sql := adminProducerSelect + ` WHERE b.id = $1::uuid`
 		if !p.IncludeDeleted {
@@ -156,22 +148,15 @@ func (r *ProducerRepo) AdminList(ctx context.Context, p AdminProducerListParams)
 		return []AdminProducerRow{*hit}, nil
 	}
 
-	// FTS uses websearch_to_tsquery so the admin can type quoted phrases
-	// and OR/AND operators without learning tsquery syntax.
 	sql := adminProducerSelect + `
 WHERE TRUE
   AND ($1::boolean OR b.deleted_at IS NULL)
-  AND ($2::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ websearch_to_tsquery('simple', $2))
+  AND ($2::text IS NULL OR b.search_text LIKE '%' || $2 || '%')
   AND ($3::timestamptz IS NULL OR (b.created_at, b.id) < ($3::timestamptz, $4::uuid))
 ORDER BY b.created_at DESC, b.id DESC
 LIMIT $5;`
 
-	rows, err := r.db.Query(ctx, sql, p.IncludeDeleted, p.Q, p.CursorTs, p.CursorID, p.Limit+1)
+	rows, err := r.db.Query(ctx, sql, p.IncludeDeleted, bigmLikeArg(p.Q), p.CursorTs, p.CursorID, p.Limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("ProducerRepo.AdminList: %w", err)
 	}
@@ -434,9 +419,9 @@ type BeverageUpdateInput struct {
 	LabelImageURL  *string
 }
 
-// AdminBeverageListParams scopes the admin beverage search. Q drives
-// the FTS index; the other filters narrow by category / producer /
-// id-exact / tombstone visibility.
+// AdminBeverageListParams scopes the admin beverage search. Q is a
+// case-insensitive substring (idx_beverages_search_bigm); the other
+// filters narrow by category / producer / id-exact / tombstone visibility.
 type AdminBeverageListParams struct {
 	Q              *string
 	ProducerID     *string
@@ -528,15 +513,15 @@ func scanAdminBeverage(row pgx.Row) (*AdminBeverageRow, error) {
 	return &AdminBeverageRow{Beverage: d, DeletedAt: deletedAt}, nil
 }
 
-// AdminList pages through beverages for the admin tooling. Optional FTS,
-// producer/category filters, and IDExact short-circuit. Soft-deleted rows
-// are hidden by default; set IncludeDeleted to surface them.
+// AdminList pages through beverages for the admin tooling. Optional Q
+// substring, producer/category filters, and IDExact short-circuit.
+// Soft-deleted rows are hidden by default; set IncludeDeleted to surface
+// them.
 func (r *BeverageRepo) AdminList(ctx context.Context, p AdminBeverageListParams) ([]AdminBeverageRow, error) {
 	if p.Limit <= 0 {
 		p.Limit = 20
 	}
 
-	// Fast path: exact id lookup ignores cursor + filters.
 	if p.IDExact != nil && *p.IDExact != "" {
 		sql := adminBeverageSelect + ` WHERE b.id = $1::uuid`
 		if !p.IncludeDeleted {
@@ -557,12 +542,7 @@ func (r *BeverageRepo) AdminList(ctx context.Context, p AdminBeverageListParams)
 	sql := adminBeverageSelect + `
 WHERE TRUE
   AND ($1::boolean OR b.deleted_at IS NULL)
-  AND ($2::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ websearch_to_tsquery('simple', $2))
+  AND ($2::text IS NULL OR b.search_text LIKE '%' || $2 || '%')
   AND ($3::text IS NULL OR b.producer_id = $3::uuid)
   AND ($4::text IS NULL OR b.category_id = $4::uuid)
   AND ($5::text IS NULL OR b.category_slug = $5)
@@ -571,7 +551,7 @@ ORDER BY b.created_at DESC, b.id DESC
 LIMIT $8;`
 
 	rows, err := r.db.Query(ctx, sql,
-		p.IncludeDeleted, p.Q, p.ProducerID, p.CategoryID, p.CategorySlug,
+		p.IncludeDeleted, bigmLikeArg(p.Q), p.ProducerID, p.CategoryID, p.CategorySlug,
 		p.CursorTs, p.CursorID, p.Limit+1,
 	)
 	if err != nil {

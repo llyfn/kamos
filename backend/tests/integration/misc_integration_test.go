@@ -120,13 +120,10 @@ func TestProducers(t *testing.T) {
 	}
 }
 
-// /v1/search?q=... matches the seeded beverage name via FTS.
 func TestSearch(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
-	// The FTS index uses to_tsvector('simple', ...) so the query term must
-	// be a whole token in the indexed text. Use a single-word name.
 	seedBeverage(t, "Hakkaisan")
 
 	code, raw := doReq(t, srv, http.MethodGet, "/v1/search?q=Hakkaisan", "", nil)

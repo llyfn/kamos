@@ -261,55 +261,73 @@ LIMIT 1;`
 	return &u, nil
 }
 
-// SearchCursor carries the three values the SearchUsers keyset needs:
-// the match rank tier, the row created_at, and the row id. The tier is
-// part of the cursor because results are ordered by (rank ASC,
-// created_at DESC, id DESC) and a 2-tuple keyset of just (created_at,
-// id) misorders pages whenever a later page's leading row sits in a
-// later tier than the previous page's trailing row (it would re-emit
-// rows from earlier tiers and skip the new tier's older rows). The
-// handler bundles this into the opaque cursor envelope; clients never
-// see the rank.
-type SearchCursor struct {
-	Rank      int
-	CreatedAt time.Time
-	ID        string
-}
-
-// SearchRow pairs the projected user with the rank tier it matched in
-// so the handler can re-emit that rank into the next cursor.
-type SearchRow struct {
-	User domain.PublicUser
-	Rank int
-}
-
-// likeEscaper escapes the three PostgreSQL LIKE metacharacters so the
-// user-supplied query is interpreted literally. Without this, a query
-// like "a%" matches every username starting with "a"; "_" matches any
-// single character; "\" pairs with the next character. The default
-// LIKE escape is "\", which our patterns rely on.
+// likeEscaper escapes the three PostgreSQL LIKE metacharacters so
+// callers can use a user-supplied query as a literal substring inside
+// an ILIKE pattern. Used by social.go's q-prefix path (kept here as a
+// package-shared helper).
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
-// SearchUsers returns a page of live users matching `query`, ranked by
-// match quality:
+// bigmLikeArg lowers + LIKE-escapes a caller-supplied search string for
+// the bigm `search_text LIKE '%' || $N || '%'` pattern. nil pointer
+// returns nil so the SQL guard ($N::text IS NULL) keeps acting as a
+// wildcard.
 //
-//	rank 1 — username has the query as a case-insensitive prefix
-//	rank 2 — display_name has the query as a case-insensitive prefix
-//	rank 3 — username OR display_name contains the query
+// WHY this lives at the repo layer: domain.SanitizeText only filters
+// control + bidi codepoints; the three LIKE metacharacters (`\`, `%`,
+// `_`) would otherwise turn a query of `%` into a match-all pattern.
+func bigmLikeArg(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	v := likeEscaper.Replace(strings.ToLower(*s))
+	return &v
+}
+
+// SearchCursor packs the user-search keyset: (tier, length, created_at, id).
+// Order within a tier is (length ASC, created_at DESC, id DESC).
+type SearchCursor struct {
+	MatchTier  int
+	NameLength int
+	CreatedAt  time.Time
+	ID         string
+}
+
+// SearchRow pairs the projected user with the rank values that drove its
+// placement so the handler can re-emit them into the next cursor.
+type SearchRow struct {
+	User       domain.PublicUser
+	MatchTier  int
+	NameLength int
+}
+
+// SearchUsers returns a page of live users matching `query`, ranked into
+// three tiers and ordered (tier ASC, length ASC, created_at DESC, id DESC).
 //
-// Within a rank, results are sorted by (created_at, id) DESC so the
-// keyset cursor stays stable. The handler validates query length;
-// repository assumes a non-empty trimmed string.
+// Tiers:
+//   - 0 exact: lower(username) = lower(q)
+//   - 1 prefix: username or lower(display_name) starts with lower(q)
+//   - 2 substring: bigm substring match
 //
-// `cursor` is the SearchCursor from the previously-returned next-page
-// token (nil for the first page). The keyset predicate is
-// (rank > $score OR (rank = $score AND (created_at, id) < ($ts, $id)))
-// so the walk advances through the rank tiers without duplicating or
-// skipping rows at tier boundaries.
+// Indexes used: idx_users_username_bigm + idx_users_display_name_bigm
+// via BitmapOr of the two GINs.
 //
-// At KAMOS' current scale (users table is small) the ILIKE scan is
-// fine; a trigram or pg_trgm index can be layered on later if scan
-// time becomes meaningful.
+// WHY lower(u.username) on the left of the comparison even though
+// usernames are stored lowercase per SPEC §3.2: defensive against future
+// column drift; the planner folds the constant for free on a known-
+// lowercase column.
+//
+// WHY two bound params for the query string: $1 carries the raw lowered
+// query for the tier-0 equality compare, $3 carries the LIKE-escaped
+// form so a query of `%` cannot turn the substring predicate into a
+// match-all pattern. domain.SanitizeText filters control + bidi
+// codepoints only; LIKE metacharacters escape lives at the repo layer.
+//
+// WHY the keyset predicate is OR-chained rather than a tuple comparator:
+// Postgres row-constructor `>` requires a single direction across the
+// tuple; tier+length are ASC while created_at+id are DESC. The CASE
+// expression is duplicated at each rung so the planner sees a stable
+// derived tier value — matches the canonical shape in
+// docs/db/query_patterns.md §11b.
 func (r *UserRepo) SearchUsers(
 	ctx context.Context,
 	query string,
@@ -319,58 +337,77 @@ func (r *UserRepo) SearchUsers(
 	if limit <= 0 {
 		limit = 20
 	}
-	// Escape LIKE wildcards in the user-supplied query so `%` and `_`
-	// match literally instead of as metacharacters. Apply this before
-	// building the prefix/contains patterns so only our own surrounding
-	// `%` carries metacharacter meaning.
-	escaped := likeEscaper.Replace(query)
-	prefix := escaped + "%"
-	contains := "%" + escaped + "%"
+	q := strings.ToLower(query)
+	qLike := likeEscaper.Replace(q)
 
-	// $5/$6/$7 carry the cursor triple; nil means "first page" and the
-	// SQL guard short-circuits the keyset predicate.
 	var (
-		curRank *int
-		curTs   *time.Time
-		curID   *string
+		curTier   *int
+		curLength *int
+		curTs     *time.Time
+		curID     *string
 	)
 	if cur != nil {
-		curRank = &cur.Rank
+		t := cur.MatchTier
+		curTier = &t
+		l := cur.NameLength
+		curLength = &l
 		ts := cur.CreatedAt
 		curTs = &ts
 		id := cur.ID
 		curID = &id
 	}
-	const q = `
-SELECT id, username, display_username, display_name, avatar_url, bio,
-       locale, privacy_mode, created_at,
+
+	const sql = `
+SELECT u.id, u.username, u.display_username, u.display_name, u.avatar_url, u.bio,
+       u.locale, u.privacy_mode, u.created_at,
        CASE
-         WHEN username ILIKE $1     THEN 1
-         WHEN display_name ILIKE $1 THEN 2
-         ELSE 3
-       END AS rank
-FROM users
-WHERE deleted_at IS NULL
-  AND (username ILIKE $2 OR display_name ILIKE $2)
-  AND (
-    $4::int IS NULL
+         WHEN lower(u.username) = $1                              THEN 0
+         WHEN lower(u.username) LIKE $3 || '%'
+           OR lower(u.display_name) LIKE $3 || '%'                THEN 1
+         ELSE 2
+       END AS match_tier,
+       char_length(u.username) AS name_length
+FROM users u
+WHERE u.deleted_at IS NULL
+  AND (u.username LIKE '%' || $3 || '%'
+       OR lower(u.display_name) LIKE '%' || $3 || '%')
+  AND ($4::int IS NULL OR (
+    CASE
+      WHEN lower(u.username) = $1 THEN 0
+      WHEN lower(u.username) LIKE $3 || '%'
+        OR lower(u.display_name) LIKE $3 || '%' THEN 1
+      ELSE 2
+    END > $4
     OR (CASE
-          WHEN username ILIKE $1     THEN 1
-          WHEN display_name ILIKE $1 THEN 2
-          ELSE 3
-        END) > $4::int
-    OR ((CASE
-          WHEN username ILIKE $1     THEN 1
-          WHEN display_name ILIKE $1 THEN 2
-          ELSE 3
-        END) = $4::int
-        AND (created_at, id) < ($5::timestamptz, $6::uuid))
-  )
-ORDER BY rank ASC, created_at DESC, id DESC
-LIMIT $3;`
-	rows, err := r.db.Query(ctx, q,
-		prefix, contains, limit+1,
-		curRank, curTs, curID,
+          WHEN lower(u.username) = $1 THEN 0
+          WHEN lower(u.username) LIKE $3 || '%'
+            OR lower(u.display_name) LIKE $3 || '%' THEN 1
+          ELSE 2
+        END = $4
+        AND char_length(u.username) > $5)
+    OR (CASE
+          WHEN lower(u.username) = $1 THEN 0
+          WHEN lower(u.username) LIKE $3 || '%'
+            OR lower(u.display_name) LIKE $3 || '%' THEN 1
+          ELSE 2
+        END = $4
+        AND char_length(u.username) = $5
+        AND u.created_at < $6)
+    OR (CASE
+          WHEN lower(u.username) = $1 THEN 0
+          WHEN lower(u.username) LIKE $3 || '%'
+            OR lower(u.display_name) LIKE $3 || '%' THEN 1
+          ELSE 2
+        END = $4
+        AND char_length(u.username) = $5
+        AND u.created_at = $6
+        AND u.id < $7::uuid)
+  ))
+ORDER BY match_tier ASC, char_length(u.username) ASC, u.created_at DESC, u.id DESC
+LIMIT $2;`
+	rows, err := r.db.Query(ctx, sql,
+		q, limit+1, qLike,
+		curTier, curLength, curTs, curID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("UserRepo.SearchUsers: %w", err)
@@ -382,7 +419,7 @@ LIMIT $3;`
 		if err := rows.Scan(
 			&row.User.ID, &row.User.Username, &row.User.DisplayUsername, &row.User.DisplayName,
 			&row.User.AvatarURL, &row.User.Bio, &row.User.Locale, &row.User.PrivacyMode, &row.User.CreatedAt,
-			&row.Rank,
+			&row.MatchTier, &row.NameLength,
 		); err != nil {
 			return nil, fmt.Errorf("UserRepo.SearchUsers scan: %w", err)
 		}

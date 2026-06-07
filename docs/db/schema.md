@@ -67,7 +67,7 @@ Migrations live in `migrations/`. **Append-only**: never edit a deployed migrati
 
 ### 1. i18n storage: JSONB, not separate columns
 
-For `producers`, `beverages`, `beverage_categories`, `flavor_tags`, and certain user-facing free-text fields on `beverages` (`subcategory_i18n`, `description_i18n`), names are stored as a JSONB object `{"en": "...", "ja": "...", "ko": "..."}`. This matches the JSX kit's data shape (`data.jsx::CATALOG`), enables a single GIN FTS index that covers all three locales at once, and means adding a fourth locale post-MVP is a data migration rather than a schema migration.
+For `producers`, `beverages`, `beverage_categories`, `flavor_tags`, and certain user-facing free-text fields on `beverages` (`subcategory_i18n`, `description_i18n`), names are stored as a JSONB object `{"en": "...", "ja": "...", "ko": "..."}`. This matches the JSX kit's data shape (`data.jsx::CATALOG`), keeps locale fields physically adjacent (a single materialized concat across all three feeds the bigm search index — see §9e), and means adding a fourth locale post-MVP is a data migration rather than a schema migration.
 
 Rejected alternative: three `name_en`/`name_ja`/`name_ko` columns. Forces three indexes for cross-locale search, and the schema balloons when more i18n fields are added.
 
@@ -253,6 +253,28 @@ Slice C of the post-MVP polish batch promotes `beverages.subcategory_i18n` (free
 
 Soft-deleted beverages are skipped (the backfill is for live data only; admin recuration handles trash rows). Beverages whose `subcategory_i18n` is NULL or has no en key get no link — the new column is nullable.
 
+### 9e. Search materialization (003)
+
+Migration 003 promotes the search corpus to a materialized column on `beverages` and `producers` and indexes everything searched through a single **pg_bigm** substring path: `search_text TEXT` (lowercased concat of all the relevant en/ja/ko names) indexed by `gin (search_text gin_bigm_ops)`. Query side is `search_text LIKE '%' || lower($1) || '%'` — one query plan, one mental model, and the planner uses the bigm GIN for the wildcard substring without a function on the column side.
+
+**Why bigm.** Postgres FTS (`tsvector` with the `simple` config) does not segment CJK: single- and short-character queries against unwhite-spaced CJK tokens (`닷`, `祭`) return empty because the lexer treats the whole run as one token. A pg_trgm fallback narrows the gap but still fails sub-2-char Korean and sub-3-char Japanese. pg_bigm indexes every adjacent character pair regardless of language, which is the structural fix for CJK substring search without leaving Postgres. The extension lives in the custom kamos-db image (`db/Dockerfile`); see `docs/runbooks/deploy.md §1a`.
+
+**Maintenance contract.** Two helper functions — `kamos_compute_beverage_search_text(uuid)` and `kamos_compute_producer_search_text(uuid)` — recompute one row's `search_text` from current data. Three trigger wrappers (`trg_beverages_search_text`, `trg_producers_search_text`, `trg_prefectures_search_text`) call them:
+
+| Source mutation | Effect |
+|---|---|
+| INSERT / UPDATE OF `name_i18n` or `producer_id` on `beverages` | Recompute that beverage's `search_text`. |
+| INSERT / UPDATE OF `name_i18n` or `prefecture_id` on `producers` | Recompute that producer's `search_text` AND every beverage row with the matching `producer_id`. |
+| UPDATE OF `name_i18n` on `prefectures` | Recompute every producer with the matching `prefecture_id` AND every beverage transitively under those producers. |
+
+`concat_ws(' ', …)` skips NULL inputs, so a missing producer or missing prefecture degrades gracefully to a corpus covering just the beverage's own name (instead of failing the write). Prefecture renames are expensive (full sweep of dependent producers + beverages), but prefectures are seed-only — the 47 reference rows do not change in production.
+
+`search_text` is intentionally nullable: a row inserted by a path that somehow bypassed the trigger still succeeds, and the next `search_text IS NULL` row simply doesn't match search queries — a bad data row never crashes an INSERT. The triggers cover every normal mutation path.
+
+`idx_beverages_name_gin` (JSONB `jsonb_path_ops`) is preserved alongside the new bigm index — it serves a different query path (containment lookup, not search).
+
+**User search.** SPEC user-search shifts from `ILIKE '%q%'` (sequential scan) to bigm substring matching on `users.username` and `lower(users.display_name)` via `idx_users_username_bigm` and `idx_users_display_name_bigm`. Results are ranked into three tiers (exact / prefix / substring) and ordered within tier by `char_length(username) ASC, created_at DESC, id DESC`. Min-2-char rule, case-insensitive matching, and `deleted_at IS NULL` filter are all preserved at the query layer. See `query_patterns.md §11b`.
+
 ### 10. UUID, not bigint, primary keys
 
 `pgcrypto.gen_random_uuid()` everywhere. Trade-offs:
@@ -272,8 +294,8 @@ This aligns with the skill and the stack section of `00_brief.md`.
 | `users` | Accounts. | `deleted_at` + `username_release_at` | Lowercase username regex, en/ja/ko locale, public/private privacy, at least one auth method present. |
 | `email_verifications` | 24h token for email link. | — | `expires_at` checked in app. |
 | `beverage_categories` | SPEC §2.1 lookup. | — | Slug locked to 3 values. |
-| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL`: admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. |
-| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. `subcategory_id UUID NULL` FK → `beverage_subcategories(id) ON DELETE SET NULL`: source of truth for the beverage's subcategory. Partial index `beverages_subcategory_id_idx (subcategory_id) WHERE deleted_at IS NULL` drives catalog "filter by subcategory" queries. The legacy free-text `subcategory_i18n JSONB` column stays for one release window of dual-source rendering and is dropped in a follow-up migration. |
+| `producers` | Maker catalog (renamed from `breweries` in 017). | `deleted_at` (014) | `name_i18n` requires en+ja. Founded year sanity-checked. Soft-deletable for admin curation. `prefecture_id` FK → `prefectures` (016), nullable; old free-text `prefecture`/`region` columns dropped. `image_url TEXT NULL`: admin-uploaded optional R2 image URL; rendering-only (Flutter producer detail hero + optional 16-dp thumbnail on check-in card); no CHECK, no index. `search_text TEXT NULL` (003): materialized lowercased substring corpus over the producer's own en/ja/ko name plus its prefecture's en/ja/ko name; maintained by `trg_producers_search_text` (self) and `trg_prefectures_search_text` (prefecture renames sweep dependent producers). Indexed by `idx_producers_search_bigm` (pg_bigm GIN). |
+| `beverages` | Catalog rows. | `deleted_at` (014) | `polishing_ratio` only valid for nihonshu (CHECK with denorm `category_slug`). ABV range. Soft-deletable for admin curation. Locality derived through `producer_id → producers.prefecture_id` (016 + 017); own `prefecture`/`region` columns dropped. `subcategory_id UUID NULL` FK → `beverage_subcategories(id) ON DELETE SET NULL`: source of truth for the beverage's subcategory. Partial index `beverages_subcategory_id_idx (subcategory_id) WHERE deleted_at IS NULL` drives catalog "filter by subcategory" queries. The legacy free-text `subcategory_i18n JSONB` column stays for one release window of dual-source rendering and is dropped in a follow-up migration. `search_text TEXT NULL` (003): materialized lowercased substring corpus over the beverage's own en/ja/ko name plus its producer's en/ja/ko name plus the producer's prefecture's en/ja/ko name; maintained by `trg_beverages_search_text` (self) and the producer + prefecture triggers (cascade through producer_id). Indexed by `idx_beverages_search_bigm` (pg_bigm GIN). |
 | `beverage_subcategories` | Subcategory taxonomy. | `deleted_at` (admin soft-delete) | One row per (category, slug); UNIQUE `(category_id, slug)` so the same bare slug can repeat across categories (we keep "Other" per-category via `nihonshu_other` / `shochu_other` / `liqueur_other`, but the scope honors the FK boundary). `name_i18n` requires non-empty en + ja + ko (CHECK). Slug format `^[a-z0-9_]{1,64}$`. `category_slug` denormalized + synced from `beverage_categories.slug` via `sync_beverage_subcategory_category_slug` trigger (same shape as `sync_beverage_category_slug` on beverages). `sort_order SMALLINT` for stable display (seeds at 10/20/.../990; backfill-created rows at 500). FK `category_id` is `ON DELETE RESTRICT` — subcategories cannot orphan. Admin "delete" is soft-delete (`deleted_at = NOW()`); the application blocks soft-delete if any live beverage still references the row. |
 | `regions` | Japan's 8 traditional regions (seed). | — | `name_i18n` requires en+ja+ko. 8 seeded rows (016). |
 | `prefectures` | Japan's 47 prefectures (seed), FK to `regions`. | — | `name_i18n` requires en+ja+ko. 47 seeded rows in JIS order (016). |
@@ -326,6 +348,7 @@ Every CHECK constraint and column traces to a SPEC clause:
 | `regions` / `prefectures` (i18n reference) | §2.3 (producer prefecture display); 016 |
 | `producers.prefecture_id` FK (replaces free-text) | §2.3; 016 + 017 |
 | `beverage_subcategories` table + `beverages.subcategory_id` FK (005, Slice C) | §2.2 (subcategory under category); brief 04 |
+| `beverages.search_text` + `producers.search_text` + pg_bigm user indexes (003) | §7 (wider search: beverage name, producer name, prefecture; CJK substring search via pg_bigm) |
 
 ---
 
@@ -356,7 +379,10 @@ Every CHECK constraint and column traces to a SPEC clause:
 ```bash
 psql "$DATABASE_URL" -f migrations/001_initial.sql
 psql "$DATABASE_URL" -f migrations/002_seeding.sql
+psql "$DATABASE_URL" -f migrations/003_search_text_bigm.sql
 ```
+
+> Migration 003 is a single transactional file: extension, columns, helper functions, triggers, full-table backfill, and plain (non-CONCURRENTLY) `CREATE INDEX`. Atomic apply over the brief write lock is the right tradeoff at current corpus size. Requires `pg_bigm` to be available on the Postgres server (verify with `SELECT * FROM pg_available_extensions WHERE name='pg_bigm'` before applying); the custom kamos-db image provides it (`docs/runbooks/deploy.md §1a`).
 
 ### Verifying
 

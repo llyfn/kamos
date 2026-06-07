@@ -225,7 +225,9 @@ Option 1 is more visible in code review and easier to localize the names per the
 
 ## Indexes
 
-Document in `indexes.md` and add `CREATE INDEX` to the relevant migration:
+Document in `indexes.md` and add `CREATE INDEX` to the relevant migration.
+
+**Search columns: bigm + materialized.** Project invariant per `.claude/CLAUDE.md` "Search invariants": every searchable text column gets a `gin_bigm_ops` GIN index in the same migration that introduces it. For cross-field / i18n search, build a `search_text TEXT` materialized column populated by `BEFORE INSERT/UPDATE` triggers (the lowercased concat shape) and bigm-index it. Reference template: `migrations/003_search_text_bigm.sql` (helpers `kamos_compute_*_search_text`, wrappers `kamos_trg_*_search_text`, prefecture-rename cascade). Do NOT introduce `pg_trgm`, `to_tsvector`, or `websearch_to_tsquery` for new search paths; bigm subsumes them for KAMOS's CJK-first content. `pg_bigm` is supplied by the custom kamos-db image (`docs/runbooks/deploy.md §1a`).
 
 ```sql
 -- Feed query: check-ins from followed users, recent first

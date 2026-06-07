@@ -18,26 +18,21 @@ type SearchResult struct {
 	Producer *domain.Producer `json:"producer,omitempty"`
 }
 
-// SearchBeverages fetches up to limit+1 beverages matching q, keyset-
-// paginated by id. `cursorID` is the inclusive-exclusive (`<`) id boundary;
-// nil for the first page.
+// SearchBeverages fetches up to limit+1 beverages matching q via the
+// bigm substring pattern, keyset-paginated on id. cursorID is the
+// exclusive (`<`) id boundary; nil for the first page.
 func (r *SearchRepo) SearchBeverages(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-	// Exclude tombstoned rows from /v1/search the same way List/Detail do.
 	const bq = beverageListSelect + `
 WHERE b.deleted_at IS NULL
   AND br.deleted_at IS NULL
-  AND to_tsvector('simple',
-        coalesce(b.name_i18n->>'en','') || ' ' ||
-        coalesce(b.name_i18n->>'ja','') || ' ' ||
-        coalesce(b.name_i18n->>'ko','')
-      ) @@ plainto_tsquery('simple', $1)
+  AND b.search_text LIKE '%' || $1 || '%'
   AND ($2::text IS NULL OR b.id < $2::uuid)
 ORDER BY b.check_in_count DESC, b.id DESC
 LIMIT $3;`
-	rows, err := r.db.Query(ctx, bq, q, cursorID, limit+1)
+	rows, err := r.db.Query(ctx, bq, bigmLikeArg(&q), cursorID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("SearchBeverages: %w", err)
 	}
@@ -58,27 +53,21 @@ LIMIT $3;`
 	return out, rows.Err()
 }
 
-// SearchProducers fetches up to limit+1 producers matching q.
+// SearchProducers fetches up to limit+1 producers matching q via the
+// bigm substring pattern.
 func (r *SearchRepo) SearchProducers(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-	// Exclude tombstoned rows from public search. Prefecture is nested
-	// via the LEFT JOIN to prefectures + regions
-	// (producer.prefecture_id is nullable).
 	const brq = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
-  AND to_tsvector('simple',
-        coalesce(b.name_i18n->>'en','') || ' ' ||
-        coalesce(b.name_i18n->>'ja','') || ' ' ||
-        coalesce(b.name_i18n->>'ko','')
-      ) @@ plainto_tsquery('simple', $1)
+  AND b.search_text LIKE '%' || $1 || '%'
   AND ($2::text IS NULL OR b.id < $2::uuid)
 ORDER BY b.id DESC
 LIMIT $3;`
-	rows, err := r.db.Query(ctx, brq, q, cursorID, limit+1)
+	rows, err := r.db.Query(ctx, brq, bigmLikeArg(&q), cursorID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("SearchProducers: %w", err)
 	}

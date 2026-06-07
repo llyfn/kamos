@@ -74,6 +74,7 @@ frontend/                    # Flutter mobile app
   lib/app/                   #   theme.dart (KamosTokens + KamosSpacing), router, app
 admin/                       # React admin web client (HttpOnly cookie auth + CSRF)
 migrations/                  # PostgreSQL migration SQL (append-only)
+db/                          # Custom Postgres image (flyio/postgres-flex:18 + pg_bigm)
 design/                      # Design system: tokens.json (source of truth), brand doc, UI kit
 docs/                        # Long-form documentation
   db/                        #   schema.md, indexes.md, query_patterns.md
@@ -147,6 +148,15 @@ Never abbreviate, never substitute "Sake" alone in `en`.
 **Admin auth** — admin mutating requests require both the HttpOnly cookie (`kamos_admin_*`) AND a matching `X-CSRF-Token` header. Missing or mismatched header → `403 CSRF_MISMATCH`. Cookies are `HttpOnly` + `Secure` + `SameSite=Strict` — do not flip to `SameSite=None`; the Pages Function proxy is what keeps Strict viable across Pages↔Fly.
 
 **Text input sanitization** — every user-provided string field flows through `domain.SanitizeText(field, value, allowEmpty, maxLen)`. The helper rejects control characters and bidi-override codepoints, enforces UTF-8 length, and returns a typed validation error.
+
+**Search invariants** — substring search across the product follows one shape so the operator footprint stays small:
+
+- **Every searchable column has a covering index.** No `LIKE '%foo%'` or `ILIKE` against a column without a `gin_bigm_ops` GIN index. The four bigm indexes shipped in migration 003 are the baseline: `idx_beverages_search_bigm`, `idx_producers_search_bigm`, `idx_users_username_bigm`, `idx_users_display_name_bigm` (functional, on `lower(display_name)`). Add a new bigm index in the same migration that introduces a new searchable column.
+- **Cross-field / i18n search uses a materialized `search_text TEXT` column maintained by triggers.** Compose the searchable text (lowercased) on write, never on read. Triggers must cover every parent edit that affects the composition (see `kamos_compute_*_search_text` + `kamos_trg_*_search_text` for the producer/prefecture cascade pattern).
+- **pg_bigm is the substring engine.** Use `search_text LIKE '%' || lower($1) || '%'` (or the `=%` operator). Do NOT introduce `pg_trgm`, `to_tsvector`, or `websearch_to_tsquery` for new search paths — bigm subsumes them for our CJK-first content. The custom kamos-db image ships `pg_bigm` ([[project-custom-pg-image]]).
+- **LIKE metacharacter escape is mandatory.** All user-supplied query strings flowing into a `LIKE` clause must pass through `repository.bigmLikeArg(q)` (or equivalent) which lowercases and escapes `\`, `%`, `_`. Skipping this is a SECURITY-adjacent correctness bug: typing `%` would otherwise match everything.
+- **One query plan per search endpoint.** No FTS-then-trigram fallback orchestration, no UNION ALL of competing search shapes. Bigm handles long and short, Latin and CJK, in one query.
+- **User-search ranking is 3-tier in the SQL, not in Go.** Exact → prefix → substring, then `char_length(username) ASC, created_at DESC, id DESC`. Cursor packs `(match_tier, name_length, created_at, id)` through the HMAC-signed cursor envelope. Min-2-char rule + case-insensitivity + `deleted_at IS NULL` filter all preserved.
 
 **Out of scope for MVP** — push notifications, threaded comments, end-user web client, Apple Sign-In, beverage scanning, blocking, recommendations, export. If a request implies any of these, confirm scope before implementing.
 

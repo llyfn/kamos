@@ -1,0 +1,16 @@
+app = "kamos-db"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# WHY: this file is only consumed when running `flyctl deploy -a kamos-db`
+# from within db/. The actual Fly Postgres cluster (process model, HA,
+# resource sizing, volume creation) is owned by Fly's postgres-flex
+# machinery and was set at `flyctl postgres create` time. The [mounts]
+# block below mirrors the existing pg_data volume so `flyctl deploy`
+# doesn't flag the running machine's mount as a config drift — it isn't.
+
+[mounts]
+  source = "pg_data"
+  destination = "/data"

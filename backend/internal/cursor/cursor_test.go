@@ -192,7 +192,7 @@ func TestEncodeZeroCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Decode of zero encoded: %v", err)
 	}
-	if !c.CreatedAt.IsZero() || c.ID != "" || c.Score != nil {
+	if !c.CreatedAt.IsZero() || c.ID != "" || c.Score != nil || c.MatchTier != nil || c.NameLength != nil {
 		t.Errorf("zero round-trip changed: %+v", c)
 	}
 }
@@ -252,6 +252,8 @@ func TestCursorRoundTripAllShapes(t *testing.T) {
 	ts := time.Date(2026, 5, 21, 8, 0, 0, 0, time.UTC)
 	score := int64(42)
 	count := int64(1337)
+	tier := 1
+	length := 7
 
 	cases := []struct {
 		name string
@@ -264,6 +266,7 @@ func TestCursorRoundTripAllShapes(t *testing.T) {
 		{"search_producer", Cursor{CreatedAt: ts, ID: "ee55", Type: "producer"}},
 		{"search_with_score", Cursor{CreatedAt: ts, ID: "ff66", Score: &score, Type: "beverage"}},
 		{"popularity_triple", Cursor{CreatedAt: ts, ID: "gg77", CheckInCount: &count}},
+		{"user_search_tier_length", Cursor{CreatedAt: ts, ID: "hh88", MatchTier: &tier, NameLength: &length}},
 		{"empty_id_only_ts", Cursor{CreatedAt: ts}},
 	}
 
@@ -297,6 +300,18 @@ func TestCursorRoundTripAllShapes(t *testing.T) {
 			}
 			if got.CheckInCount != nil && *got.CheckInCount != *tc.in.CheckInCount {
 				t.Errorf("CheckInCount: got %d want %d", *got.CheckInCount, *tc.in.CheckInCount)
+			}
+			if (got.MatchTier == nil) != (tc.in.MatchTier == nil) {
+				t.Fatalf("MatchTier nil-ness mismatch: got %v want %v", got.MatchTier, tc.in.MatchTier)
+			}
+			if got.MatchTier != nil && *got.MatchTier != *tc.in.MatchTier {
+				t.Errorf("MatchTier: got %d want %d", *got.MatchTier, *tc.in.MatchTier)
+			}
+			if (got.NameLength == nil) != (tc.in.NameLength == nil) {
+				t.Fatalf("NameLength nil-ness mismatch: got %v want %v", got.NameLength, tc.in.NameLength)
+			}
+			if got.NameLength != nil && *got.NameLength != *tc.in.NameLength {
+				t.Errorf("NameLength: got %d want %d", *got.NameLength, *tc.in.NameLength)
 			}
 		})
 	}

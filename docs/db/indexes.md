@@ -36,7 +36,7 @@ This document explains every index in `migrations/001_initial.sql` and the seed 
 
 ### producers
 
-The implicit PK plus the FTS index documented under "producers (search)" cover all current read paths. Migration 014 added `producers.deleted_at` and a tiny partial helper index for the admin "trash" view. Migration 016 added the prefecture FK and its partial index. Migration 017 renamed the table (`breweries` → `producers`) and these indexes:
+The implicit PK plus the bigm index documented under "producers (search)" cover all current read paths. Migration 014 added `producers.deleted_at` and a tiny partial helper index for the admin "trash" view. Migration 016 added the prefecture FK and its partial index. Migration 017 renamed the table (`breweries` → `producers`) and these indexes:
 
 | Index | Purpose |
 |---|---|
@@ -55,8 +55,8 @@ CREATE INDEX idx_producers_prefecture_id
 |---|---|---|
 | `idx_beverages_producer` (partial, rebuilt 014; renamed 017) | "All beverages from a producer" — ProducerScreen. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_category` (partial, rebuilt 014) | "Browse by category" — SearchScreen filter chips. `WHERE deleted_at IS NULL`. | §7 |
-| `idx_beverages_name_gin` (partial, rebuilt 014) | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the `jsonb_path_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. For substring search, we **also** maintain a `tsvector` on `(name_i18n->>'en' || ' ' || name_i18n->>'ja' || ' ' || COALESCE(name_i18n->>'ko', ''))` — see the next row. `WHERE deleted_at IS NULL`. | §7 |
-| `idx_beverages_name_tsv` (functional GIN, partial, rebuilt 014) | `tsvector` over the concatenation of all three locales' names. Supports the beverage search screen and the admin catalog `?q=` filter (via `websearch_to_tsquery('simple', $1)` to hit this index). Postgres FTS handles per-locale stemming poorly for Japanese/Korean — for MVP we use `'simple'` configuration (no stemming) which still gives prefix and lexeme matching. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_name_gin` (partial, rebuilt 014) | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the `jsonb_path_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. Distinct from the materialized search column (`idx_beverages_search_bigm`) and not redundant — `idx_beverages_name_gin` answers containment lookups, `idx_beverages_search_bigm` answers substring search. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_search_bigm` (GIN with `gin_bigm_ops` on materialized column, partial, 003) | 2-gram GIN over the lowercased `search_text` column (beverage name + producer name + prefecture name, all three locales each, pre-lowercased on write). Drives the canonical query `search_text LIKE '%' || lower($1) || '%'`. The bigm operator class is what makes single- and short-char CJK substring queries like `祭` against `獺祭50` actually hit an index instead of falling through to seq-scan. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_avg_rating_desc` (partial, rebuilt 014) | "Top-rated beverages in a category" sort. `WHERE deleted_at IS NULL AND check_in_count >= 3` — the existing `>= 3` filter is kept, and `deleted_at IS NULL` is added so soft-deleted catalog entries fall out of the top-rated list. | §7 |
 | `idx_beverages_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` — tiny. |
 
@@ -72,12 +72,9 @@ CREATE INDEX idx_beverages_category
 CREATE INDEX idx_beverages_name_gin
   ON beverages USING gin (name_i18n jsonb_path_ops)
   WHERE deleted_at IS NULL;
-CREATE INDEX idx_beverages_name_tsv
-  ON beverages USING gin (
-    to_tsvector('simple',
-      coalesce(name_i18n->>'en','') || ' ' ||
-      coalesce(name_i18n->>'ja','') || ' ' ||
-      coalesce(name_i18n->>'ko','')))
+-- 003:
+CREATE INDEX idx_beverages_search_bigm
+  ON beverages USING gin (search_text gin_bigm_ops)
   WHERE deleted_at IS NULL;
 CREATE INDEX idx_beverages_avg_rating_desc
   ON beverages (category_id, avg_rating DESC NULLS LAST)
@@ -118,18 +115,42 @@ Intentionally NOT created:
 - `(category_id, sort_order)` — would speed up the list query above by one sort step, but the per-category cardinality is in the single-digit-to-low-teens range. Add only if backfill grows the table by orders of magnitude (no evidence today).
 - An index on `deleted_at` — soft-delete rows are exception cases; admin reads use `deleted_at IS NOT NULL` over a tiny set and a partial helper is overkill at this cardinality.
 
-### producers (search)
+### producers (search) — 003
 
-After 014 the producer FTS index is also partial; renamed in 017:
+Migration 003 adds a materialized `search_text TEXT` column on `producers` (lowercased concat of own en/ja/ko name + prefecture's en/ja/ko name) and indexes it with one pg_bigm GIN.
+
+| Index | Purpose | Trace |
+|---|---|---|
+| `idx_producers_search_bigm` (GIN with `gin_bigm_ops` on materialized column, partial, 003) | `search_text LIKE '%' || lower($1) || '%'` for producer substring search spanning name + prefecture. CJK substring matches like `富士` are indexed via 2-grams. `WHERE deleted_at IS NULL`. | §7 |
 
 ```sql
-CREATE INDEX idx_producers_name_tsv ON producers USING gin (
-  to_tsvector('simple',
-    coalesce(name_i18n->>'en','') || ' ' ||
-    coalesce(name_i18n->>'ja','') || ' ' ||
-    coalesce(name_i18n->>'ko','')))
-WHERE deleted_at IS NULL;
+-- 003:
+CREATE INDEX idx_producers_search_bigm
+  ON producers USING gin (search_text gin_bigm_ops)
+  WHERE deleted_at IS NULL;
 ```
+
+### users (search) — 003
+
+User search uses pg_bigm GINs on `users.username` (already lowercase per SPEC) and `lower(users.display_name)`. Three-tier ranking (exact / prefix / substring) lives in the query layer; see `query_patterns.md §11b`. Min-2-char rule, case-insensitive matching, and `deleted_at IS NULL` filter all preserved at the query layer.
+
+| Index | Purpose | Trace |
+|---|---|---|
+| `idx_users_username_bigm` (GIN, 003) | `username LIKE '%' || lower($1) || '%'` and the prefix form `username LIKE lower($1) || '%'`. Full-table (no partial predicate) — registration check needs to see soft-deleted-but-held rows too. | §7 |
+| `idx_users_display_name_bigm` (GIN on `lower(display_name)`, partial, 003) | `lower(display_name) LIKE '%' || lower($1) || '%'`. The functional expression matches the query side so the index is usable; the `WHERE display_name IS NOT NULL` predicate keeps the index dense (display_name is NOT NULL by schema but the partial-predicate pattern is uniform with the other text indexes). | §7 |
+
+```sql
+-- 003:
+CREATE INDEX idx_users_username_bigm
+  ON users USING gin (username gin_bigm_ops);
+CREATE INDEX idx_users_display_name_bigm
+  ON users USING gin (lower(display_name) gin_bigm_ops)
+  WHERE display_name IS NOT NULL;
+```
+
+### Why bigm and not FTS + trigram
+
+Postgres FTS with the `simple` config does not segment CJK: it treats a CJK run as one token, so 1-char Korean and short Japanese substring queries silently return empty. A pg_trgm fallback narrows the gap but still misses sub-2-char Korean and sub-3-char Japanese. pg_bigm indexes every adjacent character pair regardless of language, so `닷` finds `닷사이 39` and `祭` finds `獺祭50` against a single GIN — one query plan, one column, one operator class. `idx_beverages_name_gin` stays — it serves JSONB containment lookups (`name_i18n @> '{"en":"…"}'`), a different query pattern.
 
 ### flavor_tags
 
@@ -325,7 +346,7 @@ No index for `comment` or `follow_request` dedupe — both are intentionally non
 
 - **Hottest write paths**: `check_ins.INSERT` updates three indexes (`user_created`, `beverage_created`, `created_global`) plus the aggregate trigger on `beverages`. The trigger does one extra `UPDATE` on `beverages`, which is acceptable at expected MVP write volume (~order of magnitude under 10/sec sustained).
 - **Index bloat risk**: `idx_check_ins_user_created` will grow indefinitely as a user accumulates check-ins. The partial `WHERE deleted_at IS NULL` helps but not against retained rows. Consider a TTL / archive process post-MVP; out of scope here.
-- **GIN write cost**: `idx_beverages_name_gin` and `idx_beverages_name_tsv` are write-heavy. Beverages are admin-curated and write-rare (catalog updates are bulk imports), so the cost is amortized.
+- **GIN write cost**: `idx_beverages_name_gin`, `idx_beverages_search_bigm`, `idx_producers_search_bigm`, `idx_users_username_bigm`, `idx_users_display_name_bigm` are write-heavy. Beverages and producers are admin-curated and write-rare (catalog updates are bulk imports), so the cost is amortized. The 003 search-text triggers fan out: a producer rename rewrites `search_text` on every beverage with that `producer_id`; a prefecture rename rewrites every producer + every transitive beverage. Prefecture renames are vanishingly rare (47 seeded reference rows that never change in practice).
 
 ## Indexes intentionally NOT created
 
@@ -336,6 +357,6 @@ No index for `comment` or `follow_request` dedupe — both are intentionally non
 
 ## Future migrations to consider
 
-1. **`004_*.sql` — search FTS upgrade**: replace `'simple'` config with locale-specific configs once stemming requirements are finalized.
-2. **`005_*.sql` — toast count denorm**: if the feed's `LATERAL` count subquery becomes a hotspot (>5ms per row), denormalize `toast_count` onto `check_ins` and maintain via toast triggers.
-3. **`006_*.sql` — username release purge job**: a periodic job to hard-purge user rows whose `username_release_at < NOW() - interval '7 days'` (i.e. comfortably past their hold window) to keep the held-handle index small.
+1. **Add an FTS ranking layer**: bigm answers "contains?" perfectly but doesn't rank. If users start needing relevance scoring (e.g. weighted by recent check-in volume or by where the match landed), add `to_tsvector('simple', search_text)` as a second materialized expression alongside the bigm-indexed `search_text` and ORDER BY `ts_rank(...)`. The trigger contract stays.
+2. **Toast count denorm**: if the feed's `LATERAL` count subquery becomes a hotspot (>5ms per row), denormalize `toast_count` onto `check_ins` and maintain via toast triggers.
+3. **Username release purge job**: a periodic job to hard-purge user rows whose `username_release_at < NOW() - interval '7 days'` (i.e. comfortably past their hold window) to keep the held-handle index small.

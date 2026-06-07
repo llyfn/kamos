@@ -1,12 +1,12 @@
 //go:build integration
 // +build integration
 
-// Integration coverage for GET /v1/users/search. The previous round
-// shipped the endpoint with no integration tests, then QA caught a
-// keyset-pagination bug that crossed rank tiers incorrectly. This
-// suite locks in the fix plus the surrounding contract — validation,
-// soft-delete filtering, LIKE wildcard escaping, and case-insensitive
-// matching on both username and display_name.
+// Integration coverage for GET /v1/users/search. Covers the bigm-backed
+// substring + 3-tier ranking contract: validation, soft-delete filtering,
+// case-insensitive matching on both username and display_name, tiered
+// ordering (exact > prefix > substring) with length-then-recency tie-
+// break, and keyset pagination on the (tier, length, created_at, id)
+// cursor.
 package integration
 
 import (
@@ -75,10 +75,10 @@ func itoa(n int) string {
 	return string(buf[i:])
 }
 
-// setUserCreatedAt rewrites a user's created_at via SQL. The keyset
-// pagination tests need controlled timestamps so the rank-tier
-// interleave is reproducible; the registration path stamps NOW() and
-// would otherwise leave all rows within microseconds of each other.
+// setUserCreatedAt rewrites a user's created_at via SQL so pagination
+// tests can pin a reproducible (created_at DESC) tie-break order; the
+// registration path stamps NOW() and would otherwise leave all rows
+// within microseconds of each other.
 func setUserCreatedAt(t *testing.T, userID string, ts time.Time) {
 	t.Helper()
 	p := getPool(t)
@@ -88,9 +88,9 @@ func setUserCreatedAt(t *testing.T, userID string, ts time.Time) {
 	}
 }
 
-// setUserDisplayName rewrites a user's display_name via SQL. The
-// rank-2 tier (display_name prefix) needs a display_name distinct
-// from the username so the rank CASE picks tier 2, not tier 1.
+// setUserDisplayName rewrites a user's display_name so the tier CASE
+// has a display_name distinct from the username for prefix/substring
+// tier scenarios.
 func setUserDisplayName(t *testing.T, userID, name string) {
 	t.Helper()
 	p := getPool(t)
@@ -102,8 +102,7 @@ func setUserDisplayName(t *testing.T, userID, name string) {
 
 // softDeleteUser sets deleted_at on a user via SQL, mirroring what the
 // handler does on DELETE /v1/users/me. We bypass the handler so the
-// test stays focused on /v1/users/search filtering behavior, not the
-// soft-delete flow.
+// test stays focused on /v1/users/search filtering behavior.
 func softDeleteUser(t *testing.T, userID string) {
 	t.Helper()
 	p := getPool(t)
@@ -125,7 +124,6 @@ func TestSearchUsers_HappyPath(t *testing.T) {
 	_, alpha := mustRegister(t, srv, "alphabob", "alphabob@example.com", "password-123")
 	setUserDisplayName(t, alpha, "Alpha Robert")
 
-	// Substring on username (lowercased input matches lowercase storage).
 	code, page, raw := doSearch(t, srv, "", "alphabob", "", 0)
 	if code != http.StatusOK {
 		t.Fatalf("search: %d body=%s", code, raw)
@@ -134,7 +132,6 @@ func TestSearchUsers_HappyPath(t *testing.T) {
 		t.Fatalf("username substring: got %+v want single id=%s", page.Items, alpha)
 	}
 
-	// Case-insensitive on username.
 	code, page, raw = doSearch(t, srv, "", "ALPHABOB", "", 0)
 	if code != http.StatusOK {
 		t.Fatalf("search upper: %d body=%s", code, raw)
@@ -143,7 +140,6 @@ func TestSearchUsers_HappyPath(t *testing.T) {
 		t.Fatalf("username upper: got %+v", page.Items)
 	}
 
-	// Match on display_name only (not present in username).
 	code, page, raw = doSearch(t, srv, "", "robert", "", 0)
 	if code != http.StatusOK {
 		t.Fatalf("search display: %d body=%s", code, raw)
@@ -152,7 +148,6 @@ func TestSearchUsers_HappyPath(t *testing.T) {
 		t.Fatalf("display_name substring: got %+v", page.Items)
 	}
 
-	// Case-insensitive on display_name.
 	code, page, raw = doSearch(t, srv, "", "ROBERT", "", 0)
 	if code != http.StatusOK {
 		t.Fatalf("search display upper: %d body=%s", code, raw)
@@ -180,9 +175,6 @@ func TestSearchUsers_QueryTooShort(t *testing.T) {
 		}
 		var e errBodyShape
 		_ = json.Unmarshal(raw, &e)
-		// Empty q fails SanitizeText (REQUIRED), >0-len-but-<2 fails the
-		// INVALID_QUERY guard. Both surface as a 400 with a populated code;
-		// the test asserts the response shape, not the specific code.
 		if e.Code == "" {
 			t.Errorf("q=%q: missing error code in %s", tc.q, raw)
 		}
@@ -198,7 +190,6 @@ func TestSearchUsers_SoftDeletedExcluded(t *testing.T) {
 
 	_, uid := mustRegister(t, srv, "ghostuser", "ghost@example.com", "password-123")
 
-	// Pre-delete: search hits.
 	code, page, raw := doSearch(t, srv, "", "ghostuser", "", 0)
 	if code != http.StatusOK {
 		t.Fatalf("pre-delete search: %d body=%s", code, raw)
@@ -209,7 +200,6 @@ func TestSearchUsers_SoftDeletedExcluded(t *testing.T) {
 
 	softDeleteUser(t, uid)
 
-	// Post-delete: search misses.
 	code, page, raw = doSearch(t, srv, "", "ghostuser", "", 0)
 	if code != http.StatusOK {
 		t.Fatalf("post-delete search: %d body=%s", code, raw)
@@ -219,41 +209,30 @@ func TestSearchUsers_SoftDeletedExcluded(t *testing.T) {
 	}
 }
 
-// TestSearchUsers_PaginationAcrossRankTiers — the regression QA caught.
-// Three users, three rank tiers, three pages of limit=1. The buggy
-// 2-tuple keyset would either skip the rank-3 user or duplicate the
-// rank-1 user; the fix walks all three exactly once in (rank, ts DESC)
-// order.
-func TestSearchUsers_PaginationAcrossRankTiers(t *testing.T) {
+// TestSearchUsers_TierOrdering — exact match comes first, then prefix
+// matches, then pure substring matches. Walked one page at a time to
+// also exercise the (tier, length, created_at, id) cursor.
+func TestSearchUsers_TierOrdering(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	// Rank 1 (username prefix "bob") with the OLDEST created_at — so
-	// (created_at, id) DESC would visit it last and the old code would
-	// re-emit it on page 2 once the keyset crossed into rank-2 territory.
-	_, bobby := mustRegister(t, srv, "bobby", "bobby@example.com", "password-123")
-	setUserDisplayName(t, bobby, "Bobby Tables")
-	setUserCreatedAt(t, bobby, time.Now().Add(-3*time.Hour))
+	_, exact := mustRegister(t, srv, "bob", "bob@example.com", "password-123")
+	setUserDisplayName(t, exact, "Exact Match")
+	setUserCreatedAt(t, exact, time.Now().Add(-4*time.Hour))
 
-	// Rank 2 (display_name prefix "bob"), middle timestamp. Username
-	// "johnny" so it doesn't hit rank 1.
-	_, johnny := mustRegister(t, srv, "johnny", "johnny@example.com", "password-123")
-	setUserDisplayName(t, johnny, "Bob Johnson")
-	setUserCreatedAt(t, johnny, time.Now().Add(-2*time.Hour))
+	_, prefix := mustRegister(t, srv, "bobby", "bobby@example.com", "password-123")
+	setUserDisplayName(t, prefix, "Prefix Match")
+	setUserCreatedAt(t, prefix, time.Now().Add(-3*time.Hour))
 
-	// Rank 3 (contains "bob" in display_name only), newest timestamp.
-	// Username "xyzed" so it doesn't hit rank 1; display_name "Rob Bobson"
-	// matches the contains pattern but not the prefix.
-	_, xyzed := mustRegister(t, srv, "xyzed", "xyzed@example.com", "password-123")
-	setUserDisplayName(t, xyzed, "Rob Bobson")
-	setUserCreatedAt(t, xyzed, time.Now().Add(-1*time.Hour))
+	_, substr := mustRegister(t, srv, "subbob", "subbob@example.com", "password-123")
+	setUserDisplayName(t, substr, "Substring Match")
+	setUserCreatedAt(t, substr, time.Now().Add(-2*time.Hour))
 
-	// Walk three pages, limit=1.
 	seen := map[string]int{}
 	order := []string{}
 	cur := ""
-	for i := 0; i < 5; i++ { // upper bound; we expect to finish in 3.
+	for i := 0; i < 5; i++ {
 		code, page, raw := doSearch(t, srv, "", "bob", cur, 1)
 		if code != http.StatusOK {
 			t.Fatalf("page %d: status=%d body=%s", i, code, raw)
@@ -274,76 +253,74 @@ func TestSearchUsers_PaginationAcrossRankTiers(t *testing.T) {
 		cur = page.NextCursor
 	}
 
-	// Every user surfaced exactly once.
-	if seen[bobby] != 1 || seen[johnny] != 1 || seen[xyzed] != 1 {
-		t.Errorf("counts: bobby=%d johnny=%d xyzed=%d (each want 1) — order=%v",
-			seen[bobby], seen[johnny], seen[xyzed], order)
+	if seen[exact] != 1 || seen[prefix] != 1 || seen[substr] != 1 {
+		t.Errorf("counts: exact=%d prefix=%d substr=%d (each want 1) — order=%v",
+			seen[exact], seen[prefix], seen[substr], order)
 	}
-
-	// Rank order: bobby (rank 1) → johnny (rank 2) → xyzed (rank 3).
-	want := []string{bobby, johnny, xyzed}
 	if len(order) != 3 {
 		t.Fatalf("emitted %d rows, want 3 — order=%v", len(order), order)
 	}
-	for i, id := range want {
-		if order[i] != id {
-			t.Errorf("position %d: got %s want %s — full order=%v", i, order[i], id, order)
-		}
+	if order[0] != exact {
+		t.Errorf("position 0: got %s want exact=%s (full=%v)", order[0], exact, order)
+	}
+	if order[1] != prefix {
+		t.Errorf("position 1: got %s want prefix=%s (full=%v)", order[1], prefix, order)
+	}
+	if order[2] != substr {
+		t.Errorf("position 2: got %s want substr=%s (full=%v)", order[2], substr, order)
 	}
 }
 
-// TestSearchUsers_LikeWildcardEscape — `%` and `_` are literal in the
-// query, not wildcards. Without escaping, q="a%" matches every user
-// whose username starts with "a"; with escaping it matches only users
-// whose username literally contains "a%".
-func TestSearchUsers_LikeWildcardEscape(t *testing.T) {
+// TestSearchUsers_LengthTieBreak — within the same tier (substring), the
+// shorter username surfaces first per the (length ASC) tie-break.
+func TestSearchUsers_LengthTieBreak(t *testing.T) {
 	truncateAll(t)
 	srv := newServer(t)
 	defer srv.Close()
 
-	_, alice := mustRegister(t, srv, "alice", "alice@example.com", "password-123")
-	_, _ = mustRegister(t, srv, "bob", "bob@example.com", "password-123")
+	_, shortU := mustRegister(t, srv, "axyzb", "shortu@example.com", "password-123")
+	setUserDisplayName(t, shortU, "Short")
+	setUserCreatedAt(t, shortU, time.Now().Add(-2*time.Hour))
 
-	// Sanity check: bare "a" prefix would hit alice (and possibly anyone
-	// starting with 'a'); we don't assert on this. The point of this
-	// test is that "a%" should NOT match alice because alice's username
-	// has no literal "%" in it.
-	code, page, raw := doSearch(t, srv, "", "a%", "", 0)
-	if code != http.StatusOK {
-		t.Fatalf("search a%%: %d body=%s", code, raw)
-	}
-	for _, it := range page.Items {
-		if it.ID == alice {
-			t.Errorf("alice surfaced for q=%q — %% was treated as wildcard. body=%s", "a%", raw)
-		}
-	}
+	_, longU := mustRegister(t, srv, "aaaxyzbbb", "longu@example.com", "password-123")
+	setUserDisplayName(t, longU, "Long")
+	setUserCreatedAt(t, longU, time.Now().Add(-1*time.Hour))
 
-	// Underscore is also a SQL LIKE wildcard ("any single char"). Same
-	// test: "ali_e" must not match "alice".
-	code, page, raw = doSearch(t, srv, "", "ali_e", "", 0)
+	code, page, raw := doSearch(t, srv, "", "xyz", "", 0)
 	if code != http.StatusOK {
-		t.Fatalf("search ali_e: %d body=%s", code, raw)
+		t.Fatalf("search: %d body=%s", code, raw)
 	}
-	for _, it := range page.Items {
-		if it.ID == alice {
-			t.Errorf("alice surfaced for q=%q — _ was treated as wildcard. body=%s", "ali_e", raw)
-		}
+	if len(page.Items) != 2 {
+		t.Fatalf("got %d rows, want 2 — body=%s", len(page.Items), raw)
 	}
+	if page.Items[0].ID != shortU {
+		t.Errorf("position 0: got %s want shorter username %s", page.Items[0].ID, shortU)
+	}
+	if page.Items[1].ID != longU {
+		t.Errorf("position 1: got %s want longer username %s", page.Items[1].ID, longU)
+	}
+}
 
-	// Positive control: searching the literal "alice" still works
-	// (confirms the escape doesn't break ordinary substring matches).
-	code, page, raw = doSearch(t, srv, "", "alice", "", 0)
-	if code != http.StatusOK {
-		t.Fatalf("search alice: %d body=%s", code, raw)
-	}
-	hit := false
-	for _, it := range page.Items {
-		if it.ID == alice {
-			hit = true
-			break
+// TestSearchUsers_LikeMetacharEscaped — `%%` / `__` (≥2 chars so they
+// clear the min-2 gate) must NOT match every user. The repo escapes
+// LIKE metachars before binding so user-supplied wildcards stay
+// literal substrings.
+func TestSearchUsers_LikeMetacharEscaped(t *testing.T) {
+	truncateAll(t)
+	srv := newServer(t)
+	defer srv.Close()
+
+	_, _ = mustRegister(t, srv, "alice", "alice@example.com", "password-123")
+	_, _ = mustRegister(t, srv, "bobby", "bobby@example.com", "password-123")
+
+	for _, q := range []string{"%%", "__", `\\`, "%_"} {
+		code, page, raw := doSearch(t, srv, "", q, "", 0)
+		if code != http.StatusOK {
+			t.Fatalf("q=%q: status=%d body=%s", q, code, raw)
 		}
-	}
-	if !hit {
-		t.Errorf("alice missing from positive-control search: body=%s", raw)
+		if len(page.Items) != 0 {
+			t.Errorf("q=%q: got %d items, want 0 (metachars must not match-all): body=%s",
+				q, len(page.Items), raw)
+		}
 	}
 }

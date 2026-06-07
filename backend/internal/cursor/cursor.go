@@ -38,11 +38,18 @@ import (
 // `CheckInCount` is encoded under the short `k` key (the byte budget on
 // a base64 cursor is tight); legacy cursors without `k` still decode —
 // handlers that need the full triple fall back to a single-key keyset.
+//
+// User-search cursors carry (MatchTier, NameLength, CreatedAt, ID) under
+// keys `m` + `n` so the 3-tier rank (exact / prefix / substring) can
+// stably keyset-paginate. Older user-search cursors without these fields
+// decode to nil tier/length and the handler treats them as "first page".
 type Cursor struct {
 	CreatedAt    time.Time `json:"c,omitempty"`
 	ID           string    `json:"i,omitempty"`
 	Score        *int64    `json:"s,omitempty"`
 	CheckInCount *int64    `json:"k,omitempty"`
+	MatchTier    *int      `json:"m,omitempty"`
+	NameLength   *int      `json:"n,omitempty"`
 	Type         string    `json:"t,omitempty"`
 }
 

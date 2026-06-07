@@ -2160,8 +2160,8 @@ paths:
       tags: [admin]
       operationId: adminListBeverages
       description: |
-        List beverages for admin tooling. Optional FTS (`q`,
-        websearch_to_tsquery against idx_beverages_name_tsv), exact
+        List beverages for admin tooling. Optional substring search (`q`,
+        `LIKE '%lower(q)%'` against `idx_beverages_search_bigm`), exact
         filters (`producer_id`, `category_id`, `category_slug`, `id`).
         `id` short-circuits the cursor. `include_deleted=1` surfaces
         soft-deleted rows for the admin "trash" view.
@@ -2326,8 +2326,8 @@ paths:
       tags: [admin]
       operationId: adminListProducers
       description: |
-        List producers for admin tooling. Optional FTS (`q`,
-        websearch_to_tsquery against idx_producers_name_tsv) or exact
+        List producers for admin tooling. Optional substring search (`q`,
+        `LIKE '%lower(q)%'` against `idx_producers_search_bigm`) or exact
         UUID lookup (`id`). `include_deleted=1` surfaces soft-deleted
         rows.
       parameters:

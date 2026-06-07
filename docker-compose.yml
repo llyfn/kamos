@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:18-alpine
+    build:
+      context: ./db
+      dockerfile: Dockerfile.dev
+    image: kamos/postgres:dev
     container_name: kamos-postgres
     restart: unless-stopped
     environment:

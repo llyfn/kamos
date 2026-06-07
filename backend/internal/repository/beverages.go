@@ -308,14 +308,10 @@ func (r *BeverageRepo) toBeverage(row *beverageRow) (domain.Beverage, error) {
 }
 
 // List uses the popularity cursor (check_in_count, created_at, id).
-// Set Q to filter by full-text match. q (lexeme) and category_slug
-// are optional. The triple keyset is backed by
-// idx_beverages_popularity_keyset (migration 012).
-//
-// Soft-deleted rows are filtered out on the public read path. The
-// partial indexes (idx_beverages_* WHERE deleted_at IS NULL) keep
-// the planner using index scans without the predicate slowing down
-// the hot path.
+// Q is an optional case-insensitive substring filter served by
+// idx_beverages_search_bigm; category_slug is an optional exact filter.
+// The triple keyset is backed by idx_beverages_popularity_keyset
+// (migration 012).
 func (r *BeverageRepo) List(ctx context.Context, p BeverageListParams) ([]domain.Beverage, error) {
 	if p.Limit <= 0 {
 		p.Limit = 20
@@ -324,19 +320,14 @@ func (r *BeverageRepo) List(ctx context.Context, p BeverageListParams) ([]domain
 WHERE TRUE
   AND b.deleted_at IS NULL
   AND br.deleted_at IS NULL
-  AND ($1::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ plainto_tsquery('simple', $1))
+  AND ($1::text IS NULL OR b.search_text LIKE '%' || $1 || '%')
   AND ($2::text IS NULL OR b.category_slug = $2)
   AND ($3::bigint IS NULL OR
        (b.check_in_count, b.created_at, b.id) <
        ($3::bigint, $4::timestamptz, $5::uuid))
 ORDER BY b.check_in_count DESC, b.created_at DESC, b.id DESC
 LIMIT $6;`
-	rows, err := r.db.Query(ctx, q, p.Q, p.CategorySlug, p.CursorCount, p.CursorTs, p.CursorID, p.Limit+1)
+	rows, err := r.db.Query(ctx, q, bigmLikeArg(p.Q), p.CategorySlug, p.CursorCount, p.CursorTs, p.CursorID, p.Limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("BeverageRepo.List: %w", err)
 	}
@@ -531,30 +522,19 @@ func (r *ProducerRepo) List(ctx context.Context, q *string, cursorTs *time.Time,
 	if limit <= 0 {
 		limit = 20
 	}
-	// beverage_count comes from the denormalized column on producers
-	// instead of a correlated subquery per row. Ordering is
-	// (created_at DESC, id DESC) so the list paginates in a meaningful
-	// order (v7 UUIDs are pseudo-random).
-	//
-	// Soft-deleted rows are excluded from the public catalog. The partial
-	// idx_producers_name_tsv keeps FTS index-friendly. Prefecture comes
-	// from a LEFT JOIN on prefectures + regions via
-	// producers.prefecture_id; nullable.
+	// beverage_count is denormalized on producers; q is a case-insensitive
+	// substring served by idx_producers_search_bigm. Prefecture comes from
+	// a LEFT JOIN via producers.prefecture_id.
 	const sql = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,
        b.beverage_count,` + producerPrefectureSelectCols + `
 FROM producers b` + producersPrefectureJoinClause + `
 WHERE b.deleted_at IS NULL
-  AND ($1::text IS NULL OR
-       to_tsvector('simple',
-         coalesce(b.name_i18n->>'en','') || ' ' ||
-         coalesce(b.name_i18n->>'ja','') || ' ' ||
-         coalesce(b.name_i18n->>'ko','')
-       ) @@ plainto_tsquery('simple', $1))
+  AND ($1::text IS NULL OR b.search_text LIKE '%' || $1 || '%')
   AND ($2::timestamptz IS NULL OR (b.created_at, b.id) < ($2::timestamptz, $3::uuid))
 ORDER BY b.created_at DESC, b.id DESC
 LIMIT $4;`
-	rows, err := r.db.Query(ctx, sql, q, cursorTs, cursorID, limit+1)
+	rows, err := r.db.Query(ctx, sql, bigmLikeArg(q), cursorTs, cursorID, limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("ProducerRepo.List: %w", err)
 	}
