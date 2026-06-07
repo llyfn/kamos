@@ -550,7 +550,7 @@ Uses `idx_check_ins_beverage_created`.
 **Endpoint**: `GET /search?q=&category=&cursor=`, `GET /v1/beverages?q=…`.
 **SPEC**: §7.
 
-Substring match against the materialized `search_text` column (004) — covers beverage name + producer name + prefecture name in en/ja/ko, pre-lowercased on write. `idx_beverages_search_bigm` (GIN with `gin_bigm_ops`) serves the `LIKE '%…%'` pattern; the bigm operator class accelerates 2-gram lookups so CJK substring queries like `祭` against `獺祭50` hit the index instead of seq-scanning.
+Substring match against the materialized `search_text` column (003) — covers beverage name + producer name + prefecture name in en/ja/ko, pre-lowercased on write. `idx_beverages_search_bigm` (GIN with `gin_bigm_ops`) serves the `LIKE '%…%'` pattern; the bigm operator class accelerates 2-gram lookups so CJK substring queries like `祭` against `獺祭50` hit the index instead of seq-scanning.
 
 ```sql
 SELECT b.id, b.name_i18n, b.category_slug, b.avg_rating, b.check_in_count,

@@ -74,7 +74,7 @@ Cross-references:
 ## 1a. Custom DB image (pg_bigm)
 
 `kamos-db` runs a forked `flyio/postgres-flex:18` image with `pg_bigm`
-baked in. The CJK substring search path (migration 004) depends on the
+baked in. The CJK substring search path (migration 003) depends on the
 extension being present on every Postgres machine in the cluster.
 
 Source: `db/Dockerfile` (extends `flyio/postgres-flex:18`, installs
@@ -138,23 +138,15 @@ off the private network. Apply any new migration with the tunnel command
 above **before merging** the schema change. Append-only + idempotent means
 a deploy that lands before/after the migration is safe either way.
 
-Migration **003** (wider search indexes) is heavy on first apply: the
-backfill `UPDATE` on `producers` and `beverages` briefly takes row locks on
-the entire catalog, and the GIN index builds in `003a` are
-`CREATE INDEX CONCURRENTLY` (safe to run against live traffic but they
-take several minutes on a populated DB). Allow extra time, watch
-`flyctl logs -a kamos` for elevated query latency during the backfill
-window, and apply `003` and `003a` in order (003a depends on the columns +
-data 003 writes).
-
-Migration **004** (`pg_bigm` substring search) replaces the
-`search_tsv` columns and the 003-era trigram indexes with a single
-`search_text` + bigm GIN index per table. It is also heavy on first
-apply (full backfill of `search_text` on beverages + producers; four
-`CREATE INDEX CONCURRENTLY` in `004a`). **Prereq: the custom DB image
-from §1a must already be live on every cluster machine** — `CREATE
-EXTENSION pg_bigm` in 004 will hard-fail otherwise. Apply order is `003`
-→ `003a` → custom-image rollout (§1a) → `004` → `004a`.
+Migration **003** (`search_text` + pg_bigm indexes) is a single
+transactional file: extension, columns, helper functions, triggers,
+full-table backfill on beverages + producers, and four plain (non-
+CONCURRENTLY) `CREATE INDEX` statements. Atomic apply over a brief
+write lock is the right tradeoff at current corpus size — each GIN
+build takes <1s on the live data. **Prereq: the custom DB image from
+§1a must already be live on every cluster machine** — `CREATE
+EXTENSION pg_bigm` will hard-fail otherwise. Apply order is custom-
+image rollout (§1a) → 003.
 
 ```sh
 flyctl secrets set -a kamos \
