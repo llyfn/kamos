@@ -55,9 +55,8 @@ CREATE INDEX idx_producers_prefecture_id
 |---|---|---|
 | `idx_beverages_producer` (partial, rebuilt 014; renamed 017) | "All beverages from a producer" — ProducerScreen. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_category` (partial, rebuilt 014) | "Browse by category" — SearchScreen filter chips. `WHERE deleted_at IS NULL`. | §7 |
-| `idx_beverages_name_gin` (partial, rebuilt 014) | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the `jsonb_path_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. Distinct from the materialized search vector (`idx_beverages_search_tsv`) and not redundant — `idx_beverages_name_gin` answers containment lookups, `idx_beverages_search_tsv` answers FTS. `WHERE deleted_at IS NULL`. | §7 |
-| `idx_beverages_search_tsv` (GIN on materialized column, partial, 003) | `tsvector` over the materialized `search_tsv` column (beverage name + producer name + prefecture name, all three locales each). Drives the wider beverage search via `search_tsv @@ websearch_to_tsquery('simple', $1)`. Replaces the dropped `idx_beverages_name_tsv` (which only covered the beverage name). `WHERE deleted_at IS NULL`. | §7 |
-| `idx_beverages_search_trgm` (GIN on `search_tsv::text` with `gin_trgm_ops`, partial, 003) | Typo-tolerance companion: `$1 <% search_tsv::text` (word_similarity) queries hit this index. Used as a fallback when the FTS query returns nothing. The tsvector text form is long enough that plain `%` / `similarity()` underscores short queries — see `query_patterns.md §11` for the why. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_name_gin` (partial, rebuilt 014) | Full-text-ish search across all locales of the i18n name JSONB. Using GIN with the `jsonb_path_ops` opclass supports `name_i18n @> '{"en":"Dassai"}'` (containment) but not `LIKE`. Distinct from the materialized search column (`idx_beverages_search_bigm`) and not redundant — `idx_beverages_name_gin` answers containment lookups, `idx_beverages_search_bigm` answers substring search. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_beverages_search_bigm` (GIN with `gin_bigm_ops` on materialized column, partial, 004; supersedes the dropped `idx_beverages_search_tsv` + `idx_beverages_search_trgm` from 003) | 2-gram GIN over the lowercased `search_text` column (beverage name + producer name + prefecture name, all three locales each, pre-lowercased on write). Drives the canonical query `search_text LIKE '%' || lower($1) || '%'`. The bigm operator class is what makes single- and short-char CJK substring queries like `祭` against `獺祭50` actually hit an index instead of falling through to seq-scan. `WHERE deleted_at IS NULL`. | §7 |
 | `idx_beverages_avg_rating_desc` (partial, rebuilt 014) | "Top-rated beverages in a category" sort. `WHERE deleted_at IS NULL AND check_in_count >= 3` — the existing `>= 3` filter is kept, and `deleted_at IS NULL` is added so soft-deleted catalog entries fall out of the top-rated list. | §7 |
 | `idx_beverages_deleted_at` (partial, 014) | Admin `include_deleted` listing. `WHERE deleted_at IS NOT NULL` — tiny. |
 
@@ -73,12 +72,9 @@ CREATE INDEX idx_beverages_category
 CREATE INDEX idx_beverages_name_gin
   ON beverages USING gin (name_i18n jsonb_path_ops)
   WHERE deleted_at IS NULL;
--- 003 (CONCURRENTLY in 003a):
-CREATE INDEX idx_beverages_search_tsv
-  ON beverages USING gin (search_tsv)
-  WHERE deleted_at IS NULL;
-CREATE INDEX idx_beverages_search_trgm
-  ON beverages USING gin ((search_tsv::text) gin_trgm_ops)
+-- 004 (CONCURRENTLY in 004a):
+CREATE INDEX idx_beverages_search_bigm
+  ON beverages USING gin (search_text gin_bigm_ops)
   WHERE deleted_at IS NULL;
 CREATE INDEX idx_beverages_avg_rating_desc
   ON beverages (category_id, avg_rating DESC NULLS LAST)
@@ -119,49 +115,50 @@ Intentionally NOT created:
 - `(category_id, sort_order)` — would speed up the list query above by one sort step, but the per-category cardinality is in the single-digit-to-low-teens range. Add only if backfill grows the table by orders of magnitude (no evidence today).
 - An index on `deleted_at` — soft-delete rows are exception cases; admin reads use `deleted_at IS NOT NULL` over a tiny set and a partial helper is overkill at this cardinality.
 
-### producers (search) — 003
+### producers (search) — 004
 
-Migration 003 adds a materialized `search_tsv` column on `producers` (own en/ja/ko name + prefecture's en/ja/ko name) and two GIN indexes; the legacy `idx_producers_name_tsv` (name-only functional GIN) is dropped in `003a_search_indexes_concurrent.sql` as redundant.
+Migration 003 added a materialized `search_tsv` column on `producers` and two GINs (FTS + trigram). Migration 004 replaces the column with `search_text TEXT` (lowercased concat of own en/ja/ko name + prefecture's en/ja/ko name) and replaces both indexes with a single pg_bigm GIN; both 003 indexes are dropped in `004a_bigm_search_concurrent.sql`.
 
 | Index | Purpose | Trace |
 |---|---|---|
-| `idx_producers_search_tsv` (GIN on materialized column, partial, 003) | `search_tsv @@ websearch_to_tsquery('simple', $1)` for producer FTS spanning name + prefecture. `WHERE deleted_at IS NULL`. | §7 |
-| `idx_producers_search_trgm` (GIN on `search_tsv::text` with `gin_trgm_ops`, partial, 003) | Typo-tolerance companion via `$1 <% search_tsv::text` (word_similarity) — same rationale as `idx_beverages_search_trgm` above. `WHERE deleted_at IS NULL`. | §7 |
+| `idx_producers_search_bigm` (GIN with `gin_bigm_ops` on materialized column, partial, 004) | `search_text LIKE '%' || lower($1) || '%'` for producer substring search spanning name + prefecture. CJK substring matches like `富士` are indexed via 2-grams. `WHERE deleted_at IS NULL`. | §7 |
 
 ```sql
--- 003 (CONCURRENTLY in 003a):
-CREATE INDEX idx_producers_search_tsv
-  ON producers USING gin (search_tsv)
-  WHERE deleted_at IS NULL;
-CREATE INDEX idx_producers_search_trgm
-  ON producers USING gin ((search_tsv::text) gin_trgm_ops)
+-- 004 (CONCURRENTLY in 004a):
+CREATE INDEX idx_producers_search_bigm
+  ON producers USING gin (search_text gin_bigm_ops)
   WHERE deleted_at IS NULL;
 ```
 
-### users (search) — 003
+### users (search) — 004
 
-User search shifts off `ILIKE '%q%'` (sequential scan) onto two `pg_trgm` GIN indexes. Min-2-char rule + case-insensitive matching + `deleted_at IS NULL` filter all preserved at the query layer.
+User search uses pg_bigm GINs on `users.username` (already lowercase per SPEC) and `lower(users.display_name)`. Three-tier ranking (exact / prefix / substring) lives in the query layer; see `query_patterns.md §11b`. Min-2-char rule, case-insensitive matching, and `deleted_at IS NULL` filter all preserved at the query layer.
 
 | Index | Purpose | Trace |
 |---|---|---|
-| `idx_users_username_trgm` (GIN, 003) | `username % $1` and `similarity(username, $1) > 0.2`. Full-table (no partial predicate) — registration check needs to see soft-deleted-but-held rows too. | §7 |
-| `idx_users_display_name_trgm` (GIN, partial, 003) | `display_name % $1`. `display_name` is NOT NULL by schema; the `WHERE display_name IS NOT NULL` predicate is redundant but harmless and keeps the partial-index pattern uniform. | §7 |
+| `idx_users_username_bigm` (GIN, 004) | `username LIKE '%' || lower($1) || '%'` and the prefix form `username LIKE lower($1) || '%'`. Full-table (no partial predicate) — registration check needs to see soft-deleted-but-held rows too. | §7 |
+| `idx_users_display_name_bigm` (GIN on `lower(display_name)`, partial, 004) | `lower(display_name) LIKE '%' || lower($1) || '%'`. The functional expression matches the query side so the index is usable; the `WHERE display_name IS NOT NULL` predicate keeps the index dense (display_name is NOT NULL by schema but the partial-predicate pattern is uniform with the other text indexes). | §7 |
 
 ```sql
--- 003a (CONCURRENTLY):
-CREATE INDEX idx_users_username_trgm
-  ON users USING gin (username gin_trgm_ops);
-CREATE INDEX idx_users_display_name_trgm
-  ON users USING gin (display_name gin_trgm_ops)
+-- 004a (CONCURRENTLY):
+CREATE INDEX idx_users_username_bigm
+  ON users USING gin (username gin_bigm_ops);
+CREATE INDEX idx_users_display_name_bigm
+  ON users USING gin (lower(display_name) gin_bigm_ops)
   WHERE display_name IS NOT NULL;
 ```
 
-### Indexes dropped in 003a
+### Trade-off — bigm vs FTS + trigram
 
-- `idx_beverages_name_tsv` — superseded by `idx_beverages_search_tsv` (the new index covers the same beverage-name tokens AND adds producer + prefecture tokens). The dropped index never indexed anything the new one doesn't.
-- `idx_producers_name_tsv` — superseded by `idx_producers_search_tsv` (same shape: name + prefecture vs name-only).
+The 003-era pair (FTS via `to_tsvector('simple', …)` + trigram fallback on the tsvector's text projection) was structurally limited on CJK: the `simple` config treats a CJK run as one token, so 1-char Korean and short Japanese substring queries silently returned empty. Trigram narrowed the gap but still missed sub-2-char Korean and sub-3-char Japanese. pg_bigm indexes every adjacent character pair regardless of language, so `닷` finds `닷사이 39` and `祭` finds `獺祭50` against a single GIN. The cost is one query plan instead of two (no FTS-then-trigram fallback orchestration) and one column instead of one column + one functional projection.
 
-`idx_beverages_name_gin` is **not** dropped — it serves JSONB containment lookups (`name_i18n @> '{"en":"…"}'`), a different query pattern.
+### Indexes dropped in 004a
+
+- `idx_beverages_search_tsv` and `idx_beverages_search_trgm` — superseded by `idx_beverages_search_bigm` (one bigm GIN replaces the FTS+trigram pair against the now-removed `search_tsv` column).
+- `idx_producers_search_tsv` and `idx_producers_search_trgm` — same, for producers.
+- `idx_users_username_trgm` and `idx_users_display_name_trgm` — superseded by `idx_users_username_bigm` and `idx_users_display_name_bigm`.
+
+`idx_beverages_name_gin` is **not** dropped — it serves JSONB containment lookups (`name_i18n @> '{"en":"…"}'`), a different query pattern. `pg_trgm` is left installed even though no index uses it; `similarity()` / `word_similarity()` remain available as plain expressions for future ranking work.
 
 ### flavor_tags
 
