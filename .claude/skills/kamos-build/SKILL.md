@@ -122,7 +122,7 @@ QA prompts include architecture + coding conventions + security/perf spot-checks
 
 ## BLOCKER / MAJOR / MINOR routing
 
-See [[protocol:build-pipeline]] "Severity → routing" section. Summary: BLOCKER + MAJOR route to the implementer (per `feedback_implementer_owns_qa_fixes` memory); MINOR files into `docs/history/backlog.md` for the end-of-phase sweep.
+See [[protocol:build-pipeline]] "Severity → routing" section. Summary: BLOCKER + MAJOR route to the implementer (per `feedback_implementer_owns_qa_fixes` memory); MINOR files into `docs/backlog.md` for the end-of-phase sweep.
 
 ## End-of-phase MINOR sweep
 

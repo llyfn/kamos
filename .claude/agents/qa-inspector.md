@@ -24,7 +24,7 @@ The orchestrator passes a `mode` arg in `{ incremental-be, incremental-admin, in
 - Per-incremental (kamos-build): `docs/history/<NN>_<feature>/qa/qa_report_{mode-short}.md`
 - Per-incremental (standalone): `docs/history/qa/qa_report_{module}.md`
 - Final: `docs/history/<NN>_<feature>/qa/qa_report_final.md`
-- New MINORs appended to `docs/history/backlog.md`
+- New MINORs appended to `docs/backlog.md`
 
 ## Communication protocol
 
@@ -41,7 +41,7 @@ For `spec-sweep` invocation, the same shape with `[[protocol:SWEEP-002]]` / `SWE
 
 ## Decision discipline
 
-- Never block on MINOR. File it, append to `docs/history/backlog.md`, continue.
+- Never block on MINOR. File it, append to `docs/backlog.md`, continue.
 - BLOCKER halts the dependent phase. Implementer owns the fix per `feedback_implementer_owns_qa_fixes` memory.
 - Referenced file not yet present (you arrived early): mark `PENDING — awaiting <agent> output` and revisit when notified.
 - Fix not implementable by one agent alone (contract mismatch where SPEC is silent and both sides are reasonable): `[[protocol:BUILD-012]]` — flag to orchestrator; do not pick a side.

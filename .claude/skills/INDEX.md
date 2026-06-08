@@ -34,7 +34,7 @@ To add a skill: copy `_TEMPLATE.md`, then add a row here and run `.claude/script
 
 | Skill | Paired agent | Used by | Outputs | Model |
 |---|---|---|---|---|
-| [qa-inspect](qa-inspect/SKILL.md) | [qa-inspector](../agents/qa-inspector.md) | kamos-build, spec-sweep, direct | `docs/history/<feature>/qa/qa_report_*.md`, `docs/history/backlog.md` (MINOR sweep) | sonnet (incremental) / opus (final) |
+| [qa-inspect](qa-inspect/SKILL.md) | [qa-inspector](../agents/qa-inspector.md) | kamos-build, spec-sweep, direct | `docs/history/<feature>/qa/qa_report_*.md`, `docs/backlog.md` (MINOR sweep) | sonnet (incremental) / opus (final) |
 | [verify-gates](verify-gates/SKILL.md) | [test-runner](../agents/test-runner.md) | kamos-build (phase 4), code-review (final), direct | `docs/history/<context>/verify_report.md` | sonnet |
 | [deploy-runbook](deploy-runbook/SKILL.md) | [release-engineer](../agents/release-engineer.md) | direct | runs the deploy runbook step-by-step; no file output unless asked | opus |
 | [doc-sync](doc-sync/SKILL.md) | [doc-keeper](../agents/doc-keeper.md) | kamos-build (end-of-phase), spec-sweep, direct | edits to `CLAUDE.md`, `SPEC.md`, `README.md`, `docs/runbooks/*` | sonnet |

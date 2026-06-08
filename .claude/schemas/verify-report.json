@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kamos://schemas/verify-report.json",
+  "title": "Verify-gates report",
+  "description": "Output of test-runner. One report per invocation. Used by the kamos-build Workflow form as the schema arg on the verify-gates agent() call.",
+  "type": "object",
+  "required": ["result", "gates"],
+  "additionalProperties": false,
+  "properties": {
+    "result": {
+      "enum": ["PASS", "FAIL", "BLOCKED"]
+    },
+    "context": {
+      "enum": ["kamos-build", "code-review", "direct"]
+    },
+    "base": {
+      "type": "string",
+      "description": "git ref the diff is computed against, e.g. main"
+    },
+    "changedPaths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "enum": [
+              "go-build",
+              "go-vet",
+              "go-test",
+              "go-int",
+              "flutter-analyze",
+              "flutter-test",
+              "admin-build",
+              "admin-test",
+              "sqlfluff",
+              "token-drift",
+              "openapi-validate",
+              "smoke"
+            ]
+          },
+          "required": { "type": "boolean" },
+          "status": { "enum": ["PASS", "FAIL", "SKIPPED", "BLOCKED"] },
+          "durationSeconds": { "type": "number" },
+          "flaky": { "type": "boolean" },
+          "excerpt": {
+            "type": "string",
+            "description": "Last 50 stderr lines on FAIL; empty on PASS"
+          },
+          "logPath": { "type": "string" }
+        }
+      }
+    },
+    "reportPath": { "type": "string" }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kamos://schemas/review-finding.json",
+  "title": "Code review finding (per-reviewer)",
+  "description": "One findings file emitted by arch / security / perf / style reviewers under code-review. Used by the code-review Workflow form for validated structured output.",
+  "type": "object",
+  "required": ["domain", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "domain": {
+      "enum": ["architecture", "security", "performance", "style"]
+    },
+    "scope": {
+      "type": "string",
+      "description": "Copy of docs/history/review/00_scope.md scope line"
+    },
+    "reportPath": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "title", "location"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(ARCH|SEC|PERF|STYLE)-[0-9]+$"
+          },
+          "severity": {
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+            "description": "Per [[protocol:review-fanout]] severity normalization: style ≤ MEDIUM; arch + perf ≤ HIGH; only security may issue CRITICAL"
+          },
+          "title": { "type": "string" },
+          "location": {
+            "type": "string",
+            "description": "file:line or module path"
+          },
+          "finding": { "type": "string" },
+          "impact": { "type": "string" },
+          "suggestion": { "type": "string" },
+          "crossReferences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["finding", "domain"],
+              "properties": {
+                "finding": { "type": "string", "description": "Other reviewer's finding id" },
+                "domain": { "enum": ["architecture", "security", "performance", "style"] }
+              }
+            }
+          },
+          "scaleImpact": {
+            "type": "string",
+            "description": "perf only — data volume at which the finding becomes a problem"
+          },
+          "attackScenario": {
+            "type": "string",
+            "description": "security only — one-paragraph attacker path"
+          }
+        }
+      }
+    }
+  }
+}

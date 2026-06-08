@@ -51,7 +51,7 @@ Communication:
 - [[protocol:BUILD-008]] for BLOCKER/MAJOR — route to the responsible
   implementer with file:line + exact fix (implementer owns the fix)
 - [[protocol:BUILD-010]] back to the orchestrator with the verdict
-- MINOR → file in the report, append to docs/history/backlog.md for the
+- MINOR → file in the report, append to docs/backlog.md for the
   end-of-phase sweep, do NOT route live
 - TaskUpdate per [[protocol:BUILD-013]] per slice
 

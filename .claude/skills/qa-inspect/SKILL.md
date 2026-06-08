@@ -103,7 +103,7 @@ See [[protocol:build-pipeline]] "Severity → routing". Summary:
 |---|---|---|
 | BLOCKER | [[protocol:BUILD-008]] to implementer; QA re-verifies | Halts dependent task |
 | MAJOR | [[protocol:BUILD-008]] to implementer; QA re-verifies | Does not halt; before phase end |
-| MINOR | File in report; append to `docs/history/backlog.md` | Swept at end of phase |
+| MINOR | File in report; append to `docs/backlog.md` | Swept at end of phase |
 
 Responsible-agent map:
 

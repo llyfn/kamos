@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kamos://schemas/qa-finding.json",
+  "title": "QA finding",
+  "description": "One finding emitted by qa-inspector. Used by the kamos-build Workflow script as the schema arg on every qa-inspector agent() call.",
+  "type": "object",
+  "required": ["status", "findings", "invariants"],
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "enum": ["PASS", "PASS WITH MINOR", "FAIL"],
+      "description": "Overall slice verdict per [[protocol:BUILD-010]]"
+    },
+    "mode": {
+      "enum": ["incremental-be", "incremental-admin", "incremental-fe", "final"],
+      "description": "Which qa-inspect mode this report covers"
+    },
+    "reportPath": {
+      "type": "string",
+      "description": "Path to the qa_report_*.md file the agent wrote"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "title"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^QA-[0-9]+$",
+            "description": "Monotonic per-report id, e.g. QA-014"
+          },
+          "severity": {
+            "enum": ["BLOCKER", "MAJOR", "MINOR"]
+          },
+          "invariant": {
+            "type": "string",
+            "pattern": "^invariant:[a-z0-9-]+$",
+            "description": "Catalog invariant id, e.g. invariant:jwt-storage"
+          },
+          "boundary": {
+            "type": "string",
+            "description": "<file:line> ↔ <file:line> or just <file:line>"
+          },
+          "title": { "type": "string" },
+          "problem": { "type": "string" },
+          "fix": {
+            "type": "string",
+            "description": "Owner-prefixed instruction per the qa-inspect skill's fix format"
+          },
+          "ownerAgent": {
+            "enum": [
+              "designer",
+              "db-architect",
+              "backend-engineer",
+              "flutter-engineer",
+              "i18n-curator",
+              "orchestrator"
+            ]
+          }
+        }
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^invariant:[a-z0-9-]+$"
+          },
+          "status": { "enum": ["PASS", "FAIL", "N/A"] },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kamos://schemas/handoff-addendum.json",
+  "title": "design/HANDOFF.md addendum",
+  "description": "The structured form of a kamos-build Phase 1 designer output — the addendum appended to design/HANDOFF.md listing screen ↔ data-shape mappings the engineers consume.",
+  "type": "object",
+  "required": ["feature", "screens"],
+  "additionalProperties": false,
+  "properties": {
+    "feature": { "type": "string" },
+    "spec": {
+      "type": "string",
+      "description": "SPEC.md section if any (e.g. §4.1)"
+    },
+    "screens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "dataShape"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "path": {
+            "type": "string",
+            "description": "go_router path the screen will live at"
+          },
+          "jsxFile": {
+            "type": "string",
+            "description": "design/ui_kits/mobile/components/<file>.jsx"
+          },
+          "dataShape": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Free-form key/value map naming each field the screen reads and its expected type"
+          },
+          "interactions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "invariantsTouched": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^invariant:[a-z0-9-]+$"
+            }
+          },
+          "i18nKeysAdded": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "openQuestions": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "newPrimitives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Any new primitive (token, widget, motion) added under design/"
+    }
+  }
+}

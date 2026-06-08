@@ -19,12 +19,16 @@ Coordinates four parallel specialist reviewers and synthesizes their findings in
 | perf-reviewer | `perf-reviewer` | Performance & scalability | `perf-review` | `docs/history/review/perf_findings.md` |
 | style-reviewer | `style-reviewer` | Maintainability | `style-review` | `docs/history/review/style_findings.md` |
 
-This skill is distinct from `qa-inspect`:
+## Relationship to qa-inspect
 
-- `code-review` = quality of one layer's code in isolation (architecture, security, perf, style)
-- `qa-inspect` = layers fit together correctly (boundaries, SPEC invariants)
+`code-review` and `qa-inspect` have a single clean boundary:
 
-When in doubt, run both — they don't overlap.
+- **qa-inspect owns SPEC catalog invariants** (`.claude/invariants/*.md`). If a layer violates `[[invariant:jwt-storage]]`, `[[invariant:cursor-pagination]]`, or any other catalog rule, the finding lives in a qa-inspect report — not here.
+- **code-review owns code-internal quality** beyond the catalog: architecture (layer separation, dependency direction, coupling), OWASP-Top-10 vulnerabilities not codified as invariants (e.g. a new injection vector), performance (N+1, missing index strategies not yet baked into a catalog invariant), and style (naming, error handling, dead code, magic values).
+
+If a reviewer trips on a catalog invariant during code-review, the protocol is to **cross-reference** the qa-inspect concern in the finding (`see [[invariant:<id>]] — owned by qa-inspect`) rather than file a redundant finding here. The cross-reference is a hint to the orchestrator that the qa-inspect path should already have caught it; if it didn't, that's a qa-inspect gap to flag.
+
+In practice: run both for any multi-layer change. They cover disjoint surfaces by design.
 
 ## Workflow
 
