@@ -1,6 +1,7 @@
 ---
 name: design-wireframe
 description: "KAMOS UX/UI design skill. Use this to extend the design system at design/: tokens (colors_and_type.css), brand document (README.md), mobile UI kit (HTML/JSX), and primitive previews. Invoke whenever design work, wireframing, screen layout, navigation flow, token changes, voice/copy decisions, or design system work is requested."
+recommended_model: opus
 ---
 
 # Design Wireframe Skill

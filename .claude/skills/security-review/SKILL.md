@@ -1,6 +1,7 @@
 ---
 name: security-review
 description: "Security vulnerability review skill. Finds injection, broken auth, IDOR, missing input validation, hardcoded secrets, insecure storage, and OWASP Top 10 issues in KAMOS code. Use when performing security audits, looking for vulnerabilities, or auditing authentication and authorization. Triggers: security review, audit, OWASP, vulnerability, auth review, IDOR, injection."
+recommended_model: opus
 ---
 
 # Security Review Skill

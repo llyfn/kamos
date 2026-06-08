@@ -1,6 +1,7 @@
 ---
 name: kamos-build
 description: "KAMOS feature-build orchestrator. Coordinates designer, db-architect, backend-engineer, flutter-engineer, and qa-inspector through a vertical-slice pipeline for one multi-layer feature: design → schema + API (+ admin) → Flutter → final QA. Per-layer QA fires the moment each implementer reports completion. Use when a request touches ≥2 of: design, schema, API, admin, Flutter, i18n. Do NOT use for single-layer work — invoke the relevant per-layer skill (go-api, flutter-feature, db-schema, design-wireframe) directly."
+recommended_model: opus
 ---
 
 # KAMOS Feature-Build Orchestrator
@@ -61,44 +62,19 @@ Orchestrator only. No agent spawned.
 
 ### Phase 1 — design
 
-```
-Agent(
-  name: "designer",
-  subagent_type: "designer",
-  model: "opus",
-  prompt: "Read docs/history/<NN>_<feature>/00_brief.md, SPEC.md, design/README.md, and design/HANDOFF.md. Use the design-wireframe skill to extend the design system for the named feature: update brand/voice rules only if necessary (the README is authoritative), add or revise JSX screens under design/ui_kits/mobile/components/, add primitive previews if a new primitive is introduced, and append a new section to design/HANDOFF.md listing the screen ↔ data-shape mappings the engineers will consume. Honor non-negotiables: the 5-tab nav (Feed · Lists · Discover · Notifications · Me), the Japanese-blue palette + Koh accent reserved for toast/kanpai only, no emoji in UI, exact SPEC category strings in all three locales, 0.5-step rating, cursor pagination. Do not create wireframes.md / design_tokens.md / screen_specs.md / api_contracts.md — the skill forbids them. On completion: SendMessage db-architect and backend-engineer 'Design ready for <feature>'. TaskUpdate to completed."
-)
-```
+Spawn the designer with the template at [prompts/designer.md](prompts/designer.md). Interpolate `<NN>_<feature>` from Phase 0; pull `model` from the `recommended_model` field in `.claude/skills/design-wireframe/SKILL.md`.
 
 On `designer.complete`: spawn the design-slice QA (see "Incremental QA" below).
 
 ### Phase 2 — schema + API (+ admin)
 
-```
-TeamCreate(
-  team_name: "<feature>-backend-team",
-  members: [
-    {
-      name: "db-architect",
-      subagent_type: "db-architect",
-      model: "opus",
-      prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/HANDOFF.md (new section), and SPEC.md. Use the db-schema skill. Write a new append-only migration to migrations/NNN_<feature>.sql, extend docs/db/schema.md, docs/db/indexes.md, and docs/db/query_patterns.md with the additions. Encode every SPEC cap as a CHECK constraint. On completion: SendMessage backend-engineer 'DB ready for <feature> — migration NNN, query patterns at docs/db/query_patterns.md'. TaskUpdate to completed."
-    },
-    {
-      name: "backend-engineer",
-      subagent_type: "backend-engineer",
-      model: "opus",
-      prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/HANDOFF.md (new section), SPEC.md, and backend/openapi.yaml. Use the go-api skill. Implement Go handlers in backend/internal/handlers/, repository in backend/internal/repository/, any worker jobs in backend/internal/jobs/. Extend backend/openapi.yaml with the new operations. Wait for 'DB ready' from db-architect before implementing the repository layer. If admin scope is set in 00_brief.md: implement the admin Go handlers (admin_*.go) AND extend admin/ React surface (HttpOnly cookie + CSRF auth per ARCHITECTURE.md §5). After the Go API slice is feature-complete: SendMessage qa-inspector 'Backend module <feature> complete' with paths. After the admin slice (if in scope) is feature-complete: SendMessage qa-inspector 'Admin module <feature> complete' with paths. On openapi.yaml updates: SendMessage flutter-engineer 'OpenAPI ready for <feature> at backend/openapi.yaml'. TaskUpdate per slice."
-    },
-    {
-      name: "qa-inspector",
-      subagent_type: "qa-inspector",
-      model: "opus",
-      prompt: "Use the qa-inspect skill in incremental backend mode. Wait for SendMessage 'Backend module <feature> complete' from backend-engineer. On receipt: cross-check Go handler response shapes against backend/openapi.yaml and design/HANDOFF.md, verify DB column names match Go struct json tags, run the SPEC invariant grep checks. Write docs/history/<NN>_<feature>/qa/qa_report_backend.md. If admin scope is set: also wait for 'Admin module <feature> complete' and cross-check admin handlers against admin/ React calls (CSRF header, cookie auth, /v1/admin/me cookie-authable identity). Write docs/history/<NN>_<feature>/qa/qa_report_admin.md. SendMessage BLOCKER and MAJOR findings to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix; that implementer owns the fix and SendMessages back for re-verification. MINOR findings are filed for the end-of-phase sweep. TaskUpdate per slice."
-    }
-  ]
-)
-```
+`TeamCreate(team_name: "<feature>-backend-team", ...)` with three members spawned from these templates:
+
+- db-architect — [prompts/db-architect.md](prompts/db-architect.md)
+- backend-engineer — [prompts/backend-engineer.md](prompts/backend-engineer.md)
+- qa-inspector (modes: `incremental-be`, and `incremental-admin` if scoped) — [prompts/qa-inspector.md](prompts/qa-inspector.md)
+
+Models come from the corresponding SKILL.md `recommended_model` fields (per-mode for `qa-inspect`).
 
 Task IDs (the orchestrator creates these; if admin is out of scope, omit `be-admin`/`qa-admin`):
 
@@ -114,40 +90,22 @@ Phase 2 ends when all in-scope tasks are `completed`. `TeamDelete("<feature>-bac
 
 ### Phase 3 — frontend
 
-```
-TeamCreate(
-  team_name: "<feature>-frontend-team",
-  members: [
-    {
-      name: "flutter-engineer",
-      subagent_type: "flutter-engineer",
-      model: "opus",
-      prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/README.md, design/colors_and_type.css, design/ui_kits/mobile/, design/HANDOFF.md (new section), backend/openapi.yaml, and SPEC.md. Use the flutter-feature skill. Implement screens, Riverpod providers, repositories, and ARB keys (all three locales together) under frontend/lib/features/<feature>/. Wire navigation in frontend/lib/app/router.dart. Required invariants: JWT in flutter_secure_storage (never SharedPreferences); category strings exactly per SPEC §2.1; 0.5-step rating widget; cursor pagination via next_cursor + has_more; ARB key parity across en/ja/ko. After the feature is implemented: SendMessage qa-inspector 'Flutter feature <feature> complete' with paths. TaskUpdate to completed."
-    },
-    {
-      name: "qa-inspector",
-      subagent_type: "qa-inspector",
-      model: "opus",
-      prompt: "Use the qa-inspect skill in incremental frontend mode. Wait for SendMessage 'Flutter feature <feature> complete' from flutter-engineer. On receipt: cross-check Flutter repository response parsing against backend/openapi.yaml, verify go_router paths correspond to real screen files, verify all three ARB files have matching keys, run the SPEC invariant grep checks (especially category strings, SharedPreferences, cursor pagination). Write docs/history/<NN>_<feature>/qa/qa_report_frontend.md. SendMessage BLOCKER and MAJOR findings to flutter-engineer with file:line and the specific fix; that implementer owns the fix and SendMessages back for re-verification. MINOR findings are filed for the end-of-phase sweep. TaskUpdate to completed."
-    }
-  ]
-)
-```
+`TeamCreate(team_name: "<feature>-frontend-team", ...)` with two members spawned from these templates:
+
+- flutter-engineer — [prompts/flutter-engineer.md](prompts/flutter-engineer.md)
+- qa-inspector (mode: `incremental-fe`) — [prompts/qa-inspector.md](prompts/qa-inspector.md)
+
+Models come from the corresponding SKILL.md `recommended_model` fields.
 
 Phase 3 ends when `fe-feature` and `qa-frontend` are `completed`. `TeamDelete`. Sweep MINOR findings.
 
 ### Phase 4 — final integration QA
 
-```
-Agent(
-  name: "qa-inspector-final",
-  subagent_type: "qa-inspector",
-  model: "opus",
-  prompt: "Use the qa-inspect skill in 'final' mode for the <feature> feature. Read backend/, frontend/, admin/ (if in scope), migrations/, design/, docs/db/, and SPEC.md. Verify end-to-end: (1) every new endpoint in backend/openapi.yaml is consumed by Flutter (and admin if in scope); (2) every new go_router path corresponds to a real screen file; (3) all three ARB files are consistent and complete for the feature; (4) category terminology in all three locales matches SPEC §2.1 exactly; (5) JWT storage uses flutter_secure_storage; (6) cursor pagination is end-to-end (handler → openapi → repository → UI); (7) admin auth uses HttpOnly cookies + CSRF (when in scope); (8) soft-delete columns and filters are present per SPEC where the feature touches them; (9) all SPEC caps enforced both client-side and server-side; (10) no SPEC invariant violated. Write docs/history/<NN>_<feature>/qa/qa_report_final.md with PASS/FAIL summary at the top, then per-category findings."
-)
-```
+Spawn qa-inspector with `mode: final` using [prompts/qa-inspector.md](prompts/qa-inspector.md). The final mode runs every catalog invariant grep across `backend/`, `frontend/`, `admin/` (if in scope), `migrations/`, and `design/`. Output: `docs/history/<NN>_<feature>/qa/qa_report_final.md`.
 
 Halt if final report is `FAIL`. Do not call the feature done until BLOCKERs are resolved.
+
+Optionally chain a `test-runner` (D1) at the end of Phase 4 to run the verification matrix from CLAUDE.md as a hard gate.
 
 ## Incremental QA (the per-layer trigger)
 
@@ -157,11 +115,7 @@ QA prompts include architecture + coding conventions + security/perf spot-checks
 
 ## BLOCKER / MAJOR / MINOR routing
 
-| Severity | Routing | Phase impact |
-|---|---|---|
-| BLOCKER | SendMessage implementer; that agent owns the fix; QA re-verifies before marking resolved | Halts the dependent task; if unresolved in 2 SendMessage rounds, halt the phase and escalate to user |
-| MAJOR | SendMessage implementer; implementer owns the fix; QA re-verifies | Does not halt; resolves before phase end |
-| MINOR | Filed in the QA report; not routed live | Swept at end of phase |
+See [[protocol:build-pipeline]] "Severity → routing" section. Summary: BLOCKER + MAJOR route to the implementer (per `feedback_implementer_owns_qa_fixes` memory); MINOR files into `docs/history/backlog.md` for the end-of-phase sweep.
 
 ## End-of-phase MINOR sweep
 
@@ -179,16 +133,7 @@ Implementer agents write production code to `backend/`, `frontend/`, `admin/`, `
 
 ## Communication contract
 
-Inter-agent messages, in order:
-
-- `designer` → `db-architect`, `backend-engineer`: "Design ready for `<feature>`"
-- `db-architect` → `backend-engineer`: "DB ready for `<feature>` — migration NNN"
-- `backend-engineer` (Go slice) → `qa-inspector`: "Backend module `<feature>` complete"
-- `backend-engineer` (admin slice, if in scope) → `qa-inspector`: "Admin module `<feature>` complete"
-- `backend-engineer` → `flutter-engineer`: "OpenAPI ready for `<feature>`"
-- `flutter-engineer` → `qa-inspector`: "Flutter feature `<feature>` complete"
-- `qa-inspector` → responsible agent: BLOCKER / MAJOR with file:line and exact fix
-- All agents → `TaskUpdate` after each meaningful state change
+Every SendMessage in this pipeline is defined in [[protocol:build-pipeline]] (`.claude/protocols/build-pipeline.md`). The contract names sender, receiver, literal wire string, payload, trigger, and receiver action for IDs `BUILD-001` through `BUILD-013`. Cite by ID; do not restate.
 
 ## Error handling
 

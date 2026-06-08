@@ -1,6 +1,7 @@
 ---
 name: go-api
 description: "KAMOS Go REST API skill. Use this to implement Go HTTP handlers, middleware, JWT and Google OAuth, the pgx-based repository layer, and the openapi.yaml spec for KAMOS. Invoke whenever Go backend, API endpoint, handler, repository, middleware, auth, or OpenAPI work is requested. Triggers: Go, backend, API, handler, middleware, JWT, OAuth, repository, endpoint, openapi."
+recommended_model: opus
 ---
 
 # Go API Skill

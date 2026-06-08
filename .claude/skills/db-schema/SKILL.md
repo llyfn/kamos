@@ -1,6 +1,7 @@
 ---
 name: db-schema
 description: "KAMOS PostgreSQL schema design skill. Use this to design database tables, write migration SQL files, define indexes, and document query patterns for the KAMOS beverage tracking platform. Invoke whenever schema design, migration writing, table creation, indexing, or database modeling work is requested. Triggers: schema, migration, table, ERD, index, RLS, PostgreSQL, query pattern."
+recommended_model: opus
 ---
 
 # DB Schema Skill

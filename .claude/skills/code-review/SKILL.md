@@ -1,6 +1,7 @@
 ---
 name: code-review
 description: "Code review orchestrator. Runs four parallel reviewer agents (architecture, security, performance, style) and merges all findings into a single prioritized report. Use when asked to review code, audit the codebase, or run a code review — including partial scopes like a single file, a directory, or a PR diff. For pure SPEC compliance / boundary checks use the qa-inspect skill instead."
+recommended_model: opus
 ---
 
 # Code Review Orchestrator
@@ -44,37 +45,16 @@ When in doubt, run both — they don't overlap.
 
 ### Phase 2 — parallel review (team)
 
-```
-TeamCreate(
-  team_name: "review-team",
-  members: [
-    {
-      name: "arch-reviewer",
-      subagent_type: "arch-reviewer",
-      model: "opus",
-      prompt: "Read docs/history/review/00_scope.md. Use the arch-review skill. Write findings to docs/history/review/arch_findings.md. If you find an issue with security implications (e.g., auth scattered across layers), SendMessage to security-reviewer with the title and file:line so it can be cross-referenced. If you find one with perf implications, SendMessage to perf-reviewer. TaskUpdate to completed when done."
-    },
-    {
-      name: "security-reviewer",
-      subagent_type: "security-reviewer",
-      model: "opus",
-      prompt: "Read docs/history/review/00_scope.md. Use the security-review skill. Write findings to docs/history/review/security_findings.md. If a vulnerability has an architectural root cause, SendMessage to arch-reviewer. If a fix would have perf consequences, SendMessage to perf-reviewer. TaskUpdate to completed when done."
-    },
-    {
-      name: "perf-reviewer",
-      subagent_type: "perf-reviewer",
-      model: "opus",
-      prompt: "Read docs/history/review/00_scope.md. Use the perf-review skill. Write findings to docs/history/review/perf_findings.md. If a bottleneck has a security implication (e.g., missing rate limiting enabling DoS), SendMessage to security-reviewer. If it's rooted in architecture, SendMessage to arch-reviewer. TaskUpdate to completed when done."
-    },
-    {
-      name: "style-reviewer",
-      subagent_type: "style-reviewer",
-      model: "opus",
-      prompt: "Read docs/history/review/00_scope.md. Use the style-review skill. Write findings to docs/history/review/style_findings.md. When a style issue masks a structural problem, SendMessage to arch-reviewer. When a style issue could mask a security issue (e.g., swallowed auth error), SendMessage to security-reviewer. TaskUpdate to completed when done."
-    }
-  ]
-)
+`TeamCreate(team_name: "review-team", ...)` with four members spawned from:
 
+- arch-reviewer — [prompts/arch-reviewer.md](prompts/arch-reviewer.md)
+- security-reviewer — [prompts/security-reviewer.md](prompts/security-reviewer.md)
+- perf-reviewer — [prompts/perf-reviewer.md](prompts/perf-reviewer.md)
+- style-reviewer — [prompts/style-reviewer.md](prompts/style-reviewer.md)
+
+Models come from each reviewer's SKILL.md `recommended_model`.
+
+```
 TaskCreate(tasks: [
   { title: "Architecture review", assignee: "arch-reviewer" },
   { title: "Security review",     assignee: "security-reviewer" },
@@ -148,9 +128,7 @@ Reviewers: arch · security · perf · style
 
 ## Severity normalization
 
-Style reviewer does not produce CRITICAL — that severity is reserved for security and (in rare cases) architectural findings that make the system unsafe.
-
-If two reviewers report the same finding with different severities, use the higher one and note the discrepancy in the cross-domain section.
+See [[protocol:review-fanout]] "Severity normalization" — the contract defines per-domain severity caps and the cross-domain dedup rule. Summary: style is capped at MEDIUM, only security may issue CRITICAL, higher severity wins on disagreement.
 
 ## Cross-domain dedup
 

@@ -1,6 +1,7 @@
 ---
 name: flutter-feature
 description: "KAMOS Flutter feature development skill. Use this to implement Flutter screens, Riverpod providers, go_router navigation, ARB-based i18n (en/ja/ko), the Dio repository layer, and widget components for the KAMOS mobile app. Invoke whenever Flutter screen implementation, widget building, state management, navigation, secure storage, or localization work is requested. Triggers: Flutter, Dart, widget, screen, Riverpod, go_router, ARB, i18n, mobile."
+recommended_model: opus
 ---
 
 # Flutter Feature Skill

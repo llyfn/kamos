@@ -1,6 +1,7 @@
 ---
 name: perf-review
 description: "Performance review skill for KAMOS. Identifies N+1 queries, missing indexes, over-fetching, unbounded queries, blocking I/O, Flutter rebuild storms, and algorithmic inefficiencies. Use when reviewing for scalability, latency, or efficiency. Triggers: performance review, scalability, N+1, indexing, latency, optimization."
+recommended_model: sonnet
 ---
 
 # Performance Review Skill

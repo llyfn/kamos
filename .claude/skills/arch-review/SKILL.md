@@ -1,6 +1,7 @@
 ---
 name: arch-review
 description: "Architecture review skill. Analyzes layer separation, dependency direction, coupling, cohesion, missing/premature abstractions, and design pattern correctness in KAMOS code. Use when reviewing structural quality, system design, or module organization. Triggers: architecture review, design review, layer separation, coupling, dependency review."
+recommended_model: opus
 ---
 
 # Architecture Review Skill

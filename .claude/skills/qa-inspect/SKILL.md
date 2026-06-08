@@ -1,6 +1,11 @@
 ---
 name: qa-inspect
 description: "KAMOS integration QA skill. Use this to verify boundaries between the Go API, the Flutter app, the PostgreSQL schema, and the SPEC. Cross-checks API response shapes against Flutter models, ARB key parity across locales, Go Router paths against screen files, schema columns against Go json tags, and SPEC invariants (category strings, rating scale, cursor pagination, secure JWT storage). Invoke whenever QA, integration check, spec compliance, boundary verification, or pre-merge validation is requested."
+recommended_model:
+  incremental-be: sonnet
+  incremental-admin: sonnet
+  incremental-fe: sonnet
+  final: opus
 ---
 
 # QA Inspect Skill

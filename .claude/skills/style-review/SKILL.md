@@ -1,6 +1,7 @@
 ---
 name: style-review
 description: "Code style and maintainability review skill for KAMOS. Checks naming, dead code, error handling completeness, test coverage gaps, magic values, and consistency. Use when reviewing readability, technical debt, or maintainability. Triggers: style review, maintainability, naming, error handling, code smell, refactor candidate."
+recommended_model: sonnet
 ---
 
 # Style Review Skill
