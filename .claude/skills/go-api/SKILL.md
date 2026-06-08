@@ -46,20 +46,24 @@ Migrations live at the repo root in `migrations/` (sibling of `backend/`). Write
 
 ## SPEC invariants the API enforces
 
-These come from `SPEC.md` and must be enforced in handlers / validators, not deferred to the client:
+These invariants must be enforced in handlers / validators, not deferred to the client. Cite by ID; the catalog file carries the full rule, the check command, and the per-layer enforcement pointer.
 
-| SPEC | Invariant | Where enforced |
-|---|---|---|
-| §3.2 | Username 3–30 chars, alphanumeric + `_`, lowercase | Registration handler validation; DB CHECK is backstop |
-| §3.3 | Account delete holds username 30 days | Delete handler sets `deleted_at` + `username_release_at = now() + interval '30 days'` |
-| §4.1 | Review text ≤ 500 chars, ≤ 4 photos | Check-in handler validates before insert |
-| §4.2 | Rating 0.5–5.0 in 0.5 steps, optional | Validation: nil-or-(in range and `*2 == floor(*2)`) |
-| §4.4 | Beverage cannot change after check-in submit | PATCH handler rejects `beverage_id` field |
-| §5.1 | Private profile: follow returns `pending`, content gated to accepted followers | Follow handler + every read of private user content |
-| §5.2 | Cursor pagination, page size 20 | Every list endpoint |
-| §5.3 | One toast per user per check-in | `INSERT ... ON CONFLICT DO NOTHING` or unique constraint |
-| §6.1 | New user gets Inventory + Wishlist collections | Registration handler creates them in the same transaction as the user |
-| §8 | i18n fallback: missing locale → `en` | Beverage/producer name resolution helper used by every read endpoint |
+| Invariant | Where enforced in this skill's scope |
+|---|---|
+| [[invariant:username]] | Registration handler validator; DB CHECK is backstop |
+| [[invariant:soft-delete]] | Delete handler sets `deleted_at` + `username_release_at`; every list query filters `deleted_at IS NULL` |
+| [[invariant:checkin-caps]] | Check-in handler validates review-text length + 1-photo cap before insert |
+| [[invariant:rating-scale]] | Check-in handler validates nil-or-(in range and `(*4) == floor(*4)`) |
+| [[invariant:cursor-pagination]] | Every list endpoint; cursors HMAC-signed via `backend/internal/cursor/` |
+| [[invariant:pagination-size]] | Server caps `limit` at 20 before passing to repository |
+| [[invariant:default-collections]] | Registration handler creates Inventory + Wishlist in the same TX as the user (both auth paths) |
+| [[invariant:i18n-fallback]] | One helper used by every read endpoint that returns localized text |
+| [[invariant:sanitize-text]] | Every free-text field flows through `domain.SanitizeText` |
+| [[invariant:search-bigm]] | `bigmLikeArg()` escape on every user query reaching `LIKE`; no `pg_trgm` / FTS in new paths |
+| [[invariant:admin-auth]] | Admin middleware: HttpOnly cookie + CSRF double-submit; `/v1/admin/me` cookie-authable |
+| SPEC §4.4 | PATCH check-in handler rejects `beverage_id` field |
+| SPEC §5.1 | Private profile: follow returns `pending`; content gated to accepted followers |
+| SPEC §5.3 | One toast per user per check-in: `INSERT ... ON CONFLICT DO NOTHING` |
 
 ## Handler pattern
 
@@ -302,7 +306,7 @@ APP_BASE_URL=http://localhost:3000
 - [ ] Auth middleware applied to every protected route
 - [ ] Owner check on every PATCH/DELETE of user-owned resources (defense against IDOR)
 - [ ] `openapi.yaml` validates with a parser; `operationId` unique
-- [ ] Validation enforces SPEC caps (review 500, bio 200, photos 4, rating 0.5 steps)
+- [ ] Validation enforces caps per [[invariant:checkin-caps]] (review 500, 1 photo), bio 200, [[invariant:rating-scale]] (0.25 steps, 19 levels)
 - [ ] Default Inventory + Wishlist created in registration handler (same transaction)
 - [ ] i18n fallback helper used in every beverage/producer read
 - [ ] `.env.example` complete; no secrets in code

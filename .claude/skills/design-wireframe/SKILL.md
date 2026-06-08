@@ -35,7 +35,7 @@ Do not introduce Markdown-only wireframes / spec / token files. Wireframes are r
     - en: `Nihonshu (Sake)` · `Shochu` · `Liqueur`
     - ja: `日本酒` · `焼酎` · `リキュール`
     - ko: `니혼슈 (사케)` · `쇼츄` · `리큐어`
-- **Rating:** 0.5–5.0 in 0.5 steps; shown as `4.0 / 5.0`. ABV `15.5%` (one decimal, no space). Polishing ratio in mono as `Seimai 60%`.
+- **Rating:** per [[invariant:rating-scale]] — 0.5–5.0 in 0.25 steps (19 levels); shown as `4.0 / 5.0`. ABV `15.5%` (one decimal, no space). Polishing ratio in mono as `Seimai 60%`.
 - **i18n fallback:** missing `ja` or `ko` falls back to `en`; never empty strings.
 
 ## Workflow

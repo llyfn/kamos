@@ -66,8 +66,8 @@ Soft-delete: `deleted_at TIMESTAMPTZ` on `users`, `check_ins`, `collections`. Ev
 These come from `SPEC.md` and are enforceable at the database level. Do them here, not in the application:
 
 ```sql
--- Rating: 0.5 to 5.0 in 0.5 steps (SPEC §4.2)
-rating NUMERIC(3,1) CHECK (rating >= 0.5 AND rating <= 5.0 AND (rating * 2) = FLOOR(rating * 2))
+-- Rating per [[invariant:rating-scale]]: 0.5 to 5.0 in 0.25 steps (19 levels)
+rating NUMERIC(3,2) CHECK (rating IS NULL OR (rating BETWEEN 0.5 AND 5.0 AND (rating * 4) = FLOOR(rating * 4)))
 
 -- Username: 3-30 chars, alphanumeric + underscore, lowercase enforced (SPEC §3.2)
 username TEXT NOT NULL CHECK (username ~ '^[a-z0-9_]{3,30}$')
@@ -156,7 +156,7 @@ flavor_tags (
 
 check_ins (
   id, user_id FK, beverage_id FK,
-  rating NUMERIC(3,1) CHECK (rating >= 0.5 AND rating <= 5.0 AND (rating * 2) = FLOOR(rating * 2)),
+  rating NUMERIC(3,2) CHECK (rating IS NULL OR (rating BETWEEN 0.5 AND 5.0 AND (rating * 4) = FLOOR(rating * 4))),
   review_text TEXT CHECK (char_length(review_text) <= 500),
   price_amount NUMERIC(10,2),
   price_currency CHAR(3),
@@ -300,11 +300,10 @@ Each migration is one transaction. Number sequentially. Never edit a deployed mi
 ## Output checklist
 
 - [ ] Every API response field traces to a column or computed expression
-- [ ] All SPEC caps (review 500, bio 200, photos 4, collection name 50, notes 200) enforced as CHECK constraints
-- [ ] Rating CHECK enforces both range and 0.5 step
-- [ ] Username CHECK enforces lowercase + character class
-- [ ] Soft-delete columns on users, check_ins, collections
-- [ ] `username_release_at` on users for the 30-day hold (SPEC §3.3)
+- [ ] [[invariant:checkin-caps]] enforced (review 500 chars; 1-photo cap on submit), bio 200, collection name 50, notes 200
+- [ ] [[invariant:rating-scale]] CHECK enforces range + 0.25 step
+- [ ] [[invariant:username]] CHECK enforces lowercase + character class
+- [ ] [[invariant:soft-delete]] columns + `username_release_at` for the 30-day hold
 - [ ] Default collection creation strategy documented in schema.md
 - [ ] All foreign keys explicit, no orphans possible
 - [ ] Indexes cover every query pattern's WHERE + ORDER BY leading columns

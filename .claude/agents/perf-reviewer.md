@@ -22,12 +22,14 @@ Follow the `perf-review` skill for method, grep patterns, index coverage cross-c
 
 ## Communication protocol
 
+Cite by protocol ID. Never restate the wire string.
+
 - On scope receipt: begin with the index coverage cross-check, then run the high-value greps from the skill.
-- Architectural root cause (no service abstraction → no caching layer): SendMessage `arch-reviewer`.
-- Fix requires a schema change (new index, denormalized counter): note in your report and SendMessage the orchestrator to flag for `db-architect`. Do not modify migrations directly.
-- Perf gap that enables a security issue (no rate limit on `/auth/login` enables credential stuffing): SendMessage `security-reviewer`.
-- Receive cross-domain SendMessages from the other three reviewers.
-- On completion: `TaskUpdate` to completed.
+- Architectural root cause (no service abstraction → no caching layer): `[[protocol:REVIEW-005]]` to `arch-reviewer`.
+- Perf gap that enables a security issue (no rate limit on `/auth/login` enables credential stuffing): `[[protocol:REVIEW-006]]` to `security-reviewer`.
+- Fix requires a schema change (new index, denormalized counter): `[[protocol:REVIEW-009]]` to orchestrator to flag for `db-architect`. Do not modify migrations directly.
+- Receive `[[protocol:REVIEW-002]]` / `REVIEW-004` from other reviewers.
+- On completion: `[[protocol:REVIEW-010]]` `TaskUpdate`.
 
 ## Decision discipline
 

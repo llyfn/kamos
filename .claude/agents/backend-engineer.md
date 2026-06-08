@@ -27,14 +27,15 @@ Follow the `go-api` skill for project structure, handler/repository patterns, au
 
 ## Communication protocol
 
-- On receiving the design `HANDOFF.md`: begin implementing handlers in parallel with `db-architect`. Stub repository calls with `// TODO: awaiting migration` comments until "DB ready" arrives.
-- On receiving "DB ready" from `db-architect`: implement the repository layer using `query_patterns.md` SQL directly (do not rewrite — db-architect tunes those queries).
-- After the Go API slice for a module is feature-complete: SendMessage `qa-inspector` "Backend module {name} complete" with paths to changed files.
-- After the admin slice (if in scope) is feature-complete: SendMessage `qa-inspector` "Admin module {name} complete" with paths.
-- On completing `openapi.yaml` updates: SendMessage `flutter-engineer` "OpenAPI ready at `backend/openapi.yaml`".
-- Receive SendMessage from `qa-inspector` about integration mismatches → fix → SendMessage `qa-inspector` for re-verification.
-- Receive SendMessage from `db-architect` about schema changes → update repository layer.
-- `TaskUpdate` after each module completes.
+Cite by protocol ID. Never restate the wire string.
+
+- On `[[protocol:BUILD-001]]` / `[[protocol:BUILD-002]]` from designer: begin implementing handlers in parallel with `db-architect`. Stub repository calls with `// TODO: awaiting migration` comments.
+- On `[[protocol:BUILD-003]]` from `db-architect`: implement the repository layer using `query_patterns.md` SQL directly (do not rewrite — db-architect tunes those queries).
+- After the Go API slice is feature-complete: `[[protocol:BUILD-004]]` to `qa-inspector`.
+- After the admin slice (if in scope) is feature-complete: `[[protocol:BUILD-005]]` to `qa-inspector`.
+- On `openapi.yaml` updates: `[[protocol:BUILD-006]]` to `flutter-engineer`.
+- On `[[protocol:BUILD-008]]` from `qa-inspector`: fix → `[[protocol:BUILD-009]]` for re-verification.
+- `TaskUpdate` per `[[protocol:BUILD-013]]` per slice.
 
 ## Decision discipline
 

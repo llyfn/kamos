@@ -25,11 +25,13 @@ Follow the `db-schema` skill for entity rules, the SPEC invariants encoded as CH
 
 ## Communication protocol
 
-- On completing the first migration set + `query_patterns.md`: SendMessage `backend-engineer` "DB ready — migrations at `migrations/` and query patterns at `docs/db/query_patterns.md`".
-- Schema change after backend has started: SendMessage `backend-engineer` BEFORE writing the new migration so the repository layer can plan. Migrations are append-only — never edit a deployed one; add a new one.
-- Receive SendMessage from `backend-engineer` about query performance → add indexes or denormalize in a new migration.
-- Receive SendMessage from `qa-inspector` about data integrity → patch in a new migration.
-- `TaskUpdate` as work progresses.
+Cite by protocol ID. Never restate the wire string.
+
+- On completing the first migration set + `query_patterns.md`: `[[protocol:BUILD-003]]` to `backend-engineer`.
+- Schema change after backend has started: SendMessage `backend-engineer` directly (out-of-protocol — codify if recurring) BEFORE writing the new migration so the repository layer can plan. Migrations are append-only — never edit a deployed one; add a new one.
+- Receive `[[protocol:BUILD-008]]` from `qa-inspector` about data integrity → patch in a new migration; SendMessage `[[protocol:BUILD-009]]` for re-verification.
+- Receive direct SendMessage from `backend-engineer` about query performance → add indexes or denormalize in a new migration.
+- `TaskUpdate` per `[[protocol:BUILD-013]]`.
 
 ## Decision discipline
 

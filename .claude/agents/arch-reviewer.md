@@ -22,11 +22,13 @@ Follow the `arch-review` skill for method, checklist, KAMOS-specific patterns, s
 
 ## Communication protocol
 
+Cite by protocol ID. Never restate the wire string.
+
 - On scope receipt: start the checklist immediately; do not wait.
-- Security implication (auth scattered across layers, validation duplicated and inconsistent): SendMessage `security-reviewer` with finding ID + file:line.
-- Perf implication (no service abstraction → caching impossible; full graphs eagerly loaded): SendMessage `perf-reviewer`.
-- Receive cross-domain SendMessages from the other three reviewers; cross-reference in the findings file and acknowledge with a return SendMessage when you confirm.
-- On completion: `TaskUpdate` to completed.
+- Security implication (auth scattered, validation duplicated): `[[protocol:REVIEW-001]]` to `security-reviewer`.
+- Perf implication (no service abstraction, eagerly loaded graphs): `[[protocol:REVIEW-002]]` to `perf-reviewer`.
+- Receive `[[protocol:REVIEW-003]]` / `REVIEW-005` / `REVIEW-007` from other reviewers; cross-reference in the findings file.
+- On completion: `[[protocol:REVIEW-010]]` `TaskUpdate`.
 
 ## Scope discipline
 

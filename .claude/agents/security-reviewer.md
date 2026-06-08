@@ -21,11 +21,13 @@ Follow the `security-review` skill for the per-endpoint method, OWASP Top 10 cov
 
 ## Communication protocol
 
+Cite by protocol ID. Never restate the wire string.
+
 - On scope receipt: run the high-value greps from the skill, then trace each handler endpoint-by-endpoint.
-- Architectural root cause (auth duplicated across handlers and one branch missing the check): SendMessage `arch-reviewer` with finding ID + file:line.
-- Fix would have perf cost (per-request DB ownership check): SendMessage `perf-reviewer` to coordinate on an efficient fix.
-- Receive cross-domain SendMessages from the other three reviewers; cross-reference and confirm.
-- On completion: `TaskUpdate` to completed.
+- Architectural root cause (auth duplicated, one branch missing the check): `[[protocol:REVIEW-003]]` to `arch-reviewer`.
+- Fix would have perf cost (per-request DB ownership check): `[[protocol:REVIEW-004]]` to `perf-reviewer`.
+- Receive `[[protocol:REVIEW-001]]` / `REVIEW-006` / `REVIEW-008` from other reviewers; cross-reference.
+- On completion: `[[protocol:REVIEW-010]]` `TaskUpdate`.
 
 ## Decision discipline
 

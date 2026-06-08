@@ -29,16 +29,19 @@ Write production code to `frontend/`. There is no workspace fallback.
 
 ## SPEC invariants the app must respect
 
-| SPEC | Invariant | Where |
-|---|---|---|
-| §2.1 | Category strings exact: `Nihonshu (Sake)` / `Shochu` / `Liqueur` (en); `日本酒` / `焼酎` / `リキュール` (ja); `니혼슈 (사케)` / `쇼츄` / `리큐어` (ko) | All three ARB files |
-| §3.1 | JWT in `flutter_secure_storage`, never `SharedPreferences` | Auth service / interceptor |
-| §3.2 | Username case-insensitive (display as-stored, compare lowercase) | Profile screen / search |
-| §4.1 | ≤ 4 photos, ≤ 500 char review | Check-in form (block client-side; server is backstop) |
-| §4.2 | 0.5-step rating widget, 10 levels (0.5–5.0) | Star widget |
-| §5.2 | Cursor pagination via `next_cursor` + `has_more` | Every list repository |
-| §6.1 | Inventory + Wishlist created server-side; client just renders the user's collections | Collection screen |
-| §8 | If `name_i18n[user.locale]` missing, fall back to `en` | Beverage name resolver |
+Cite by ID; the catalog file carries the full rule, the check command, and the per-layer enforcement pointer.
+
+| Invariant | Where in this skill's scope |
+|---|---|
+| [[invariant:category-strings]] | All three ARB files; no hardcoded literals in widgets |
+| [[invariant:jwt-storage]] | `flutter_secure_storage` only; iOS Keychain `first_unlock_this_device` |
+| [[invariant:username]] | Profile screen + search: display as-stored, compare lowercase |
+| [[invariant:checkin-caps]] | Check-in form: client-side `maxLength: 500` + 1-photo cap on submit |
+| [[invariant:rating-scale]] | Star widget renders 19 levels in 0.25 increments |
+| [[invariant:cursor-pagination]] | Every list repository uses `cursor` query param + `next_cursor` + `has_more` |
+| [[invariant:default-collections]] | Server-created; client just renders the user's collections |
+| [[invariant:i18n-fallback]] | Consumed from API; the Flutter rendering layer does NOT re-resolve |
+| [[invariant:pagination-size]] | Client does not pass `limit`; server cap is the contract |
 
 ## State management — Riverpod
 
@@ -295,9 +298,9 @@ Rules:
 - Add a key to all three files in the same change. Missing keys in ja or ko are blockers.
 - For beverage `name_i18n` from the API, write a small resolver: `bev.localized(locale).name ?? bev.name['en']`.
 
-## Star rating widget — 0.5 step
+## Star rating widget — 0.25 step
 
-10 levels: 0.5, 1.0, 1.5, ..., 5.0. The widget is a `Row` of 5 star icons; each icon is a `GestureDetector` whose tap-position maps to half-star precision:
+Per [[invariant:rating-scale]]: 19 levels (0.5, 0.75, 1.0, ..., 5.0). The widget is a `Row` of 5 star icons; each icon is a `GestureDetector` whose tap-position quarters the icon to produce 0.25-step precision:
 
 ```dart
 class StarRatingPicker extends StatelessWidget {
@@ -311,17 +314,18 @@ class StarRatingPicker extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
         final fill = (value ?? 0) - i;
-        final icon = fill >= 1 ? Icons.star
-                   : fill >= 0.5 ? Icons.star_half
-                   : Icons.star_border;
+        // 4 fill bins per icon: empty / quarter / half / three-quarter / full
+        // Renderer picks the closest of {empty, half, full} icons; an overlay
+        // glyph or clip is required for 0.25 / 0.75 — see Untappd-style refs.
         return GestureDetector(
           onTapDown: (d) {
             final box = context.findRenderObject() as RenderBox;
             final localX = d.localPosition.dx;
-            final isLeftHalf = localX < box.size.width / 2;
-            onChanged(i + (isLeftHalf ? 0.5 : 1.0));
+            final quarter = (localX / (box.size.width / 4)).floor().clamp(0, 3);
+            final increment = (quarter + 1) * 0.25;
+            onChanged(i + increment);
           },
-          child: Icon(icon, size: 32),
+          child: _starFor(fill),
         );
       }),
     );
@@ -329,16 +333,18 @@ class StarRatingPicker extends StatelessWidget {
 }
 ```
 
-Never round to integer. Never use 0.25 steps (Untappd does; KAMOS does not — see SPEC §4.2).
+Never round to integer. Never use 0.5 step (legacy KAMOS shipped 0.5; the catalog invariant has been at 0.25 since 2025-Q4).
 
 ## Check-in form — the most complex flow
 
+Per [[invariant:checkin-caps]]:
+
 1. `BeverageSearchDelegate` → user picks a beverage → captures `beverageId`.
 2. Navigate to `/checkin/new?beverage_id=...`.
-3. Form: `StarRatingPicker` (optional), review text (max 500), flavor tag chips (multi-select from server-provided taxonomy), photo picker (max 4, enforced client-side), price + currency + per-serving toggle, purchase type.
+3. Form: `StarRatingPicker` (optional), review text (`maxLength: 500`), flavor tag chips (multi-select from server-provided taxonomy), photo picker (max **1** per check-in, enforced client-side), price + currency + per-serving toggle, purchase type.
 4. Submit → `CheckInController.submit()` → on success, navigate to `/checkins/:newId`.
 
-Block submission of >4 photos client-side; show a snackbar. Server is backstop.
+Block submission of >1 photo client-side; show a snackbar. Server is backstop. Existing multi-photo check-ins remain readable — the read path serves the full array; only the submit path enforces the cap.
 
 ## pubspec.yaml baseline
 
@@ -377,8 +383,10 @@ Do not add new dependencies without asking.
 - [ ] No `print()` left in code
 - [ ] No hardcoded display strings; all via `l10n.*`
 - [ ] All three ARB files have matching keys
-- [ ] Category strings match SPEC §2.1 exactly
-- [ ] Token reads/writes go through `SecureStorageService` (never SharedPreferences)
-- [ ] Lists use `ListView.builder` with `next_cursor`-driven infinite scroll
+- [ ] [[invariant:category-strings]] exact in all three locales
+- [ ] [[invariant:jwt-storage]] — `SecureStorageService` only, never SharedPreferences
+- [ ] [[invariant:cursor-pagination]] — `ListView.builder` with `next_cursor`-driven infinite scroll
+- [ ] [[invariant:rating-scale]] — star widget produces 0.25-step values
+- [ ] [[invariant:checkin-caps]] — 1-photo cap on submit; review_text maxLength 500
 - [ ] Network images use `CachedNetworkImage`
-- [ ] Star rating widget produces 0.5-step values
+- [ ] Star rating widget produces 0.25-step values per [[invariant:rating-scale]]

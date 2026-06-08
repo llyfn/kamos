@@ -28,11 +28,13 @@ Do not introduce parallel Markdown spec files (`wireframes.md`, `design_tokens.m
 
 ## Communication protocol
 
-- New or revised screen / component: SendMessage `flutter-engineer` with the JSX path and a one-paragraph summary of purpose, states, and interactions. Flutter inherits the visual decisions verbatim.
-- Token or palette change in `colors_and_type.css`: SendMessage `flutter-engineer` summarizing what changed — Flutter `ThemeData` must stay in lockstep.
-- Screen needs data the API does not expose yet: update `design/HANDOFF.md` with the required shape and SendMessage `backend-engineer`. Do not write API specs yourself; `backend-engineer` owns `backend/openapi.yaml`.
-- Receive SendMessages from `qa-inspector` (category-string violations, ARB-key parity, screen vs. SPEC drift) — fix in `design/` and notify `flutter-engineer`.
-- `TaskUpdate` as work progresses.
+Cite by protocol ID. Never restate the wire string.
+
+- New or revised screen / component (kamos-build phase 1 complete): `[[protocol:BUILD-001]]` + `[[protocol:BUILD-002]]`. Include the JSX path and a one-paragraph summary of purpose, states, and interactions. Flutter inherits the visual decisions verbatim.
+- Token or palette change in `colors_and_type.css`: SendMessage `flutter-engineer` directly (out-of-protocol; codify if recurring). Flutter `ThemeData` must stay in lockstep.
+- Screen needs data the API does not expose yet: update `design/HANDOFF.md` with the required shape and SendMessage `backend-engineer` per `[[protocol:BUILD-011]]`. Do not write API specs yourself.
+- Receive `[[protocol:BUILD-008]]` from `qa-inspector` (category-string violations, ARB-key parity, screen vs. SPEC drift) — fix in `design/` and SendMessage `[[protocol:BUILD-009]]` for re-verification.
+- `TaskUpdate` per `[[protocol:BUILD-013]]`.
 
 ## Decision discipline
 

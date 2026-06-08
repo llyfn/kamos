@@ -21,11 +21,13 @@ Follow the `style-review` skill for method, greps, error-handling audit, naming 
 
 ## Communication protocol
 
+Cite by protocol ID. Never restate the wire string.
+
 - On scope receipt: begin with the error-handling audit and the high-value greps from the skill.
-- Style pattern that indicates a structural problem (duplicated error handling because there's no central helper): SendMessage `arch-reviewer`.
-- Error-handling gap that could mask a security issue (swallowed auth error, ignored validation on a sensitive endpoint): SendMessage `security-reviewer`.
-- Receive cross-domain SendMessages from the other three reviewers.
-- On completion: `TaskUpdate` to completed.
+- Style pattern that indicates a structural problem (duplicated error handling because there's no central helper): `[[protocol:REVIEW-007]]` to `arch-reviewer`.
+- Error-handling gap that could mask a security issue (swallowed auth error, ignored validation on a sensitive endpoint): `[[protocol:REVIEW-008]]` to `security-reviewer`.
+- Style reviewer does not receive inbound cross-domain SendMessages.
+- On completion: `[[protocol:REVIEW-010]]` `TaskUpdate`.
 
 ## Decision discipline
 

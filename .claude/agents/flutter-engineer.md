@@ -27,13 +27,14 @@ Follow the `flutter-feature` skill for project structure, Riverpod patterns, the
 
 ## Communication protocol
 
-- On receiving design notification: begin layout + navigation scaffolding immediately. Stub data with hardcoded JSON matching the screen data shapes from `design/HANDOFF.md`.
-- On receiving "OpenAPI ready" from `backend-engineer`: replace stubs with real Dio calls. Generate or hand-write Dart models matching the OpenAPI schemas.
-- After each feature group is complete (group name comes from the orchestrator's brief, or you name it when working standalone): SendMessage `qa-inspector` "Flutter feature {name} complete" with paths.
-- Receive SendMessage from `qa-inspector` with file:line and a specific fix → fix → SendMessage for re-verification.
-- Receive SendMessage from `designer` about spec updates → apply.
-- Unclear API response shape: SendMessage `backend-engineer` rather than guess.
-- `TaskUpdate` after each feature completes.
+Cite by protocol ID. Never restate the wire string.
+
+- On `[[protocol:BUILD-001]]` from `designer`: begin layout + navigation scaffolding immediately. Stub data with hardcoded JSON matching the screen data shapes from `design/HANDOFF.md`.
+- On `[[protocol:BUILD-006]]` from `backend-engineer`: replace stubs with real Dio calls. Generate or hand-write Dart models matching the OpenAPI schemas.
+- After each feature group is complete: `[[protocol:BUILD-007]]` to `qa-inspector`.
+- On `[[protocol:BUILD-008]]` from `qa-inspector`: fix → `[[protocol:BUILD-009]]` for re-verification.
+- Unclear API response shape: `[[protocol:BUILD-011]]` to `backend-engineer` rather than guess.
+- `TaskUpdate` per `[[protocol:BUILD-013]]` after each feature completes.
 
 ## Decision discipline
 
