@@ -2,6 +2,7 @@
 name: qa-inspect
 description: "KAMOS integration QA skill. Use this to verify boundaries between the Go API, the Flutter app, the PostgreSQL schema, the admin SPA, and the SPEC catalog invariants. Cross-checks API response shapes against Flutter models, ARB key parity across locales, Go Router paths against screen files, schema columns against Go json tags, and every catalog invariant relevant to the mode. Invoke whenever QA, integration check, spec compliance, boundary verification, or pre-merge validation is requested."
 recommended_model:
+  incremental-design: sonnet
   incremental-be: sonnet
   incremental-admin: sonnet
   incremental-fe: sonnet
@@ -14,6 +15,7 @@ Verifies that the boundaries between layers connect correctly and that every rel
 
 ## When to use this skill
 
+- After designer completes a slice → `mode: incremental-design`
 - After backend-engineer completes a module → `mode: incremental-be`
 - After backend-engineer completes the admin slice → `mode: incremental-admin`
 - After flutter-engineer completes a feature → `mode: incremental-fe`
@@ -28,6 +30,7 @@ The orchestrator passes `mode` as a structured arg. Each mode owns a subset of c
 
 | Mode | Triggered by | Boundaries verified | Catalog invariants run |
 |---|---|---|---|
+| `incremental-design` | Designer completion in `kamos-build` Phase 1 | `design/HANDOFF.md` addendum internal consistency · JSX previews ↔ design tokens · category strings on screens that show them · rating widget granularity if any | category-strings, rating-scale (if shown) |
 | `incremental-be` | [[protocol:BUILD-004]] | DB ↔ Go struct json tags · OpenAPI ↔ handler response · `design/HANDOFF.md` ↔ handler shape | jwt-storage, cursor-pagination, rating-scale, soft-delete, default-collections, i18n-fallback, checkin-caps, sanitize-text, search-bigm, username, pagination-size |
 | `incremental-admin` | [[protocol:BUILD-005]] | Admin Go handlers ↔ `admin/src/` calls · CSRF + cookie flow | admin-auth, sanitize-text, soft-delete |
 | `incremental-fe` | [[protocol:BUILD-007]] | OpenAPI ↔ Flutter repository parsing · go_router paths ↔ screen files · ARB key parity en/ja/ko | jwt-storage, cursor-pagination, category-strings, rating-scale, i18n-fallback, checkin-caps, username, pagination-size |

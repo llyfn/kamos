@@ -30,7 +30,7 @@ To add an agent: copy `_TEMPLATE.md`, then add a row here and run `.claude/scrip
 | [test-runner](test-runner.md) | [verify-gates](../skills/verify-gates/SKILL.md) | kamos-build (phase 4), code-review (final), direct | verification, gate, smoke test, CI, integration test | sonnet |
 | [release-engineer](release-engineer.md) | [deploy-runbook](../skills/deploy-runbook/SKILL.md) | direct | deploy, release, migration apply, secret rotation, smoke | opus |
 | [doc-keeper](doc-keeper.md) | [doc-sync](../skills/doc-sync/SKILL.md) | kamos-build (end-of-phase), spec-sweep, direct | docs sync, CLAUDE.md, SPEC.md, README, runbook | sonnet |
-| [i18n-curator](i18n-curator.md) | (paired with [qa-inspect](../skills/qa-inspect/SKILL.md) + [flutter-feature](../skills/flutter-feature/SKILL.md)) | kamos-build (phase 3), spec-sweep | i18n, ARB parity, locale fallback, category strings | sonnet |
+| [i18n-curator](i18n-curator.md) | uses qa-inspect (verification) + flutter-feature (ARB conventions); no dedicated skill — model is sonnet (explicit, not skill-derived) | kamos-build (phase 3), spec-sweep | i18n, ARB parity, locale fallback, category strings | sonnet (explicit) |
 
 ## Conventions
 

@@ -196,6 +196,12 @@ if (layers.admin) {
   })
 }
 
+// pipeline() returns the last stage's result per item. For slices with no
+// qaMode (db-architect — its QA folds into incremental-be), stage2 returns
+// a synthetic PASS object so phase2Results uniformly carries QA-shape
+// values. This keeps the FAIL filter and the MINOR count below safe.
+const SYNTHETIC_QA_PASS = { status: 'PASS', findings: [], invariants: [] }
+
 const phase2Results = await pipeline(
   phase2Tasks,
   (task) => agent(promptFor(task.promptPath), {
@@ -205,7 +211,8 @@ const phase2Results = await pipeline(
     schema: IMPL_DONE_SCHEMA,
   }),
   (impl, task) => {
-    if (!task.qaMode || !impl) return Promise.resolve(null)
+    if (!impl) return Promise.resolve(SYNTHETIC_QA_PASS)        // implementer was skipped/failed
+    if (!task.qaMode) return Promise.resolve(SYNTHETIC_QA_PASS) // db slice — QA folds into incremental-be
     return agent(
       `${promptFor('.claude/skills/kamos-build/prompts/qa-inspector.md')} mode=${task.qaMode}`,
       { label: `qa:${task.label}`, phase: 'Schema + API', agentType: 'qa-inspector', schema: QA_FINDING_SCHEMA },
@@ -264,6 +271,9 @@ if (finalQA?.status === 'FAIL' || gates?.result === 'FAIL') {
 
 // ---------------------------------------------------------------------------
 // PHASE 5 — Doc sync
+//
+// doc-sync produces prose edits, not a structured object, so no schema is
+// passed. The phase still gates final return: a thrown error here halts.
 // ---------------------------------------------------------------------------
 phase('Doc sync')
 

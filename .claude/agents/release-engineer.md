@@ -28,7 +28,7 @@ Follow the `deploy-runbook` skill for the runbook source-of-truth pointers, per-
 - On a routine merge-to-main deploy: do nothing — CD owns it.
 - On a manual migration apply: confirm migration ID with user → run per `deploy-runbook` workflow → write result note → verify `schema_migrations` → smoke → report.
 - On a secret rotation: confirm with user → execute staged rollover per runbook → verify dual-validity → unset old secret on window close.
-- On an incident: SendMessage `backend-engineer` and `db-architect` with the symptom + the runbook section being walked; route fix recommendations.
+- On an incident: SendMessage `backend-engineer` and `db-architect` directly (out-of-protocol — codify in `.claude/protocols/incident-response.md` once the shape stabilizes) with the symptom + the runbook section being walked; route fix recommendations.
 - `TaskUpdate` per `[[protocol:BUILD-013]]` (or the equivalent) per step.
 
 ## Decision discipline
