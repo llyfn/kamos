@@ -91,13 +91,25 @@ SPEC.md                      # Product spec (source of truth)
 
 ## How this project uses agents and skills
 
-KAMOS is built with a multi-agent harness. Sessions fall into one of three modes:
+KAMOS is built with a multi-agent harness backed by three single-source-of-truth files. Skills, agents, and orchestrator prompts cite by ID; they never restate the rule or the wire payload.
 
-1. **Multi-layer feature work** — invoke the `kamos-build` skill. It runs a vertical-slice pipeline for one feature: preflight → design → schema + API (+ admin, when in scope) → Flutter → final QA. Per-layer QA fires the moment each implementer reports done. Use this whenever the request touches ≥2 of: design, schema, API, admin, Flutter, i18n.
-2. **Code review** — invoke the `code-review` skill. It fans out four reviewer agents (arch / security / perf / style) and merges their findings.
-3. **Single-task work** — for a single bug fix, a single screen, a single endpoint, a single migration: just do the work directly using the relevant skill (`go-api`, `flutter-feature`, `db-schema`, `design-wireframe`) without spawning agents. Spawning a team for a one-line fix is the wrong tool.
+- **`.claude/invariants/`** — every SPEC-derived rule (catalog file per invariant, indexed in `.claude/invariants/README.md`). Cite as `[[invariant:<id>]]`.
+- **`.claude/protocols/`** — every inter-agent SendMessage payload (build-pipeline, review-fanout, spec-sweep). Cite as `[[protocol:<ID>]]`.
+- **`.claude/schemas/`** — JSON Schemas for structured agent outputs (used by Workflow scripts).
+- **`.claude/agents/INDEX.md`** and **`.claude/skills/INDEX.md`** — full registry of agents and skills with their paired counterpart, spawning orchestrator, and recommended model.
 
-The agents in `.claude/agents/` are designed to be spawned by the orchestrator skills, not invoked manually for every task.
+Sessions fall into one of four modes:
+
+1. **Multi-layer feature work** — invoke the `kamos-build` skill (vertical-slice pipeline). Available in both agent-team form (default) and Workflow-script form (`.claude/skills/kamos-build/workflow.mjs`, resumable, schema-validated). Use whenever the request touches ≥2 of: design, schema, API, admin, Flutter, i18n.
+2. **Cross-layer SPEC propagation** — invoke the `spec-sweep` skill (fan-out by layer). Use when a single catalog invariant changes and every layer must adapt in lockstep.
+3. **Code review** — invoke the `code-review` skill. Fans out four reviewer agents (arch / security / perf / style) and merges their findings.
+4. **Single-task work** — invoke the relevant per-layer skill directly (`go-api`, `flutter-feature`, `db-schema`, `design-wireframe`, `deploy-runbook`, `verify-gates`, `doc-sync`).
+
+The agents in `.claude/agents/` are spawned by the orchestrator skills; the per-layer skills are also invocable standalone.
+
+`.claude/scripts/validate-harness.sh` checks that every cited invariant + protocol resolves, every agent points at a real skill, every skill carries the required frontmatter, and known historical drifts (rating step, photo cap) are absent. Run it before merging changes that touch `.claude/`.
+
+`docs/backlog.md` holds deferred MINOR findings across phases (append-only, numbered, strike-through on resolution) per the end-of-phase MINOR sweep.
 
 ## Multi-replica topology
 
@@ -117,46 +129,25 @@ Two clients, two auth surfaces:
 
 ## Project invariants (from SPEC)
 
-These are non-negotiable across every layer. Violating any of these is a QA blocker.
+These are non-negotiable across every layer. Violating any of these is a QA blocker. **The catalog at `.claude/invariants/` is canonical** — each file carries the rule, the copy-pasteable Check command, and the per-layer enforcement pointer. Cite as `[[invariant:<id>]]`; do not restate.
 
-**Category terminology** — UI must use these exact strings:
+| Catalog ID | One-line rule | SPEC |
+|---|---|---|
+| [invariant:category-strings](.claude/invariants/category-strings.md) | Exact strings per locale, no abbreviation, no `Sake` alone in en | §2.1, §8 |
+| [invariant:rating-scale](.claude/invariants/rating-scale.md) | 0.5–5.0 in 0.25 steps (19 levels); `NUMERIC(3,2)`; optional | §4.2 |
+| [invariant:username](.claude/invariants/username.md) | 3–30 chars, alphanumeric + `_`, case-insensitive, stored lowercase | §3.2 |
+| [invariant:soft-delete](.claude/invariants/soft-delete.md) | `deleted_at TIMESTAMPTZ`; username held 30 days; auth cache rejects | §3.3, §4.4 |
+| [invariant:i18n-fallback](.claude/invariants/i18n-fallback.md) | Missing `ko`/`ja` falls back to `en`, exactly one layer | §8 |
+| [invariant:cursor-pagination](.claude/invariants/cursor-pagination.md) | `next_cursor` + `has_more`, HMAC-signed, never offset | §5.2 |
+| [invariant:pagination-size](.claude/invariants/pagination-size.md) | Feed page size 20; lists use cursor not offset | §5.2 |
+| [invariant:checkin-caps](.claude/invariants/checkin-caps.md) | Review text ≤ 500 chars; ≤ 1 photo on submit | §4.1 |
+| [invariant:default-collections](.claude/invariants/default-collections.md) | Register creates Inventory + Wishlist in same TX, localized | §6.1 |
+| [invariant:jwt-storage](.claude/invariants/jwt-storage.md) | `flutter_secure_storage` only; iOS Keychain `first_unlock_this_device` | §3.1, §6.9 |
+| [invariant:admin-auth](.claude/invariants/admin-auth.md) | HttpOnly cookie + X-CSRF-Token double-submit; SameSite=Strict | §6.9, `ARCHITECTURE.md §5` |
+| [invariant:sanitize-text](.claude/invariants/sanitize-text.md) | All user text through `domain.SanitizeText`; rejects controls + bidi | §3.x |
+| [invariant:search-bigm](.claude/invariants/search-bigm.md) | `pg_bigm` substring engine; `bigmLikeArg` escape; one query per endpoint | §5.x |
 
-| Locale | Sake | Shochu | Liqueur |
-|---|---|---|---|
-| `en` | `Nihonshu (Sake)` | `Shochu` | `Liqueur` |
-| `ja` | `日本酒` | `焼酎` | `リキュール` |
-| `ko` | `니혼슈 (사케)` | `쇼츄` | `리큐어` |
-
-Never abbreviate, never substitute "Sake" alone in `en`.
-
-**Rating scale** — `0.5–5.0` in `0.25` steps (19 levels). Optional per check-in. Stored in PostgreSQL as `NUMERIC(3,2)`. In Go and Dart, use a type that preserves two decimals (`float64` / `double` is acceptable; integer is not). API responses emit it as a number, never a string.
-
-**Username** — case-insensitive, stored lowercase, displayed as entered at registration. `3–30` chars, alphanumeric + underscore.
-
-**Soft-delete rules** — accounts are soft-deleted; the username is held for 30 days before being released. Check-ins and collections are soft-deleted via `deleted_at TIMESTAMPTZ`. As of Stage 7, `comments.user_id` is `ON DELETE SET NULL` so author-soft-delete doesn't orphan the comment row.
-
-**i18n fallback** — if a beverage has no `ko` name, the `ko` locale falls back to `en`. Same rule for `ja → en`. Never display empty strings or the wrong-locale text.
-
-**Pagination** — feed and all list endpoints use cursor pagination, never offset. Response shape: `{ "items": [...], "next_cursor": "...", "has_more": bool }`. Page size is 20 for the feed. Cursors are HMAC-signed with `CURSOR_SECRET` (Stage 0); tampered cursors return `400 INVALID_CURSOR`.
-
-**Check-in caps** — review text ≤ 500 chars; up to 1 photo per check-in on submission. Existing multi-photo check-ins remain readable (the API still serves their full photo arrays).
-
-**Default collections** — every new user is created with two collections: `Inventory` and `Wishlist`. They are renameable and deletable, not special. Stage 5 localized the seed names per the registering user's `locale`.
-
-**Auth storage on Flutter** — JWT lives in `flutter_secure_storage`, never in `SharedPreferences`. iOS Keychain accessibility = `first_unlock_this_device` (Stage 0). This is a security blocker, not a preference.
-
-**Admin auth** — admin mutating requests require both the HttpOnly cookie (`kamos_admin_*`) AND a matching `X-CSRF-Token` header. Missing or mismatched header → `403 CSRF_MISMATCH`. Cookies are `HttpOnly` + `Secure` + `SameSite=Strict` — do not flip to `SameSite=None`; the Pages Function proxy is what keeps Strict viable across Pages↔Fly.
-
-**Text input sanitization** — every user-provided string field flows through `domain.SanitizeText(field, value, allowEmpty, maxLen)`. The helper rejects control characters and bidi-override codepoints, enforces UTF-8 length, and returns a typed validation error.
-
-**Search invariants** — substring search across the product follows one shape so the operator footprint stays small:
-
-- **Every searchable column has a covering index.** No `LIKE '%foo%'` or `ILIKE` against a column without a `gin_bigm_ops` GIN index. The four bigm indexes shipped in migration 003 are the baseline: `idx_beverages_search_bigm`, `idx_producers_search_bigm`, `idx_users_username_bigm`, `idx_users_display_name_bigm` (functional, on `lower(display_name)`). Add a new bigm index in the same migration that introduces a new searchable column.
-- **Cross-field / i18n search uses a materialized `search_text TEXT` column maintained by triggers.** Compose the searchable text (lowercased) on write, never on read. Triggers must cover every parent edit that affects the composition (see `kamos_compute_*_search_text` + `kamos_trg_*_search_text` for the producer/prefecture cascade pattern).
-- **pg_bigm is the substring engine.** Use `search_text LIKE '%' || lower($1) || '%'` (or the `=%` operator). Do NOT introduce `pg_trgm`, `to_tsvector`, or `websearch_to_tsquery` for new search paths — bigm subsumes them for our CJK-first content. The custom kamos-db image ships `pg_bigm` ([[project-custom-pg-image]]).
-- **LIKE metacharacter escape is mandatory.** All user-supplied query strings flowing into a `LIKE` clause must pass through `repository.bigmLikeArg(q)` (or equivalent) which lowercases and escapes `\`, `%`, `_`. Skipping this is a SECURITY-adjacent correctness bug: typing `%` would otherwise match everything.
-- **One query plan per search endpoint.** No FTS-then-trigram fallback orchestration, no UNION ALL of competing search shapes. Bigm handles long and short, Latin and CJK, in one query.
-- **User-search ranking is 3-tier in the SQL, not in Go.** Exact → prefix → substring, then `char_length(username) ASC, created_at DESC, id DESC`. Cursor packs `(match_tier, name_length, created_at, id)` through the HMAC-signed cursor envelope. Min-2-char rule + case-insensitivity + `deleted_at IS NULL` filter all preserved.
+The full rule + per-layer Check command + cross-references live in the catalog file. When CLAUDE.md and a catalog file disagree, the catalog file wins.
 
 **Out of scope for MVP** — push notifications, threaded comments, end-user web client, Apple Sign-In, beverage scanning, blocking, recommendations, export. If a request implies any of these, confirm scope before implementing.
 
@@ -252,9 +243,15 @@ If anything fails, report what failed. Do not call it complete.
 
 **For specific work:**
 - Multi-layer feature → `kamos-build` skill
+- Cross-layer SPEC change → `spec-sweep` skill
 - Code review → `code-review` skill
 - Schema work → `db-schema` skill
 - Go endpoint → `go-api` skill
 - Flutter screen → `flutter-feature` skill
 - Wireframe / spec → `design-wireframe` skill
 - QA cross-check → `qa-inspect` skill
+- Run verification matrix → `verify-gates` skill
+- Deploy / migrate apply / secret rotation → `deploy-runbook` skill
+- Sync CLAUDE.md / SPEC.md / README / runbooks → `doc-sync` skill
+
+Full registry: `.claude/agents/INDEX.md` and `.claude/skills/INDEX.md`. Catalog: `.claude/invariants/`. Protocols: `.claude/protocols/`. Schemas: `.claude/schemas/`. Validator: `.claude/scripts/validate-harness.sh`.
