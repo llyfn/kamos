@@ -175,7 +175,7 @@ jobs:
     # manually with the same env the old services: block exposed.
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Build kamos-postgres dev image (pg_bigm)
         uses: docker/build-push-action@v6
         with:
