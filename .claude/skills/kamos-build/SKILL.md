@@ -14,7 +14,14 @@ Use when a feature spans ≥2 of: `design/`, `migrations/`, `backend/`, `admin/`
 
 Do **not** use for: single-file edits, single endpoint, single screen, single migration, a pure refactor confined to one layer, or a code review. For those, invoke the matching per-layer skill (`go-api`, `flutter-feature`, `db-schema`, `design-wireframe`) or `code-review` directly.
 
-## Execution mode: phased agent team
+## Execution modes
+
+Two equivalent implementations:
+
+- **Agent-team mode (default, this document)** — TeamCreate + Agent spawns + SendMessage round-trips. Use when you want the orchestrator (you) to make live judgment calls between phases.
+- **Workflow-script mode** — `.claude/skills/kamos-build/workflow.mjs`. Deterministic phase gating, parallel per-layer QA via `pipeline()`, schema-validated agent outputs, journaled and resumable. Invoke via `Workflow({ scriptPath: '.claude/skills/kamos-build/workflow.mjs', args: { feature, sequenceNumber, layers } })`. Use for migrations / sweeps / large refactors where the structure is fixed and you want resume-on-failure.
+
+Both modes spawn the same agents with the same prompts (from `prompts/`) and the same recommended models (from each skill's frontmatter).
 
 ## Agent roster
 
