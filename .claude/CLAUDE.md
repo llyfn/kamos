@@ -23,7 +23,7 @@ When `SPEC.md` and any other document conflict, `SPEC.md` wins.
 - **Backend:** Go 1.26+ (latest LTS), `chi` router, `pgx/v5` directly (no ORM), JWT (HS256 or RS256), Google OAuth2
 - **DB:** PostgreSQL 18+ with `pgcrypto` for `gen_random_uuid()`
 - **Cache:** per-replica LRU always-on; optional Redis 7+ as a shared L2, enabled by `CACHE_BACKEND=redis` + `CACHE_REDIS_URL`
-- **Cursor signing:** `CURSOR_SECRET` (≥ 32 bytes, validated at startup) HMACs every paginated cursor
+- **Cursor signing:** `CURSOR_SECRET` (length floor validated at startup against `spec.CursorSecretMinBytes`) HMACs every paginated cursor
 - **Mobile:** Flutter (stable channel), Riverpod, `go_router`, `dio`, `flutter_secure_storage`
 - **Admin:** React 19 + Vite 6 + TypeScript (`admin/`)
 - **Locales:** `en`, `ja`, `ko` (full coverage in MVP)
@@ -113,7 +113,7 @@ Two clients, two auth surfaces:
 
 - **Mobile (Flutter)** — Bearer JWT in `Authorization: Bearer …`. JWT + refresh token in `flutter_secure_storage` per SPEC §6.9; iOS Keychain accessibility is `first_unlock_this_device` (Stage 0 hotfix). Refresh tokens rotate atomically in a single transaction; family revocation on detected reuse.
 - **Admin (React)** — `HttpOnly` + `Secure` + `SameSite=Strict` cookies for access + refresh. CSRF protection is double-submit token: `X-CSRF-Token` header compared (constant-time) against the `kamos_admin_csrf` cookie. Required on every mutating admin request. Identity endpoint is `GET /v1/admin/me` (cookie-authable; `/v1/users/me` is Bearer-only). Pages↔Fly is cross-site; same-site is restored by the Pages Function proxy at `admin/functions/v1/[[path]].ts` (and `vite.config.ts` locally). See `ARCHITECTURE.md §5`.
-- **SEC-006 soft-delete cache** — `internal/auth/` keeps an in-process LRU of soft-deleted user IDs so token verification rejects them immediately for the 30-day username-hold window, without a per-request DB roundtrip.
+- **SEC-006 soft-delete cache** — `internal/auth/` keeps an in-process LRU of soft-deleted user IDs so token verification rejects them immediately for the `spec.UsernameHoldDays` window, without a per-request DB roundtrip.
 
 ## Project invariants
 
@@ -227,7 +227,7 @@ If anything fails, report what failed. Do not call it complete.
 ## Secrets
 
 - Never commit secrets. Use environment variables and `local.env.example` for documentation.
-- `JWT_SECRET` and `CURSOR_SECRET` are both validated for length (≥ 32 bytes) at startup. Production must set both. Rotation runbook: `docs/runbooks/secret-rotation.md`.
+- `JWT_SECRET` and `CURSOR_SECRET` are both length-validated at startup against `spec.CursorSecretMinBytes`. Production must set both. Rotation runbook: `docs/runbooks/secret-rotation.md`.
 - The Flutter app must never hold the Google OAuth client secret — only the client ID is shipped to the app; the secret stays server-side.
 
 ## Tooling preferences

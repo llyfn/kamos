@@ -8,6 +8,7 @@ set -euo pipefail
 
 SKILLS_DIR="${1:-.claude/skills}"
 CLAUDE_MD=".claude/CLAUDE.md"
+HARNESS_MD=".claude/HARNESS.md"
 AGENTS_DIR=".claude/agents"
 
 FORBIDDEN=(
@@ -23,10 +24,14 @@ FORBIDDEN=(
   '≤ ?[0-9]+ photos?'
   '500 char(s|acters)?'
   '\b30 days?\b'
+  '\b30-day\b'
+  '\b32 bytes?\b'
+  '≥ ?32 bytes?'
 )
 
 scan_targets=("$SKILLS_DIR" "$AGENTS_DIR")
 [ -f "$CLAUDE_MD" ] && scan_targets+=("$CLAUDE_MD")
+[ -f "$HARNESS_MD" ] && scan_targets+=("$HARNESS_MD")
 
 # Strip fenced code blocks per file so the grep below only sees prose.
 scratch=$(mktemp -d)
@@ -46,8 +51,10 @@ for target in "${scan_targets[@]}"; do
 done
 
 bad=0
+# Use find -exec rather than shell globbing so leading-dot scratch filenames
+# (mapped from .claude/...) aren't silently skipped.
 for pattern in "${FORBIDDEN[@]}"; do
-  hits=$(grep -hiE "$pattern" "$scratch"/* 2>/dev/null || true)
+  hits=$(find "$scratch" -type f -exec grep -hiE "$pattern" {} + 2>/dev/null || true)
   if [ -n "$hits" ]; then
     echo "::error::canonical-invariant drift: literal matching '$pattern' in markdown prose"
     echo "$hits" | sed 's/^/  /'
