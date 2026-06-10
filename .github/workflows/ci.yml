@@ -135,6 +135,17 @@ jobs:
       - name: Fail on drift
         run: git diff --exit-code -- admin/src/lib/tokens.ts
 
+  harness-drift:
+    name: Harness invariant-restatement drift check
+    runs-on: ubuntu-latest
+    # Belt to the spec-codegen suspenders: scans .claude/skills, .claude/agents,
+    # and .claude/CLAUDE.md prose for restatements of values that belong in
+    # specs/invariants.yaml. Code-fence blocks are skipped.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run check-harness-drift.sh
+        run: scripts/check-harness-drift.sh
+
   spec-codegen:
     name: Spec invariants codegen drift check
     runs-on: ubuntu-latest

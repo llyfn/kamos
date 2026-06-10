@@ -151,8 +151,10 @@ flavor_tags (
 
 check_ins (
   id, user_id FK, beverage_id FK,
-  rating NUMERIC(3,1) CHECK (rating >= 0.5 AND rating <= 5.0 AND (rating * 2) = FLOOR(rating * 2)),
-  review_text TEXT CHECK (char_length(review_text) <= 500),
+  -- rating column matches specs/invariants.yaml rating.* — see the
+  -- canonical example in the "SPEC invariants" section above.
+  rating NUMERIC(3,2),
+  review_text TEXT,
   price_amount NUMERIC(10,2),
   price_currency CHAR(3),
   price_unit TEXT CHECK (price_unit IN ('serving','bottle')),
