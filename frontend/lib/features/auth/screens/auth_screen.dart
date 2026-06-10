@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/auth/google_signin_service.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/auth_controller.dart';
 import '../providers/auth_state.dart';
@@ -212,10 +213,10 @@ class _SignInOrUp extends StatelessWidget {
     final usernameInvalid =
         isSignUp &&
         username.text.isNotEmpty &&
-        !RegExp(r'^[A-Za-z0-9_]{3,30}$').hasMatch(username.text);
+        !RegExp(KamosSpec.usernameRegex).hasMatch(username.text);
 
     final passwordTooShort =
-        password.text.isNotEmpty && password.text.length < 8;
+        password.text.isNotEmpty && password.text.length < KamosSpec.passwordMin;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

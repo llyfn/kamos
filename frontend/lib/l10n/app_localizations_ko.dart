@@ -137,7 +137,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInPostFailed => '게시할 수 없습니다. 탭하여 다시 시도하세요.';
 
   @override
-  String get checkInPhotoLimitReached => '사진은 최대 4장까지 첨부할 수 있습니다.';
+  String get checkInPhotoLimitReached => '사진은 최대 1장까지 첨부할 수 있습니다.';
 
   @override
   String get checkInPostingButton => '게시 중…';

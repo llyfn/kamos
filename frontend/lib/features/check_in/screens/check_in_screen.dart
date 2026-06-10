@@ -18,6 +18,7 @@ import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
 import '../../../core/models/venue.dart';
 import '../../../core/observability/sentry_observer.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_chip.dart';
@@ -575,7 +576,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     final subtitleText = subcat.isEmpty ? catLabel : '$catLabel · $subcat';
 
     final state = ref.watch(checkInControllerProvider);
-    final reviewTooLong = _review.text.length > 500;
+    final reviewTooLong = _review.text.length > KamosSpec.reviewMaxChars;
     final submitting = _isEdit ? _saving : (state.isSubmitting || _uploadingPhotos);
     final canPost = !submitting && !reviewTooLong;
 
@@ -879,7 +880,7 @@ class _ReviewWithPhoto extends StatelessWidget {
           child: TextField(
             controller: controller,
             focusNode: focus,
-            maxLength: 500,
+            maxLength: KamosSpec.reviewMaxChars,
             maxLengthEnforcement: MaxLengthEnforcement.none,
             maxLines: 3,
             minLines: 3,

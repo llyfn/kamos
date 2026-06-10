@@ -1,12 +1,13 @@
-// Custom 0.25-step rating slider for the check-in compose screen.
+// Rating slider for check-in compose. Range + step from KamosSpec.
 
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/spec/spec.dart';
 
-const double _kMin = 0.5;
-const double _kMax = 5.0;
-const double _kStep = 0.25;
+const double _kMin = KamosSpec.ratingMin;
+const double _kMax = KamosSpec.ratingMax;
+const double _kStep = KamosSpec.ratingStep;
 const double _kTrackHeight = 4;
 const double _kThumbRadius = 10;
 const double _kTickHeight = 8;

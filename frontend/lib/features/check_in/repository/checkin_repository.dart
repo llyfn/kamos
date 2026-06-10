@@ -31,6 +31,7 @@ import '../../../core/api/api_exceptions.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
+import '../../../core/spec/spec.dart';
 
 // The repository's typed exception family lives in
 // `core/api/api_exceptions.dart`. Re-export the two photo-upload symbols so
@@ -123,7 +124,7 @@ class CheckInRepository {
   /// only ever needs the first page.
   Future<List<Checkin>> listForUser(
     String username, {
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.users.getUserCheckins(username, limit: limit);
     final items = (data['items'] as List?) ?? const [];

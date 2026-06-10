@@ -51,7 +51,7 @@
   "checkInPriceBottle": "Per bottle",
   "checkInFirstToast": "First check-in saved. Kanpai!",
   "checkInPostFailed": "Could not post. Tap to retry.",
-  "checkInPhotoLimitReached": "You can attach up to 4 photos.",
+  "checkInPhotoLimitReached": "You can attach up to 1 photo.",
   "checkInPostingButton": "Posting…",
   "checkInSavingButton": "Saving…",
   "photoUploadDisabled": "Photo upload is not available — saved without photos.",

@@ -51,7 +51,7 @@
   "checkInPriceBottle": "一本",
   "checkInFirstToast": "最初のチェックイン。乾杯！",
   "checkInPostFailed": "投稿できませんでした。タップしてやり直し。",
-  "checkInPhotoLimitReached": "写真は4枚までです。",
+  "checkInPhotoLimitReached": "写真は1枚までです。",
   "checkInPostingButton": "投稿中…",
   "checkInSavingButton": "保存中…",
   "photoUploadDisabled": "写真のアップロードは利用できません — 写真なしで保存しました。",

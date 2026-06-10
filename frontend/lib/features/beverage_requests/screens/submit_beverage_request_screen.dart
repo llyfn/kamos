@@ -22,15 +22,13 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/i18n/category_labels.dart';
 import '../../../core/models/beverage_request.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/beverage_request_providers.dart';
 
-/// Maximum lengths chosen to mirror the closest existing fields on
-/// `beverages` (name ≤ 200) and `check_ins` (review ≤ 500). The server is
-/// the backstop and accepts anything non-empty today.
-const _nameMax = 200;
-const _producerMax = 200;
-const _notesMax = 500;
+const _nameMax = KamosSpec.beverageRequestStringMax;
+const _producerMax = KamosSpec.beverageRequestStringMax;
+const _notesMax = KamosSpec.beverageRequestNotesMax;
 
 class SubmitBeverageRequestScreen extends ConsumerStatefulWidget {
   const SubmitBeverageRequestScreen({

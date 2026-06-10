@@ -137,7 +137,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPostFailed => '投稿できませんでした。タップしてやり直し。';
 
   @override
-  String get checkInPhotoLimitReached => '写真は4枚までです。';
+  String get checkInPhotoLimitReached => '写真は1枚までです。';
 
   @override
   String get checkInPostingButton => '投稿中…';

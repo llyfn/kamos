@@ -138,7 +138,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPostFailed => 'Could not post. Tap to retry.';
 
   @override
-  String get checkInPhotoLimitReached => 'You can attach up to 4 photos.';
+  String get checkInPhotoLimitReached => 'You can attach up to 1 photo.';
 
   @override
   String get checkInPostingButton => 'Posting…';

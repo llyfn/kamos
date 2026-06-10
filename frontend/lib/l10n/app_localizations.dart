@@ -343,7 +343,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkInPhotoLimitReached.
   ///
   /// In en, this message translates to:
-  /// **'You can attach up to 4 photos.'**
+  /// **'You can attach up to 1 photo.'**
   String get checkInPhotoLimitReached;
 
   /// No description provided for @checkInPostingButton.
