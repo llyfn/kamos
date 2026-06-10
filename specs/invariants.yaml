@@ -53,7 +53,36 @@ collection_entry_note:
 
 collection_name:
   spec_section: "6.3"
+  min_chars: 1
   max_chars: 50
+
+moderation_notes:
+  # Admin reject/approve notes — reuses the review-cap budget rather than
+  # carrying its own number, because both are short, human-authored prose.
+  spec_section: "2.4"
+  max_chars: 500
+
+search_query:
+  # Free-form search-by-text cap shared by user search, beverage search,
+  # and venue search (Foursquare proxy). 100 runes is the DoS-prevention
+  # backstop; query semantics enforce shorter minimums separately.
+  max_chars: 100
+
+social_query:
+  # Prefix-match on usernames for the follower/following picker. Caps to
+  # the same width as a username (a longer query can't match anything).
+  max_chars: 30
+
+venue_fields:
+  # Bounds for the optional venue-tag fields on a check-in. Backed by the
+  # venues table columns; see migration 010.
+  spec_section: "4.1"
+  name_min: 1
+  name_max: 200
+  address_max: 500
+  country_max: 100
+  prefecture_max: 100
+  locality_max: 100
 
 username:
   spec_section: "3.2"

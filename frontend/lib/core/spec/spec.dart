@@ -26,11 +26,23 @@ class KamosSpec {
   static const int beverageRequestStringMax = 200;
   static const int beverageRequestPayloadMax = 4096;
   static const int collectionEntryNoteMax = 200;
+  static const int collectionNameMin = 1;
   static const int collectionNameMax = 50;
   static const int displayNameMin = 1;
   static const int displayNameMax = 50;
   static const int bioMax = 200;
   static const int passwordMin = 8;
+  static const int moderationNotesMaxChars = 500;
+  static const int searchQueryMaxChars = 100;
+  static const int socialQueryMaxChars = 30;
+
+  // Venue field bounds (SPEC §4.1)
+  static const int venueNameMin = 1;
+  static const int venueNameMax = 200;
+  static const int venueAddressMax = 500;
+  static const int venueCountryMax = 100;
+  static const int venuePrefectureMax = 100;
+  static const int venueLocalityMax = 100;
 
   // Username (SPEC §3.2)
   static const String usernameRegex = r'^[A-Za-z0-9_]{3,30}$';

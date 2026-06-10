@@ -37,3 +37,7 @@ docs/history/
 ### Node (root tooling only — commitlint + lefthook) ###
 /node_modules/
 /package-lock.json
+
+### Python ###
+__pycache__/
+*.pyc

@@ -3,6 +3,14 @@
 
 package spec
 
+// Package spec exposes canonical product invariants.
+//
+// The exported []string / map values below are package-level vars
+// only because Go has no truly-immutable slice/map type. Treat them
+// as read-only: do not append, reslice, or mutate entries — callers
+// share a single backing buffer with every other handler in the
+// process.
+
 // SchemaVersion mirrors specs/invariants.yaml schema_version.
 const SchemaVersion = 1
 
@@ -27,11 +35,25 @@ const (
 	BeverageRequestStringMax  = 200
 	BeverageRequestPayloadMax = 4096
 	CollectionEntryNoteMax    = 200
+	CollectionNameMin         = 1
 	CollectionNameMax         = 50
 	DisplayNameMin            = 1
 	DisplayNameMax            = 50
 	BioMax                    = 200
 	PasswordMin               = 8
+	ModerationNotesMaxChars   = 500
+	SearchQueryMaxChars       = 100
+	SocialQueryMaxChars       = 30
+)
+
+// Venue field bounds per SPEC §4.1.
+const (
+	VenueNameMin       = 1
+	VenueNameMax       = 200
+	VenueAddressMax    = 500
+	VenueCountryMax    = 100
+	VenuePrefectureMax = 100
+	VenueLocalityMax   = 100
 )
 
 // Username regex per SPEC §3.2.

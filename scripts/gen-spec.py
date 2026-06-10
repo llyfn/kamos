@@ -183,6 +183,10 @@ def emit_go(data: dict) -> str:
     dc = data["default_collections"]
     pt = data["purchase_type"]
     price = data["price"]
+    mn = data["moderation_notes"]
+    sq = data["search_query"]
+    soq = data["social_query"]
+    vf = data["venue_fields"]
 
     lines = []
     add = lines.append
@@ -191,6 +195,14 @@ def emit_go(data: dict) -> str:
         add(f"// {ln}")
     add("")
     add("package spec")
+    add("")
+    add("// Package spec exposes canonical product invariants.")
+    add("//")
+    add("// The exported []string / map values below are package-level vars")
+    add("// only because Go has no truly-immutable slice/map type. Treat them")
+    add("// as read-only: do not append, reslice, or mutate entries — callers")
+    add("// share a single backing buffer with every other handler in the")
+    add("// process.")
     add("")
     add("// SchemaVersion mirrors specs/invariants.yaml schema_version.")
     add(f"const SchemaVersion = {data['schema_version']}")
@@ -216,11 +228,25 @@ def emit_go(data: dict) -> str:
     add(f"\tBeverageRequestStringMax  = {br['string_field_max_chars']}")
     add(f"\tBeverageRequestPayloadMax = {br['payload_max_bytes']}")
     add(f"\tCollectionEntryNoteMax    = {cen['max_chars']}")
+    add(f"\tCollectionNameMin         = {cn['min_chars']}")
     add(f"\tCollectionNameMax         = {cn['max_chars']}")
     add(f"\tDisplayNameMin            = {dn['min_chars']}")
     add(f"\tDisplayNameMax            = {dn['max_chars']}")
     add(f"\tBioMax                    = {bio['max_chars']}")
     add(f"\tPasswordMin               = {pw['min_chars']}")
+    add(f"\tModerationNotesMaxChars   = {mn['max_chars']}")
+    add(f"\tSearchQueryMaxChars       = {sq['max_chars']}")
+    add(f"\tSocialQueryMaxChars       = {soq['max_chars']}")
+    add(")")
+    add("")
+    add("// Venue field bounds per SPEC §" + vf["spec_section"] + ".")
+    add("const (")
+    add(f"\tVenueNameMin       = {vf['name_min']}")
+    add(f"\tVenueNameMax       = {vf['name_max']}")
+    add(f"\tVenueAddressMax    = {vf['address_max']}")
+    add(f"\tVenueCountryMax    = {vf['country_max']}")
+    add(f"\tVenuePrefectureMax = {vf['prefecture_max']}")
+    add(f"\tVenueLocalityMax   = {vf['locality_max']}")
     add(")")
     add("")
     add("// Username regex per SPEC §" + un["spec_section"] + ".")
@@ -296,6 +322,10 @@ def emit_dart(data: dict) -> str:
     dc = data["default_collections"]
     pt = data["purchase_type"]
     price = data["price"]
+    mn = data["moderation_notes"]
+    sq = data["search_query"]
+    soq = data["social_query"]
+    vf = data["venue_fields"]
 
     lines = []
     add = lines.append
@@ -328,11 +358,23 @@ def emit_dart(data: dict) -> str:
     add(f"  static const int beverageRequestStringMax = {br['string_field_max_chars']};")
     add(f"  static const int beverageRequestPayloadMax = {br['payload_max_bytes']};")
     add(f"  static const int collectionEntryNoteMax = {cen['max_chars']};")
+    add(f"  static const int collectionNameMin = {cn['min_chars']};")
     add(f"  static const int collectionNameMax = {cn['max_chars']};")
     add(f"  static const int displayNameMin = {dn['min_chars']};")
     add(f"  static const int displayNameMax = {dn['max_chars']};")
     add(f"  static const int bioMax = {bio['max_chars']};")
     add(f"  static const int passwordMin = {pw['min_chars']};")
+    add(f"  static const int moderationNotesMaxChars = {mn['max_chars']};")
+    add(f"  static const int searchQueryMaxChars = {sq['max_chars']};")
+    add(f"  static const int socialQueryMaxChars = {soq['max_chars']};")
+    add("")
+    add("  // Venue field bounds (SPEC §" + vf["spec_section"] + ")")
+    add(f"  static const int venueNameMin = {vf['name_min']};")
+    add(f"  static const int venueNameMax = {vf['name_max']};")
+    add(f"  static const int venueAddressMax = {vf['address_max']};")
+    add(f"  static const int venueCountryMax = {vf['country_max']};")
+    add(f"  static const int venuePrefectureMax = {vf['prefecture_max']};")
+    add(f"  static const int venueLocalityMax = {vf['locality_max']};")
     add("")
     add("  // Username (SPEC §" + un["spec_section"] + ")")
     add(f"  static const String usernameRegex = r'{un['regex']}';")
@@ -400,9 +442,35 @@ def _gofmt(path: pathlib.Path) -> None:
     sys.stderr.write("gen-spec: neither goimports nor gofmt on PATH; skipping Go formatting\n")
 
 
+# Every YAML top-level key consumed by the emitters. New keys must be added
+# here AND wired into both emit_go / emit_dart before the generator accepts
+# them — silently ignoring a new YAML block would defeat the gate.
+KNOWN_KEYS = {
+    "schema_version", "spec_doc",
+    "rating", "photos", "review_text", "comment_text",
+    "beverage_request", "collection_entry_note", "collection_name",
+    "moderation_notes", "search_query", "social_query", "venue_fields",
+    "username", "display_name", "bio", "password", "email_verification",
+    "pagination", "locales", "soft_delete", "cursor",
+    "categories", "default_collections", "purchase_type", "price",
+}
+
+
+def _assert_schema_coverage(data: dict) -> None:
+    extra = set(data.keys()) - KNOWN_KEYS
+    if extra:
+        sys.stderr.write(
+            "gen-spec: YAML top-level keys not wired into emitters: "
+            + ", ".join(sorted(extra))
+            + "\nAdd them to gen-spec.py KNOWN_KEYS and emit_go/emit_dart.\n"
+        )
+        sys.exit(1)
+
+
 def main(argv):
     text = SRC.read_text(encoding="utf-8")
     data = _parse_yaml(text)
+    _assert_schema_coverage(data)
     GO_OUT.parent.mkdir(parents=True, exist_ok=True)
     DART_OUT.parent.mkdir(parents=True, exist_ok=True)
     GO_OUT.write_text(emit_go(data), encoding="utf-8")
