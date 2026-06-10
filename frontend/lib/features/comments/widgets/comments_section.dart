@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/api/api_exceptions.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/state_views.dart';
@@ -110,7 +111,11 @@ class CommentsSection extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(l.commentsTooLong)));
+        ).showSnackBar(
+          SnackBar(
+            content: Text(l.commentsTooLong(KamosSpec.commentMaxChars)),
+          ),
+        );
       }
       return false;
     } on CommentInvalidBodyException {

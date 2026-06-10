@@ -117,11 +117,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get checkInPhotosLabel => '사진';
 
   @override
-  String checkInPhotoCounter(int count) {
-    return '$count / 4';
-  }
-
-  @override
   String get checkInPriceLabel => '가격';
 
   @override
@@ -246,7 +241,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authUsernameLabel => '사용자 이름';
 
   @override
-  String get authUsernameHelper => '3–30자 · 영문/숫자/언더스코어 · 대소문자 구분 없음';
+  String authUsernameHelper(int min, int max) {
+    return '$min–$max자 · 영문/숫자/언더스코어 · 대소문자 구분 없음';
+  }
 
   @override
   String get authUsernameInvalid => '잘못된 사용자 이름';
@@ -258,7 +255,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get authPasswordLabel => '비밀번호';
 
   @override
-  String get authPasswordHelper => '8자 이상';
+  String authPasswordHelper(int min) {
+    return '$min자 이상';
+  }
 
   @override
   String get authPasswordTooShort => '너무 짧습니다';
@@ -408,8 +407,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsConfirmDelete => '계정을 삭제하시겠습니까?';
 
   @override
-  String get settingsConfirmDeleteBody =>
-      '계정이 삭제됩니다. 사용자 이름은 30일간 보류된 후 다른 사용자가 사용할 수 있습니다. 체크인과 리스트는 다른 사용자에게 더 이상 표시되지 않습니다.';
+  String settingsConfirmDeleteBody(int days) {
+    return '계정이 삭제됩니다. 사용자 이름은 $days일간 보류된 후 다른 사용자가 사용할 수 있습니다. 체크인과 리스트는 다른 사용자에게 더 이상 표시되지 않습니다.';
+  }
 
   @override
   String get settingsSignOut => '로그아웃';
@@ -529,7 +529,9 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get commentsTooLong => '댓글이 너무 깁니다 (최대 500자)';
+  String commentsTooLong(int max) {
+    return '댓글이 너무 깁니다 (최대 $max자)';
+  }
 
   @override
   String get commentsInvalidBody => '댓글에 사용할 수 없는 문자가 포함되어 있습니다';

@@ -248,7 +248,10 @@ class _SignInOrUp extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 8),
             child: Text(
-              l.authUsernameHelper,
+              l.authUsernameHelper(
+                KamosSpec.usernameMinChars,
+                KamosSpec.usernameMaxChars,
+              ),
               style: TextStyle(fontSize: 12, color: t.fg3),
             ),
           ),
@@ -305,7 +308,7 @@ class _SignInOrUp extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              l.authPasswordHelper,
+              l.authPasswordHelper(KamosSpec.passwordMin),
               style: TextStyle(fontSize: 12, color: t.fg3),
             ),
           ),

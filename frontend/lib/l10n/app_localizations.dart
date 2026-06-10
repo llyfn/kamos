@@ -304,12 +304,6 @@ abstract class AppLocalizations {
   /// **'Photos'**
   String get checkInPhotosLabel;
 
-  /// No description provided for @checkInPhotoCounter.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} / 4'**
-  String checkInPhotoCounter(int count);
-
   /// No description provided for @checkInPriceLabel.
   ///
   /// In en, this message translates to:
@@ -553,8 +547,8 @@ abstract class AppLocalizations {
   /// No description provided for @authUsernameHelper.
   ///
   /// In en, this message translates to:
-  /// **'3–30 chars · letters, numbers, underscores · case-insensitive'**
-  String get authUsernameHelper;
+  /// **'{min}–{max} chars · letters, numbers, underscores · case-insensitive'**
+  String authUsernameHelper(int min, int max);
 
   /// No description provided for @authUsernameInvalid.
   ///
@@ -577,8 +571,8 @@ abstract class AppLocalizations {
   /// No description provided for @authPasswordHelper.
   ///
   /// In en, this message translates to:
-  /// **'At least 8 characters'**
-  String get authPasswordHelper;
+  /// **'At least {min} characters'**
+  String authPasswordHelper(int min);
 
   /// No description provided for @authPasswordTooShort.
   ///
@@ -865,8 +859,8 @@ abstract class AppLocalizations {
   /// No description provided for @settingsConfirmDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'Your account will be deleted. Your username will be held for 30 days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.'**
-  String get settingsConfirmDeleteBody;
+  /// **'Your account will be deleted. Your username will be held for {days} days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.'**
+  String settingsConfirmDeleteBody(int days);
 
   /// No description provided for @settingsSignOut.
   ///
@@ -1087,8 +1081,8 @@ abstract class AppLocalizations {
   /// No description provided for @commentsTooLong.
   ///
   /// In en, this message translates to:
-  /// **'Comment too long (max 500 chars)'**
-  String get commentsTooLong;
+  /// **'Comment too long (max {max} chars)'**
+  String commentsTooLong(int max);
 
   /// No description provided for @commentsInvalidBody.
   ///
