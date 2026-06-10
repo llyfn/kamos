@@ -225,7 +225,7 @@ Each job runs **once on startup** ("cold start") so a fresh deploy doesn't wait 
 ## SPEC traceability
 
 - Cursor pagination on every list (SPEC §5.2 / §6.6) — `internal/cursor`.
-- Rating 0.5–5.0 in 0.25 steps (SPEC §4.2 / §6.2) — `domain.ValidRating`.
+- Rating 0.25–5.0 in 0.25 steps (SPEC §4.2 / §6.2) — `domain.ValidRating`.
 - Review ≤ 500 chars (SPEC §4.1 / §6.7) — `domain.CreateCheckinRequest.Validate`.
 - Photos ≤ 1 per check-in on submission (SPEC §4.1 / §6.7) — `domain.CreateCheckinRequest.Validate`; existing multi-photo rows readable. Storage layer cap remains 4 via `check_in_photos.sort_order BETWEEN 0 AND 3`.
 - Username 3–30, lowercase storage, 30-day hold (SPEC §3.2 / §3.3 / §6.3 / §6.4) — `domain.RegisterRequest`, `UserRepo.CreateUserWithDefaults`, `SoftDelete`.

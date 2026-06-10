@@ -371,6 +371,13 @@ export interface paths {
     "/v1/users/{username}/followers": {
         parameters: {
             query?: {
+                /**
+                 * @description Optional case-insensitive prefix filter against the follower's
+                 *     `username` and `display_name` (either match is enough). LIKE
+                 *     metacharacters (`%`, `_`, `\`) are escaped server-side. Empty
+                 *     / whitespace-only `q` is silently ignored.
+                 */
+                q?: string;
                 cursor?: string;
                 limit?: number;
             };
@@ -381,8 +388,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Status: scaffold-for-Phase6 — pre-wired for the followers list screen
-         *     in a future profile iteration. No Flutter caller in MVP.
+         * @description Cursor-paginated page of accepted followers for the named user.
+         *     Public profiles are listable by anyone (no auth required); private
+         *     profiles return only when the viewer is the user themselves or
+         *     an accepted follower (404 / 403 otherwise).
          */
         get: operations["getUserFollowers"];
         put?: never;
@@ -396,6 +405,13 @@ export interface paths {
     "/v1/users/{username}/following": {
         parameters: {
             query?: {
+                /**
+                 * @description Optional case-insensitive prefix filter against the followee's
+                 *     `username` and `display_name` (either match is enough). LIKE
+                 *     metacharacters (`%`, `_`, `\`) are escaped server-side. Empty
+                 *     / whitespace-only `q` is silently ignored.
+                 */
+                q?: string;
                 cursor?: string;
                 limit?: number;
             };
@@ -406,10 +422,67 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Status: scaffold-for-Phase6 — pre-wired for the following list screen
-         *     in a future profile iteration. No Flutter caller in MVP.
+         * @description Cursor-paginated page of users that the named user follows.
+         *     Same visibility rules as `/followers`.
          */
         get: operations["getUserFollowing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/{username}/beverages": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Restrict the result set to a single beverage category. One of
+                 *     the canonical slugs (SPEC §2.1). Unknown slugs return 422
+                 *     VALIDATION.
+                 */
+                category?: "nihonshu" | "shochu" | "liqueur";
+                /** @description Restrict the result set to a single producer. */
+                producer_id?: string;
+                /**
+                 * @description Drop rows where the user's average rating is below this value
+                 *     (or absent, since "I tried it but did not rate it" never passes
+                 *     a min-rating filter).
+                 */
+                min_rating?: number;
+                /**
+                 * @description Sort axis. Default `rating` (DESC NULLS LAST). The other axes
+                 *     use the user-friendly default direction (`last_checkin` DESC,
+                 *     `producer` / `category` ASC) unless `sort_dir` overrides.
+                 */
+                sort?: "rating" | "producer" | "category" | "last_checkin";
+                sort_dir?: "asc" | "desc";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * @description Page of distinct beverages the named user has checked in to,
+         *     deduped across multiple check-ins on the same beverage. Each
+         *     row carries the user's average rating + check-in count and the
+         *     beverage's global aggregates so the client can render the
+         *     "you 4.5 / global 4.2" comparison without a second fetch.
+         *
+         *     Privacy: public profiles are listable by anyone (no auth
+         *     required); private profiles return 403 PRIVATE_PROFILE for
+         *     every viewer that is neither the user themselves nor an
+         *     accepted follower.
+         *
+         *     Filters and sort are validated server-side; an invalid value
+         *     returns 422 VALIDATION. Cursor pagination per SPEC §6.6.
+         */
+        get: operations["getUserBeverages"];
         put?: never;
         post?: never;
         delete?: never;
@@ -558,12 +631,14 @@ export interface paths {
          *     of a live check-in. `beverage_id` is immutable — sending it returns
          *     422. `add_photos` carries `photo_uploads.id` values returned from
          *     `/v1/uploads/photo-presign`; `remove_photos` carries existing
-         *     `PhotoRef.url` values to detach. The SPEC §4.2 four-photo cap is
-         *     enforced on the resulting set (current − removed + added) — the
-         *     5th attach returns 422 `PHOTO_CAP_EXCEEDED`. Tags use full
-         *     replacement semantics: present (even empty) replaces; absent leaves
-         *     alone. The `edited_at` field on the response is touched only when
-         *     at least one tracked field actually changes.
+         *     `PhotoRef.url` values to detach. The SPEC §4.1 1-photo submission
+         *     cap is enforced on the resulting set (current − removed + added) —
+         *     any update that would land the set above 1 returns 422
+         *     `PHOTO_CAP_EXCEEDED`. Existing multi-photo check-ins remain
+         *     readable. Tags use full replacement semantics: present (even
+         *     empty) replaces; absent leaves alone. The `edited_at` field on
+         *     the response is touched only when at least one tracked field
+         *     actually changes.
          */
         patch: operations["updateCheckin"];
         trace?: never;
@@ -643,8 +718,10 @@ export interface paths {
         put?: never;
         /**
          * @description Attach a previously-presigned blob (see `/v1/uploads/photo-presign`)
-         *     to this check-in. The 4-photo cap from SPEC §4.5 is enforced — the
-         *     5th attach returns 422 `PHOTO_CAP_EXCEEDED`.
+         *     to this check-in. The SPEC §4.1 1-photo submission cap (Slice B)
+         *     is enforced — attaching to a check-in that already has a photo
+         *     returns 422 `PHOTO_CAP_EXCEEDED`. Existing multi-photo check-ins
+         *     remain readable but cannot be added to.
          *
          *     Phase 3 shipped: the MVP `{ url }` body was replaced by `{ upload_id }`.
          */
@@ -1376,8 +1453,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description List beverages for admin tooling. Optional FTS (`q`,
-         *     websearch_to_tsquery against idx_beverages_name_tsv), exact
+         * @description List beverages for admin tooling. Optional substring search (`q`,
+         *     `LIKE '%lower(q)%'` against `idx_beverages_search_bigm`), exact
          *     filters (`producer_id`, `category_id`, `category_slug`, `id`).
          *     `id` short-circuits the cursor. `include_deleted=1` surfaces
          *     soft-deleted rows for the admin "trash" view.
@@ -1458,8 +1535,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description List producers for admin tooling. Optional FTS (`q`,
-         *     websearch_to_tsquery against idx_producers_name_tsv) or exact
+         * @description List producers for admin tooling. Optional substring search (`q`,
+         *     `LIKE '%lower(q)%'` against `idx_producers_search_bigm`) or exact
          *     UUID lookup (`id`). `include_deleted=1` surfaces soft-deleted
          *     rows.
          */
@@ -2008,8 +2085,10 @@ export interface components {
         };
         /**
          * @description Compact beverage embedding used by check-in / feed / collection
-         *     entries. `label_image_url` follows the absent-when-unknown
-         *     convention (Go `omitempty`).
+         *     entries. `subcategory` and `label_image_url` follow the absent-
+         *     when-unknown convention (Go `omitempty`): the key is omitted
+         *     entirely when the beverage has no `subcategory_id` FK / no
+         *     label image.
          */
         BeverageRef: {
             /** Format: uuid */
@@ -2017,8 +2096,34 @@ export interface components {
             name: components["schemas"]["I18nText"];
             producer: components["schemas"]["ProducerRef"];
             category: components["schemas"]["CategoryLabel"];
+            subcategory?: components["schemas"]["Subcategory"];
             /** Format: uri */
             label_image_url?: string;
+        };
+        /**
+         * @description One row of GET /v1/users/{username}/beverages — the distinct-
+         *     beverage aggregation across a single user's check-ins. The
+         *     beverage is the row identity; `user_avg_rating` averages the
+         *     user's non-null ratings across multiple check-ins on the same
+         *     beverage and is null when every check-in was rating-less;
+         *     `user_checkin_count` counts ALL of the user's live check-ins
+         *     on this beverage. `global_avg_rating` / `global_check_in_count`
+         *     are read off the beverages.avg_rating + check_in_count
+         *     aggregates the rating trigger maintains.
+         */
+        UserBeverageRow: {
+            beverage: components["schemas"]["BeverageRef"];
+            /**
+             * @description User's mean rating across their non-null check-ins for this
+             *     beverage. Null when every one of their check-ins was rating-
+             *     less.
+             */
+            user_avg_rating?: number | null;
+            user_checkin_count: number;
+            /** Format: date-time */
+            last_checkin_at: string;
+            global_avg_rating?: number | null;
+            global_check_in_count: number;
         };
         /**
          * @description Compact producer embedding used by check-in / feed / collection
@@ -2057,8 +2162,9 @@ export interface components {
             user: components["schemas"]["CheckinUser"];
             beverage: components["schemas"]["BeverageRef"];
             /**
-             * @description SPEC §4.2 / §6.2: 0.5–5.0 in 0.25 steps (19 levels). Optional —
-             *     `null` is valid and means "I tried this". Emit as a number, never a string.
+             * @description SPEC §4.2 / §6.2: 0.25–5.0 in 0.25 steps (20 levels). Optional —
+             *     `null` is valid and means "I tried this". Emit as a number,
+             *     never a string.
              */
             rating?: number | null;
             review?: string | null;
@@ -2107,6 +2213,10 @@ export interface components {
             rating?: number | null;
             review?: string | null;
             tags?: string[];
+            /**
+             * @description Up to 1 photo on submission (SPEC §4.1). Existing multi-photo
+             *     check-ins remain readable.
+             */
             photos?: string[];
             price?: components["schemas"]["Price"];
             /** @enum {string} */
@@ -2130,9 +2240,10 @@ export interface components {
          *     `/v1/uploads/photo-presign`; the server resolves each to the
          *     matching public URL and flips the row to `attached` in the same
          *     transaction. `remove_photos` carries existing `PhotoRef.url`
-         *     values to detach. The SPEC §4.2 4-photo cap is enforced on the
-         *     resulting set (`current − removed + added ≤ 4`); a violation
-         *     returns 422 `PHOTO_CAP_EXCEEDED`.
+         *     values to detach. The SPEC §4.1 1-photo submission cap is
+         *     enforced on the resulting set (`current − removed + added ≤ 1`);
+         *     a violation returns 422 `PHOTO_CAP_EXCEEDED`. Existing
+         *     multi-photo check-ins remain readable.
          */
         UpdateCheckinRequest: {
             rating?: number | null;
@@ -2141,7 +2252,10 @@ export interface components {
             price?: components["schemas"]["Price"];
             /** @enum {string} */
             purchase_type?: "on_premise" | "retail" | "gift" | "other";
-            /** @description photo_uploads ids to attach (≤4 per request). */
+            /**
+             * @description photo_uploads ids to attach. The cap is enforced server-side
+             *     against the resulting set (current − removed + added).
+             */
             add_photos?: string[];
             /** @description existing PhotoRef URLs to detach. */
             remove_photos?: string[];
@@ -2435,6 +2549,9 @@ export interface components {
         };
         PageOfSocialUser: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["SocialUser"][];
+        };
+        PageOfUserBeverageRow: components["schemas"]["PageBase"] & {
+            items?: components["schemas"]["UserBeverageRow"][];
         };
         PageOfPublicUser: components["schemas"]["PageBase"] & {
             items?: components["schemas"]["PublicUser"][];
@@ -2839,6 +2956,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description malformed request or invalid parameters */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
         /** @description missing or invalid token */
         Unauthorized: {
             headers: {
@@ -3454,6 +3580,13 @@ export interface operations {
     getUserFollowers: {
         parameters: {
             query?: {
+                /**
+                 * @description Optional case-insensitive prefix filter against the follower's
+                 *     `username` and `display_name` (either match is enough). LIKE
+                 *     metacharacters (`%`, `_`, `\`) are escaped server-side. Empty
+                 *     / whitespace-only `q` is silently ignored.
+                 */
+                q?: string;
                 cursor?: string;
                 limit?: number;
             };
@@ -3474,12 +3607,20 @@ export interface operations {
                     "application/json": components["schemas"]["PageOfSocialUser"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
         };
     };
     getUserFollowing: {
         parameters: {
             query?: {
+                /**
+                 * @description Optional case-insensitive prefix filter against the followee's
+                 *     `username` and `display_name` (either match is enough). LIKE
+                 *     metacharacters (`%`, `_`, `\`) are escaped server-side. Empty
+                 *     / whitespace-only `q` is silently ignored.
+                 */
+                q?: string;
                 cursor?: string;
                 limit?: number;
             };
@@ -3500,7 +3641,58 @@ export interface operations {
                     "application/json": components["schemas"]["PageOfSocialUser"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getUserBeverages: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Restrict the result set to a single beverage category. One of
+                 *     the canonical slugs (SPEC §2.1). Unknown slugs return 422
+                 *     VALIDATION.
+                 */
+                category?: "nihonshu" | "shochu" | "liqueur";
+                /** @description Restrict the result set to a single producer. */
+                producer_id?: string;
+                /**
+                 * @description Drop rows where the user's average rating is below this value
+                 *     (or absent, since "I tried it but did not rate it" never passes
+                 *     a min-rating filter).
+                 */
+                min_rating?: number;
+                /**
+                 * @description Sort axis. Default `rating` (DESC NULLS LAST). The other axes
+                 *     use the user-friendly default direction (`last_checkin` DESC,
+                 *     `producer` / `category` ASC) unless `sort_dir` overrides.
+                 */
+                sort?: "rating" | "producer" | "category" | "last_checkin";
+                sort_dir?: "asc" | "desc";
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description page of UserBeverageRow */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageOfUserBeverageRow"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Validation"];
         };
     };
     listBeverages: {
@@ -3743,8 +3935,9 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /**
              * @description 422 Unprocessable Entity. Returned on any validation failure,
-             *     on `PHOTO_CAP_EXCEEDED` (resulting set > 4), AND specifically
-             *     when the client attempts to change `beverage_id` (SPEC §4.4).
+             *     on `PHOTO_CAP_EXCEEDED` (resulting set > 1, SPEC §4.1), AND
+             *     specifically when the client attempts to change `beverage_id`
+             *     (SPEC §4.4).
              */
             422: {
                 headers: {
@@ -3920,7 +4113,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description photo cap (4) exceeded */
+            /** @description photo cap (1) exceeded */
             422: {
                 headers: {
                     [name: string]: unknown;

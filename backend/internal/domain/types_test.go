@@ -91,7 +91,7 @@ func TestRegisterRequestValidate(t *testing.T) {
 func TestValidRating(t *testing.T) {
 	// SPEC §4.2 grid is now 0.25 steps. Sample one value per quarter
 	// across the legal range so a regression to coarser steps trips.
-	good := []float64{0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0}
+	good := []float64{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0}
 	for _, v := range good {
 		v := v
 		if err := ValidRating(&v); err != nil {
@@ -112,7 +112,7 @@ func TestValidRating(t *testing.T) {
 }
 
 // TestRating_SPECScale centralizes the SPEC §4.2 rating invariant
-// (0.5–5.0 in 0.25 steps, 19 levels; nil is allowed since rating is
+// (0.25–5.0 in 0.25 steps, 20 levels; nil is allowed since rating is
 // optional). The existing TestValidRating sprays the cases across two
 // slices; this table-driven shape is what reviewers should grep for
 // when checking "is the rating scale still enforced?" — one row per
@@ -134,8 +134,8 @@ func TestRating_SPECScale(t *testing.T) {
 		ok   bool
 	}{
 		{"zero is rejected (below floor)", &v0, false},
-		{"0.25 is rejected (below floor)", &v025, false},
-		{"floor 0.5 is accepted", &v05, true},
+		{"0.25 is accepted (new floor)", &v025, true},
+		{"legacy floor 0.5 is accepted", &v05, true},
 		{"quarter-step 0.75 is accepted", &v075, true},
 		{"quarter-step 1.25 is accepted", &v125, true},
 		{"below floor (0.4) is rejected", &v04, false},
