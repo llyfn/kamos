@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/models/collection.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_card.dart';
@@ -161,7 +162,7 @@ Future<String?> _newCollectionName(BuildContext context, AppLocalizations l) {
       title: Text(l.collectionsCreateNew),
       content: TextField(
         controller: controller,
-        maxLength: 50,
+        maxLength: KamosSpec.collectionNameMax,
         decoration: InputDecoration(hintText: l.collectionsNamePlaceholder),
       ),
       actions: [

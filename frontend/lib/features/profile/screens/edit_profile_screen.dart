@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
@@ -154,14 +155,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 _Label(l.profileDisplayName),
                 TextField(
                   controller: _name,
-                  maxLength: 50,
+                  maxLength: KamosSpec.displayNameMax,
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 10),
                 _Label(l.profileBioLabel),
                 TextField(
                   controller: _bio,
-                  maxLength: 200,
+                  maxLength: KamosSpec.bioMax,
                   maxLines: 3,
                   onChanged: (_) => setState(() {}),
                 ),

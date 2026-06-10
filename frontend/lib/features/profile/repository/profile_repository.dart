@@ -13,6 +13,7 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/checkin.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/user.dart';
+import '../../../core/spec/spec.dart';
 
 /// Wraps the `users` tag of [KamosApi] (me, public profile, update,
 /// avatar upload, user check-ins listing) and lifts `DioException` into
@@ -55,7 +56,7 @@ class ProfileRepository {
   Future<Page<Checkin>> userCheckins(
     String username, {
     String? cursor,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.users.getUserCheckins(
       username,

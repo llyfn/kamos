@@ -239,7 +239,7 @@ class _SignInOrUp extends StatelessWidget {
               hintText: 'yamamoto',
               errorText: usernameInvalid ? l.authUsernameInvalid : null,
             ),
-            maxLength: 30,
+            maxLength: KamosSpec.usernameMaxChars,
             buildCounter:
                 (_, {required currentLength, required isFocused, maxLength}) =>
                     null,

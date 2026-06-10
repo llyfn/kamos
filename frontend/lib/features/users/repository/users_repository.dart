@@ -14,6 +14,7 @@ import '../../../core/models/collection.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/social.dart';
 import '../../../core/models/user_beverage.dart';
+import '../../../core/spec/spec.dart';
 import '../models/public_user.dart';
 
 class UsersRepository {
@@ -26,7 +27,7 @@ class UsersRepository {
   Future<Page<PublicUser>> search({
     required String q,
     String? cursor,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final trimmed = q.trim();
     if (trimmed.length < 2) {
@@ -46,7 +47,7 @@ class UsersRepository {
   Future<Page<Collection>> collections(
     String username, {
     String? cursor,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.users.getUserCollections(
       username,
@@ -70,7 +71,7 @@ class UsersRepository {
     double? minRating,
     String sort = 'rating',
     String? sortDir,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.users.getUserBeverages(
       username,
@@ -94,7 +95,7 @@ class UsersRepository {
     String username, {
     String? cursor,
     String? q,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.users.getUserFollowers(
       username,
@@ -113,7 +114,7 @@ class UsersRepository {
     String username, {
     String? cursor,
     String? q,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.users.getUserFollowing(
       username,

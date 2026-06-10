@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/models/comment.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/elapsed_time.dart';
 import '../../../shared/widgets/kamos_avatar.dart';
@@ -55,7 +56,7 @@ class _CommentTileState extends ConsumerState<CommentTile> {
   Future<void> _saveEdit() async {
     if (_saving) return;
     final newBody = _editController.text.trim();
-    if (newBody.isEmpty || newBody.length > 500) return;
+    if (newBody.isEmpty || newBody.length > KamosSpec.commentMaxChars) return;
     if (newBody == widget.comment.body) {
       setState(() => _editing = false);
       return;
@@ -181,7 +182,7 @@ class _CommentTileState extends ConsumerState<CommentTile> {
                 if (_editing) ...[
                   TextField(
                     controller: _editController,
-                    maxLength: 500,
+                    maxLength: KamosSpec.commentMaxChars,
                     autofocus: true,
                     maxLines: null,
                     style: TextStyle(fontSize: 14, height: 1.5, color: t.fg1),
