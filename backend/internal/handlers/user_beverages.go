@@ -229,7 +229,8 @@ func parseMinRating(r *http.Request) (*float64, error) {
 		return nil, validationErr("min_rating must be a number")
 	}
 	if n < spec.RatingMin || n > spec.RatingMax {
-		return nil, validationErr("min_rating must be between 0.5 and 5.0")
+		return nil, validationErr(fmt.Sprintf(
+			"min_rating must be between %v and %v", spec.RatingMin, spec.RatingMax))
 	}
 	return &n, nil
 }

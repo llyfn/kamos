@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 type BeverageRepo struct{ db *pgxpool.Pool }
@@ -520,7 +521,7 @@ type ProducerRepo struct{ db *pgxpool.Pool }
 
 func (r *ProducerRepo) List(ctx context.Context, q *string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Producer, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	// beverage_count is denormalized on producers; q is a case-insensitive
 	// substring served by idx_producers_search_bigm. Prefecture comes from
@@ -562,7 +563,7 @@ WHERE b.id = $1 AND b.deleted_at IS NULL;`
 // are filtered on both joined tables.
 func (r *ProducerRepo) Beverages(ctx context.Context, producerID string, cursorTs *time.Time, cursorID *string, limit int) ([]domain.Beverage, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	q := beverageListSelect + `
 WHERE b.producer_id = $1
