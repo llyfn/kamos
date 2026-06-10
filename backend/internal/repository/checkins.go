@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 type CheckinRepo struct{ db *pgxpool.Pool }
@@ -442,10 +443,10 @@ FROM check_ins ci
 LEFT JOIN check_in_photos p ON p.check_in_id = ci.id
 WHERE ci.id = $1 AND ci.user_id = $3 AND ci.deleted_at IS NULL
 GROUP BY ci.id
-HAVING COUNT(p.id) < 1
+HAVING COUNT(p.id) < $4
 RETURNING sort_order;`
 	var sortOrder int
-	if err := r.db.QueryRow(ctx, q, checkinID, photoURL, userID).Scan(&sortOrder); err != nil {
+	if err := r.db.QueryRow(ctx, q, checkinID, photoURL, userID, spec.PhotosMaxPerSubmission).Scan(&sortOrder); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.PhotoRef{}, r.classifyAddPhotoFailure(ctx, checkinID, userID)
 		}
@@ -476,7 +477,7 @@ WHERE ci.id = $1 AND ci.deleted_at IS NULL;`
 	if owner != userID {
 		return domain.ErrForbidden
 	}
-	if photoCount >= 1 {
+	if photoCount >= spec.PhotosMaxPerSubmission {
 		return domain.ErrPhotoCapExceeded
 	}
 	// All known reasons ruled out — surface an internal error so the

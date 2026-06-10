@@ -19,6 +19,7 @@ import (
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
+	"github.com/kamos/api/internal/spec"
 )
 
 // ListNotifications — GET /v1/notifications.
@@ -27,7 +28,7 @@ func (h *Handler) ListNotifications(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeNotifications, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "ListNotifications cursor", err)

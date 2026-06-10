@@ -18,6 +18,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
+	"github.com/kamos/api/internal/spec"
 )
 
 // ListComments — GET /v1/check-ins/{id}/comments.
@@ -41,7 +42,7 @@ func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "ListComments cursor", err)

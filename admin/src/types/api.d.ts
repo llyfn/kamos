@@ -2057,8 +2057,8 @@ export interface components {
             user: components["schemas"]["CheckinUser"];
             beverage: components["schemas"]["BeverageRef"];
             /**
-             * @description SPEC §4.2 / §6.2: 0.5–5.0 in 0.5 steps. Optional — `null` is valid
-             *     and means "I tried this". Emit as a number, never a string.
+             * @description SPEC §4.2 / §6.2: 0.5–5.0 in 0.25 steps (19 levels). Optional —
+             *     `null` is valid and means "I tried this". Emit as a number, never a string.
              */
             rating?: number | null;
             review?: string | null;

@@ -14,6 +14,7 @@ import (
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
 	"github.com/kamos/api/internal/service"
+	"github.com/kamos/api/internal/spec"
 )
 
 // CreateCheckin — POST /v1/check-ins.
@@ -198,7 +199,7 @@ func (h *Handler) UpdateCheckin(w http.ResponseWriter, r *http.Request) {
 			h.writeErr(w, "UpdateCheckin count photos", err)
 			return
 		}
-		if current-len(removeURLs)+len(addURLs) > 1 {
+		if current-len(removeURLs)+len(addURLs) > spec.PhotosMaxPerSubmission {
 			h.writeErr(w, "UpdateCheckin photo cap", domain.ErrPhotoCapExceeded)
 			return
 		}

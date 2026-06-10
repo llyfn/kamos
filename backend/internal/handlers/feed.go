@@ -6,6 +6,7 @@ import (
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
+	"github.com/kamos/api/internal/spec"
 )
 
 // Feed — GET /v1/feed. 20 items per page, reverse-chronological, follows
@@ -15,7 +16,7 @@ func (h *Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit := parseLimit(r, 20, 20) // SPEC §5.2 hard-pins 20 for the feed
+	limit := parseLimit(r, spec.PageSizeFeed, spec.PageSizeFeed)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "Feed cursor", err)
