@@ -23,6 +23,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // errUnknownPrefectureSlug is returned by the prefecture-slug resolver
@@ -47,7 +48,7 @@ var errEmptyPrefectureSlugOnCreate = errors.New("empty prefecture_slug on create
 //   - cursor: opaque cursor
 //   - limit: 1..50, default 20
 func (h *Handler) AdminListProducers(w http.ResponseWriter, r *http.Request) {
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "AdminListProducers cursor", err)

@@ -9,13 +9,8 @@ import (
 
 	"github.com/kamos/api/internal/foursquare"
 	"github.com/kamos/api/internal/httperr"
+	"github.com/kamos/api/internal/spec"
 )
-
-// venueSearchLimit caps the result page exposed to the client. Lowered from
-// 50 to 20 (SEC-007 bundle) so a single search burns at most 20 places of
-// Foursquare quota — Foursquare's own cap is 50 but the picker UI only ever
-// renders the top results.
-const venueSearchLimit = 20
 
 // venueQueryMaxRunes caps the `q` query param to keep the LRU cache bounded
 // and prevent a single client from burning Foursquare quota on long unique
@@ -59,7 +54,7 @@ func (h *Handler) VenueSearch(w http.ResponseWriter, r *http.Request) {
 	opts := foursquare.SearchOptions{
 		Query:  q,
 		Locale: resolveLocale(r),
-		Limit:  parseLimit(r, 10, venueSearchLimit),
+		Limit:  parseLimit(r, 10, spec.PageSizeFoursquare),
 	}
 
 	latStr := strings.TrimSpace(r.URL.Query().Get("lat"))

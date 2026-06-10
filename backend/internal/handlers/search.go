@@ -6,6 +6,7 @@ import (
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // Search — GET /v1/search?q=&type=&cursor=&limit=.
@@ -26,7 +27,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	typ := r.URL.Query().Get("type")
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "Search cursor", err)

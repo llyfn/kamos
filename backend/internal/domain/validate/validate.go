@@ -14,7 +14,6 @@ package validate
 import (
 	"errors"
 	"fmt"
-	"math"
 )
 
 // ErrInvalid is the sentinel every helper here returns on validation
@@ -100,20 +99,3 @@ func Venue(field, s string, minRunes, maxRunes int) error {
 	return nil
 }
 
-// Rating enforces SPEC §4.2: 0.5–5.0 in 0.25 steps (19 levels). Nil is
-// valid (rating is optional per-check-in). The "in 0.25 steps" check
-// snaps the input to the nearest quarter and rejects any meaningful
-// residual so float precision drift doesn't slip through.
-func Rating(r *float64) error {
-	if r == nil {
-		return nil
-	}
-	if *r < 0.5 || *r > 5.0 {
-		return fieldErr("rating must be between 0.5 and 5.0")
-	}
-	q := math.Round(*r / 0.25)
-	if math.Abs(*r-q*0.25) > 1e-9 {
-		return fieldErr("rating must be in 0.25 steps")
-	}
-	return nil
-}

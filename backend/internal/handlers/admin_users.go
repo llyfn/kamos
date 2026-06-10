@@ -10,6 +10,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AdminListUsers — GET /v1/admin/users
@@ -29,7 +30,7 @@ import (
 // supplied, the precedence is id > username > email (matches the repo's
 // fast-path order).
 func (h *Handler) AdminListUsers(w http.ResponseWriter, r *http.Request) {
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "AdminListUsers cursor", err)

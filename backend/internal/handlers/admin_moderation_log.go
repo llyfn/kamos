@@ -11,6 +11,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AdminListModerationLog — GET /v1/admin/moderation-log
@@ -24,7 +25,7 @@ import (
 //
 // Role gate (modOrAdmin) lives on the router. The repo trusts the gate.
 func (h *Handler) AdminListModerationLog(w http.ResponseWriter, r *http.Request) {
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "AdminListModerationLog cursor", err)
