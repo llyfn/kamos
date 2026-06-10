@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 func TestRegisterRequestValidate(t *testing.T) {
@@ -288,15 +290,16 @@ func TestUserFullJSONIncludesEmail(t *testing.T) {
 }
 
 func TestLocalizedDefaultCollectionsConstant(t *testing.T) {
+	enInv := spec.DefaultCollectionInventory["en"]
+	enWish := spec.DefaultCollectionWishlist["en"]
 	cases := []struct {
 		locale, wantInv, wantWish string
 	}{
-		{"en", "Inventory", "Wishlist"},
-		{"ja", "インベントリー", "ウィッシュリスト"},
-		{"ko", "인벤토리", "위시리스트"},
-		// Unknown locales fall back to English.
-		{"", "Inventory", "Wishlist"},
-		{"fr", "Inventory", "Wishlist"},
+		{"en", spec.DefaultCollectionInventory["en"], spec.DefaultCollectionWishlist["en"]},
+		{"ja", spec.DefaultCollectionInventory["ja"], spec.DefaultCollectionWishlist["ja"]},
+		{"ko", spec.DefaultCollectionInventory["ko"], spec.DefaultCollectionWishlist["ko"]},
+		{"", enInv, enWish},
+		{"fr", enInv, enWish},
 	}
 	for _, tc := range cases {
 		inv, wish := LocalizedDefaultCollections(tc.locale)

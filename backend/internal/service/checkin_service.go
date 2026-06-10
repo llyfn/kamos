@@ -13,6 +13,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/observability"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // CheckinService owns the check-in write paths. Every method that mutates
@@ -145,7 +146,7 @@ func (s *CheckinService) Update(ctx context.Context, userID, id string, in Check
 		if err != nil {
 			return nil, fmt.Errorf("CheckinService.Update count: %w", err)
 		}
-		if current-len(in.RemovePhotoURLs)+len(in.AddPhotoURLs) > 1 {
+		if current-len(in.RemovePhotoURLs)+len(in.AddPhotoURLs) > spec.PhotosMaxPerSubmission {
 			return nil, domain.ErrPhotoCapExceeded
 		}
 	}
