@@ -16,10 +16,10 @@ const SchemaVersion = 1
 
 // Rating bounds and grid step per SPEC §4.2.
 const (
-	RatingMin    = 0.5
+	RatingMin    = 0.25
 	RatingMax    = 5.0
 	RatingStep   = 0.25
-	RatingLevels = 19
+	RatingLevels = 20
 )
 
 // Photos per-submission cap per SPEC §4.1.
