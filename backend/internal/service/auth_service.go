@@ -14,6 +14,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/email"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AuthService owns the credential / google / refresh-rotation flows. It is
@@ -359,7 +360,7 @@ func (s *AuthService) googleLoginCreatePath(ctx context.Context, req domain.Goog
 	}
 	dispName := payload.Name
 	if dispName != "" {
-		if clean, err := domain.SanitizeText("display_name", dispName, false, 50); err == nil {
+		if clean, err := domain.SanitizeText("display_name", dispName, false, spec.DisplayNameMax); err == nil {
 			dispName = clean
 		} else {
 			dispName = ""

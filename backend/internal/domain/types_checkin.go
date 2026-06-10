@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -61,11 +62,13 @@ func ValidRating(r *float64) error {
 		return nil
 	}
 	if *r < spec.RatingMin || *r > spec.RatingMax {
-		return wrapValidation("rating must be between 0.5 and 5.0")
+		return wrapValidation(fmt.Sprintf(
+			"rating must be between %v and %v", spec.RatingMin, spec.RatingMax))
 	}
 	q := math.Round(*r / spec.RatingStep)
 	if math.Abs(*r-q*spec.RatingStep) > 1e-9 {
-		return wrapValidation("rating must be in 0.25 steps")
+		return wrapValidation(fmt.Sprintf(
+			"rating must be in %v steps", spec.RatingStep))
 	}
 	return nil
 }
@@ -172,7 +175,7 @@ func (r *UpdateCheckinRequest) Validate() error {
 	return nil
 }
 
-// Checkin is the canonical check-in DTO returned by the API. // added CommentCount; FeedItem mirrors the field.
+// Checkin is the canonical check-in DTO returned by the API.
 type Checkin struct {
 	ID           string      `json:"id"`
 	User         CheckinUser `json:"user"`

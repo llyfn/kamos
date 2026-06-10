@@ -3,6 +3,8 @@ package domain
 import (
 	"strings"
 	"time"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // ---------------------------------------------------------------------------
@@ -42,7 +44,7 @@ type CreateCollectionRequest struct {
 
 func (r *CreateCollectionRequest) Validate() error {
 	r.Name = strings.TrimSpace(r.Name)
-	if len([]rune(r.Name)) < 1 || len([]rune(r.Name)) > 50 {
+	if n := len([]rune(r.Name)); n < spec.CollectionNameMin || n > spec.CollectionNameMax {
 		return wrapValidation("name must be 1-50 characters")
 	}
 	return nil
@@ -51,9 +53,9 @@ func (r *CreateCollectionRequest) Validate() error {
 // UpdateCollectionRequest — PATCH /v1/collections/{id}.
 //
 // Both fields are optional in isolation; at least one must be present, and
-// `name`, when present, must satisfy the 1-50-char rule. added
-// `visibility` (public|private). Sending neither field is a 422 — it's
-// almost always a client bug, not a no-op intent.
+// `name`, when present, must satisfy the spec.CollectionName{Min,Max} rule.
+// Sending neither field is a 422 — it's almost always a client bug, not a
+// no-op intent.
 type UpdateCollectionRequest struct {
 	Name       *string `json:"name,omitempty"`
 	Visibility *string `json:"visibility,omitempty"`
@@ -65,7 +67,7 @@ func (r *UpdateCollectionRequest) Validate() error {
 	}
 	if r.Name != nil {
 		s := strings.TrimSpace(*r.Name)
-		if len([]rune(s)) < 1 || len([]rune(s)) > 50 {
+		if n := len([]rune(s)); n < spec.CollectionNameMin || n > spec.CollectionNameMax {
 			return wrapValidation("name must be 1-50 characters")
 		}
 		*r.Name = s
@@ -89,7 +91,7 @@ func (r *AddCollectionEntryRequest) Validate() error {
 	if r.BeverageID == "" {
 		return wrapValidation("beverage_id is required")
 	}
-	if r.Note != nil && len([]rune(*r.Note)) > 200 {
+	if r.Note != nil && len([]rune(*r.Note)) > spec.CollectionEntryNoteMax {
 		return wrapValidation("note must be ≤ 200 characters")
 	}
 	return nil
@@ -100,7 +102,7 @@ type UpdateCollectionEntryRequest struct {
 }
 
 func (r *UpdateCollectionEntryRequest) Validate() error {
-	if r.Note != nil && len([]rune(*r.Note)) > 200 {
+	if r.Note != nil && len([]rune(*r.Note)) > spec.CollectionEntryNoteMax {
 		return wrapValidation("note must be ≤ 200 characters")
 	}
 	return nil

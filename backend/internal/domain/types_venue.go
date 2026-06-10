@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // ---------------------------------------------------------------------------
@@ -63,27 +65,27 @@ func (v *CheckinVenue) Validate() error {
 		return nil
 	}
 	if v.Name != nil {
-		if err := venueValidateString("name", *v.Name, 1, 200); err != nil {
+		if err := venueValidateString("name", *v.Name, spec.VenueNameMin, spec.VenueNameMax); err != nil {
 			return err
 		}
 	}
 	if v.Address != nil {
-		if err := venueValidateString("address", *v.Address, 0, 500); err != nil {
+		if err := venueValidateString("address", *v.Address, 0, spec.VenueAddressMax); err != nil {
 			return err
 		}
 	}
 	if v.Country != nil {
-		if err := venueValidateString("country", *v.Country, 0, 100); err != nil {
+		if err := venueValidateString("country", *v.Country, 0, spec.VenueCountryMax); err != nil {
 			return err
 		}
 	}
 	if v.Prefecture != nil {
-		if err := venueValidateString("prefecture", *v.Prefecture, 0, 100); err != nil {
+		if err := venueValidateString("prefecture", *v.Prefecture, 0, spec.VenuePrefectureMax); err != nil {
 			return err
 		}
 	}
 	if v.Locality != nil {
-		if err := venueValidateString("locality", *v.Locality, 0, 100); err != nil {
+		if err := venueValidateString("locality", *v.Locality, 0, spec.VenueLocalityMax); err != nil {
 			return err
 		}
 	}

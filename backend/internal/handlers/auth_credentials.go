@@ -8,6 +8,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // Register implements POST /v1/auth/register.
@@ -244,7 +245,7 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		// flow still completes for legitimate users.
 		dispName := payload.Name
 		if dispName != "" {
-			if clean, err := domain.SanitizeText("display_name", dispName, false, 50); err == nil {
+			if clean, err := domain.SanitizeText("display_name", dispName, false, spec.DisplayNameMax); err == nil {
 				dispName = clean
 			} else {
 				dispName = ""
@@ -290,8 +291,9 @@ func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // sanitizeUsernameCandidate strips disallowed characters and trims to the
-// SPEC 3-30 range. Returns "" if the resulting string is too short.
-// Used by GoogleLogin to derive a username from an email local-part.
+// username length window from specs/invariants.yaml. Returns "" if the
+// resulting string is too short. Used by GoogleLogin to derive a username
+// from an email local-part.
 func sanitizeUsernameCandidate(s string) string {
 	var b []rune
 	for _, ch := range s {
@@ -302,11 +304,11 @@ func sanitizeUsernameCandidate(s string) string {
 			ch == '_':
 			b = append(b, ch)
 		}
-		if len(b) >= 30 {
+		if len(b) >= spec.UsernameMaxChars {
 			break
 		}
 	}
-	if len(b) < 3 {
+	if len(b) < spec.UsernameMinChars {
 		return ""
 	}
 	return string(b)

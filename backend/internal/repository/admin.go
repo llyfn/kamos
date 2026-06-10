@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AdminRepo wraps administrative SQL.
@@ -109,7 +110,7 @@ type ListBeverageRequestsParams struct {
 // admin UI display "submitted by @username" without a second round trip.
 func (r *AdminRepo) ListBeverageRequests(ctx context.Context, p ListBeverageRequestsParams) ([]BeverageRequestRow, error) {
 	if p.Limit <= 0 {
-		p.Limit = 20
+		p.Limit = spec.PageSizeDefault
 	}
 	const q = `
 SELECT bar.id, bar.user_id, u.display_username,
@@ -404,7 +405,7 @@ type ListUsersParams struct {
 // default. Caller must already have moderator+ role.
 func (r *AdminRepo) ListUsers(ctx context.Context, p ListUsersParams) ([]AdminUserRow, error) {
 	if p.Limit <= 0 {
-		p.Limit = 20
+		p.Limit = spec.PageSizeDefault
 	}
 
 	// Fast paths: any exact-match field collapses to a single PK / unique
@@ -549,12 +550,12 @@ func (r *AdminRepo) SuspendUser(ctx context.Context, userID, moderatorID string)
 	const q = `
 UPDATE users SET
   deleted_at = NOW(),
-  username_release_at = NOW() + INTERVAL '30 days',
+  username_release_at = NOW() + ($2 || ' days')::interval,
   role = 'user'::user_role
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING username_release_at;`
 	var releaseAt time.Time
-	if err := tx.QueryRow(ctx, q, userID).Scan(&releaseAt); err != nil {
+	if err := tx.QueryRow(ctx, q, userID, spec.UsernameHoldDays).Scan(&releaseAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrNotFound
 		}

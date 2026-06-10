@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 type SearchRepo struct{ db *pgxpool.Pool }
@@ -23,7 +24,7 @@ type SearchResult struct {
 // exclusive (`<`) id boundary; nil for the first page.
 func (r *SearchRepo) SearchBeverages(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	const bq = beverageListSelect + `
 WHERE b.deleted_at IS NULL
@@ -57,7 +58,7 @@ LIMIT $3;`
 // bigm substring pattern.
 func (r *SearchRepo) SearchProducers(ctx context.Context, q string, cursorID *string, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	const brq = `
 SELECT b.id, b.name_i18n, b.founded_year, b.website, b.description_i18n, b.image_url, b.created_at,` + producerPrefectureSelectCols + `

@@ -120,7 +120,7 @@ type publicProfile struct {
 // page restarts from the first tier.
 func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("q"))
-	q, err := domain.SanitizeText("q", raw, false, 100)
+	q, err := domain.SanitizeText("q", raw, false, spec.SearchQueryMaxChars)
 	if err != nil {
 		h.writeErr(w, "SearchUsers sanitize", err)
 		return
@@ -329,12 +329,12 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 	// display-name caps.
 	var qPrefix *string
 	if raw := strings.TrimSpace(r.URL.Query().Get("q")); raw != "" {
-		clean, err := domain.SanitizeText("q", raw, false, 50)
+		clean, err := domain.SanitizeText("q", raw, false, spec.DisplayNameMax)
 		if err != nil {
 			h.writeErr(w, "listSocial sanitize", err)
 			return
 		}
-		if len([]rune(clean)) > 30 {
+		if len([]rune(clean)) > spec.SocialQueryMaxChars {
 			httperr.WriteError(w, http.StatusBadRequest, "INVALID_QUERY",
 				"q must be 30 characters or fewer")
 			return
