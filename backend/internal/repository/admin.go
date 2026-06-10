@@ -550,7 +550,7 @@ func (r *AdminRepo) SuspendUser(ctx context.Context, userID, moderatorID string)
 	const q = `
 UPDATE users SET
   deleted_at = NOW(),
-  username_release_at = NOW() + ($2 || ' days')::interval,
+  username_release_at = NOW() + make_interval(days => $2),
   role = 'user'::user_role
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING username_release_at;`

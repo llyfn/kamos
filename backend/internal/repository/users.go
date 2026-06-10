@@ -516,7 +516,7 @@ func (r *UserRepo) SoftDelete(ctx context.Context, id string) error {
 	const q = `
 UPDATE users SET
   deleted_at = NOW(),
-  username_release_at = NOW() + ($2 || ' days')::interval
+  username_release_at = NOW() + make_interval(days => $2)
 WHERE id = $1 AND deleted_at IS NULL;`
 	ct, err := r.db.Exec(ctx, q, id, spec.UsernameHoldDays)
 	if err != nil {
@@ -600,7 +600,7 @@ RETURNING id;`
 func (r *UserRepo) CreateVerificationToken(ctx context.Context, userID, token string) error {
 	hash := auth.HashVerificationToken(token)
 	const q = `INSERT INTO email_verifications (user_id, token_hash, expires_at)
-              VALUES ($1, $2, NOW() + ($3 || ' hours')::interval);`
+              VALUES ($1, $2, NOW() + make_interval(hours => $3));`
 	if _, err := r.db.Exec(ctx, q, userID, hash, spec.EmailVerificationLinkTTLHours); err != nil {
 		return fmt.Errorf("CreateVerificationToken: %w", err)
 	}
