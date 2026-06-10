@@ -61,6 +61,7 @@ func TestCreateCheckinRatingQuarterStepRoundTrip(t *testing.T) {
 		in   float64
 		wire string // exact substring expected in the JSON body
 	}{
+		{"0.25 new floor", 0.25, `"rating":0.25`},
 		{"4.25 upper quarter", 4.25, `"rating":4.25`},
 		{"0.75 lower quarter", 0.75, `"rating":0.75`},
 	}

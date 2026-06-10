@@ -9,10 +9,10 @@ class KamosSpec {
   static const int schemaVersion = 1;
 
   // Rating (SPEC §4.2)
-  static const double ratingMin = 0.5;
+  static const double ratingMin = 0.25;
   static const double ratingMax = 5.0;
   static const double ratingStep = 0.25;
-  static const int ratingLevels = 19;
+  static const int ratingLevels = 20;
 
   // Photos (SPEC §4.1)
   static const int photosMaxPerSubmission = 1;

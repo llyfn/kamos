@@ -607,7 +607,7 @@ paths:
           Drop rows where the user's average rating is below this value
           (or absent, since "I tried it but did not rate it" never passes
           a min-rating filter).
-        schema: { type: number, minimum: 0.5, maximum: 5.0, multipleOf: 0.25 }
+        schema: { type: number, minimum: 0.25, maximum: 5.0, multipleOf: 0.25 }
       - in: query
         name: sort
         description: |
@@ -2728,6 +2728,11 @@ components:
         The value MUST match the kamos_admin_csrf cookie.
 
   responses:
+    BadRequest:
+      description: malformed request or invalid parameters
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     Unauthorized:
       description: missing or invalid token
       content:
@@ -3133,7 +3138,7 @@ components:
           items: { type: string, description: "flavor tag slug" }
         description: { $ref: "#/components/schemas/I18nText" }
         label_image_url: { type: string, format: uri }
-        avg_rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0, multipleOf: 0.25 }
+        avg_rating: { type: number, nullable: true, minimum: 0.25, maximum: 5.0, multipleOf: 0.25 }
         check_in_count: { type: integer }
         created_at: { type: string, format: date-time }
 
@@ -3213,7 +3218,7 @@ components:
         user_avg_rating:
           type: number
           nullable: true
-          minimum: 0.5
+          minimum: 0.25
           maximum: 5.0
           multipleOf: 0.25
           description: |
@@ -3225,7 +3230,7 @@ components:
         global_avg_rating:
           type: number
           nullable: true
-          minimum: 0.5
+          minimum: 0.25
           maximum: 5.0
           multipleOf: 0.25
         global_check_in_count: { type: integer, minimum: 0 }
@@ -3274,11 +3279,11 @@ components:
         rating:
           type: number
           nullable: true
-          minimum: 0.5
+          minimum: 0.25
           maximum: 5.0
           multipleOf: 0.25
           description: |
-            SPEC §4.2 / §6.2: 0.5–5.0 in 0.25 steps (19 levels). Optional —
+            SPEC §4.2 / §6.2: 0.25–5.0 in 0.25 steps (20 levels). Optional —
             `null` is valid and means "I tried this". Emit as a number,
             never a string.
         review: { type: string, maxLength: 500, nullable: true }
@@ -3319,7 +3324,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         user: { $ref: "#/components/schemas/CheckinUser" }
-        rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0, multipleOf: 0.25 }
+        rating: { type: number, nullable: true, minimum: 0.25, maximum: 5.0, multipleOf: 0.25 }
         review: { type: string, nullable: true, maxLength: 500 }
         photos:
           type: array
@@ -3338,7 +3343,7 @@ components:
       required: [beverage_id]
       properties:
         beverage_id: { type: string, format: uuid }
-        rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0, multipleOf: 0.25 }
+        rating: { type: number, nullable: true, minimum: 0.25, maximum: 5.0, multipleOf: 0.25 }
         review: { type: string, maxLength: 500, nullable: true }
         tags:
           type: array
@@ -3379,7 +3384,7 @@ components:
         a violation returns 422 `PHOTO_CAP_EXCEEDED`. Existing
         multi-photo check-ins remain readable.
       properties:
-        rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0, multipleOf: 0.25 }
+        rating: { type: number, nullable: true, minimum: 0.25, maximum: 5.0, multipleOf: 0.25 }
         review: { type: string, maxLength: 500, nullable: true }
         tags:
           type: array
@@ -3497,7 +3502,7 @@ components:
         id: { type: string, format: uuid }
         user: { $ref: "#/components/schemas/CheckinUser" }
         beverage: { $ref: "#/components/schemas/BeverageRef" }
-        rating: { type: number, nullable: true, minimum: 0.5, maximum: 5.0, multipleOf: 0.25 }
+        rating: { type: number, nullable: true, minimum: 0.25, maximum: 5.0, multipleOf: 0.25 }
         review: { type: string, nullable: true, maxLength: 500 }
         tags:
           type: array

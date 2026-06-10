@@ -8,8 +8,6 @@ import '../../../core/spec/spec.dart';
 const double _kMin = KamosSpec.ratingMin;
 const double _kMax = KamosSpec.ratingMax;
 const double _kStep = KamosSpec.ratingStep;
-// Major ticks render at every other compose step (half-star spacing).
-const double _kTickSpacing = _kStep * 2;
 const double _kTrackHeight = 4;
 const double _kThumbRadius = 10;
 const double _kTickHeight = 8;
@@ -17,7 +15,7 @@ const double _kTickHeight = 8;
 class RatingSlider extends StatelessWidget {
   const RatingSlider({super.key, required this.value, required this.onChanged});
 
-  /// 0.5..5.0 in 0.25 steps, or `null` for unrated.
+  /// 0.25..5.0 in 0.25 steps, or `null` for unrated.
   final double? value;
 
   final ValueChanged<double> onChanged;
@@ -70,7 +68,6 @@ class _RatingTrack extends StatelessWidget {
     final usable = width - _kThumbRadius * 2;
     final ratio = ((v - _kMin) / (_kMax - _kMin)).clamp(0.0, 1.0);
     final thumbX = _kThumbRadius + ratio * usable;
-    final tickCount = ((_kMax - _kMin) / _kTickSpacing).round() + 1;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -107,9 +104,9 @@ class _RatingTrack extends StatelessWidget {
                   ),
                 ),
               ),
-            for (var i = 0; i < tickCount; i++)
+            for (final tickValue in const [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
               Positioned(
-                left: _kThumbRadius + (i * _kTickSpacing / (_kMax - _kMin)) * usable - 0.5,
+                left: _kThumbRadius + ((tickValue - _kMin) / (_kMax - _kMin)) * usable - 0.5,
                 top: _kThumbRadius * 2,
                 child: Container(
                   width: 1,

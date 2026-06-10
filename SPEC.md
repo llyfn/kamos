@@ -113,7 +113,7 @@ A check-in is a user's log entry for a specific beverage at a specific moment.
 | Field | Required | Notes |
 |-------|----------|-------|
 | Beverage | Yes | Selected from the catalog via search |
-| Rating | No | 0.5–5.0 in **0.25 steps** (→ §4.2) |
+| Rating | No | 0.25–5.0 in **0.25 steps** (→ §4.2) |
 | Review text | No | Up to 500 chars |
 | Flavor tags | No | Multi-select from predefined taxonomy (→ §4.3) |
 | Photos | No | Up to **1 photo** per check-in on submission. Existing multi-photo check-ins remain readable (the API still serves their full photo arrays). |
@@ -124,7 +124,7 @@ Venue is not included in MVP. See §9.
 
 ### 4.2 Rating Scale
 
-0.5–5.0 in 0.25-step increments (19 levels). Optional per check-in; a check-in without a rating is valid ("I tried this").
+0.25–5.0 in 0.25-step increments (20 levels). Optional per check-in; a check-in without a rating is valid ("I tried this").
 
 Beverage average rating is computed as a running average and updated on every check-in. Displayed as `X.X / 5.0`.
 

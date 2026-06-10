@@ -1,23 +1,15 @@
-// KAMOS — Read-only star rating display at half-star granularity.
+// KAMOS — Read-only star rating display with continuous fractional fill.
 //
-// Renders five fixed star slots. Each slot is either filled, half, or empty.
-// Half-stars use a custom CustomPainter rather than the U+2BE8 codepoint
-// (which renders inconsistently across OS — flagged in design HANDOFF.md).
-// Compose-side ratings are KamosSpec.ratingStep precision; this read-only
-// widget quantizes down to half-star for display.
+// Renders five fixed star slots. Each slot's fill fraction is clamp(value - i, 0, 1),
+// rendered by clipping the filled star path horizontally at `fill * width`. Uses a
+// CustomPainter rather than the U+2BE8 codepoint (which renders inconsistently across
+// OS — flagged in design HANDOFF.md).
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
-import '../../core/spec/spec.dart';
-
-enum _StarKind { full, half, empty }
-
-// Half-star display threshold derived from the compose step so the two
-// stay symmetric with rating_slider.dart's _kTickSpacing.
-const double _kHalfStarThreshold = KamosSpec.ratingStep * 2;
 
 class StarsDisplay extends StatelessWidget {
   const StarsDisplay({super.key, required this.value, this.size = 14});
@@ -33,18 +25,13 @@ class StarsDisplay extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
-        final fill = v - i;
-        final kind = fill >= 1
-            ? _StarKind.full
-            : fill >= _kHalfStarThreshold
-            ? _StarKind.half
-            : _StarKind.empty;
+        final double fill = (v - i).clamp(0.0, 1.0);
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 0.5),
           child: CustomPaint(
             size: Size(size, size),
             painter: _StarPainter(
-              kind: kind,
+              fill: fill,
               fillColor: tokens.yamabuki,
               emptyColor: tokens.gray200,
             ),
@@ -57,12 +44,12 @@ class StarsDisplay extends StatelessWidget {
 
 class _StarPainter extends CustomPainter {
   _StarPainter({
-    required this.kind,
+    required this.fill,
     required this.fillColor,
     required this.emptyColor,
   });
 
-  final _StarKind kind;
+  final double fill;
   final Color fillColor;
   final Color emptyColor;
 
@@ -94,20 +81,16 @@ class _StarPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final star = _starPath(size);
     canvas.drawPath(star, Paint()..color = emptyColor);
-    if (kind == _StarKind.empty) return;
-    if (kind == _StarKind.full) {
-      canvas.drawPath(star, Paint()..color = fillColor);
-      return;
-    }
+    if (fill <= 0) return;
     canvas.save();
-    canvas.clipRect(Rect.fromLTWH(0, 0, size.width / 2, size.height));
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width * fill, size.height));
     canvas.drawPath(star, Paint()..color = fillColor);
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _StarPainter old) =>
-      old.kind != kind ||
+      old.fill != fill ||
       old.fillColor != fillColor ||
       old.emptyColor != emptyColor;
 }
