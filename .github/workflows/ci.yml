@@ -141,13 +141,21 @@ jobs:
     # Gate: specs/invariants.yaml is the single source of truth for
     # backend/internal/spec/spec.go and frontend/lib/core/spec/spec.dart.
     # Editing the YAML without regenerating (or vice versa) fails here.
+    # Go + goimports are needed so the generator can post-format spec.go
+    # (gofmt column alignment + goimports local-prefix grouping).
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: false
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
       - name: Run gen-spec.sh
-        run: scripts/gen-spec.sh
+        run: PATH="$PATH:$(go env GOPATH)/bin" scripts/gen-spec.sh
       - name: Fail on drift
         run: git diff --exit-code -- backend/internal/spec/spec.go frontend/lib/core/spec/spec.dart
 

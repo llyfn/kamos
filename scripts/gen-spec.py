@@ -10,6 +10,8 @@ the generator dep-free is intentional.
 from __future__ import annotations
 import json
 import pathlib
+import shutil
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -386,6 +388,18 @@ def emit_dart(data: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _gofmt(path: pathlib.Path) -> None:
+    # Pipe through goimports first (handles local-prefix grouping per
+    # .golangci.yml) when available, else fall back to gofmt for the
+    # column-alignment / blank-line rules. Both are required to satisfy CI.
+    for tool, args in (("goimports", ["-local", "github.com/kamos/api", "-w", str(path)]),
+                       ("gofmt", ["-w", str(path)])):
+        if shutil.which(tool):
+            subprocess.run([tool, *args], check=True)
+            return
+    sys.stderr.write("gen-spec: neither goimports nor gofmt on PATH; skipping Go formatting\n")
+
+
 def main(argv):
     text = SRC.read_text(encoding="utf-8")
     data = _parse_yaml(text)
@@ -393,6 +407,7 @@ def main(argv):
     DART_OUT.parent.mkdir(parents=True, exist_ok=True)
     GO_OUT.write_text(emit_go(data), encoding="utf-8")
     DART_OUT.write_text(emit_dart(data), encoding="utf-8")
+    _gofmt(GO_OUT)
     print(f"gen-spec: wrote {GO_OUT.relative_to(ROOT)} and {DART_OUT.relative_to(ROOT)}")
 
 

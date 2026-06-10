@@ -8,9 +8,9 @@ const SchemaVersion = 1
 
 // Rating bounds and grid step per SPEC §4.2.
 const (
-	RatingMin   = 0.5
-	RatingMax   = 5.0
-	RatingStep  = 0.25
+	RatingMin    = 0.5
+	RatingMax    = 5.0
+	RatingStep   = 0.25
 	RatingLevels = 19
 )
 
@@ -53,6 +53,7 @@ const (
 
 // Locales per SPEC §8.
 var SupportedLocales = []string{"en", "ja", "ko"}
+
 const LocaleDefault = "en"
 const LocaleFallback = "en"
 
@@ -67,8 +68,8 @@ var CategorySlugs = []string{"nihonshu", "shochu", "liqueur"}
 // CategoryNames[slug][locale] -> localized category label.
 var CategoryNames = map[string]map[string]string{
 	"nihonshu": {"en": "Nihonshu (Sake)", "ja": "日本酒", "ko": "니혼슈 (사케)"},
-	"shochu": {"en": "Shochu", "ja": "焼酎", "ko": "쇼츄"},
-	"liqueur": {"en": "Liqueur", "ja": "リキュール", "ko": "리큐어"},
+	"shochu":   {"en": "Shochu", "ja": "焼酎", "ko": "쇼츄"},
+	"liqueur":  {"en": "Liqueur", "ja": "リキュール", "ko": "리큐어"},
 }
 
 // DefaultCollectionInventory[locale] / DefaultCollectionWishlist[locale].
@@ -79,4 +80,3 @@ var DefaultCollectionWishlist = map[string]string{"en": "Wishlist", "ja": "ウ�
 var PurchaseTypes = []string{"on_premise", "retail", "gift", "other"}
 var PriceCurrencies = []string{"JPY", "KRW", "USD"}
 var PriceModes = []string{"serving", "bottle"}
-
