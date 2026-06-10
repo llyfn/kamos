@@ -1,21 +1,28 @@
-// KAMOS — Read-only star rating display (0.5-step values).
+// KAMOS — Read-only star rating display at half-star granularity.
 //
 // Renders five fixed star slots. Each slot is either filled, half, or empty.
 // Half-stars use a custom CustomPainter rather than the U+2BE8 codepoint
 // (which renders inconsistently across OS — flagged in design HANDOFF.md).
+// Compose-side ratings are KamosSpec.ratingStep precision; this read-only
+// widget quantizes down to half-star for display.
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
+import '../../core/spec/spec.dart';
 
 enum _StarKind { full, half, empty }
+
+// Half-star display threshold derived from the compose step so the two
+// stay symmetric with rating_slider.dart's _kTickSpacing.
+const double _kHalfStarThreshold = KamosSpec.ratingStep * 2;
 
 class StarsDisplay extends StatelessWidget {
   const StarsDisplay({super.key, required this.value, this.size = 14});
 
-  /// 0.5-step rating in [0.0, 5.0]. `null` is rendered as five empty stars.
+  /// Rating in [0.0, KamosSpec.ratingMax]; `null` renders as five empty stars.
   final double? value;
   final double size;
 
@@ -29,7 +36,7 @@ class StarsDisplay extends StatelessWidget {
         final fill = v - i;
         final kind = fill >= 1
             ? _StarKind.full
-            : fill >= 0.5
+            : fill >= _kHalfStarThreshold
             ? _StarKind.half
             : _StarKind.empty;
         return Padding(
