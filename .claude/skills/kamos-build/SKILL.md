@@ -17,6 +17,11 @@ Do **not** use for: single-file edits, single endpoint, single screen, single mi
 
 ## Agent roster
 
+Authoritative agent ↔ skill topology + model assignments live in
+[`.claude/HARNESS.md`](../../HARNESS.md). The table below is operational
+— it names the `subagent_type` strings the `Agent()` calls below pass —
+not a second source of truth.
+
 | Agent | Subagent type | Owns | Skill | Phase |
 |---|---|---|---|---|
 | designer | `designer` | `design/` + `design/HANDOFF.md` addendum | `design-wireframe` | 1 |

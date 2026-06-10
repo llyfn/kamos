@@ -11,6 +11,11 @@ Coordinates four parallel specialist reviewers and synthesizes their findings in
 
 ## Agent roster
 
+Authoritative agent ↔ skill topology + model assignments live in
+[`.claude/HARNESS.md`](../../HARNESS.md). The table below is operational
+— it names the `subagent_type` strings the `TeamCreate` call below
+passes — not a second source of truth.
+
 | Reviewer | Subagent type | Domain | Skill | Output |
 |---|---|---|---|---|
 | arch-reviewer | `arch-reviewer` | Architecture & structure | `arch-review` | `docs/history/review/arch_findings.md` |
