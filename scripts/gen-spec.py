@@ -442,29 +442,80 @@ def _gofmt(path: pathlib.Path) -> None:
     sys.stderr.write("gen-spec: neither goimports nor gofmt on PATH; skipping Go formatting\n")
 
 
-# Every YAML top-level key consumed by the emitters. New keys must be added
-# here AND wired into both emit_go / emit_dart before the generator accepts
-# them — silently ignoring a new YAML block would defeat the gate.
-KNOWN_KEYS = {
-    "schema_version", "spec_doc",
-    "rating", "photos", "review_text", "comment_text",
-    "beverage_request", "collection_entry_note", "collection_name",
-    "moderation_notes", "search_query", "social_query", "venue_fields",
-    "username", "display_name", "bio", "password", "email_verification",
-    "pagination", "locales", "soft_delete", "cursor",
-    "categories", "default_collections", "purchase_type", "price",
+# EXPECTED_SCHEMA mirrors what the emitters actually read. Each top-level
+# block maps to the set of sub-keys both emit_go and emit_dart consume;
+# `None` marks scalar leaves. Sub-maps that fan out per slug or locale
+# (categories.names, default_collections.{inventory,wishlist}) appear as
+# a single named member here — the emitters iterate them dynamically.
+# Adding a YAML key without updating this map AND both emitters fails the
+# gate.
+EXPECTED_SCHEMA = {
+    "schema_version": None,
+    "spec_doc": None,
+    "rating": {"spec_section", "min", "max", "step", "levels", "db_type"},
+    "photos": {"spec_section", "max_per_submission", "legacy_readable_cap"},
+    "review_text": {"spec_section", "max_chars"},
+    "comment_text": {"spec_section", "max_chars", "min_chars"},
+    "beverage_request": {
+        "spec_section", "notes_max_chars", "string_field_max_chars",
+        "payload_max_bytes",
+    },
+    "collection_entry_note": {"spec_section", "max_chars"},
+    "collection_name": {"spec_section", "min_chars", "max_chars"},
+    "moderation_notes": {"spec_section", "max_chars"},
+    "search_query": {"max_chars"},
+    "social_query": {"max_chars"},
+    "venue_fields": {
+        "spec_section", "name_min", "name_max", "address_max",
+        "country_max", "prefecture_max", "locality_max",
+    },
+    "username": {
+        "spec_section", "regex", "storage_regex",
+        "min_chars", "max_chars", "case_sensitive",
+    },
+    "display_name": {"spec_section", "min_chars", "max_chars"},
+    "bio": {"spec_section", "max_chars"},
+    "password": {"spec_section", "min_chars"},
+    "email_verification": {"spec_section", "link_ttl_hours"},
+    "pagination": {
+        "spec_section", "default_page_size", "max_page_size",
+        "feed_page_size", "notifications_page_size", "foursquare_max",
+    },
+    "locales": {"spec_section", "supported", "default", "fallback"},
+    "soft_delete": {
+        "spec_section", "username_hold_days",
+        "notifications_read_retention_days",
+    },
+    "cursor": {"secret_min_bytes"},
+    "categories": {"spec_section", "slugs", "names"},  # names: keyed by slug
+    "default_collections": {"spec_section", "inventory", "wishlist"},
+    "purchase_type": {"spec_section", "values"},
+    "price": {"spec_section", "currencies", "modes"},
 }
 
 
 def _assert_schema_coverage(data: dict) -> None:
-    extra = set(data.keys()) - KNOWN_KEYS
+    extra = set(data.keys()) - set(EXPECTED_SCHEMA.keys())
     if extra:
         sys.stderr.write(
             "gen-spec: YAML top-level keys not wired into emitters: "
             + ", ".join(sorted(extra))
-            + "\nAdd them to gen-spec.py KNOWN_KEYS and emit_go/emit_dart.\n"
+            + "\nAdd them to EXPECTED_SCHEMA and emit_go/emit_dart.\n"
         )
         sys.exit(1)
+    # One level deep: adding notification.max_unread under an existing
+    # block fires the gate the same way a new top-level block does.
+    for key, allowed in EXPECTED_SCHEMA.items():
+        if allowed is None or key not in data or not isinstance(data[key], dict):
+            continue
+        sub_extra = set(data[key].keys()) - allowed
+        if sub_extra:
+            sys.stderr.write(
+                f"gen-spec: YAML keys under '{key}' not wired into emitters: "
+                + ", ".join(sorted(sub_extra))
+                + f"\nAdd them to EXPECTED_SCHEMA[{key!r}] and emit_go/emit_dart.\n"
+            )
+            sys.exit(1)
 
 
 def main(argv):
