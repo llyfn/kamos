@@ -115,39 +115,27 @@ Two clients, two auth surfaces:
 - **Admin (React)** — `HttpOnly` + `Secure` + `SameSite=Strict` cookies for access + refresh. CSRF protection is double-submit token: `X-CSRF-Token` header compared (constant-time) against the `kamos_admin_csrf` cookie. Required on every mutating admin request. Identity endpoint is `GET /v1/admin/me` (cookie-authable; `/v1/users/me` is Bearer-only). Pages↔Fly is cross-site; same-site is restored by the Pages Function proxy at `admin/functions/v1/[[path]].ts` (and `vite.config.ts` locally). See `ARCHITECTURE.md §5`.
 - **SEC-006 soft-delete cache** — `internal/auth/` keeps an in-process LRU of soft-deleted user IDs so token verification rejects them immediately for the 30-day username-hold window, without a per-request DB roundtrip.
 
-## Project invariants (from SPEC)
+## Project invariants
 
-These are non-negotiable across every layer. Violating any of these is a QA blocker.
+Canonical numeric / regex / enum values — **rating bounds + step, photo cap, review/comment caps, username regex, display_name / bio / collection caps, page sizes, cursor secret floor, soft-delete window, category strings, default collection seed names, supported locales** — live in `specs/invariants.yaml` and are surfaced as `backend/internal/spec` (Go) and `KamosSpec` (`frontend/lib/core/spec/spec.dart`). Edit the YAML, run `scripts/gen-spec.sh`, commit both. CI's `spec-codegen` gate fails on drift.
 
-**Category terminology** — UI must use these exact strings:
+The behavioral rules below don't reduce to a single value — they pin a contract or shape. Violating any is a QA blocker.
 
-| Locale | Sake | Shochu | Liqueur |
-|---|---|---|---|
-| `en` | `Nihonshu (Sake)` | `Shochu` | `Liqueur` |
-| `ja` | `日本酒` | `焼酎` | `リキュール` |
-| `ko` | `니혼슈 (사케)` | `쇼츄` | `리큐어` |
-
-Never abbreviate, never substitute "Sake" alone in `en`.
-
-**Rating scale** — `0.5–5.0` in `0.25` steps (19 levels). Optional per check-in. Stored in PostgreSQL as `NUMERIC(3,2)`. In Go and Dart, use a type that preserves two decimals (`float64` / `double` is acceptable; integer is not). API responses emit it as a number, never a string.
-
-**Username** — case-insensitive, stored lowercase, displayed as entered at registration. `3–30` chars, alphanumeric + underscore.
-
-**Soft-delete rules** — accounts are soft-deleted; the username is held for 30 days before being released. Check-ins and collections are soft-deleted via `deleted_at TIMESTAMPTZ`. As of Stage 7, `comments.user_id` is `ON DELETE SET NULL` so author-soft-delete doesn't orphan the comment row.
+**Soft-delete rules** — accounts are soft-deleted; the username is held for `spec.UsernameHoldDays` before release. Check-ins and collections are soft-deleted via `deleted_at TIMESTAMPTZ`. `comments.user_id` is `ON DELETE SET NULL` so author-soft-delete doesn't orphan the comment row.
 
 **i18n fallback** — if a beverage has no `ko` name, the `ko` locale falls back to `en`. Same rule for `ja → en`. Never display empty strings or the wrong-locale text.
 
-**Pagination** — feed and all list endpoints use cursor pagination, never offset. Response shape: `{ "items": [...], "next_cursor": "...", "has_more": bool }`. Page size is 20 for the feed. Cursors are HMAC-signed with `CURSOR_SECRET` (Stage 0); tampered cursors return `400 INVALID_CURSOR`.
+**Pagination** — feed and all list endpoints use cursor pagination, never offset. Response shape: `{ "items": [...], "next_cursor": "...", "has_more": bool }`. Cursors are HMAC-signed with `CURSOR_SECRET`; tampered cursors return `400 INVALID_CURSOR`.
 
-**Check-in caps** — review text ≤ 500 chars; up to 1 photo per check-in on submission. Existing multi-photo check-ins remain readable (the API still serves their full photo arrays).
+**Check-in caps** — review and photo caps come from `spec.ReviewMaxChars` / `spec.PhotosMaxPerSubmission`. Existing multi-photo check-ins remain readable (the API still serves their full photo arrays).
 
-**Default collections** — every new user is created with two collections: `Inventory` and `Wishlist`. They are renameable and deletable, not special. Stage 5 localized the seed names per the registering user's `locale`.
+**Default collections** — every new user is created with two collections, seeded from `spec.DefaultCollectionInventory[locale]` / `…Wishlist[locale]`. They are renameable and deletable, not special.
 
-**Auth storage on Flutter** — JWT lives in `flutter_secure_storage`, never in `SharedPreferences`. iOS Keychain accessibility = `first_unlock_this_device` (Stage 0). This is a security blocker, not a preference.
+**Auth storage on Flutter** — JWT lives in `flutter_secure_storage`, never in `SharedPreferences`. iOS Keychain accessibility = `first_unlock_this_device`. This is a security blocker, not a preference.
 
 **Admin auth** — admin mutating requests require both the HttpOnly cookie (`kamos_admin_*`) AND a matching `X-CSRF-Token` header. Missing or mismatched header → `403 CSRF_MISMATCH`. Cookies are `HttpOnly` + `Secure` + `SameSite=Strict` — do not flip to `SameSite=None`; the Pages Function proxy is what keeps Strict viable across Pages↔Fly.
 
-**Text input sanitization** — every user-provided string field flows through `domain.SanitizeText(field, value, allowEmpty, maxLen)`. The helper rejects control characters and bidi-override codepoints, enforces UTF-8 length, and returns a typed validation error.
+**Text input sanitization** — every user-provided string field flows through `domain.SanitizeText(field, value, allowEmpty, maxLen)` where `maxLen` is a `spec.*` constant. The helper rejects control characters and bidi-override codepoints, enforces UTF-8 length, and returns a typed validation error.
 
 **Search invariants** — substring search across the product follows one shape so the operator footprint stays small:
 

@@ -2,6 +2,8 @@
 
 > Named after 醸す (*kamosu*, "to brew/ferment"). A Japanese alcoholic beverage tracking and discovery platform, benchmarking Untappd.
 
+> **Where the numbers come from.** Every numeric / regex / enum value cited in this document mirrors `specs/invariants.yaml`, the machine-readable source of truth. Code reads them from the generated constants in `backend/internal/spec` (Go) and `frontend/lib/core/spec/spec.dart` (`KamosSpec`); CI's `spec-codegen` gate fails on drift. When changing a value, edit the YAML first, run `scripts/gen-spec.sh`, then update the narrative here to match.
+
 ---
 
 ## 1. Overview
