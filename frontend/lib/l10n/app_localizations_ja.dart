@@ -117,11 +117,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPhotosLabel => '写真';
 
   @override
-  String checkInPhotoCounter(int count) {
-    return '$count / 4';
-  }
-
-  @override
   String get checkInPriceLabel => '価格';
 
   @override
@@ -137,7 +132,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get checkInPostFailed => '投稿できませんでした。タップしてやり直し。';
 
   @override
-  String get checkInPhotoLimitReached => '写真は4枚までです。';
+  String get checkInPhotoLimitReached => '写真は1枚までです。';
 
   @override
   String get checkInPostingButton => '投稿中…';
@@ -246,7 +241,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authUsernameLabel => 'ユーザー名';
 
   @override
-  String get authUsernameHelper => '3–30文字 · 英数字とアンダースコア · 大文字小文字を区別しない';
+  String authUsernameHelper(int min, int max) {
+    return '$min–$max文字 · 英数字とアンダースコア · 大文字小文字を区別しない';
+  }
 
   @override
   String get authUsernameInvalid => 'ユーザー名が無効';
@@ -258,7 +255,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get authPasswordLabel => 'パスワード';
 
   @override
-  String get authPasswordHelper => '8文字以上';
+  String authPasswordHelper(int min) {
+    return '$min文字以上';
+  }
 
   @override
   String get authPasswordTooShort => '短すぎます';
@@ -408,8 +407,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsConfirmDelete => 'アカウントを削除しますか？';
 
   @override
-  String get settingsConfirmDeleteBody =>
-      'アカウントを削除します。ユーザー名は30日間保留され、その後再利用可能になります。あなたのチェックインとコレクションは他のユーザーから見えなくなります。';
+  String settingsConfirmDeleteBody(int days) {
+    return 'アカウントを削除します。ユーザー名は$days日間保留され、その後再利用可能になります。あなたのチェックインとコレクションは他のユーザーから見えなくなります。';
+  }
 
   @override
   String get settingsSignOut => 'サインアウト';
@@ -530,7 +530,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get commentsTooLong => 'コメントが長すぎます（最大500文字）';
+  String commentsTooLong(int max) {
+    return 'コメントが長すぎます（最大$max文字）';
+  }
 
   @override
   String get commentsInvalidBody => 'コメントに使用できない文字が含まれています';

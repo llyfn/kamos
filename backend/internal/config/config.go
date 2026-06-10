@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // LoadDotenv looks for a local.env file (in CWD, alongside the binary, or
@@ -200,13 +202,11 @@ func Load() (*Config, error) {
 	if c.JWTSecret == "" {
 		return nil, errors.New("Load: JWT_SECRET is required")
 	}
-	// SEC-016: a 32-byte minimum is the HS256 baseline (256 bits). Below
-	// this we refuse to start — a too-short secret meaningfully reduces
-	// the JWT signing strength and is almost always a misconfiguration.
-	// Note: this is byte-length, not rune-length; tests deliberately pin
-	// a >=32-byte string so the constraint is exercised.
-	if len(c.JWTSecret) < 32 {
-		return nil, fmt.Errorf("Load: JWT_SECRET must be at least 32 bytes (got %d)", len(c.JWTSecret))
+	// 32-byte minimum is the HS256 baseline (256 bits); below this we refuse
+	// to start. Byte-length, not rune-length. Same floor as the cursor
+	// secret — see specs/invariants.yaml cursor.secret_min_bytes.
+	if len(c.JWTSecret) < spec.CursorSecretMinBytes {
+		return nil, fmt.Errorf("Load: JWT_SECRET must be at least %d bytes (got %d)", spec.CursorSecretMinBytes, len(c.JWTSecret))
 	}
 	// SEC-004 production safety guard: never let the brute-force backstop
 	// on /v1/auth/* be silently disabled in production. Local stress runs
@@ -228,8 +228,8 @@ func Load() (*Config, error) {
 		}
 		c.CursorSecret = "cursor:" + c.JWTSecret
 	}
-	if len(c.CursorSecret) < 32 {
-		return nil, fmt.Errorf("Load: CURSOR_SECRET must be at least 32 bytes (got %d)", len(c.CursorSecret))
+	if len(c.CursorSecret) < spec.CursorSecretMinBytes {
+		return nil, fmt.Errorf("Load: CURSOR_SECRET must be at least %d bytes (got %d)", spec.CursorSecretMinBytes, len(c.CursorSecret))
 	}
 
 	// SEC-002 — CORS allowlist. Empty in production is allowed (no

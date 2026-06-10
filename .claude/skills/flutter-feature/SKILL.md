@@ -26,18 +26,9 @@ Each feature folder contains: `screens/`, `widgets/`, `providers/`, `repositorie
 
 Write production code to `frontend/`. There is no workspace fallback.
 
-## SPEC invariants the app must respect
+## SPEC invariants
 
-| SPEC | Invariant | Where |
-|---|---|---|
-| §2.1 | Category strings exact: `Nihonshu (Sake)` / `Shochu` / `Liqueur` (en); `日本酒` / `焼酎` / `リキュール` (ja); `니혼슈 (사케)` / `쇼츄` / `리큐어` (ko) | All three ARB files |
-| §3.1 | JWT in `flutter_secure_storage`, never `SharedPreferences` | Auth service / interceptor |
-| §3.2 | Username case-insensitive (display as-stored, compare lowercase) | Profile screen / search |
-| §4.1 | ≤ 4 photos, ≤ 500 char review | Check-in form (block client-side; server is backstop) |
-| §4.2 | 0.5-step rating widget, 10 levels (0.5–5.0) | Star widget |
-| §5.2 | Cursor pagination via `next_cursor` + `has_more` | Every list repository |
-| §6.1 | Inventory + Wishlist created server-side; client just renders the user's collections | Collection screen |
-| §8 | If `name_i18n[user.locale]` missing, fall back to `en` | Beverage name resolver |
+All numeric/regex/enum invariants — rating bounds + step, photo cap, review/comment caps, username regex, page sizes, locale list, category strings — live in **`specs/invariants.yaml`** (canonical) and are exposed to Dart via `KamosSpec` in `frontend/lib/core/spec/spec.dart`. Never hardcode these values; import the constants. Per-layer behavior the SoT does not encode (e.g. "JWT in `flutter_secure_storage`, never `SharedPreferences`", "cursor pagination via `next_cursor` + `has_more`", "client falls back to en when `name_i18n[user.locale]` is missing") is described in `SPEC.md` and `.claude/HARNESS.md`.
 
 ## State management — Riverpod
 
@@ -294,50 +285,18 @@ Rules:
 - Add a key to all three files in the same change. Missing keys in ja or ko are blockers.
 - For beverage `name_i18n` from the API, write a small resolver: `bev.localized(locale).name ?? bev.name['en']`.
 
-## Star rating widget — 0.5 step
+## Rating slider
 
-10 levels: 0.5, 1.0, 1.5, ..., 5.0. The widget is a `Row` of 5 star icons; each icon is a `GestureDetector` whose tap-position maps to half-star precision:
-
-```dart
-class StarRatingPicker extends StatelessWidget {
-  const StarRatingPicker({required this.value, required this.onChanged, super.key});
-  final double? value; // null = unrated
-  final ValueChanged<double?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (i) {
-        final fill = (value ?? 0) - i;
-        final icon = fill >= 1 ? Icons.star
-                   : fill >= 0.5 ? Icons.star_half
-                   : Icons.star_border;
-        return GestureDetector(
-          onTapDown: (d) {
-            final box = context.findRenderObject() as RenderBox;
-            final localX = d.localPosition.dx;
-            final isLeftHalf = localX < box.size.width / 2;
-            onChanged(i + (isLeftHalf ? 0.5 : 1.0));
-          },
-          child: Icon(icon, size: 32),
-        );
-      }),
-    );
-  }
-}
-```
-
-Never round to integer. Never use 0.25 steps (Untappd does; KAMOS does not — see SPEC §4.2).
+The compose-screen widget is `RatingSlider` in `lib/features/check_in/widgets/rating_slider.dart`. Range and step come from `KamosSpec.ratingMin / ratingMax / ratingStep`. Don't reintroduce a fixed-grid star picker; the slider is authoritative.
 
 ## Check-in form — the most complex flow
 
 1. `BeverageSearchDelegate` → user picks a beverage → captures `beverageId`.
 2. Navigate to `/checkin/new?beverage_id=...`.
-3. Form: `StarRatingPicker` (optional), review text (max 500), flavor tag chips (multi-select from server-provided taxonomy), photo picker (max 4, enforced client-side), price + currency + per-serving toggle, purchase type.
+3. Form: `RatingSlider` (optional), review text (cap from `KamosSpec.reviewMaxChars`), flavor tag chips (server taxonomy), photo picker (cap from `KamosSpec.photosMaxPerSubmission`), price + currency + per-serving toggle, purchase type.
 4. Submit → `CheckInController.submit()` → on success, navigate to `/checkins/:newId`.
 
-Block submission of >4 photos client-side; show a snackbar. Server is backstop.
+Block over-cap photo submission client-side; show a snackbar. Server is backstop.
 
 ## pubspec.yaml baseline
 
@@ -376,8 +335,7 @@ Do not add new dependencies without asking.
 - [ ] No `print()` left in code
 - [ ] No hardcoded display strings; all via `l10n.*`
 - [ ] All three ARB files have matching keys
-- [ ] Category strings match SPEC §2.1 exactly
+- [ ] Numeric/regex/enum invariants come from `KamosSpec` (no inline literals)
 - [ ] Token reads/writes go through `SecureStorageService` (never SharedPreferences)
 - [ ] Lists use `ListView.builder` with `next_cursor`-driven infinite scroll
 - [ ] Network images use `CachedNetworkImage`
-- [ ] Star rating widget produces 0.5-step values

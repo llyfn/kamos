@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/i18n/locale_provider.dart';
 import '../../../core/models/user.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/state_views.dart';
 import '../../auth/providers/auth_state.dart';
@@ -248,7 +249,9 @@ class _DangerZoneSection extends ConsumerWidget {
               context: context,
               builder: (_) => AlertDialog(
                 title: Text(l.settingsConfirmDelete),
-                content: Text(l.settingsConfirmDeleteBody),
+                content: Text(
+                  l.settingsConfirmDeleteBody(KamosSpec.usernameHoldDays),
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context, false),

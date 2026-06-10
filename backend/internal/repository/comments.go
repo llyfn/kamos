@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 // CommentRepo wraps the SQL for comments.
@@ -104,7 +105,7 @@ func (r *CommentRepo) List(
 	limit int,
 ) ([]domain.Comment, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	const q = `
 SELECT
@@ -346,7 +347,7 @@ func (r *CommentRepo) ListForAdmin(
 	limit int,
 ) ([]AdminCommentRow, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	// LEFT JOIN LATERAL the most recent moderation_log row for the comment.
 	// Most comments have zero such rows — LEFT JOIN keeps them in.

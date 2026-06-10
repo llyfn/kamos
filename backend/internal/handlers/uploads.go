@@ -24,11 +24,11 @@ const presignPutTTL = 15 * time.Minute
 const maxPhotoBytes int64 = 10 * 1024 * 1024
 
 // presignOutstandingCap caps the number of un-attached, un-expired
-// pending presigns a single user may hold. SEC-008: prevents a user from
-// minting thousands of pending rows + presigned URLs to scrape R2
-// capacity or stage a flood. 8 is comfortably above the SPEC §4.1
-// 1-photo submission cap × concurrent drafts in the UI (sized
-// historically for the 4-photo cap).
+// pending presigns a single user may hold. Operational/infra cap (R2
+// quota + abuse guard), NOT a product-spec invariant — kept local so
+// it doesn't pollute specs/invariants.yaml with backend-only tuning.
+// 8 is well above the per-submission photo cap and the realistic
+// concurrent-drafts ceiling in the compose UI.
 const presignOutstandingCap = 8
 
 type photoPresignRequest struct {

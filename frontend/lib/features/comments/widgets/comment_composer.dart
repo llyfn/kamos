@@ -8,9 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 
-const int commentMaxChars = 500;
+const int commentMaxChars = KamosSpec.commentMaxChars;
 
 class CommentComposer extends StatefulWidget {
   const CommentComposer({super.key, required this.onSubmit});

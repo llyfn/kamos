@@ -12,6 +12,7 @@ import (
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // GetUserBeverages — GET /v1/users/{username}/beverages.
@@ -117,7 +118,7 @@ func buildUserBeveragesParams(r *http.Request, userID string) (repository.UserBe
 		MinRating:    minRating,
 		Sort:         sort,
 		SortDescDir:  sortDescDir,
-		Limit:        parseLimit(r, 20, 50),
+		Limit:        parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax),
 	}
 	applyUserBeverageCursor(&params, c)
 	return params, nil
@@ -227,8 +228,9 @@ func parseMinRating(r *http.Request) (*float64, error) {
 	if err != nil {
 		return nil, validationErr("min_rating must be a number")
 	}
-	if n < 0.5 || n > 5.0 {
-		return nil, validationErr("min_rating must be between 0.5 and 5.0")
+	if n < spec.RatingMin || n > spec.RatingMax {
+		return nil, validationErr(fmt.Sprintf(
+			"min_rating must be between %v and %v", spec.RatingMin, spec.RatingMax))
 	}
 	return &n, nil
 }

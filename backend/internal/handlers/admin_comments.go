@@ -9,6 +9,7 @@ import (
 	"github.com/kamos/api/internal/cursor"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AdminListComments — GET /v1/admin/comments
@@ -17,7 +18,7 @@ import (
 // cases include the most recent moderation_log row joined in, so the UI
 // can show "deleted by @username, 3 days ago, notes: ..." inline.
 func (h *Handler) AdminListComments(w http.ResponseWriter, r *http.Request) {
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "AdminListComments cursor", err)

@@ -118,11 +118,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPhotosLabel => 'Photos';
 
   @override
-  String checkInPhotoCounter(int count) {
-    return '$count / 4';
-  }
-
-  @override
   String get checkInPriceLabel => 'Price';
 
   @override
@@ -138,7 +133,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInPostFailed => 'Could not post. Tap to retry.';
 
   @override
-  String get checkInPhotoLimitReached => 'You can attach up to 4 photos.';
+  String get checkInPhotoLimitReached => 'You can attach up to 1 photo.';
 
   @override
   String get checkInPostingButton => 'Posting…';
@@ -250,8 +245,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authUsernameLabel => 'Username';
 
   @override
-  String get authUsernameHelper =>
-      '3–30 chars · letters, numbers, underscores · case-insensitive';
+  String authUsernameHelper(int min, int max) {
+    return '$min–$max chars · letters, numbers, underscores · case-insensitive';
+  }
 
   @override
   String get authUsernameInvalid => 'Invalid username';
@@ -263,7 +259,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authPasswordLabel => 'Password';
 
   @override
-  String get authPasswordHelper => 'At least 8 characters';
+  String authPasswordHelper(int min) {
+    return 'At least $min characters';
+  }
 
   @override
   String get authPasswordTooShort => 'Too short';
@@ -418,8 +416,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsConfirmDelete => 'Delete account?';
 
   @override
-  String get settingsConfirmDeleteBody =>
-      'Your account will be deleted. Your username will be held for 30 days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.';
+  String settingsConfirmDeleteBody(int days) {
+    return 'Your account will be deleted. Your username will be held for $days days before it can be claimed by someone else. Your check-ins and collections will no longer be visible to other users.';
+  }
 
   @override
   String get settingsSignOut => 'Sign out';
@@ -543,7 +542,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get commentsTooLong => 'Comment too long (max 500 chars)';
+  String commentsTooLong(int max) {
+    return 'Comment too long (max $max chars)';
+  }
 
   @override
   String get commentsInvalidBody => 'Comment contains invalid characters';

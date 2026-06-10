@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // ---------------------------------------------------------------------------
@@ -92,10 +94,11 @@ type RegisterRequest struct {
 }
 
 var (
-	usernameRE = regexp.MustCompile(`^[A-Za-z0-9_]{3,30}$`)
+	usernameRE = regexp.MustCompile(spec.UsernameRegex)
 	// rfc-5322 is a beast; we use a pragmatic regex that catches obvious typos
 	// without over-rejecting legitimate addresses.
-	emailRE = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	emailRE          = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+	supportedLocales = sliceToSet(spec.SupportedLocales)
 )
 
 func (r *RegisterRequest) Validate() error {
@@ -109,27 +112,27 @@ func (r *RegisterRequest) Validate() error {
 	if !emailRE.MatchString(r.Email) {
 		return wrapValidation("email is malformed")
 	}
-	if len(r.Password) < 8 {
+	if len(r.Password) < spec.PasswordMin {
 		return wrapValidation("password must be at least 8 characters")
 	}
 	if r.DisplayName == "" {
 		r.DisplayName = r.Username
 	}
-	// SEC-006: reject control + bidi-override characters in display_name.
-	clean, err := SanitizeText("display_name", r.DisplayName, false, 50)
+	// Reject control + bidi-override characters in display_name.
+	clean, err := SanitizeText("display_name", r.DisplayName, false, spec.DisplayNameMax)
 	if err != nil {
 		return err
 	}
 	r.DisplayName = clean
 	if r.Bio != nil {
-		bio, err := SanitizeText("bio", *r.Bio, false, 200)
+		bio, err := SanitizeText("bio", *r.Bio, false, spec.BioMax)
 		if err != nil {
 			return err
 		}
 		*r.Bio = bio
 	}
-	if r.Locale != "en" && r.Locale != "ja" && r.Locale != "ko" {
-		r.Locale = "en"
+	if !supportedLocales[r.Locale] {
+		r.Locale = spec.LocaleFallback
 	}
 	return nil
 }
@@ -146,17 +149,17 @@ type UpdateMeRequest struct {
 func (r *UpdateMeRequest) Validate() error {
 	if r.DisplayName != nil {
 		s := strings.TrimSpace(*r.DisplayName)
-		if len([]rune(s)) < 1 {
+		if len([]rune(s)) < spec.DisplayNameMin {
 			return wrapValidation("display_name must be 1-50 characters")
 		}
-		clean, err := SanitizeText("display_name", s, false, 50)
+		clean, err := SanitizeText("display_name", s, false, spec.DisplayNameMax)
 		if err != nil {
 			return err
 		}
 		*r.DisplayName = clean
 	}
 	if r.Bio != nil {
-		clean, err := SanitizeText("bio", *r.Bio, false, 200)
+		clean, err := SanitizeText("bio", *r.Bio, false, spec.BioMax)
 		if err != nil {
 			return err
 		}
@@ -164,7 +167,7 @@ func (r *UpdateMeRequest) Validate() error {
 	}
 	if r.Locale != nil {
 		v := strings.ToLower(strings.TrimSpace(*r.Locale))
-		if v != "en" && v != "ja" && v != "ko" {
+		if !supportedLocales[v] {
 			return wrapValidation("locale must be one of: en, ja, ko")
 		}
 		*r.Locale = v

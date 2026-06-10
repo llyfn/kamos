@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/auth/google_signin_service.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/auth_controller.dart';
 import '../providers/auth_state.dart';
@@ -212,10 +213,10 @@ class _SignInOrUp extends StatelessWidget {
     final usernameInvalid =
         isSignUp &&
         username.text.isNotEmpty &&
-        !RegExp(r'^[A-Za-z0-9_]{3,30}$').hasMatch(username.text);
+        !RegExp(KamosSpec.usernameRegex).hasMatch(username.text);
 
     final passwordTooShort =
-        password.text.isNotEmpty && password.text.length < 8;
+        password.text.isNotEmpty && password.text.length < KamosSpec.passwordMin;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -238,7 +239,7 @@ class _SignInOrUp extends StatelessWidget {
               hintText: 'yamamoto',
               errorText: usernameInvalid ? l.authUsernameInvalid : null,
             ),
-            maxLength: 30,
+            maxLength: KamosSpec.usernameMaxChars,
             buildCounter:
                 (_, {required currentLength, required isFocused, maxLength}) =>
                     null,
@@ -247,7 +248,10 @@ class _SignInOrUp extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 8),
             child: Text(
-              l.authUsernameHelper,
+              l.authUsernameHelper(
+                KamosSpec.usernameMinChars,
+                KamosSpec.usernameMaxChars,
+              ),
               style: TextStyle(fontSize: 12, color: t.fg3),
             ),
           ),
@@ -304,7 +308,7 @@ class _SignInOrUp extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              l.authPasswordHelper,
+              l.authPasswordHelper(KamosSpec.passwordMin),
               style: TextStyle(fontSize: 12, color: t.fg3),
             ),
           ),

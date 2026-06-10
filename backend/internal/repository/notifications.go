@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 // NotificationRepo wraps the SQL for the notifications inbox.
@@ -131,7 +132,7 @@ func (r *NotificationRepo) ListByRecipient(
 	limit int,
 ) ([]domain.Notification, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	const q = `
 SELECT

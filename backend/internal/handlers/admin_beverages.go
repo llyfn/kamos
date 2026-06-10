@@ -19,6 +19,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AdminListBeverages — GET /v1/admin/beverages
@@ -31,7 +32,7 @@ import (
 //   - cursor: opaque cursor
 //   - limit: 1..50, default 20
 func (h *Handler) AdminListBeverages(w http.ResponseWriter, r *http.Request) {
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "AdminListBeverages cursor", err)

@@ -3,6 +3,8 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // ---------------------------------------------------------------------------
@@ -28,19 +30,21 @@ type BeverageRequest struct {
 	Payload map[string]any `json:"payload"`
 }
 
-// payloadMaxBytes is the serialized-JSON cap. 4 KiB comfortably holds the
-// known string fields plus a few extra metadata hints from the client
-// without giving an attacker a place to store secrets-by-proxy.
-const payloadMaxBytes = 4 * 1024
+// payloadMaxBytes is the serialized-JSON cap. The value lives in
+// specs/invariants.yaml (beverage_request.payload_max_bytes) so changes
+// flow from the SoT.
+const payloadMaxBytes = spec.BeverageRequestPayloadMax
 
-// payloadCategorySlugEnum mirrors beverage_categories.slug in migration 002.
-// Re-declared here (rather than reusing the cached taxonomy) so domain stays
-// pure — no DB dependency in the validator.
-var payloadCategorySlugEnum = map[string]struct{}{
-	"nihonshu": {},
-	"shochu":   {},
-	"liqueur":  {},
-}
+// payloadCategorySlugEnum mirrors beverage_categories.slug from the catalog
+// seed. Sourced from the SoT (specs/invariants.yaml categories.slugs) so
+// domain stays pure — no DB dependency in the validator.
+var payloadCategorySlugEnum = func() map[string]struct{} {
+	m := make(map[string]struct{}, len(spec.CategorySlugs))
+	for _, s := range spec.CategorySlugs {
+		m[s] = struct{}{}
+	}
+	return m
+}()
 
 // payloadField captures the per-field sanitization rules.
 //
@@ -56,13 +60,13 @@ type payloadField struct {
 }
 
 var beverageRequestFields = []payloadField{
-	{key: "name", required: true, allowNewline: false, maxLen: 200},
-	{key: "producer_name", required: true, allowNewline: false, maxLen: 200},
-	{key: "category_slug", required: true, allowNewline: false, maxLen: 200},
+	{key: "name", required: true, allowNewline: false, maxLen: spec.BeverageRequestStringMax},
+	{key: "producer_name", required: true, allowNewline: false, maxLen: spec.BeverageRequestStringMax},
+	{key: "category_slug", required: true, allowNewline: false, maxLen: spec.BeverageRequestStringMax},
 	// Optional sanitized strings — only validated when present.
-	{key: "subcategory", required: false, allowNewline: false, maxLen: 200},
-	{key: "label_image_url", required: false, allowNewline: false, maxLen: 200},
-	{key: "notes", required: false, allowNewline: true, maxLen: 500},
+	{key: "subcategory", required: false, allowNewline: false, maxLen: spec.BeverageRequestStringMax},
+	{key: "label_image_url", required: false, allowNewline: false, maxLen: spec.BeverageRequestStringMax},
+	{key: "notes", required: false, allowNewline: true, maxLen: spec.BeverageRequestNotesMax},
 }
 
 func (r *BeverageRequest) Validate() error {

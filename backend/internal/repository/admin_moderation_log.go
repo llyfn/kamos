@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 // ModerationLogRepo wraps moderation_log read SQL. Writes still live with
@@ -49,7 +50,7 @@ func (r *ModerationLogRepo) ListModerationLog(
 	limit int,
 ) ([]domain.ModerationLogEntry, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	const q = `
 SELECT id, moderator_id, action::text, target_type::text, target_id,

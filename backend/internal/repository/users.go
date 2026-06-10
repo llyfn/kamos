@@ -12,6 +12,7 @@ import (
 
 	"github.com/kamos/api/internal/auth"
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 type UserRepo struct{ db *pgxpool.Pool }
@@ -335,7 +336,7 @@ func (r *UserRepo) SearchUsers(
 	limit int,
 ) ([]SearchRow, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	q := strings.ToLower(query)
 	qLike := likeEscaper.Replace(q)
@@ -509,14 +510,15 @@ RETURNING id, username, display_username, email, email_verified,
 	return &u, nil
 }
 
-// SoftDelete sets deleted_at and the 30-day release time per SPEC §3.3.
+// SoftDelete sets deleted_at and the username-hold release time. The hold
+// duration comes from specs/invariants.yaml soft_delete.username_hold_days.
 func (r *UserRepo) SoftDelete(ctx context.Context, id string) error {
 	const q = `
 UPDATE users SET
   deleted_at = NOW(),
-  username_release_at = NOW() + INTERVAL '30 days'
+  username_release_at = NOW() + make_interval(days => $2)
 WHERE id = $1 AND deleted_at IS NULL;`
-	ct, err := r.db.Exec(ctx, q, id)
+	ct, err := r.db.Exec(ctx, q, id, spec.UsernameHoldDays)
 	if err != nil {
 		return fmt.Errorf("UserRepo.SoftDelete: %w", err)
 	}
@@ -598,8 +600,8 @@ RETURNING id;`
 func (r *UserRepo) CreateVerificationToken(ctx context.Context, userID, token string) error {
 	hash := auth.HashVerificationToken(token)
 	const q = `INSERT INTO email_verifications (user_id, token_hash, expires_at)
-              VALUES ($1, $2, NOW() + INTERVAL '24 hours');`
-	if _, err := r.db.Exec(ctx, q, userID, hash); err != nil {
+              VALUES ($1, $2, NOW() + make_interval(hours => $3));`
+	if _, err := r.db.Exec(ctx, q, userID, hash, spec.EmailVerificationLinkTTLHours); err != nil {
 		return fmt.Errorf("CreateVerificationToken: %w", err)
 	}
 	return nil

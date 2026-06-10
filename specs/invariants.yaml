@@ -1,0 +1,172 @@
+# KAMOS — Product Invariants (CANONICAL)
+#
+# This file is the single source of truth for every numeric / regex / enum
+# invariant in the KAMOS product. Spec changes start here. Implementations
+# reference the generated constants (never inline literals); reviewers and
+# QA verify against this file.
+#
+# Pipeline:
+#   1. Edit this file.
+#   2. Run scripts/gen-spec.sh → regenerates
+#        backend/internal/spec/spec.go
+#        frontend/lib/core/spec/spec.dart
+#   3. Commit YAML + regenerated files together. CI fails on drift.
+#
+# Narrative ("why") for each invariant lives in SPEC.md under the cited
+# section. This file is values-only.
+
+schema_version: 1
+spec_doc: SPEC.md
+
+rating:
+  spec_section: "4.2"
+  min: 0.5
+  max: 5.0
+  step: 0.25
+  levels: 19
+  db_type: "NUMERIC(3,2)"
+
+photos:
+  spec_section: "4.1"
+  max_per_submission: 1
+  # Legacy: existing rows from before the 4→1 tightening remain readable.
+  legacy_readable_cap: 4
+
+review_text:
+  spec_section: "4.1"
+  max_chars: 500
+
+comment_text:
+  spec_section: "6.7"
+  max_chars: 500
+  min_chars: 1
+
+beverage_request:
+  spec_section: "2.4"
+  notes_max_chars: 500
+  string_field_max_chars: 200
+  payload_max_bytes: 4096
+
+collection_entry_note:
+  spec_section: "6.2"
+  max_chars: 200
+
+collection_name:
+  spec_section: "6.3"
+  min_chars: 1
+  max_chars: 50
+
+moderation_notes:
+  # Admin reject/approve notes — reuses the review-cap budget rather than
+  # carrying its own number, because both are short, human-authored prose.
+  spec_section: "2.4"
+  max_chars: 500
+
+search_query:
+  # Free-form search-by-text cap shared by user search, beverage search,
+  # and venue search (Foursquare proxy). 100 runes is the DoS-prevention
+  # backstop; query semantics enforce shorter minimums separately.
+  max_chars: 100
+
+social_query:
+  # Prefix-match on usernames for the follower/following picker. Caps to
+  # the same width as a username (a longer query can't match anything).
+  max_chars: 30
+
+venue_fields:
+  # Bounds for the optional venue-tag fields on a check-in. Backed by the
+  # venues table columns; see migration 010.
+  spec_section: "4.1"
+  name_min: 1
+  name_max: 200
+  address_max: 500
+  country_max: 100
+  prefecture_max: 100
+  locality_max: 100
+
+username:
+  spec_section: "3.2"
+  regex: '^[A-Za-z0-9_]{3,30}$'
+  storage_regex: '^[a-z0-9_]{3,30}$'
+  min_chars: 3
+  max_chars: 30
+  case_sensitive: false
+
+display_name:
+  spec_section: "3.2"
+  min_chars: 1
+  max_chars: 50
+
+bio:
+  spec_section: "3.2"
+  max_chars: 200
+
+password:
+  spec_section: "3.1"
+  min_chars: 8
+
+email_verification:
+  spec_section: "3.1"
+  link_ttl_hours: 24
+
+pagination:
+  spec_section: "5.2"
+  default_page_size: 20
+  max_page_size: 50
+  # Feed pins both default and max to 20 per SPEC §5.2.
+  feed_page_size: 20
+  notifications_page_size: 20
+  # Foursquare venue search is server-pinned to 20.
+  foursquare_max: 20
+
+locales:
+  spec_section: "8"
+  supported: [en, ja, ko]
+  default: en
+  fallback: en
+
+soft_delete:
+  spec_section: "3.3"
+  username_hold_days: 30
+  notifications_read_retention_days: 180
+
+cursor:
+  secret_min_bytes: 32
+
+categories:
+  spec_section: "2.1"
+  slugs: [nihonshu, shochu, liqueur]
+  names:
+    nihonshu:
+      en: "Nihonshu (Sake)"
+      ja: "日本酒"
+      ko: "니혼슈 (사케)"
+    shochu:
+      en: "Shochu"
+      ja: "焼酎"
+      ko: "쇼츄"
+    liqueur:
+      en: "Liqueur"
+      ja: "リキュール"
+      ko: "리큐어"
+
+default_collections:
+  spec_section: "6.1"
+  # Seed-only — users can rename or delete after registration.
+  inventory:
+    en: "Inventory"
+    ja: "インベントリー"
+    ko: "인벤토리"
+  wishlist:
+    en: "Wishlist"
+    ja: "ウィッシュリスト"
+    ko: "위시리스트"
+
+purchase_type:
+  spec_section: "4.1"
+  values: [on_premise, retail, gift, other]
+
+price:
+  spec_section: "4.1"
+  currencies: [JPY, KRW, USD]
+  modes: [serving, bottle]

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 // AdminApproveBeverageRequest is the body for POST /v1/admin/beverage-requests/{id}/approve.
@@ -70,7 +71,7 @@ func (r *AdminRejectRequest) Validate() error {
 	if r.Notes == "" {
 		return wrapV("notes is required")
 	}
-	if len([]rune(r.Notes)) > 500 {
+	if len([]rune(r.Notes)) > spec.ModerationNotesMaxChars {
 		return wrapV("notes must be ≤ 500 characters")
 	}
 	return nil

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 type CollectionRepo struct{ db *pgxpool.Pool }
@@ -166,7 +167,7 @@ func (r *CollectionRepo) ListByUser(
 	limit int,
 ) ([]domain.Collection, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = spec.PageSizeDefault
 	}
 	const q = `
 SELECT c.id, c.user_id, c.name, c.visibility::text, c.created_at, c.updated_at,

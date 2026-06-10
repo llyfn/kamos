@@ -20,6 +20,7 @@ import '../../../core/api/api_exceptions.dart';
 import '../../../core/api/kamos_api.dart';
 import '../../../core/models/comment.dart';
 import '../../../core/models/page.dart' as models;
+import '../../../core/spec/spec.dart';
 
 /// Wraps the `comments` tag of [KamosApi] (list / create / delete) and
 /// lifts `DioException`s into the typed comment exceptions in
@@ -50,7 +51,7 @@ class CommentRepository {
     required String checkInId,
     required String body,
   }) async {
-    if (body.length > 500) {
+    if (body.length > KamosSpec.commentMaxChars) {
       throw const CommentTooLongException();
     }
     if (_controlCharRegex.hasMatch(body)) {
@@ -75,7 +76,7 @@ class CommentRepository {
     required String commentId,
     required String body,
   }) async {
-    if (body.length > 500) {
+    if (body.length > KamosSpec.commentMaxChars) {
       throw const CommentTooLongException();
     }
     if (_controlCharRegex.hasMatch(body)) {

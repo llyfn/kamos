@@ -3,6 +3,8 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // I18nText is the JSONB shape used for beverage / producer / category / tag
@@ -43,23 +45,18 @@ func I18nFromJSON(raw []byte) (I18nText, error) {
 	return t, nil
 }
 
-// LocalizedDefaultCollections returns the names of the two seeded collections
-// in the user's chosen locale. Per SPEC §6.1 the names are user-renameable,
-// so these are seed defaults only — users can override them at any time.
-//
-// Strings chosen as the standard transliterations of the English names,
-// consistent with how comparable beverage-tracking apps localize the
-// "inventory / wishlist" concept. Designer has not pinned alternative
-// strings; if they do, update both this map and the unit test in
-// `types_test.go::TestLocalizedDefaultCollectionsConstant`.
+// LocalizedDefaultCollections returns the seeded collection names in the
+// user's locale. Values come from specs/invariants.yaml via
+// spec.DefaultCollectionInventory / spec.DefaultCollectionWishlist; unknown
+// locales fall back to spec.LocaleFallback.
 func LocalizedDefaultCollections(locale string) (inventory, wishlist string) {
-	switch locale {
-	case "ja":
-		return "インベントリー", "ウィッシュリスト"
-	case "ko":
-		return "인벤토리", "위시리스트"
-	default:
-		// en + any unknown locale falls back to English.
-		return "Inventory", "Wishlist"
+	inv, ok := spec.DefaultCollectionInventory[locale]
+	if !ok {
+		inv = spec.DefaultCollectionInventory[spec.LocaleFallback]
 	}
+	wish, ok := spec.DefaultCollectionWishlist[locale]
+	if !ok {
+		wish = spec.DefaultCollectionWishlist[spec.LocaleFallback]
+	}
+	return inv, wish
 }

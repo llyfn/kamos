@@ -57,13 +57,14 @@ Operator runbook: [docs/runbooks/deploy.md](docs/runbooks/deploy.md). Full env-v
 
 | Where | What |
 |---|---|
-| [SPEC.md](SPEC.md) | Product specification (MVP) — the source of truth for behaviour. |
+| [SPEC.md](SPEC.md) | Product specification (MVP) — narrative source of truth for behaviour. |
+| [specs/invariants.yaml](specs/invariants.yaml) | Machine-readable canonical values (rating, photo cap, page sizes, regex, etc.). Generated into `backend/internal/spec` and `frontend/lib/core/spec`. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, layer breakdowns, multi-replica topology, library choices. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Environment variables, vendor flags, quick-start scripts, smoke verification. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Conventional Commits, verification matrix, coding conventions. |
 | [docs/db/](docs/db/) | Schema, indexes, query patterns. |
 | [docs/runbooks/](docs/runbooks/) | Staging deploy, secret rotation, incident response. |
-| [`.claude/`](.claude/) | Claude Code agent harness — orchestrator skills + specialist agents. |
+| [`.claude/`](.claude/) | Claude Code agent harness — orchestrator skills + specialist agents (topology in [.claude/HARNESS.md](.claude/HARNESS.md)). |
 
 ## Localization
 

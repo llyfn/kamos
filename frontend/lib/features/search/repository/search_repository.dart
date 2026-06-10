@@ -10,6 +10,7 @@ import '../../../core/api/kamos_api.dart';
 import '../../../core/models/beverage.dart';
 import '../../../core/models/page.dart';
 import '../../../core/models/producer.dart';
+import '../../../core/spec/spec.dart';
 
 class SearchResultItem {
 
@@ -43,7 +44,7 @@ class SearchRepository {
     required String q,
     String? type,
     String? cursor,
-    int limit = 20,
+    int limit = KamosSpec.pageSizeDefault,
   }) async {
     final data = await _api.search.query(
       q: q,

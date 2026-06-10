@@ -1,6 +1,10 @@
 package domain
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/kamos/api/internal/spec"
+)
 
 // ---------------------------------------------------------------------------
 // Auth request / response shapes
@@ -59,7 +63,7 @@ func (r *PasswordChangeRequest) Validate() error {
 	if r.CurrentPassword == "" {
 		return wrapValidation("current_password is required")
 	}
-	if len(r.NewPassword) < 8 {
+	if len(r.NewPassword) < spec.PasswordMin {
 		return wrapValidation("new_password must be at least 8 characters")
 	}
 	return nil

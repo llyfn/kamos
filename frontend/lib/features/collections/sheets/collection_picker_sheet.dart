@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/models/collection.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/collection_providers.dart';
 import '../repository/collection_repository.dart';
@@ -105,7 +106,7 @@ class _CollectionPickerSheetState extends ConsumerState<CollectionPickerSheet> {
                     Expanded(
                       child: TextField(
                         controller: _nameController,
-                        maxLength: 50,
+                        maxLength: KamosSpec.collectionNameMax,
                         decoration: InputDecoration(
                           hintText: l.collectionsNamePlaceholder,
                         ),

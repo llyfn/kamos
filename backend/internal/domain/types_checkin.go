@@ -1,9 +1,12 @@
 package domain
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"time"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // ---------------------------------------------------------------------------
@@ -36,26 +39,36 @@ type CreateCheckinRequest struct {
 }
 
 // allowedPurchase / allowedCurrency / allowedPriceMode are the controlled
-// vocabularies enforced by check-in validation. Kept package-private so
-// domain types alone define the SPEC sets.
+// vocabularies enforced by check-in validation. Built from spec slices so
+// the SoT (specs/invariants.yaml) drives membership.
 var (
-	allowedPurchase  = map[string]bool{"on_premise": true, "retail": true, "gift": true, "other": true}
-	allowedCurrency  = map[string]bool{"JPY": true, "KRW": true, "USD": true}
-	allowedPriceMode = map[string]bool{"serving": true, "bottle": true}
+	allowedPurchase  = sliceToSet(spec.PurchaseTypes)
+	allowedCurrency  = sliceToSet(spec.PriceCurrencies)
+	allowedPriceMode = sliceToSet(spec.PriceModes)
 )
 
-// ValidRating enforces SPEC §4.2: 0.5–5.0 in 0.25 steps (19 levels). Nil is valid.
+func sliceToSet(xs []string) map[string]bool {
+	m := make(map[string]bool, len(xs))
+	for _, x := range xs {
+		m[x] = true
+	}
+	return m
+}
+
+// ValidRating enforces the rating grid from specs/invariants.yaml (rating.*).
+// Nil is valid.
 func ValidRating(r *float64) error {
 	if r == nil {
 		return nil
 	}
-	if *r < 0.5 || *r > 5.0 {
-		return wrapValidation("rating must be between 0.5 and 5.0")
+	if *r < spec.RatingMin || *r > spec.RatingMax {
+		return wrapValidation(fmt.Sprintf(
+			"rating must be between %v and %v", spec.RatingMin, spec.RatingMax))
 	}
-	// 0.25 step grid check: round to the nearest 0.25 and compare back.
-	q := math.Round(*r / 0.25)
-	if math.Abs(*r-q*0.25) > 1e-9 {
-		return wrapValidation("rating must be in 0.25 steps")
+	q := math.Round(*r / spec.RatingStep)
+	if math.Abs(*r-q*spec.RatingStep) > 1e-9 {
+		return wrapValidation(fmt.Sprintf(
+			"rating must be in %v steps", spec.RatingStep))
 	}
 	return nil
 }
@@ -68,13 +81,13 @@ func (r *CreateCheckinRequest) Validate() error {
 		return err
 	}
 	if r.Review != nil {
-		clean, err := SanitizeText("review", *r.Review, true, 500)
+		clean, err := SanitizeText("review", *r.Review, true, spec.ReviewMaxChars)
 		if err != nil {
 			return err
 		}
 		*r.Review = clean
 	}
-	if len(r.Photos) > 1 {
+	if len(r.Photos) > spec.PhotosMaxPerSubmission {
 		return wrapValidation("a check-in may have at most 1 photo on submission")
 	}
 	if r.PurchaseType != nil {
@@ -136,7 +149,7 @@ func (r *UpdateCheckinRequest) Validate() error {
 		return err
 	}
 	if r.Review != nil {
-		clean, err := SanitizeText("review", *r.Review, true, 500)
+		clean, err := SanitizeText("review", *r.Review, true, spec.ReviewMaxChars)
 		if err != nil {
 			return err
 		}
@@ -162,7 +175,7 @@ func (r *UpdateCheckinRequest) Validate() error {
 	return nil
 }
 
-// Checkin is the canonical check-in DTO returned by the API. // added CommentCount; FeedItem mirrors the field.
+// Checkin is the canonical check-in DTO returned by the API.
 type Checkin struct {
 	ID           string      `json:"id"`
 	User         CheckinUser `json:"user"`

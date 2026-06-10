@@ -9,6 +9,7 @@ import (
 	"github.com/kamos/api/internal/domain"
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // ListBeverages — GET /v1/beverages.
@@ -16,7 +17,7 @@ import (
 func (h *Handler) ListBeverages(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	cat := r.URL.Query().Get("category")
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "ListBeverages cursor", err)
@@ -129,7 +130,7 @@ func (h *Handler) GetBeverage(w http.ResponseWriter, r *http.Request) {
 // `getBeverage`).
 func (h *Handler) GetBeverageCheckins(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "GetBeverageCheckins cursor", err)
@@ -152,7 +153,7 @@ func (h *Handler) GetBeverageCheckins(w http.ResponseWriter, r *http.Request) {
 // ListProducers — GET /v1/producers.
 func (h *Handler) ListProducers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "ListProducers cursor", err)
@@ -221,7 +222,7 @@ func (h *Handler) GetProducer(w http.ResponseWriter, r *http.Request) {
 		br = got
 	}
 
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "GetProducer cursor", err)

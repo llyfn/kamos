@@ -17,6 +17,11 @@ Do **not** use for: single-file edits, single endpoint, single screen, single mi
 
 ## Agent roster
 
+Authoritative agent ↔ skill topology + model assignments live in
+[`.claude/HARNESS.md`](../../HARNESS.md). The table below is operational
+— it names the `subagent_type` strings the `Agent()` calls below pass —
+not a second source of truth.
+
 | Agent | Subagent type | Owns | Skill | Phase |
 |---|---|---|---|---|
 | designer | `designer` | `design/` + `design/HANDOFF.md` addendum | `design-wireframe` | 1 |
@@ -65,8 +70,7 @@ Orchestrator only. No agent spawned.
 Agent(
   name: "designer",
   subagent_type: "designer",
-  model: "opus",
-  prompt: "Read docs/history/<NN>_<feature>/00_brief.md, SPEC.md, design/README.md, and design/HANDOFF.md. Use the design-wireframe skill to extend the design system for the named feature: update brand/voice rules only if necessary (the README is authoritative), add or revise JSX screens under design/ui_kits/mobile/components/, add primitive previews if a new primitive is introduced, and append a new section to design/HANDOFF.md listing the screen ↔ data-shape mappings the engineers will consume. Honor non-negotiables: the 5-tab nav (Feed · Lists · Discover · Notifications · Me), the Japanese-blue palette + Koh accent reserved for toast/kanpai only, no emoji in UI, exact SPEC category strings in all three locales, 0.5-step rating, cursor pagination. Do not create wireframes.md / design_tokens.md / screen_specs.md / api_contracts.md — the skill forbids them. On completion: SendMessage db-architect and backend-engineer 'Design ready for <feature>'. TaskUpdate to completed."
+  prompt: "Read docs/history/<NN>_<feature>/00_brief.md, SPEC.md, design/README.md, and design/HANDOFF.md. Use the design-wireframe skill to extend the design system for the named feature: update brand/voice rules only if necessary (the README is authoritative), add or revise JSX screens under design/ui_kits/mobile/components/, add primitive previews if a new primitive is introduced, and append a new section to design/HANDOFF.md listing the screen ↔ data-shape mappings the engineers will consume. Honor non-negotiables: the 5-tab nav (Feed · Lists · Discover · Notifications · Me), the Japanese-blue palette + Koh accent reserved for toast/kanpai only, no emoji in UI, category strings + rating grid from specs/invariants.yaml, cursor pagination. Do not create wireframes.md / design_tokens.md / screen_specs.md / api_contracts.md — the skill forbids them. On completion: SendMessage db-architect and backend-engineer 'Design ready for <feature>'. TaskUpdate to completed."
 )
 ```
 
@@ -81,20 +85,17 @@ TeamCreate(
     {
       name: "db-architect",
       subagent_type: "db-architect",
-      model: "opus",
-      prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/HANDOFF.md (new section), and SPEC.md. Use the db-schema skill. Write a new append-only migration to migrations/NNN_<feature>.sql, extend docs/db/schema.md, docs/db/indexes.md, and docs/db/query_patterns.md with the additions. Encode every SPEC cap as a CHECK constraint. On completion: SendMessage backend-engineer 'DB ready for <feature> — migration NNN, query patterns at docs/db/query_patterns.md'. TaskUpdate to completed."
+          prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/HANDOFF.md (new section), and SPEC.md. Use the db-schema skill. Write a new append-only migration to migrations/NNN_<feature>.sql, extend docs/db/schema.md, docs/db/indexes.md, and docs/db/query_patterns.md with the additions. Encode every cap from specs/invariants.yaml as a CHECK constraint at the column's owning migration; do not paste the value elsewhere. On completion: SendMessage backend-engineer 'DB ready for <feature> — migration NNN, query patterns at docs/db/query_patterns.md'. TaskUpdate to completed."
     },
     {
       name: "backend-engineer",
       subagent_type: "backend-engineer",
-      model: "opus",
-      prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/HANDOFF.md (new section), SPEC.md, and backend/openapi.yaml. Use the go-api skill. Implement Go handlers in backend/internal/handlers/, repository in backend/internal/repository/, any worker jobs in backend/internal/jobs/. Extend backend/openapi.yaml with the new operations. Wait for 'DB ready' from db-architect before implementing the repository layer. If admin scope is set in 00_brief.md: implement the admin Go handlers (admin_*.go) AND extend admin/ React surface (HttpOnly cookie + CSRF auth per ARCHITECTURE.md §5). After the Go API slice is feature-complete: SendMessage qa-inspector 'Backend module <feature> complete' with paths. After the admin slice (if in scope) is feature-complete: SendMessage qa-inspector 'Admin module <feature> complete' with paths. On openapi.yaml updates: SendMessage flutter-engineer 'OpenAPI ready for <feature> at backend/openapi.yaml'. TaskUpdate per slice."
+          prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/HANDOFF.md (new section), SPEC.md, and backend/openapi.yaml. Use the go-api skill. Implement Go handlers in backend/internal/handlers/, repository in backend/internal/repository/, any worker jobs in backend/internal/jobs/. Extend backend/openapi.yaml with the new operations. Wait for 'DB ready' from db-architect before implementing the repository layer. If admin scope is set in 00_brief.md: implement the admin Go handlers (admin_*.go) AND extend admin/ React surface (HttpOnly cookie + CSRF auth per ARCHITECTURE.md §5). After the Go API slice is feature-complete: SendMessage qa-inspector 'Backend module <feature> complete' with paths. After the admin slice (if in scope) is feature-complete: SendMessage qa-inspector 'Admin module <feature> complete' with paths. On openapi.yaml updates: SendMessage flutter-engineer 'OpenAPI ready for <feature> at backend/openapi.yaml'. TaskUpdate per slice."
     },
     {
       name: "qa-inspector",
       subagent_type: "qa-inspector",
-      model: "opus",
-      prompt: "Use the qa-inspect skill in incremental backend mode. Wait for SendMessage 'Backend module <feature> complete' from backend-engineer. On receipt: cross-check Go handler response shapes against backend/openapi.yaml and design/HANDOFF.md, verify DB column names match Go struct json tags, run the SPEC invariant grep checks. Write docs/history/<NN>_<feature>/qa/qa_report_backend.md. If admin scope is set: also wait for 'Admin module <feature> complete' and cross-check admin handlers against admin/ React calls (CSRF header, cookie auth, /v1/admin/me cookie-authable identity). Write docs/history/<NN>_<feature>/qa/qa_report_admin.md. SendMessage BLOCKER and MAJOR findings to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix; that implementer owns the fix and SendMessages back for re-verification. MINOR findings are filed for the end-of-phase sweep. TaskUpdate per slice."
+          prompt: "Use the qa-inspect skill in incremental backend mode. Wait for SendMessage 'Backend module <feature> complete' from backend-engineer. On receipt: cross-check Go handler response shapes against backend/openapi.yaml and design/HANDOFF.md, verify DB column names match Go struct json tags, run the SPEC invariant grep checks. Write docs/history/<NN>_<feature>/qa/qa_report_backend.md. If admin scope is set: also wait for 'Admin module <feature> complete' and cross-check admin handlers against admin/ React calls (CSRF header, cookie auth, /v1/admin/me cookie-authable identity). Write docs/history/<NN>_<feature>/qa/qa_report_admin.md. SendMessage BLOCKER and MAJOR findings to the responsible agent (db-architect or backend-engineer) with file:line and the specific fix; that implementer owns the fix and SendMessages back for re-verification. MINOR findings are filed for the end-of-phase sweep. TaskUpdate per slice."
     }
   ]
 )
@@ -121,14 +122,12 @@ TeamCreate(
     {
       name: "flutter-engineer",
       subagent_type: "flutter-engineer",
-      model: "opus",
-      prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/README.md, design/colors_and_type.css, design/ui_kits/mobile/, design/HANDOFF.md (new section), backend/openapi.yaml, and SPEC.md. Use the flutter-feature skill. Implement screens, Riverpod providers, repositories, and ARB keys (all three locales together) under frontend/lib/features/<feature>/. Wire navigation in frontend/lib/app/router.dart. Required invariants: JWT in flutter_secure_storage (never SharedPreferences); category strings exactly per SPEC §2.1; 0.5-step rating widget; cursor pagination via next_cursor + has_more; ARB key parity across en/ja/ko. After the feature is implemented: SendMessage qa-inspector 'Flutter feature <feature> complete' with paths. TaskUpdate to completed."
+          prompt: "Read docs/history/<NN>_<feature>/00_brief.md, design/README.md, design/colors_and_type.css, design/ui_kits/mobile/, design/HANDOFF.md (new section), backend/openapi.yaml, and SPEC.md. Use the flutter-feature skill. Implement screens, Riverpod providers, repositories, and ARB keys (all three locales together) under frontend/lib/features/<feature>/. Wire navigation in frontend/lib/app/router.dart. Required invariants: JWT in flutter_secure_storage (never SharedPreferences); all numeric/regex/enum values from KamosSpec (frontend/lib/core/spec/spec.dart), backed by specs/invariants.yaml; cursor pagination via next_cursor + has_more; ARB key parity across en/ja/ko. After the feature is implemented: SendMessage qa-inspector 'Flutter feature <feature> complete' with paths. TaskUpdate to completed."
     },
     {
       name: "qa-inspector",
       subagent_type: "qa-inspector",
-      model: "opus",
-      prompt: "Use the qa-inspect skill in incremental frontend mode. Wait for SendMessage 'Flutter feature <feature> complete' from flutter-engineer. On receipt: cross-check Flutter repository response parsing against backend/openapi.yaml, verify go_router paths correspond to real screen files, verify all three ARB files have matching keys, run the SPEC invariant grep checks (especially category strings, SharedPreferences, cursor pagination). Write docs/history/<NN>_<feature>/qa/qa_report_frontend.md. SendMessage BLOCKER and MAJOR findings to flutter-engineer with file:line and the specific fix; that implementer owns the fix and SendMessages back for re-verification. MINOR findings are filed for the end-of-phase sweep. TaskUpdate to completed."
+          prompt: "Use the qa-inspect skill in incremental frontend mode. Wait for SendMessage 'Flutter feature <feature> complete' from flutter-engineer. On receipt: cross-check Flutter repository response parsing against backend/openapi.yaml, verify go_router paths correspond to real screen files, verify all three ARB files have matching keys, run the SPEC invariant grep checks (especially category strings, SharedPreferences, cursor pagination). Write docs/history/<NN>_<feature>/qa/qa_report_frontend.md. SendMessage BLOCKER and MAJOR findings to flutter-engineer with file:line and the specific fix; that implementer owns the fix and SendMessages back for re-verification. MINOR findings are filed for the end-of-phase sweep. TaskUpdate to completed."
     }
   ]
 )
@@ -142,7 +141,6 @@ Phase 3 ends when `fe-feature` and `qa-frontend` are `completed`. `TeamDelete`. 
 Agent(
   name: "qa-inspector-final",
   subagent_type: "qa-inspector",
-  model: "opus",
   prompt: "Use the qa-inspect skill in 'final' mode for the <feature> feature. Read backend/, frontend/, admin/ (if in scope), migrations/, design/, docs/db/, and SPEC.md. Verify end-to-end: (1) every new endpoint in backend/openapi.yaml is consumed by Flutter (and admin if in scope); (2) every new go_router path corresponds to a real screen file; (3) all three ARB files are consistent and complete for the feature; (4) category terminology in all three locales matches SPEC §2.1 exactly; (5) JWT storage uses flutter_secure_storage; (6) cursor pagination is end-to-end (handler → openapi → repository → UI); (7) admin auth uses HttpOnly cookies + CSRF (when in scope); (8) soft-delete columns and filters are present per SPEC where the feature touches them; (9) all SPEC caps enforced both client-side and server-side; (10) no SPEC invariant violated. Write docs/history/<NN>_<feature>/qa/qa_report_final.md with PASS/FAIL summary at the top, then per-category findings."
 )
 ```

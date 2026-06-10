@@ -3,6 +3,8 @@ package domain
 import (
 	"strings"
 	"time"
+
+	"github.com/kamos/api/internal/spec"
 )
 
 // ---------------------------------------------------------------------------
@@ -51,31 +53,30 @@ func (r *UpdateCommentRequest) Validate() error {
 	if r.Body == "" {
 		return wrapValidation("body must be 1-500 characters")
 	}
-	clean, err := SanitizeText("body", r.Body, true, 500)
+	clean, err := SanitizeText("body", r.Body, true, spec.CommentMaxChars)
 	if err != nil {
 		return err
 	}
-	if len([]rune(clean)) < 1 {
+	if len([]rune(clean)) < spec.CommentMinChars {
 		return wrapValidation("body must be 1-500 characters")
 	}
 	r.Body = clean
 	return nil
 }
 
-// Validate enforces SPEC §6.7's "≤ 500 chars" cap plus a control-character
-// guard mirroring the venue-name pattern from migration 006 (defense in
-// depth on a shared user-content surface). SEC-006 extends the guard to
-// reject Unicode bidi-override codepoints.
+// Validate enforces the comment text cap (specs/invariants.yaml comment_text)
+// plus a control-character guard mirroring the venue-name pattern; rejects
+// Unicode bidi-override codepoints.
 func (r *CreateCommentRequest) Validate() error {
 	r.Body = strings.TrimSpace(r.Body)
 	if r.Body == "" {
 		return wrapValidation("body must be 1-500 characters")
 	}
-	clean, err := SanitizeText("body", r.Body, true, 500)
+	clean, err := SanitizeText("body", r.Body, true, spec.CommentMaxChars)
 	if err != nil {
 		return err
 	}
-	if len([]rune(clean)) < 1 {
+	if len([]rune(clean)) < spec.CommentMinChars {
 		return wrapValidation("body must be 1-500 characters")
 	}
 	r.Body = clean

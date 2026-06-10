@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kamos/api/internal/domain"
+	"github.com/kamos/api/internal/spec"
 )
 
 // UserBeverageRepo serves GET /v1/users/{username}/beverages — the
@@ -82,7 +83,7 @@ type UserBeveragesParams struct {
 // the four-figure check-in mark.
 func (r *UserBeverageRepo) ListUserBeverages(ctx context.Context, p UserBeveragesParams) ([]domain.UserBeverageRow, error) {
 	if p.Limit <= 0 {
-		p.Limit = 20
+		p.Limit = spec.PageSizeDefault
 	}
 
 	orderBy, keyset := userBeverageSortClauses(p)

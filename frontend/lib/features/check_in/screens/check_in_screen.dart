@@ -18,6 +18,7 @@ import '../../../core/models/checkin.dart';
 import '../../../core/models/flavor_tag.dart';
 import '../../../core/models/venue.dart';
 import '../../../core/observability/sentry_observer.dart';
+import '../../../core/spec/spec.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/async_widget.dart';
 import '../../../shared/widgets/kamos_chip.dart';
@@ -30,8 +31,6 @@ import '../../venues/widgets/venue_picker_sheet.dart';
 import '../providers/checkin_providers.dart';
 import '../repository/checkin_repository.dart';
 import '../widgets/rating_slider.dart';
-
-const int _kPhotoCap = 1;
 
 enum CheckInMode { compose, edit }
 
@@ -199,7 +198,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       _existingVenue = o.venue;
     } else {
       if (widget.initialPhotos.isNotEmpty) {
-        final seeded = widget.initialPhotos.take(_kPhotoCap).toList();
+        final seeded = widget.initialPhotos.take(KamosSpec.photosMaxPerSubmission).toList();
         _photos.addAll(seeded);
         _photoStates.addAll(
           List.generate(seeded.length, (_) => const PhotoUploadState()),
@@ -240,7 +239,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   });
 
   Future<void> _addPhoto() async {
-    if (_photoCount >= _kPhotoCap) return;
+    if (_photoCount >= KamosSpec.photosMaxPerSubmission) return;
     try {
       final picker = ImagePicker();
       final file = await picker.pickImage(source: ImageSource.gallery);
@@ -575,7 +574,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     final subtitleText = subcat.isEmpty ? catLabel : '$catLabel · $subcat';
 
     final state = ref.watch(checkInControllerProvider);
-    final reviewTooLong = _review.text.length > 500;
+    final reviewTooLong = _review.text.length > KamosSpec.reviewMaxChars;
     final submitting = _isEdit ? _saving : (state.isSubmitting || _uploadingPhotos);
     final canPost = !submitting && !reviewTooLong;
 
@@ -803,6 +802,7 @@ class _RatingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final v = value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -811,13 +811,14 @@ class _RatingRow extends StatelessWidget {
             _LabelText(text: label),
             const SizedBox(width: 10),
             Text(
-              value == null
+              v == null
                   ? emptyValue
-                  : '${value!.toStringAsFixed(2)} / 5.0',
+                  : AppLocalizations.of(context).ratingValue(
+                      v.toStringAsFixed(2)),
               style: TextStyle(
                 fontFamily: 'JetBrainsMono',
                 fontSize: 13,
-                color: value == null ? t.fg3 : t.fg1,
+                color: v == null ? t.fg3 : t.fg1,
               ),
             ),
           ],
@@ -879,7 +880,7 @@ class _ReviewWithPhoto extends StatelessWidget {
           child: TextField(
             controller: controller,
             focusNode: focus,
-            maxLength: 500,
+            maxLength: KamosSpec.reviewMaxChars,
             maxLengthEnforcement: MaxLengthEnforcement.none,
             maxLines: 3,
             minLines: 3,

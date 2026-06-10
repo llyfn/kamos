@@ -13,6 +13,7 @@ import (
 	"github.com/kamos/api/internal/httperr"
 	"github.com/kamos/api/internal/middleware"
 	"github.com/kamos/api/internal/repository"
+	"github.com/kamos/api/internal/spec"
 )
 
 // GetMe — GET /v1/users/me.
@@ -119,7 +120,7 @@ type publicProfile struct {
 // page restarts from the first tier.
 func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("q"))
-	q, err := domain.SanitizeText("q", raw, false, 100)
+	q, err := domain.SanitizeText("q", raw, false, spec.SearchQueryMaxChars)
 	if err != nil {
 		h.writeErr(w, "SearchUsers sanitize", err)
 		return
@@ -129,7 +130,7 @@ func (h *Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 			"q must be at least 2 characters")
 		return
 	}
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "SearchUsers cursor", err)
@@ -215,7 +216,7 @@ func (h *Handler) GetUserCheckins(w http.ResponseWriter, r *http.Request) {
 	if v := middleware.UserFromContext(r.Context()); v != nil {
 		viewerID = v.ID
 	}
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "GetUserCheckins cursor", err)
@@ -260,7 +261,7 @@ func (h *Handler) GetUserCollections(w http.ResponseWriter, r *http.Request) {
 	if v := middleware.UserFromContext(r.Context()); v != nil {
 		viewerID = v.ID
 	}
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "GetUserCollections cursor", err)
@@ -316,7 +317,7 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 			"this user's social graph is private")
 		return
 	}
-	limit := parseLimit(r, 20, 50)
+	limit := parseLimit(r, spec.PageSizeDefault, spec.PageSizeMax)
 	c, err := parseCursor(r)
 	if err != nil {
 		h.writeErr(w, "listSocial cursor", err)
@@ -328,12 +329,12 @@ func (h *Handler) listSocial(w http.ResponseWriter, r *http.Request, followers b
 	// display-name caps.
 	var qPrefix *string
 	if raw := strings.TrimSpace(r.URL.Query().Get("q")); raw != "" {
-		clean, err := domain.SanitizeText("q", raw, false, 50)
+		clean, err := domain.SanitizeText("q", raw, false, spec.DisplayNameMax)
 		if err != nil {
 			h.writeErr(w, "listSocial sanitize", err)
 			return
 		}
-		if len([]rune(clean)) > 30 {
+		if len([]rune(clean)) > spec.SocialQueryMaxChars {
 			httperr.WriteError(w, http.StatusBadRequest, "INVALID_QUERY",
 				"q must be 30 characters or fewer")
 			return
