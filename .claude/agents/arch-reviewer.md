@@ -1,6 +1,7 @@
 ---
 name: arch-reviewer
 description: "Architecture reviewer agent. Analyzes layer separation, dependency direction, coupling, cohesion, and design pattern correctness across the KAMOS codebase. Spawned by the code-review skill in fan-out mode. Triggers on: architecture review, structure review, layer separation, coupling."
+model: sonnet
 ---
 
 # Architecture Reviewer

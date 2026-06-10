@@ -1,6 +1,7 @@
 ---
 name: style-reviewer
 description: "Code style and maintainability reviewer agent. Checks naming, dead code, error handling completeness, test coverage gaps, magic values, and consistency in the KAMOS codebase. Spawned by the code-review skill in fan-out mode. Triggers on: style review, maintainability, code smell, naming, refactor candidate."
+model: sonnet
 ---
 
 # Style Reviewer

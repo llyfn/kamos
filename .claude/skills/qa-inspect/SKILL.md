@@ -33,78 +33,46 @@ Every check opens both sides of an interface and compares them directly. Never c
 
 ## SPEC invariant checks
 
-These are the most common breakage points. Verify each one explicitly per session, not by sampling:
-
-### Category terminology (`SPEC §2.1`, `§8`)
-
-The strings in UI must match these exactly. Grep across all three ARB files and any hardcoded UI strings:
+Canonical values for every numeric / regex / enum invariant live in **`specs/invariants.yaml`** and are surfaced as `backend/internal/spec` (Go) and `frontend/lib/core/spec/spec.dart` (Dart). QA's job is to verify each invariant routes through those constants and matches the YAML.
 
 ```bash
-grep -rn "Nihonshu\|Shochu\|Liqueur\|Sake" lib/ | grep -v ".arb"
-grep -rn "日本酒\|焼酎\|リキュール" lib/ | grep -v ".arb"
-grep -rn "니혼슈\|쇼츄\|리큐어" lib/ | grep -v ".arb"
+# A clean repo has zero inline rating/photo/review/page-size literals
+# outside the SoT and generated files. Spot-check by grepping for them:
+grep -rn "0\\.25\\|0\\.5--5\\.0\\|max.*4 photo\\|photos.*4" \
+    backend/internal frontend/lib admin/src | \
+    grep -v specs/invariants.yaml | grep -v "internal/spec/" | grep -v "core/spec/"
 ```
 
-Any hardcoded match outside ARB files → BLOCKER.
-
-In `app_en.arb`, `Sake` alone (without `Nihonshu (Sake)`) → BLOCKER.
-
-### Rating scale (`SPEC §4.2`)
-
-- DB: column type is `NUMERIC(3,1)` with `CHECK (rating >= 0.5 AND rating <= 5.0)`
-- Go: model field type is a numeric type that preserves one decimal (e.g., `decimal.Decimal` or `float64`); JSON tag emits the value with one decimal place
-- OpenAPI: `format: float` or `type: number, multipleOf: 0.5`
-- Flutter: model field is `double`; star widget renders 0.5 increments (10 levels), not 0.25 (Untappd) and not integer
+Any match → restatement that should pull from `KamosSpec` / `internal/spec`.
 
 ### Cursor pagination (`SPEC §5.2`)
 
-Every list endpoint:
+Every list endpoint must respond with `next_cursor` + `has_more`, and Flutter repos must consume them — never `offset` / `page`. Quick checks:
 
 ```bash
-# Go: response shape
-grep -rn "next_cursor\|NextCursor" backend/internal/handlers/
-# Should appear for: /feed, /beverages, /producers (list), /checkins/by-user, etc.
-
-# OpenAPI
-grep -n "next_cursor\|has_more" openapi.yaml
-
-# Flutter
-grep -rn "nextCursor\|next_cursor" frontend/lib/ | grep repository
+grep -rn "next_cursor\\|NextCursor" backend/internal/handlers/
+grep -n  "next_cursor\\|has_more" backend/openapi.yaml
+grep -rn "offset\\|page=\\|page:" frontend/lib/ | grep repository
 ```
 
-Any list endpoint missing `next_cursor` and `has_more` in the response → BLOCKER.
-
-Any Flutter repository using `offset` / `page` parameters → BLOCKER.
-
-### JWT storage (`SPEC §3.1`, security policy)
+### JWT storage (`SPEC §3.1`)
 
 ```bash
-grep -rn "SharedPreferences" frontend/lib/ | grep -i "token\|jwt\|auth"
+grep -rn "SharedPreferences" frontend/lib/ | grep -iE "token|jwt|auth"
 ```
 
 Any match → CRITICAL. JWT must use `flutter_secure_storage`.
 
-### Soft-delete (`SPEC §3.3`, `§4.4`)
+### Category terminology (`SPEC §2.1`)
 
-- Tables that need `deleted_at TIMESTAMPTZ`: `users`, `check_ins`, `collections`
-- Every list query against these tables must filter `WHERE deleted_at IS NULL`
-- Account deletion must hold the username for 30 days before release — verify via the deletion handler logic, not just the schema
+UI strings must match the YAML `categories.names` exactly. Hardcoded category labels outside the ARB / `KamosSpec.categoryNames` resolver → BLOCKER. `Sake` alone in `app_en.arb` (without `Nihonshu (Sake)`) → BLOCKER.
 
-### Default collections (`SPEC §6.1`)
+### Soft-delete, default collections, i18n fallback
 
-User registration must create `Inventory` and `Wishlist` collections atomically with the user record. Verify in the registration handler — both for email/password and Google OAuth paths.
-
-### i18n fallback (`SPEC §8`)
-
-When a beverage's `name_i18n` is missing the user's locale, the API or the Flutter rendering layer must fall back to `en`. Verify the fallback exists at exactly one layer (preferably API), not zero and not both.
-
-### Photos cap (`SPEC §4.1`)
-
-Check-in handler must reject more than 4 photos. Flutter check-in form must prevent selecting more than 4. Both sides → MAJOR if either is missing.
-
-### Review text cap (`SPEC §4.1`)
-
-Check-in `review_text` ≤ 500 chars. DB constraint, Go validation, Flutter `maxLength` — all three.
+- `deleted_at TIMESTAMPTZ` on `users`, `check_ins`, `collections`; every list query filters `WHERE deleted_at IS NULL`.
+- Username-hold window after account delete uses `spec.UsernameHoldDays` (YAML `soft_delete.username_hold_days`).
+- Registration creates `Inventory` + `Wishlist` collections atomically (both email/password and Google OAuth paths). Names come from `spec.DefaultCollectionInventory[locale]` / `…Wishlist[locale]`.
+- Missing-locale fallback for `name_i18n` happens at exactly one layer (preferably API), not zero and not both.
 
 ## Boundary check workflow
 

@@ -30,11 +30,7 @@ Do not introduce Markdown-only wireframes / spec / token files. Wireframes are r
 - **No gradients, no repeating chrome patterns, no flat colored "feature" icons, no drawn illustrations of people.**
 - **Cards:** 1 px hairline border + `--shadow-1` + `--radius-md` + 16 px padding. No left-border accent, no top stripe.
 - **Casing:** sentence case for buttons / headers / menu items. Title Case only for proper nouns (beverage names, producer names, places).
-- **SPEC category strings — exact, do not abbreviate:**
-    - en: `Nihonshu (Sake)` · `Shochu` · `Liqueur`
-    - ja: `日本酒` · `焼酎` · `リキュール`
-    - ko: `니혼슈 (사케)` · `쇼츄` · `리큐어`
-- **Rating:** 0.5–5.0 in 0.5 steps; shown as `4.0 / 5.0`. ABV `15.5%` (one decimal, no space). Polishing ratio in mono as `Seimai 60%`.
+- **Category strings, rating bounds + step, photo cap, page sizes, etc.:** sourced from `specs/invariants.yaml` — never restate values in screens or copy. Display formatting is `4.0 / 5.0` for ratings, `15.5%` for ABV (one decimal, no space), `Seimai 60%` for polishing ratio.
 - **i18n fallback:** missing `ja` or `ko` falls back to `en`; never empty strings.
 
 ## Workflow

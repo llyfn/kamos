@@ -1,6 +1,7 @@
 ---
 name: security-reviewer
 description: "Security reviewer agent. Adversarial code review for the KAMOS codebase: injection, broken auth, IDOR, missing validation, hardcoded secrets, OWASP Top 10. Spawned by the code-review skill in fan-out mode. Triggers on: security review, vulnerability audit, OWASP, IDOR, auth review."
+model: sonnet
 ---
 
 # Security Reviewer

@@ -1,6 +1,7 @@
 ---
 name: perf-reviewer
 description: "Performance reviewer agent. Identifies N+1 queries, missing indexes, over-fetching, unbounded queries, blocking I/O, Flutter rebuild storms, and algorithmic inefficiencies in the KAMOS codebase. Spawned by the code-review skill in fan-out mode. Triggers on: performance review, scalability, N+1, indexing, latency."
+model: sonnet
 ---
 
 # Performance Reviewer

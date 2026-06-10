@@ -62,35 +62,31 @@ Soft-delete: `deleted_at TIMESTAMPTZ` on `users`, `check_ins`, `collections`. Ev
 
 ## SPEC invariants — encode in the schema
 
-These come from `SPEC.md` and are enforceable at the database level. Do them here, not in the application:
+Canonical values live in **`specs/invariants.yaml`**. Restate the value once in a CHECK constraint at the column's owning migration; don't paste the number elsewhere. The pattern:
 
 ```sql
--- Rating: 0.5 to 5.0 in 0.5 steps (SPEC §4.2)
-rating NUMERIC(3,1) CHECK (rating >= 0.5 AND rating <= 5.0 AND (rating * 2) = FLOOR(rating * 2))
+-- Rating grid (specs/invariants.yaml rating.*)
+rating NUMERIC(3,2) CHECK (
+  rating >= 0.5 AND rating <= 5.0 AND (rating * 100)::int % 25 = 0
+)
 
--- Username: 3-30 chars, alphanumeric + underscore, lowercase enforced (SPEC §3.2)
+-- Username (specs/invariants.yaml username.storage_regex)
 username TEXT NOT NULL CHECK (username ~ '^[a-z0-9_]{3,30}$')
--- And a unique index on LOWER(username), but also enforce that the value is already lowercase
--- via a CHECK or a trigger to prevent inserting mixed case.
 
--- Bio cap (SPEC §3.2)
+-- Text caps (specs/invariants.yaml bio.max_chars, review_text.max_chars, …)
 bio TEXT CHECK (char_length(bio) <= 200)
-
--- Review text cap (SPEC §4.1)
 review_text TEXT CHECK (char_length(review_text) <= 500)
+notes TEXT CHECK (char_length(notes) <= 200)
+name TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 50)
 
--- Photo cap of 4 per check-in (SPEC §4.1)
--- Enforced at insert time in the application, but add a CHECK trigger or unique index
--- on (check_in_id, sort_order) with sort_order constrained to 0..3.
+-- Photos: submission cap is 1 (enforced in Go using spec.PhotosMaxPerSubmission).
+-- Existing rows with up to 4 must remain readable, so the legacy sort_order
+-- range (0..3) stays in place at the DB layer.
 sort_order SMALLINT NOT NULL CHECK (sort_order BETWEEN 0 AND 3)
 UNIQUE (check_in_id, sort_order)
-
--- Collection note cap (SPEC §6.2)
-notes TEXT CHECK (char_length(notes) <= 200)
-
--- Collection name cap (SPEC §6.3)
-name TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 50)
 ```
+
+When the YAML value changes, update the next migration, NOT the original — migrations are append-only.
 
 ## KAMOS entity checklist
 
@@ -299,11 +295,10 @@ Each migration is one transaction. Number sequentially. Never edit a deployed mi
 ## Output checklist
 
 - [ ] Every API response field traces to a column or computed expression
-- [ ] All SPEC caps (review 500, bio 200, photos 4, collection name 50, notes 200) enforced as CHECK constraints
-- [ ] Rating CHECK enforces both range and 0.5 step
+- [ ] Text/rating/regex caps match `specs/invariants.yaml` and are enforced as CHECK constraints
 - [ ] Username CHECK enforces lowercase + character class
 - [ ] Soft-delete columns on users, check_ins, collections
-- [ ] `username_release_at` on users for the 30-day hold (SPEC §3.3)
+- [ ] `username_release_at` on users for the username hold (`soft_delete.username_hold_days` in YAML)
 - [ ] Default collection creation strategy documented in schema.md
 - [ ] All foreign keys explicit, no orphans possible
 - [ ] Indexes cover every query pattern's WHERE + ORDER BY leading columns
