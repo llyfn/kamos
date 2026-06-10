@@ -98,4 +98,3 @@ func Venue(field, s string, minRunes, maxRunes int) error {
 	}
 	return nil
 }
-
