@@ -8,6 +8,8 @@ import '../../../core/spec/spec.dart';
 const double _kMin = KamosSpec.ratingMin;
 const double _kMax = KamosSpec.ratingMax;
 const double _kStep = KamosSpec.ratingStep;
+// Major ticks render at every other compose step (half-star spacing).
+const double _kTickSpacing = _kStep * 2;
 const double _kTrackHeight = 4;
 const double _kThumbRadius = 10;
 const double _kTickHeight = 8;
@@ -68,7 +70,7 @@ class _RatingTrack extends StatelessWidget {
     final usable = width - _kThumbRadius * 2;
     final ratio = ((v - _kMin) / (_kMax - _kMin)).clamp(0.0, 1.0);
     final thumbX = _kThumbRadius + ratio * usable;
-    final tickCount = ((_kMax - _kMin) / 0.5).round() + 1;
+    final tickCount = ((_kMax - _kMin) / _kTickSpacing).round() + 1;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -107,7 +109,7 @@ class _RatingTrack extends StatelessWidget {
               ),
             for (var i = 0; i < tickCount; i++)
               Positioned(
-                left: _kThumbRadius + (i * 0.5 / (_kMax - _kMin)) * usable - 0.5,
+                left: _kThumbRadius + (i * _kTickSpacing / (_kMax - _kMin)) * usable - 0.5,
                 top: _kThumbRadius * 2,
                 child: Container(
                   width: 1,
