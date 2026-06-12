@@ -4,13 +4,59 @@ primary_region = "nrt"
 [build]
   dockerfile = "Dockerfile"
 
-# WHY: this file is only consumed when running `flyctl deploy -a kamos-db`
-# from within db/. The actual Fly Postgres cluster (process model, HA,
-# resource sizing, volume creation) is owned by Fly's postgres-flex
-# machinery and was set at `flyctl postgres create` time. The [mounts]
-# block below mirrors the existing pg_data volume so `flyctl deploy`
-# doesn't flag the running machine's mount as a config drift — it isn't.
+# WHY: `flyctl deploy -a kamos-db` (run from db/ to ship the pg_bigm image)
+# applies THIS file as the machine config wholesale — anything not declared
+# here is stripped from the running machine. The blocks below are NOT
+# optional cosmetics: they reproduce the Fly postgres-flex machine config.
+#
+# - [checks] are the flycheck probes Fly uses to determine the primary. With
+#   them absent, the machine's role becomes "unknown", `fly pg` reports
+#   "no active leader", and the managed-postgres flycast proxy on :5432 has no
+#   primary to route to.
+# - [[services]] is the private-ingress (flycast) listener that forwards the
+#   kamos-db.flycast IP :5432 to the on-machine haproxy. Without it the flycast
+#   IP has no backend and resets every connection.
+#
+# A deploy that omitted both stripped them on 2026-06-07 and took the whole API
+# down (the server can't get past its startup DB ping). Keep them in sync with
+# the running machine; do not delete to "let flex manage it" — flex does not
+# re-add them on its own.
 
 [mounts]
   source = "pg_data"
   destination = "/data"
+
+[checks]
+  [checks.pg]
+    type = "http"
+    port = 5500
+    path = "/flycheck/pg"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+  [checks.role]
+    type = "http"
+    port = 5500
+    path = "/flycheck/role"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+  [checks.vm]
+    type = "http"
+    port = 5500
+    path = "/flycheck/vm"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 5432
+
+  [[services.ports]]
+    port = 5432
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 1000
