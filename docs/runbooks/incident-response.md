@@ -35,6 +35,7 @@ These are the ones that have a low blast radius and a high probability of helpin
 | Auth surge of 401s | Did `JWT_SECRET` just rotate? See `secret-rotation.md`. If not, check the soft-deleted-user cache for a poisoned entry. |
 | Photo upload returning 503 | `R2_*` env unset or token expired — see `DEPLOYMENT.md` §3. |
 | Email verification not arriving | Check `RESEND_API_KEY` is set; check Resend dashboard for bounces / rate limits. Empty key falls back to LogMailer (link printed to stdout). |
+| API restart-looping with `pgxpool ping … kamos-db.flycast:5432 … connection reset by peer` (Fly dashboard wrongly blames "missing env" / "not listening on :8080") | The DB is up but flycast can't find the primary. Check `fly status -a kamos-db` — if **ROLE is `unknown`** and `fly pg connect` says **"no active leader found"**, a `db/fly.toml` deploy stripped the flex `[checks]` + `[[services]]` from the machine. The on-machine Postgres/haproxy are fine (`fly ssh console -a kamos-db`, then `psql -h 127.0.0.1 -p 5432` works). Restore the machine's `checks` (role/pg/vm → `/flycheck/*` on :5500) and the `tcp 5432→5432` service via the Machines API, then restart the `kamos` server machine (it will have hit "max restart count" so Fly stopped auto-restarting it). Permanent fix already in `db/fly.toml` — never deploy that app without those blocks. |
 
 ## When in doubt
 
