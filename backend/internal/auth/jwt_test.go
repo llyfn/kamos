@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,13 +31,18 @@ func TestJWTRoundtrip(t *testing.T) {
 func TestJWTRejectsModifiedToken(t *testing.T) {
 	s := NewSigner("secret-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Hour)
 	tok, _ := s.Sign("u", "n")
-	// Flip last char to a different base64url char so the tamper is always
-	// observable (overwriting 'X' with 'X' would be a no-op).
-	flip := byte('X')
-	if tok[len(tok)-1] == flip {
-		flip = 'Y'
+	// Flip a whole signature byte. The final base64url char of the signature
+	// only carries 4 significant bits, so flipping the last char can land on a
+	// padding-only change that decodes identically; mutating a decoded byte
+	// makes the tamper unconditionally observable.
+	parts := strings.Split(tok, ".")
+	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		t.Fatalf("decode signature: %v", err)
 	}
-	bad := tok[:len(tok)-1] + string(flip)
+	sig[0] ^= 0xFF
+	parts[2] = base64.RawURLEncoding.EncodeToString(sig)
+	bad := strings.Join(parts, ".")
 	if _, err := s.Verify(bad); err == nil {
 		t.Fatalf("expected verify failure on tampered token")
 	}
