@@ -30,7 +30,7 @@ jobs:
       admin: ${{ steps.filter.outputs.admin }}
       ci: ${{ steps.filter.outputs.ci }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
         id: filter
         with:
@@ -61,7 +61,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26'
@@ -91,7 +91,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -109,7 +109,7 @@ jobs:
     if: needs.changes.outputs.migrations == 'true' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -126,7 +126,7 @@ jobs:
     # is the source of truth for admin/src/lib/tokens.ts" — is REQUIRED
     # for merge. If you edit one without the other, this fails.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: '20'
@@ -142,7 +142,7 @@ jobs:
     # and .claude/CLAUDE.md prose for restatements of values that belong in
     # specs/invariants.yaml. Code-fence blocks are skipped.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run check-harness-drift.sh
         run: scripts/check-harness-drift.sh
 
@@ -155,7 +155,7 @@ jobs:
     # Go + goimports are needed so the generator can post-format spec.go
     # (gofmt column alignment + goimports local-prefix grouping).
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -179,7 +179,7 @@ jobs:
       run:
         working-directory: admin
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: '20'
@@ -209,7 +209,7 @@ jobs:
     # can't reference a locally-built image, so we build and run Postgres
     # manually with the same env the old services: block exposed.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - name: Build kamos-postgres dev image (pg_bigm)
         uses: docker/build-push-action@v7
