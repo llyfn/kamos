@@ -9,10 +9,10 @@ environment:
 
 dependencies:
   cached_network_image: ^3.4.1
-  dio: ^5.7.0
+  dio: ^5.10.0
   # HTTP response cache + ETag/If-None-Match round-trips on the authed Dio
   # singleton (Phase 7). In-memory only for now (MemCacheStore).
-  dio_cache_interceptor: ^4.0.6
+  dio_cache_interceptor: ^4.0.7
   flutter:
     sdk: flutter
   flutter_localizations:
